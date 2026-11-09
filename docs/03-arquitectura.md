@@ -33,8 +33,11 @@ tests/
   FocusWShell.Core.Tests/  Pruebas unitarias del dominio con un IWindowSystem falso.
   FocusWShell.Win32.Tests/ Pruebas de integración manuales o semiautomáticas con ventanas de prueba.
 tools/
+  FocusWShell.Probe/       `focus-probe`: consola de diagnóstico para los spikes (listar, colocar, restaurar).
   TestWindows/             App que abre ventanas "maniquí" con distintos DPI, estilos y comportamientos.
 ```
+
+Los ejecutables comparten `build/app.manifest` (PerMonitorV2, `asInvoker`) desde `Directory.Build.props`. Los proyectos Windows apuntan a `net10.0-windows10.0.19041.0` (Windows 10 2004 o posterior).
 
 La regla de dependencias es estricta: `Core` no referencia a `Win32` ni a `App`. Ver [ADR 0004](adr/0004-stack-dotnet-wpf-cswin32.md).
 

@@ -1,0 +1,48 @@
+// Ventanas
+EnumWindows
+GetWindowText
+GetWindowTextLength
+GetClassName
+IsWindowVisible
+IsIconic
+IsZoomed
+GetWindow
+GetWindowLong
+GetWindowRect
+GetWindowThreadProcessId
+GetWindowPlacement
+GetDpiForWindow
+WINDOW_STYLE
+WINDOW_EX_STYLE
+
+// DWM
+DwmGetWindowAttribute
+DWMWINDOWATTRIBUTE
+
+// Monitores
+MonitorFromWindow
+GetMonitorInfo
+MONITORINFOEXW
+
+// Procesos e integridad
+OpenProcess
+QueryFullProcessImageName
+OpenProcessToken
+GetTokenInformation
+GetSidSubAuthority
+GetSidSubAuthorityCount
+GetCurrentProcess
+GetCurrentProcessId
+CloseHandle
+TOKEN_MANDATORY_LABEL
+SECURITY_MANDATORY_UNTRUSTED_RID
+SECURITY_MANDATORY_LOW_RID
+SECURITY_MANDATORY_MEDIUM_RID
+SECURITY_MANDATORY_HIGH_RID
+SECURITY_MANDATORY_SYSTEM_RID
+
+// AUMID de apps empaquetadas
+SHGetPropertyStoreForWindow
+IPropertyStore
+PKEY_AppUserModel_ID
+PropVariantClear

@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- El núcleo no depende de Windows: se prueba sin ventanas reales. Ver docs/03-arquitectura.md -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FocusWShell.Core.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -37,4 +37,14 @@ S1–S5 forman el hito M0. S6 y S7 se pueden posponer a M1, pero deben resolvers
 
 Cada spike deja una nota breve en esta sección: fecha, configuración de monitores, apps probadas, resultado y decisión.
 
-_(Pendiente.)_
+### S1 — Enumeración (2026-11-09, primera pasada)
+
+- **Herramienta:** `focus-probe list` (`tools/FocusWShell.Probe`). Sólo lee; no mueve ventanas.
+- **Monitores:** sólo el ultrawide 3440×1440 al 100 % (96 DPI). El monitor estándar no estaba conectado o no tenía barra de tareas secundaria: no apareció `Shell_SecondaryTrayWnd`.
+- **Resultado:** de 514 ventanas top-level, 38 visibles, 12 candidatas y 12 gestionables. Las 12 son apps reales: Zoom (reunión), Claude, Chrome, SSMS, WhatsApp, Slack, Edge, Explorador, ChatGPT, GitHub Desktop, NetBird y Docker Desktop (minimizada). Ningún falso positivo del sistema.
+- **Exclusiones correctas:** barra de tareas y escritorio (`SystemClass`); 11 ventanas auxiliares de Zoom, CptHost y el WebView2 interno de WhatsApp (`ToolWindow`); la barra flotante de notas de Zoom (`TooSmall`); Configuración y superficies del shell en segundo plano (`Cloaked`).
+- **AUMID:** se obtiene para Configuración (UWP), Chrome y Edge. Para apps empaquetadas que no lo publican en la ventana (WhatsApp) sale vacío; habrá que leerlo del proceso (`GetApplicationUserModelId`) cuando se necesite para reglas.
+- **Dudas abiertas:**
+  - NetBird (366×653) es candidata. Es una ventana de configuración de una app de bandeja; se deja como candidata y se resolverá con la lista de exclusión del usuario.
+  - Faltan casos por ver en vivo: una ventana elevada (debería salir `NO-GESTIONABLE`), un juego o vídeo en pantalla completa (`Fullscreen`), una ventana en otro escritorio virtual (`Cloaked`) y el monitor estándar con escala distinta.
+- **Decisión:** el filtro es suficiente para continuar con S2. Repetir S1 con los dos monitores y los casos pendientes.

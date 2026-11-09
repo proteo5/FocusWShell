@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FocusWShell.Core\FocusWShell.Core.csproj" />
+    <ProjectReference Include="..\FocusWShell.Win32\FocusWShell.Win32.csproj" />
+  </ItemGroup>
+
+</Project>
