@@ -1,4 +1,4 @@
-using FocusWShell.Core.Displays;
+﻿using FocusWShell.Core.Displays;
 using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Tests.Displays;
@@ -22,6 +22,21 @@ public class DisplayTopologyTests
     public void StandardSharesOnlyItsLeftEdge()
     {
         Assert.Equal((true, false), DisplayTopology.SharedEdges(Standard, [Ultrawide, Standard]));
+    }
+
+    [Fact]
+    public void PrincipalIsWindowsPrimaryEvenIfNarrower()
+    {
+        var primaryStandard = Standard with { IsPrimary = true };
+
+        Assert.Equal(primaryStandard, DisplayTopology.Principal([Ultrawide, primaryStandard]));
+    }
+
+    [Fact]
+    public void PrincipalFallsBackToWidest()
+    {
+        Assert.Equal(Ultrawide, DisplayTopology.Principal([Standard, Ultrawide]));
+        Assert.Null(DisplayTopology.Principal([]));
     }
 
     [Fact]

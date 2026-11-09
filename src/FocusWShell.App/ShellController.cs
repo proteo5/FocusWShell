@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using FocusWShell.Core.Displays;
 using FocusWShell.Core.Domain;
 using FocusWShell.Core.Windows;
@@ -33,9 +33,9 @@ public sealed class ShellController
 
     public MinSizeStore MinSizes { get; } = new(MinSizeStore.DefaultPath);
 
-    /// <summary>Monitor donde se aplica el layout fijo de M0: el más ancho.</summary>
+    /// <summary>Monitor del Centro: el principal de Windows (ADR 0008).</summary>
     public static DisplayInfo TargetDisplay() =>
-        DisplayEnumerator.Enumerate().MaxBy(d => d.WorkArea.Width)
+        DisplayTopology.Principal(DisplayEnumerator.Enumerate())
         ?? throw new InvalidOperationException("No se encontró ningún monitor.");
 
     public static string LabelFor(WindowSnapshot w)

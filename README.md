@@ -36,6 +36,7 @@ dotnet run --project src/FocusWShell.App
   | ↑ | Lleva al Centro la ventana activa, si está gestionada. La que estaba vuelve a su panel. |
   | ← | Vuelve a poner en el Centro la ventana anterior. Repetirlo alterna entre las dos. |
   | ↓ | Devuelve la ventana del Centro a su panel. |
+  | P | Mantener la pantalla encendida (activa o desactiva; se recuerda). |
   | Retroceso | **Emergencia:** restaura todas las ventanas en cualquier momento. |
 - Si el gestor muere sin cerrarse, al volver a abrirlo ofrece restaurar las ventanas que dejó movidas.
 

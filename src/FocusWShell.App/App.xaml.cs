@@ -18,6 +18,8 @@ public partial class App : Application
     private TrayIcon? _tray;
     private GlobalHotkeys? _hotkeys;
     private MainWindow? _main;
+    private readonly DisplayKeepAwake _keepAwake = new();
+    private AppSettings _settings = new();
 
     public bool IsExiting { get; private set; }
 
@@ -41,7 +43,9 @@ public partial class App : Application
         OfferRecovery();
 
         _main = new MainWindow(_controller);
-        _tray = new TrayIcon(ShowMain, RestoreFromTray, ExitAndRestore);
+        _settings = AppSettings.Load();
+        _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
+        SetKeepAwake(_settings.KeepDisplayOn, announce: false);
         _hotkeys = GlobalHotkeys.Start(
         [
             new("Restaurar todas", GlobalHotkeys.VkBack, "Ctrl+Alt+Mayús+Retroceso", OnEmergencyHotkey),
@@ -49,6 +53,7 @@ public partial class App : Application
             new("Volver a la anterior", GlobalHotkeys.VkLeft, "Ctrl+Alt+Mayús+←",
                 () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious()))),
             new("Centro al panel", GlobalHotkeys.VkDown, "Ctrl+Alt+Mayús+↓", () => OnCommandHotkey("Centro al panel", _controller.ReturnCenter)),
+            new("Pantalla encendida", GlobalHotkeys.VkP, "Ctrl+Alt+Mayús+P", () => Dispatcher.BeginInvoke(ToggleKeepAwake)),
         ]);
         if (_hotkeys.Failed.Count > 0)
         {
@@ -88,6 +93,34 @@ public partial class App : Application
     }
 
     private void ShowMain() => _main?.ShowAndActivate();
+
+    private void ToggleKeepAwake() => SetKeepAwake(!_keepAwake.IsActive, announce: true);
+
+    /// <summary>Mantener la pantalla encendida (ADR 0010): aplica, recuerda y lo refleja en la bandeja.</summary>
+    private void SetKeepAwake(bool active, bool announce)
+    {
+        if (!_keepAwake.Set(active))
+        {
+            _tray?.Notify("Pantalla encendida", "Windows no aceptó la petición de energía.", Forms.ToolTipIcon.Warning);
+            return;
+        }
+
+        _tray?.ShowKeepAwake(active);
+        if (_settings.KeepDisplayOn != active)
+        {
+            _settings.KeepDisplayOn = active;
+            _settings.Save();
+        }
+
+        if (announce)
+        {
+            _tray?.Notify(
+                active ? "Pantalla siempre encendida" : "Pantalla con ahorro normal",
+                active
+                    ? "Ni la pantalla se apagará ni saltará el protector de pantalla mientras esté activo."
+                    : "Windows vuelve a apagar la pantalla por inactividad como siempre.");
+        }
+    }
 
     private void RestoreFromTray()
     {
@@ -161,6 +194,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _hotkeys?.Dispose();
+        _keepAwake.Dispose();
         _tray?.Dispose();
         if (_singleInstance is not null)
         {

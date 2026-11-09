@@ -86,3 +86,12 @@ SetTimer
 KillTimer
 WM_TIMER
 MonitorFromRect
+
+// Mantener la pantalla encendida (ADR 0010)
+PowerCreateRequest
+PowerSetRequest
+PowerClearRequest
+REASON_CONTEXT
+POWER_REQUEST_TYPE
+POWER_REQUEST_CONTEXT_VERSION
+POWER_REQUEST_CONTEXT_FLAGS

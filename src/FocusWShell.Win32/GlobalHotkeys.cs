@@ -1,4 +1,4 @@
-using Windows.Win32;
+﻿using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -20,6 +20,7 @@ public sealed class GlobalHotkeys : IDisposable
     public const uint VkLeft = 0x25;
     public const uint VkUp = 0x26;
     public const uint VkDown = 0x28;
+    public const uint VkP = 0x50;
 
     private const int FirstId = 0xF0C0;
     private readonly Thread _thread;

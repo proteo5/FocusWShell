@@ -55,7 +55,7 @@ static int Usage(string? error = null)
                             [--context-template tiles|stack] [--work-template tiles|stack]
                             [--dry-run] [--no-learn] [--pause-after N]
                             [--mode async|batch|seq] [--cycles N] [--cycle-delay ms] [--display N]
-              Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho (o del N-ésimo), respetando
+              Coloca ventanas en Contexto | Centro | Trabajo del monitor principal (o del N-ésimo), respetando
               los tamaños mínimos aprendidos. Si una app impone uno nuevo, lo aprende y recoloca.
               Cada nombre busca una ventana candidata cuyo ejecutable lo contenga (p. ej. slack, msedge).
               Antes de mover nada guarda la colocación original en el diario.
@@ -203,13 +203,13 @@ static (SceneApplier Applier, SceneAssignment Assignment, SceneOptions Options, 
         Learn = !Has(args, "--no-learn"),
     };
 
-    // Por defecto, el monitor más ancho (el ultrawide); --display N elige el N-ésimo de "focus-probe monitors".
+    // Por defecto, el monitor principal, el único con Centro (ADR 0008); --display N elige el N-ésimo de "focus-probe monitors".
     var displays = DisplayEnumerator.Enumerate();
     var display = Option(args, "--display") is { } d
         ? (int.Parse(d, CultureInfo.InvariantCulture) is int n && n >= 1 && n <= displays.Count
             ? displays[n - 1]
             : throw new ArgumentException($"--display debe estar entre 1 y {displays.Count}."))
-        : displays.MaxBy(m => m.WorkArea.Width) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
+        : DisplayTopology.Principal(displays) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
 
     var ownIntegrity = WindowEnumerator.CurrentIntegrity();
     var filter = new EligibilityFilter();
