@@ -49,10 +49,14 @@ static int Usage(string? error = null)
           focus-probe place --context a,b --center c --work d,e [--split 18,55,27] [--gap 8]
                             [--context-template tiles|stack] [--work-template tiles|stack]
                             [--dry-run] [--no-learn] [--pause-after N]
+                            [--mode async|batch|seq] [--cycles N] [--cycle-delay ms]
               Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho, respetando
               los tamaños mínimos aprendidos. Si una app impone uno nuevo, lo aprende y recoloca.
               Cada nombre busca una ventana candidata cuyo ejecutable lo contenga (p. ej. slack, msedge).
               Antes de mover nada guarda la colocación original en el diario.
+              --mode async (por defecto) pide el movimiento a todas en paralelo (SWP_ASYNCWINDOWPOS);
+              batch usa un lote DeferWindowPos; seq, SetWindowPos una a una.
+              --cycles N revierte y reaplica la escena N veces midiendo cada transición (S3).
           focus-probe restore
               Devuelve todas las ventanas del diario a su colocación original y borra el diario.
           focus-probe mins [--clear]
@@ -163,6 +167,17 @@ static int Place(string[] args)
     int gap = int.Parse(Option(args, "--gap") ?? "0", CultureInfo.InvariantCulture);
     bool dryRun = Has(args, "--dry-run");
     bool noLearn = Has(args, "--no-learn");
+    var mode = (Option(args, "--mode") ?? "async").ToLowerInvariant() switch
+    {
+        "async" => MoveMode.Async,
+        "batch" => MoveMode.Batch,
+        "seq" => MoveMode.Sequential,
+        var m => throw new ArgumentException($"Modo desconocido: {m} (async | batch | seq)"),
+    };
+    bool batch = mode != MoveMode.Sequential;
+    bool async = mode == MoveMode.Async;
+    int cycles = int.Parse(Option(args, "--cycles") ?? "0", CultureInfo.InvariantCulture);
+    int cycleDelay = int.Parse(Option(args, "--cycle-delay") ?? "1500", CultureInfo.InvariantCulture);
     int? pauseAfter = Option(args, "--pause-after") is { } p ? int.Parse(p, CultureInfo.InvariantCulture) : null;
     var contextTemplate = ParseTemplate(Option(args, "--context-template"));
     var workTemplate = ParseTemplate(Option(args, "--work-template"));
@@ -239,31 +254,24 @@ static int Place(string[] args)
     ProbeJournal.AddIfMissing(captures);
     Console.WriteLine($"Diario: {ProbeJournal.FilePath}");
 
+    // Geometría de partida, para revertir en los ciclos de S3.
+    var originals = all
+        .Select(w => (w.Handle, Rect: WindowMover.VisibleBounds(w.Handle), Special: WindowMover.IsMinimizedOrMaximized(w.Handle)))
+        .ToList();
+
     const int MaxPasses = 3;
     List<(WindowTarget Target, PlacementResult? Result)> applied = [];
     for (int pass = 1; pass <= MaxPasses; pass++)
     {
-        applied = [];
-        int placed = 0;
-        foreach (var target in layout.Targets)
+        if (batch && pauseAfter is null)
         {
-            if (pauseAfter is int limit && placed == limit)
-            {
-                // S5: deja el proceso detenido a mitad de la escena para matarlo desde fuera.
-                Console.WriteLine($"PAUSA tras {placed} ventanas (pid {Environment.ProcessId}). Esperando a ser terminado…");
-                Thread.Sleep(Timeout.Infinite);
-            }
-
-            placed++;
-            if (target.Kind == TargetKind.Minimized)
-            {
-                WindowMover.Minimize(target.Handle);
-                applied.Add((target, null));
-            }
-            else
-            {
-                applied.Add((target, WindowMover.Place(target.Handle, target.Rect)));
-            }
+            (applied, var stats) = ApplyBatch(layout, async);
+            PrintBatch($"Pasada {pass}", stats);
+        }
+        else
+        {
+            applied = ApplySequential(layout, pauseAfter, out var elapsed);
+            Console.WriteLine($"Pasada {pass}: ventana por ventana en {elapsed.TotalMilliseconds:F0} ms");
         }
 
         if (noLearn)
@@ -299,6 +307,136 @@ static int Place(string[] args)
         PrintLayout(layout);
     }
 
+    if (cycles > 0)
+    {
+        RunCycles(layout, originals, cycles, cycleDelay, batch, async);
+        (applied, _) = batch ? ApplyBatch(layout, async) : (ApplySequential(layout, null, out _), null);
+    }
+
+    return Report(layout, applied);
+}
+
+// Aplica la escena: primero minimiza las ocultas de las pilas y luego mueve las visibles en un solo lote (R3).
+static (List<(WindowTarget Target, PlacementResult? Result)> Applied, BatchPlacement Stats) ApplyBatch(SceneLayoutResult layout, bool async)
+{
+    foreach (var t in layout.Targets.Where(t => t.Kind == TargetKind.Minimized))
+    {
+        WindowMover.Minimize(t.Handle);
+    }
+
+    var visible = layout.Targets.Where(t => t.Kind == TargetKind.Visible).ToList();
+    var stats = WindowMover.PlaceBatch(visible.Select(t => (t.Handle, t.Rect)).ToList(), async);
+    var byHandle = visible.Zip(stats.Results).ToDictionary(x => x.First.Handle, x => x.Second);
+    var applied = layout.Targets
+        .Select(t => (t, t.Kind == TargetKind.Visible ? byHandle[t.Handle] : (PlacementResult?)null))
+        .ToList();
+    return (applied, stats);
+}
+
+static void PrintBatch(string label, BatchPlacement s) =>
+    Console.WriteLine(
+        $"{label}: {(s.Batched ? "lote" : "LOTE FALLIDO, ventana por ventana")} · " +
+        $"movimiento {s.MoveTime.TotalMilliseconds:F0} ms · total {s.TotalTime.TotalMilliseconds:F0} ms · " +
+        $"{s.Normalized} normalizadas · {s.Corrections} corregidas después");
+
+// Ciclos de S3: revertir a la geometría de partida y reaplicar la escena, midiendo cada transición.
+static void RunCycles(
+    SceneLayoutResult layout,
+    List<(nint Handle, PixelRect Rect, bool Special)> originals,
+    int cycles,
+    int delayMs,
+    bool batch,
+    bool async)
+{
+    var revertible = originals.Where(o => !o.Special).Select(o => (o.Handle, o.Rect)).ToList();
+    int skipped = originals.Count - revertible.Count;
+    Console.WriteLine();
+    Console.WriteLine($"S3: {cycles} ciclos revertir/aplicar ({(async ? "asíncrono en paralelo" : batch ? "lote DeferWindowPos" : "ventana por ventana")}), pausa {delayMs} ms." +
+        (skipped > 0 ? $" {skipped} ventanas empezaron maximizadas o minimizadas y no se revierten en los ciclos." : ""));
+
+    var applyTimes = new List<double>();
+    var revertTimes = new List<double>();
+    int corrections = 0;
+    int failedBatches = 0;
+    for (int c = 1; c <= cycles; c++)
+    {
+        Thread.Sleep(delayMs);
+        revertTimes.Add(Move(revertible));
+        Thread.Sleep(delayMs);
+        if (batch)
+        {
+            var (_, s) = ApplyBatch(layout, async);
+            applyTimes.Add(s.MoveTime.TotalMilliseconds);
+            corrections += s.Corrections;
+            failedBatches += s.Batched ? 0 : 1;
+        }
+        else
+        {
+            ApplySequential(layout, null, out var elapsed);
+            applyTimes.Add(elapsed.TotalMilliseconds);
+        }
+
+        Console.Write($"\r  ciclo {c}/{cycles}: aplicar {applyTimes[^1],5:F0} ms · revertir {revertTimes[^1],5:F0} ms");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"  aplicar:  media {applyTimes.Average():F0} ms · máx {applyTimes.Max():F0} ms");
+    Console.WriteLine($"  revertir: media {revertTimes.Average():F0} ms · máx {revertTimes.Max():F0} ms");
+    if (batch)
+    {
+        Console.WriteLine($"  {corrections} correcciones individuales · {failedBatches} lotes fallidos");
+    }
+
+    double Move(List<(nint Handle, PixelRect Rect)> items)
+    {
+        if (batch)
+        {
+            return WindowMover.PlaceBatch(items, async).MoveTime.TotalMilliseconds;
+        }
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        foreach (var (h, r) in items)
+        {
+            WindowMover.Place(h, r);
+        }
+
+        return clock.Elapsed.TotalMilliseconds;
+    }
+}
+
+static List<(WindowTarget Target, PlacementResult? Result)> ApplySequential(
+    SceneLayoutResult layout, int? pauseAfter, out TimeSpan elapsed)
+{
+    var clock = System.Diagnostics.Stopwatch.StartNew();
+    var applied = new List<(WindowTarget Target, PlacementResult? Result)>();
+    int placed = 0;
+    foreach (var target in layout.Targets)
+    {
+        if (pauseAfter is int limit && placed == limit)
+        {
+            // S5: deja el proceso detenido a mitad de la escena para matarlo desde fuera.
+            Console.WriteLine($"PAUSA tras {placed} ventanas (pid {Environment.ProcessId}). Esperando a ser terminado…");
+            Thread.Sleep(Timeout.Infinite);
+        }
+
+        placed++;
+        if (target.Kind == TargetKind.Minimized)
+        {
+            WindowMover.Minimize(target.Handle);
+            applied.Add((target, null));
+        }
+        else
+        {
+            applied.Add((target, WindowMover.Place(target.Handle, target.Rect)));
+        }
+    }
+
+    elapsed = clock.Elapsed;
+    return applied;
+}
+
+static int Report(SceneLayoutResult layout, List<(WindowTarget Target, PlacementResult? Result)> applied)
+{
     Console.WriteLine();
     Console.WriteLine($"{"Región",-9} {"App",-18} {"Objetivo",-24} {"Obtenido",-24} {"ΔL",4} {"ΔT",4} {"ΔR",4} {"ΔB",4} {"Bordes",-10}  Resultado");
     Console.WriteLine(new string('-', 130));
@@ -439,3 +577,10 @@ static int Restore()
 
 static string Trim(string value, int max) =>
     value.Length <= max ? value : string.Concat(value.AsSpan(0, max - 1), "…");
+
+internal enum MoveMode
+{
+    Async,
+    Batch,
+    Sequential,
+}

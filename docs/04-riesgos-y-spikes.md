@@ -1,4 +1,4 @@
-# 04 — Riesgos y spikes
+﻿# 04 — Riesgos y spikes
 
 Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. Cada riesgo tiene un spike: un experimento corto, con un resultado observable que lo confirma o lo descarta.
 
@@ -8,8 +8,8 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 | --- | --- | --- | --- | --- |
 | R1 | Huecos o solapes entre ventanas por los bordes invisibles y el DPI mixto | Alto: el layout se ve roto | Alta | Medir con `DWMWA_EXTENDED_FRAME_BOUNDS`, compensar por ventana y verificar tras mover. |
 | R2 | Una app se redimensiona por su cuenta después de moverla (`WM_DPICHANGED`, tamaño mínimo, Electron) | **Alto** (confirmado en S2: invade el Centro) | **Alta** | Verificar el rectángulo final; aprender el tamaño mínimo de cada app y que el layout lo respete (ver resultados de S2). |
-| R3 | Parpadeo visible al aplicar una escena con muchas ventanas | Medio: rompe la sensación de continuidad | Media | `DeferWindowPos`, orden de aplicación (primero minimizar, luego mover, luego mostrar), y medir. |
-| R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Registro de geometrías esperadas con plazo. |
+| R3 | Parpadeo visible al aplicar una escena con muchas ventanas | Medio: rompe la sensación de continuidad | Media | Movimiento paralelo con `SWP_ASYNCWINDOWPOS` (S3: ~13 ms para 6 apps; `DeferWindowPos` no agrupa entre procesos), primero minimizar y luego mover. |
+| R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Registro de geometrías esperadas con plazo. Con movimiento asíncrono (S3), los eventos propios llegan después de que `SetWindowPos` retorne: el plazo debe cubrir esa espera. |
 | R5 | Ventanas elevadas o protegidas que no se pueden mover | Bajo si se detecta | Segura | Detectar y mostrarlas como "no gestionables"; nunca elevar el gestor. |
 | R6 | Perder la geometría original tras una caída | Alto: rompe la confianza | Baja con diario | Diario escrito antes de mover ([ADR 0005](adr/0005-diario-de-recuperacion.md)). |
 | R7 | Reconexión de monitores: eventos en ráfaga, `HMONITOR` nuevos, ventanas fuera de pantalla | Alto | Alta | Identidad por ruta de dispositivo, *debounce*, layouts por huella. |
@@ -106,3 +106,26 @@ Implementa la decisión que salió de S2. Ver [02 — Modelo de dominio](02-mode
 - **Desborde hacia fuera:** Docker Desktop (942 px) en Contexto. El Centro sólo podía ceder hasta su piso (1720 px, 50 %), así que Contexto quedó en 780 px y Docker se ancló a la izquierda con 162 px fuera de pantalla. **Exacto y Centro protegido.**
 - **Restauración:** 6/6 y 4/4 exactas.
 - **Pendiente:** con el segundo monitor conectado, el desborde hacia fuera podría caer en el monitor vecino (ver la limitación en 02).
+
+### S3 — Lote sin parpadeo (2026-11-09, sólo ultrawide)
+
+- **Prueba:** la escena de S2 (6 apps reales), revertida a su geometría de partida y reaplicada 20 veces, con 800 ms entre transiciones. `focus-probe place … --mode seq|batch|async --cycles 20`. Se mide el tiempo entre el primer cambio visible y la llegada de la última ventana a su sitio.
+- **Resultado:**
+
+  | Modo | Cómo mueve | Aplicar (media / máx) | Revertir (media / máx) |
+  | --- | --- | --- | --- |
+  | `seq` | `SetWindowPos` ventana por ventana | 145 / 154 ms | 154 / 174 ms |
+  | `batch` | Un lote `BeginDeferWindowPos`…`EndDeferWindowPos` | 146 / 161 ms | 149 / 168 ms |
+  | `async` | `SetWindowPos` con `SWP_ASYNCWINDOWPOS` a todas y espera a que lleguen | **13 / 14 ms** | **13 / 16 ms** |
+
+  En los tres modos las 6 ventanas quedaron exactas (±1 px), con el Centro protegido y sin correcciones posteriores. En `batch` no falló ningún lote.
+- **Hallazgos:**
+  - **`DeferWindowPos` no agrupa ventanas de otros procesos.** El lote tarda lo mismo que moverlas una a una: Windows entrega cada movimiento al hilo dueño de forma síncrona, uno detrás de otro. Unos 25 ms por app (~9 fotogramas a 60 Hz para 6 apps), así que la escena se ve llegar "en cascada".
+  - **Con `SWP_ASYNCWINDOWPOS` el movimiento es paralelo:** la petición se deja en la cola de cada app y todas se mueven a la vez. La escena entera llega en menos de un fotograma.
+  - El aplicador tiene que **verificar después**: espera a que el rectángulo de cada ventana coincida con el pedido. Si una ventana se queda 150 ms quieta en otro tamaño (porque la app impuso su mínimo), la da por llegada y deja que el catálogo de mínimos aprenda de ella.
+  - Con ventanas de prueba que empezaban maximizada y minimizada, primero se normalizaron (`SW_SHOWNOACTIVATE`) y después llegaron en el mismo movimiento paralelo: 4/4 exactas, 9 ms de media. Normalizar es un paso visible aparte, aunque solo afecta a las ventanas que estaban así.
+- **No medido:**
+  - El repintado del **contenido** de cada app. Llegar al rectángulo no garantiza que la app haya terminado de dibujar.
+  - El juicio visual con grabación de pantalla. Queda para que el usuario lo confirme con `--cycles`.
+  - Una app que impone un mínimo nuevo en modo asíncrono: su espera de 150 ms está implementada pero no se ha probado con una app real.
+- **Decisión:** el aplicador usa movimiento **asíncrono en paralelo con verificación**. `DeferWindowPos` queda descartado como mecanismo principal: no aporta nada con ventanas de otros procesos. S3 aprobado en tiempos; falta la confirmación visual.

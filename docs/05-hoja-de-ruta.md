@@ -1,4 +1,4 @@
-# 05 — Hoja de ruta
+﻿# 05 — Hoja de ruta
 
 Los hitos son incrementales: cada uno se usa a diario antes de pasar al siguiente. Las referencias **CA1–CA7** son los criterios de aceptación de [01 — Visión y alcance](01-vision.md#cómo-sabremos-si-funciona).
 
@@ -8,7 +8,7 @@ Objetivo: demostrar que se pueden mover ventanas reales de forma precisa y siemp
 
 - Solución .NET con `Core`, `Win32`, `App` y `Core.Tests` ([ADR 0004](adr/0004-stack-dotnet-wpf-cswin32.md)).
 - Enumeración y filtro de elegibilidad (S1).
-- Aplicador con compensación de bordes y DPI (S2), en lote (S3).
+- Aplicador con compensación de bordes y DPI (S2), con movimiento paralelo asíncrono (S3).
 - Diario de recuperación y restauración al arrancar (S5).
 - Icono de bandeja con: lista de ventanas, asignar a Centro/Trabajo/Contexto, aplicar layout fijo, restaurar todas.
 - Atajo global de emergencia.

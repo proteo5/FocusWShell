@@ -57,3 +57,8 @@ IsHungAppWindow
 // Enumeración de monitores
 EnumDisplayMonitors
 GetDpiForMonitor
+
+// Movimiento agrupado (S3)
+BeginDeferWindowPos
+DeferWindowPos
+EndDeferWindowPos

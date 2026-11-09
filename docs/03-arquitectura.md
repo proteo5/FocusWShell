@@ -1,4 +1,4 @@
-# 03 — Arquitectura
+﻿# 03 — Arquitectura
 
 ## Visión general
 
@@ -17,7 +17,7 @@ FocusWShell es un **orquestador de ventanas top-level** ([ADR 0001](adr/0001-orq
                 │ LayoutPlan                                eventos   │
 ┌───────────────▼─────────────────────────────────────────────────────┴──────────┐
 │                         FocusWShell.Win32                                       │
-│  Enumeración y filtro · WinEventHook · Aplicador (DeferWindowPos)               │
+│  Enumeración y filtro · WinEventHook · Aplicador (SetWindowPos asíncrono)       │
 │  Monitores/DPI · Diario en disco · Identidad de ventanas                        │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -61,7 +61,7 @@ Nuevo estado del modelo ──▶ Motor de layout ──▶ LayoutPlan
    │                                              │  show/minimize, z-order)
    ▼                                              ▼
 Diario: escribe OriginalState de ventanas nuevas  Aplicador Win32
-y el estado lógico de la escena                   (BeginDeferWindowPos…)
+y el estado lógico de la escena                   (SWP_ASYNCWINDOWPOS…)
                                                   │
                                                   ▼
                                     Registra "geometrías esperadas"
@@ -94,10 +94,16 @@ Los márgenes se recalculan por ventana y por DPI; no se usa una constante.
 
 ### Movimiento agrupado
 
-`BeginDeferWindowPos`/`DeferWindowPos`/`EndDeferWindowPos` reduce el parpadeo, pero **no es atómico** con ventanas de otros procesos: Windows termina enviando mensajes a cada hilo dueño. Si una ventana del lote falla (por ejemplo, porque es elevada), `EndDeferWindowPos` puede fallar entero. El aplicador:
+S3 midió que `BeginDeferWindowPos`/`DeferWindowPos`/`EndDeferWindowPos` **no agrupa** ventanas de otros procesos. Windows entrega cada movimiento al hilo dueño de forma síncrona, así que el lote tarda lo mismo que moverlas una a una: ~145 ms para 6 apps, que se ven llegar en cascada. El aplicador mueve así:
 
-- Excluye de antemano las ventanas no gestionables.
-- Si el lote falla, reaplica ventana por ventana con `SetWindowPos` y registra cuál falló.
+1. Excluye de antemano las ventanas no gestionables, cerradas o colgadas (`IsHungAppWindow`).
+2. Minimiza las ocultas de las pilas.
+3. Normaliza sin activar (`SW_SHOWNOACTIVATE`) las que estén maximizadas o minimizadas y mide los bordes invisibles de todas.
+4. Pide todos los movimientos con `SetWindowPos(… SWP_ASYNCWINDOWPOS)`. Cada app los recibe en su cola y se mueven en paralelo: la escena llega en ~13 ms.
+5. Espera a que cada ventana alcance el rectángulo pedido. Si una se queda 150 ms quieta en otro tamaño, la app impuso su mínimo: se da por llegada y alimenta el catálogo de mínimos.
+6. Corrige individualmente las que no quedaron exactas.
+
+`SWP_ASYNCWINDOWPOS` además evita que una app lenta bloquee el hilo del aplicador. `PlaceBatch` conserva el modo con `DeferWindowPos` y, si el lote falla, vuelve a `SetWindowPos` ventana por ventana; queda sólo para comparar.
 
 ### Foco
 

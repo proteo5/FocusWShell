@@ -1,4 +1,4 @@
-# ADR 0001 — Orquestar ventanas top-level; no usar `SetParent` como mecanismo base
+﻿# ADR 0001 — Orquestar ventanas top-level; no usar `SetParent` como mecanismo base
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-11-09
@@ -14,7 +14,7 @@ El reparenting entre procesos es frágil: `SetParent` no ajusta estilos solo, me
 
 ## Decisión
 
-FocusWShell orquesta ventanas top-level con `EnumWindows`, `SetWinEventHook` y `DeferWindowPos`. Las pestañas, paneles y microbarras son ventanas del propio gestor, colocadas junto a las ventanas gestionadas.
+FocusWShell orquesta ventanas top-level con `EnumWindows`, `SetWinEventHook` y `SetWindowPos` (asíncrono y en paralelo desde S3; `DeferWindowPos` no agrupa ventanas de otros procesos). Las pestañas, paneles y microbarras son ventanas del propio gestor, colocadas junto a las ventanas gestionadas.
 
 El reparenting y los modos sin bordes sólo podrán existir como adaptadores opcionales, por aplicación concreta, con restauración garantizada, después del MVP.
 
