@@ -1,4 +1,4 @@
-# FocusWShell
+﻿# FocusWShell
 
 Gestor de atención visual para Windows. Organiza las ventanas según el papel que cumplen en tu atención, no sólo como rectángulos en una cuadrícula.
 
@@ -21,7 +21,20 @@ Una ventana sólo cambia de lugar cuando tú lo decides. Hacer clic en el chat o
 
 ## Estado
 
-En diseño. Todavía no hay código. La documentación de ingeniería está en [docs/](docs/README.md):
+Hito M0 (núcleo): primera versión usable con un layout fijo Contexto | Centro | Trabajo en el monitor más ancho. Todavía sin escenas guardadas, templates por panel ni segundo monitor.
+
+```bash
+dotnet run --project src/FocusWShell.App
+```
+
+- La ventana lista las apps que se pueden gestionar. Elige un rol para cada una y pulsa **Aplicar layout**.
+- Cerrarla no detiene el gestor: sigue en el área de notificación. Desde su menú, **Salir** devuelve todas las ventanas a su sitio.
+- **`Ctrl+Alt+Mayús+Retroceso`** restaura todas las ventanas en cualquier momento.
+- Si el gestor muere sin cerrarse, al volver a abrirlo ofrece restaurar las ventanas que dejó movidas.
+
+`tools/FocusWShell.Probe` (`focus-probe`) es la consola de diagnóstico de los spikes.
+
+La documentación de ingeniería está en [docs/](docs/README.md):
 
 - [Visión y alcance](docs/01-vision.md)
 - [Modelo de dominio](docs/02-modelo-de-dominio.md)

@@ -1,19 +1,22 @@
 using System.Text.Json;
 using FocusWShell.Core.Layout;
 
-namespace FocusWShell.Probe;
+namespace FocusWShell.Win32.Persistence;
 
 /// <summary>Persiste el catálogo de tamaños mínimos aprendidos.</summary>
-internal static class MinSizeStore
+public sealed class MinSizeStore(string filePath)
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
-    public static string FilePath { get; } = Path.Combine(
+    /// <summary><c>%LOCALAPPDATA%\FocusWShell\min-sizes.json</c>, compartido por la app y el probe.</summary>
+    public static string DefaultPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FocusWShell",
         "min-sizes.json");
 
-    public static MinSizeCatalog Load()
+    public string FilePath { get; } = filePath;
+
+    public MinSizeCatalog Load()
     {
         var catalog = new MinSizeCatalog();
         if (!File.Exists(FilePath))
@@ -30,7 +33,7 @@ internal static class MinSizeStore
         return catalog;
     }
 
-    public static void Save(MinSizeCatalog catalog)
+    public void Save(MinSizeCatalog catalog)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         var temp = FilePath + ".tmp";

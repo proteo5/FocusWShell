@@ -16,6 +16,8 @@ Objetivo: demostrar que se pueden mover ventanas reales de forma precisa y siemp
 
 Criterio de salida: CA1, CA2 y CA6 con layout fijo (sin escenas guardadas ni templates). Spikes S1–S5 documentados.
 
+**Estado (2026-11-09):** hecho salvo los comandos de dominio y S4 (que pasa a M1). La app de bandeja ya permite asignar roles, aplicar, restaurar y salir restaurando; el atajo de emergencia es `Ctrl+Alt+Mayús+Retroceso`. Al arrancar tras una caída, ofrece restaurar. Probado sólo con el ultrawide.
+
 ## M1 — Paneles, templates y escenas
 
 Objetivo: el modelo completo de roles con las dos presentaciones básicas.

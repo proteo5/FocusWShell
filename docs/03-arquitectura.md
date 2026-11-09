@@ -27,8 +27,10 @@ FocusWShell es un **orquestador de ventanas top-level** ([ADR 0001](adr/0001-orq
 ```text
 src/
   FocusWShell.Core/        Dominio, comandos, layout. Sin dependencias de Windows.
-  FocusWShell.Win32/       Interop (CsWin32), implementaciones de IWindowSystem e IDisplaySystem.
-  FocusWShell.App/         WPF: icono de bandeja, overlays, atajos, configuración.
+  FocusWShell.Win32/       Interop (CsWin32): enumeración, colocación, atajo de emergencia.
+    Persistence/           Diario de recuperación, restaurador y catálogo de mínimos en disco.
+    Scenes/                SceneApplier: motor de layout + diario + movimiento + aprendizaje de mínimos.
+  FocusWShell.App/         WPF: icono de bandeja, ventana principal, overlays (M1), configuración.
 tests/
   FocusWShell.Core.Tests/  Pruebas unitarias del dominio con un IWindowSystem falso.
   FocusWShell.Win32.Tests/ Pruebas de integración manuales o semiautomáticas con ventanas de prueba.
@@ -45,6 +47,7 @@ La regla de dependencias es estricta: `Core` no referencia a `Win32` ni a `App`.
 
 - **Hilo de UI (WPF dispatcher):** es dueño del modelo. Todos los comandos y eventos se procesan aquí, en orden, uno a la vez. No hay locks en el dominio.
 - **Hooks de eventos:** `SetWinEventHook` con `WINEVENT_OUTOFCONTEXT` entrega los callbacks en el hilo que registró el hook, siempre que tenga un bucle de mensajes. Se registran en el hilo de UI. El callback sólo encola un evento ligero; el procesamiento ocurre después, con *debounce* (unos 50–100 ms) para agrupar ráfagas.
+- **Atajo de emergencia:** un hilo propio con su cola de mensajes registra el atajo con `RegisterHotKey` sin ventana. Restaura desde ese hilo, así que responde aunque la UI esté ocupada. Hasta M1 no hay modelo de dominio vivo: `ShellController` serializa con un lock las operaciones que mueven ventanas (aplicar, restaurar), para que el atajo no se cruce con una aplicación en curso.
 - **Escritura del diario:** síncrona y antes de aplicar el plan. Es un archivo pequeño; no compensa hacerla asíncrona y perder la garantía.
 
 ## Flujo de un comando

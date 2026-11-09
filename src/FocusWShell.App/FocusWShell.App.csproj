@@ -1,10 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Sólo para NotifyIcon (icono de bandeja). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>FocusWShell</AssemblyName>
+    <RootNamespace>FocusWShell.App</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Evita choques de nombres entre WPF y WinForms (Application, MessageBox…). -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FocusWShell.Core\FocusWShell.Core.csproj" />

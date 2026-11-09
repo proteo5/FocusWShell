@@ -62,3 +62,15 @@ GetDpiForMonitor
 BeginDeferWindowPos
 DeferWindowPos
 EndDeferWindowPos
+
+// Atajo de emergencia
+RegisterHotKey
+UnregisterHotKey
+GetMessage
+PostThreadMessage
+GetCurrentThreadId
+WM_HOTKEY
+WM_QUIT
+
+// Icono de bandeja
+DestroyIcon
