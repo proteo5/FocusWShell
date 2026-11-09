@@ -1,22 +1,22 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.ComponentModel;
+using System.Globalization;
 using System.Text;
 using System.Windows;
-using FocusWShell.Win32;
+using FocusWShell.Core.Domain;
 using FocusWShell.Win32.Persistence;
 using FocusWShell.Win32.Scenes;
 
 namespace FocusWShell.App;
 
-/// <summary>Lista de ventanas, asignación de roles, aplicar y restaurar (alcance de M0).</summary>
+/// <summary>Lista de ventanas, roles y comandos de M0. El estado real vive en el modelo del controlador.</summary>
 public partial class MainWindow : Window
 {
     private readonly ShellController _controller;
     private readonly ObservableCollection<WindowRow> _rows = [];
 
-    /// <summary>Roles elegidos por el usuario, por handle; sobreviven a "Actualizar lista".</summary>
-    private readonly Dictionary<nint, SceneRole> _roles = [];
+    /// <summary>Roles que el usuario ha cambiado y aún no ha aplicado, por handle.</summary>
+    private readonly Dictionary<nint, SceneRole> _pending = [];
 
     public MainWindow(ShellController controller)
     {
@@ -51,37 +51,50 @@ public partial class MainWindow : Window
         Activate();
     }
 
+    /// <summary>Rol que el modelo da a una ventana gestionada.</summary>
+    private static SceneRole RoleOf(ManagedWindow m) => m.Placement == Placement.Center
+        ? SceneRole.Center
+        : m.Home == Home.Context ? SceneRole.Context : SceneRole.Work;
+
+    private static string StateOf(ManagedWindow? m) => m switch
+    {
+        null => "",
+        { Placement: Placement.Center } => $"Centro (hogar: {(m.Home == Home.Context ? "Contexto" : "Trabajo")})",
+        { Home: Home.Context } => "En Contexto",
+        _ => "En Trabajo",
+    };
+
     public void Refresh()
     {
         var display = ShellController.TargetDisplay();
         HeaderText.Text =
             $"Monitor {display.DeviceName} · área de trabajo {display.WorkArea} · {display.Dpi} DPI   |   " +
-            $"Emergencia: {EmergencyHotkey.Description}";
+            "Atajos Ctrl+Alt+Mayús: ↑ al Centro · ← anterior · ↓ Centro al panel · Retroceso restaurar todas";
 
+        var selected = (WindowList.SelectedItem as WindowRow)?.Snapshot.Handle;
         foreach (var row in _rows)
         {
             row.PropertyChanged -= Row_PropertyChanged;
         }
 
         _rows.Clear();
-        var windows = _controller.ListManageable();
+        var windows = _controller.Refresh();
+        var managed = _controller.Managed().ToDictionary(m => m.Handle);
         foreach (var w in windows)
         {
-            var row = new WindowRow(w, _roles.GetValueOrDefault(w.Handle));
+            managed.TryGetValue(w.Handle, out var m);
+            var role = _pending.TryGetValue(w.Handle, out var p) ? p : m is null ? SceneRole.None : RoleOf(m);
+            var row = new WindowRow(w, role) { State = StateOf(m) };
             row.PropertyChanged += Row_PropertyChanged;
             _rows.Add(row);
         }
 
-        // Olvida roles de ventanas que ya no existen.
-        foreach (var gone in _roles.Keys.Except(windows.Select(w => w.Handle)).ToList())
+        foreach (var gone in _pending.Keys.Except(windows.Select(w => w.Handle)).ToList())
         {
-            _roles.Remove(gone);
+            _pending.Remove(gone);
         }
 
-        int pending = _controller.PendingCount;
-        SetStatus(pending == 0
-            ? $"{windows.Count} ventanas gestionables. Ninguna está movida por FocusWShell."
-            : $"{windows.Count} ventanas gestionables. {pending} están fuera de su sitio original (en el diario).");
+        WindowList.SelectedItem = _rows.FirstOrDefault(r => r.Snapshot.Handle == selected);
     }
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -91,72 +104,196 @@ public partial class MainWindow : Window
             return;
         }
 
-        _roles[row.Snapshot.Handle] = row.Role;
+        _pending[row.Snapshot.Handle] = row.Role;
 
-        // El Centro aloja una sola ventana: la anterior pierde el rol.
+        // El Centro aloja una sola ventana: la que lo tenía vuelve a su hogar.
         if (row.Role == SceneRole.Center)
         {
+            var managed = _controller.Managed().ToDictionary(m => m.Handle);
             foreach (var other in _rows.Where(r => r != row && r.Role == SceneRole.Center))
             {
-                other.Role = SceneRole.None;
+                other.Role = managed.TryGetValue(other.Snapshot.Handle, out var m)
+                    ? (m.Home == Home.Context ? SceneRole.Context : SceneRole.Work)
+                    : SceneRole.None;
             }
         }
     }
 
-    private void Refresh_Click(object sender, RoutedEventArgs e) => Refresh();
+    /// <summary>Traduce los roles editados a comandos: liberar, adoptar o cambiar de panel, y promover al final.</summary>
+    private List<Command> PendingCommands()
+    {
+        var managed = _controller.Managed().ToDictionary(m => m.Handle);
+        var releases = new List<Command>();
+        var moves = new List<Command>();
+        Command? promote = null;
+        foreach (var row in _rows)
+        {
+            var h = row.Snapshot.Handle;
+            managed.TryGetValue(h, out var m);
+            var current = m is null ? SceneRole.None : RoleOf(m);
+            if (row.Role == current)
+            {
+                continue;
+            }
+
+            switch (row.Role)
+            {
+                case SceneRole.None:
+                    releases.Add(new Release(h));
+                    break;
+                case SceneRole.Center:
+                    if (m is null)
+                    {
+                        moves.Add(new Adopt(h, row.App, Home.Work));
+                    }
+
+                    promote = new Promote(h);
+                    break;
+                default:
+                    var home = row.Role == SceneRole.Context ? Home.Context : Home.Work;
+                    if (m is null)
+                    {
+                        moves.Add(new Adopt(h, row.App, home));
+                    }
+                    else
+                    {
+                        if (m.Placement == Placement.Center)
+                        {
+                            moves.Add(new ReturnToPanel(h));
+                        }
+
+                        moves.Add(new SendTo(h, home));
+                    }
+
+                    break;
+            }
+        }
+
+        if (promote is not null)
+        {
+            moves.Add(promote);
+        }
+
+        return [.. releases, .. moves];
+    }
+
+    private void Refresh_Click(object sender, RoutedEventArgs e)
+    {
+        _pending.Clear();
+        Refresh();
+    }
 
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {
-        var assignment = new SceneAssignment(
-            _rows.Where(r => r.Role == SceneRole.Context).Select(r => r.Snapshot).ToList(),
-            _rows.FirstOrDefault(r => r.Role == SceneRole.Center)?.Snapshot,
-            _rows.Where(r => r.Role == SceneRole.Work).Select(r => r.Snapshot).ToList());
-
-        if (!assignment.All.Any())
+        var commands = PendingCommands();
+        if (commands.Count == 0)
         {
-            SetStatus("Asigna al menos una ventana a Contexto, Centro o Trabajo. Para devolverlas todas, usa Restaurar todas.");
+            SetStatus("No hay cambios de rol que aplicar.");
             return;
         }
 
-        await RunBusy(async () =>
+        await Run(() => _controller.Execute(commands));
+        _pending.Clear();
+        Refresh();
+    }
+
+    private async void Promote_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowList.SelectedItem is not WindowRow row)
         {
-            var (released, applied) = await Task.Run(() => _controller.Apply(assignment));
-            SetStatus(Describe(released, applied));
-        });
+            SetStatus("Selecciona una ventana de la lista.");
+            return;
+        }
+
+        var h = row.Snapshot.Handle;
+        bool managed = _controller.Managed().Any(m => m.Handle == h);
+        Command[] commands = managed ? [new Promote(h)] : [new Adopt(h, row.App, Home.Work), new Promote(h)];
+        _pending.Remove(h);
+        await Run(() => _controller.Execute(commands));
+        Refresh();
+    }
+
+    private async void Swap_Click(object sender, RoutedEventArgs e)
+    {
+        await Run(() => _controller.Execute(new SwapWithPrevious()));
+        Refresh();
+    }
+
+    private async void Return_Click(object sender, RoutedEventArgs e)
+    {
+        await Run(_controller.ReturnCenter);
+        Refresh();
+    }
+
+    private async void Release_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowList.SelectedItem is not WindowRow row)
+        {
+            SetStatus("Selecciona una ventana de la lista.");
+            return;
+        }
+
+        _pending.Remove(row.Snapshot.Handle);
+        await Run(() => _controller.Execute(new Release(row.Snapshot.Handle)));
+        Refresh();
     }
 
     private async void Restore_Click(object sender, RoutedEventArgs e)
     {
-        await RunBusy(async () =>
-        {
-            var report = await Task.Run(_controller.RestoreAll);
-            SetStatus(report.Entries.Count == 0 ? "No había nada que restaurar." : Describe(report));
-        });
+        _pending.Clear();
+        await Run(() => _controller.Execute(new RestoreAll()));
+        Refresh();
     }
 
-    private async Task RunBusy(Func<Task> action)
+    private async Task Run(Func<ControllerResult> action)
     {
-        ApplyButton.IsEnabled = RestoreButton.IsEnabled = RefreshButton.IsEnabled = false;
+        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, SwapButton, ReturnButton, ReleaseButton };
+        foreach (var b in buttons)
+        {
+            b.IsEnabled = false;
+        }
+
         try
         {
-            await action();
+            var result = await Task.Run(action);
+            SetStatus(Describe(result));
         }
         finally
         {
-            ApplyButton.IsEnabled = RestoreButton.IsEnabled = RefreshButton.IsEnabled = true;
+            foreach (var b in buttons)
+            {
+                b.IsEnabled = true;
+            }
         }
     }
 
     public void SetStatus(string text) => StatusText.Text = text;
 
-    private static string Describe(RestoreReport released, SceneApplyReport report)
+    public static string Describe(ControllerResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
         var sb = new StringBuilder();
-        if (released.Entries.Count > 0)
+        foreach (var r in result.Rejections)
         {
-            sb.AppendLine(CultureInfo.CurrentCulture, $"Devueltas a su sitio por quedarse sin rol: {released.Summary}");
+            sb.AppendLine(CultureInfo.CurrentCulture, $"No se hizo: {r}");
         }
 
+        foreach (var restore in result.Restores.Where(r => r.Entries.Count > 0))
+        {
+            sb.Append(Describe(restore));
+        }
+
+        if (result.Applied is { } report)
+        {
+            sb.Append(Describe(report));
+        }
+
+        return sb.Length == 0 ? "Hecho." : sb.ToString();
+    }
+
+    private static string Describe(SceneApplyReport report)
+    {
+        var sb = new StringBuilder();
         if (report.Error is not null)
         {
             sb.AppendLine(report.Error);
@@ -192,7 +329,7 @@ public partial class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(report);
         var sb = new StringBuilder();
-        sb.AppendLine(report.Summary);
+        sb.AppendLine(CultureInfo.CurrentCulture, $"Restauradas: {report.Summary}");
         foreach (var e in report.Entries.Where(e => e.Outcome is RestoreOutcome.Pending or RestoreOutcome.RestoredWithDifferences))
         {
             sb.AppendLine(CultureInfo.CurrentCulture, $"  ! {e.Entry.ProcessName}: {e.Detail}");

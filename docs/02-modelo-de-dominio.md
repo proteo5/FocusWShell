@@ -1,4 +1,4 @@
-# 02 — Modelo de dominio
+﻿# 02 — Modelo de dominio
 
 Este documento es el contrato del núcleo (`FocusWShell.Core`). El núcleo no conoce Win32: trabaja con identificadores de ventana y rectángulos, y produce *planes de layout* que otra capa ejecuta. Así se puede probar entero con pruebas unitarias.
 
@@ -92,6 +92,15 @@ Cambiar de template sólo recalcula rectángulos y visibilidad. Ninguna ventana 
 | `Adopt(w, home)` | `w` no está gestionada y es elegible | Captura `OriginalState`, la escribe en el diario y la pone `InPanel`. |
 | `Release(w)` | `w` está gestionada | Aplica su `OriginalState` y la olvida. |
 | `RestoreAll()` | — | `Release` de todas las ventanas. Es el botón de pánico (CA6). |
+
+### Implementación en M0
+
+`FocusWShell.Core.Domain.Workspace` implementa `Adopt`, `Promote`, `ReturnToPanel`, `SwapWithPrevious`, `SendTo`, `Release`, `RestoreAll` y el evento `WindowClosed`. `Park`, `Restore`, `SetTemplate` y la pantalla completa llegan en M1 y M2.
+
+- El modelo es puro. Cada comando devuelve un `CommandOutcome`: aceptado con una lista de **efectos** (`CaptureOriginal`, `RestoreOriginal`, `RestoreEverything`, `ApplyLayout`, `Activate`), o rechazado con un motivo legible. La app ejecuta los efectos en orden: capturas y restauraciones, un solo layout y, al final, el foco.
+- El orden de las ventanas dentro de un panel es su orden en el modelo. Una ventana en el Centro conserva su puesto, así que al volver a su panel lo recupera.
+- El historial del Centro guarda las ventanas que lo ocuparon, de la más reciente a la más antigua. `SwapWithPrevious` promueve la primera que siga gestionada; repetirlo alterna entre las dos últimas (CA2).
+- En M0 el cierre de una ventana se detecta al refrescar la lista (aún no hay hooks; S4 en M1).
 
 ## Invariantes
 

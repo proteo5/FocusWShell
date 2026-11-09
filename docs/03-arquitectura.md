@@ -47,7 +47,8 @@ La regla de dependencias es estricta: `Core` no referencia a `Win32` ni a `App`.
 
 - **Hilo de UI (WPF dispatcher):** es dueño del modelo. Todos los comandos y eventos se procesan aquí, en orden, uno a la vez. No hay locks en el dominio.
 - **Hooks de eventos:** `SetWinEventHook` con `WINEVENT_OUTOFCONTEXT` entrega los callbacks en el hilo que registró el hook, siempre que tenga un bucle de mensajes. Se registran en el hilo de UI. El callback sólo encola un evento ligero; el procesamiento ocurre después, con *debounce* (unos 50–100 ms) para agrupar ráfagas.
-- **Atajo de emergencia:** un hilo propio con su cola de mensajes registra el atajo con `RegisterHotKey` sin ventana. Restaura desde ese hilo, así que responde aunque la UI esté ocupada. Hasta M1 no hay modelo de dominio vivo: `ShellController` serializa con un lock las operaciones que mueven ventanas (aplicar, restaurar), para que el atajo no se cruce con una aplicación en curso.
+- **Atajos globales:** un hilo propio con su cola de mensajes registra los atajos con `RegisterHotKey` sin ventana. Ejecuta los comandos desde ese hilo, así que el de emergencia responde aunque la UI esté ocupada, y `Promote` puede dar el foco porque el proceso acaba de recibir input.
+- **En M0**, `ShellController` es dueño del modelo (`Workspace`) y serializa con un lock los comandos y sus efectos, vengan de la UI o del hilo de atajos. Cuando lleguen los hooks de eventos (M1), el modelo pasará al hilo de UI como se describe arriba y los atajos le encolarán los comandos; el de emergencia seguirá restaurando directamente desde el diario.
 - **Escritura del diario:** síncrona y antes de aplicar el plan. Es un archivo pequeño; no compensa hacerla asíncrona y perder la garantía.
 
 ## Flujo de un comando

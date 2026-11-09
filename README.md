@@ -29,7 +29,14 @@ dotnet run --project src/FocusWShell.App
 
 - La ventana lista las apps que se pueden gestionar. Elige un rol para cada una y pulsa **Aplicar layout**.
 - Cerrarla no detiene el gestor: sigue en el área de notificación. Desde su menú, **Salir** devuelve todas las ventanas a su sitio.
-- **`Ctrl+Alt+Mayús+Retroceso`** restaura todas las ventanas en cualquier momento.
+- Atajos globales con `Ctrl+Alt+Mayús`:
+
+  | Tecla | Acción |
+  | --- | --- |
+  | ↑ | Lleva al Centro la ventana activa, si está gestionada. La que estaba vuelve a su panel. |
+  | ← | Vuelve a poner en el Centro la ventana anterior. Repetirlo alterna entre las dos. |
+  | ↓ | Devuelve la ventana del Centro a su panel. |
+  | Retroceso | **Emergencia:** restaura todas las ventanas en cualquier momento. |
 - Si el gestor muere sin cerrarse, al volver a abrirlo ofrece restaurar las ventanas que dejó movidas.
 
 `tools/FocusWShell.Probe` (`focus-probe`) es la consola de diagnóstico de los spikes.

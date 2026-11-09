@@ -332,6 +332,12 @@ public static class WindowMover
         return PInvoke.IsIconic(hwnd) || PInvoke.IsZoomed(hwnd);
     }
 
+    /// <summary>Da el foco a la ventana. Sólo funciona justo después de input del usuario al gestor (atajo o clic).</summary>
+    public static unsafe bool Activate(nint handle) => PInvoke.SetForegroundWindow(new HWND((void*)handle));
+
+    /// <summary>Ventana en primer plano.</summary>
+    public static nint Foreground() => PInvoke.GetForegroundWindow();
+
     /// <summary>Minimiza sin activar (ventanas ocultas de una pila, ADR 0006).</summary>
     public static unsafe string? Minimize(nint handle)
     {

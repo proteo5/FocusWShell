@@ -32,6 +32,9 @@ public sealed class WindowRow(WindowSnapshot snapshot, SceneRole role) : INotify
 
     public string Title => Snapshot.Title;
 
+    /// <summary>Lo que el gestor hace ahora con la ventana, según el modelo.</summary>
+    public string State { get; init; } = "";
+
     public SceneRole Role
     {
         get => role;

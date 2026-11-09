@@ -15,7 +15,7 @@ public sealed class TrayIcon : IDisposable
         _image = DrawIcon();
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Abrir FocusWShell", null, (_, _) => open());
-        menu.Items.Add($"Restaurar todas ({EmergencyHotkey.Description})", null, (_, _) => restoreAll());
+        menu.Items.Add("Restaurar todas (Ctrl+Alt+Mayús+Retroceso)", null, (_, _) => restoreAll());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Salir (devuelve las ventanas a su sitio)", null, (_, _) => exit());
 
