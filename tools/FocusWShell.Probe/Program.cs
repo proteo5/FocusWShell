@@ -26,6 +26,7 @@ try
         "place" => Place(rest),
         "restore" => Restore(),
         "mins" => Mins(rest),
+        "move" => Move(rest),
         _ => Usage($"Comando desconocido: {command}"),
     };
 }
@@ -51,8 +52,8 @@ static int Usage(string? error = null)
           focus-probe place --context a,b --center c --work d,e [--split 18,55,27] [--gap 8]
                             [--context-template tiles|stack] [--work-template tiles|stack]
                             [--dry-run] [--no-learn] [--pause-after N]
-                            [--mode async|batch|seq] [--cycles N] [--cycle-delay ms]
-              Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho, respetando
+                            [--mode async|batch|seq] [--cycles N] [--cycle-delay ms] [--display N]
+              Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho (o del N-ésimo), respetando
               los tamaños mínimos aprendidos. Si una app impone uno nuevo, lo aprende y recoloca.
               Cada nombre busca una ventana candidata cuyo ejecutable lo contenga (p. ej. slack, msedge).
               Antes de mover nada guarda la colocación original en el diario.
@@ -63,6 +64,9 @@ static int Usage(string? error = null)
               Devuelve todas las ventanas del diario a su colocación original y borra el diario.
           focus-probe mins [--clear]
               Muestra (u olvida) los tamaños mínimos aprendidos.
+          focus-probe move <ejecutable> x,y,ancho,alto
+              Coloca la parte visible de una ventana en ese rectángulo (píxeles físicos). Sin diario:
+              sirve para devolver a mano una ventana a una geometría conocida.
         """);
     return 2;
 }
@@ -195,9 +199,13 @@ static int Place(string[] args)
     int cycles = int.Parse(Option(args, "--cycles") ?? "0", CultureInfo.InvariantCulture);
     int cycleDelay = int.Parse(Option(args, "--cycle-delay") ?? "1500", CultureInfo.InvariantCulture);
 
-    // Monitor más ancho: en esta configuración, el ultrawide.
-    var display = DisplayEnumerator.Enumerate().MaxBy(d => d.WorkArea.Width)
-        ?? throw new InvalidOperationException("No se encontró ningún monitor.");
+    // Por defecto, el monitor más ancho (el ultrawide); --display N elige el N-ésimo de "focus-probe monitors".
+    var displays = DisplayEnumerator.Enumerate();
+    var display = Option(args, "--display") is { } d
+        ? (int.Parse(d, CultureInfo.InvariantCulture) is int n && n >= 1 && n <= displays.Count
+            ? displays[n - 1]
+            : throw new ArgumentException($"--display debe estar entre 1 y {displays.Count}."))
+        : displays.MaxBy(m => m.WorkArea.Width) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
 
     var ownIntegrity = WindowEnumerator.CurrentIntegrity();
     var filter = new EligibilityFilter();
@@ -403,6 +411,27 @@ static int Mins(string[] args)
     }
 
     return 0;
+}
+
+static int Move(string[] args)
+{
+    if (args.Length != 2 || args[1].Split(',') is not { Length: 4 } parts)
+    {
+        throw new ArgumentException("Uso: focus-probe move <ejecutable> x,y,ancho,alto");
+    }
+
+    var v = parts.Select(x => int.Parse(x.Trim(), CultureInfo.InvariantCulture)).ToArray();
+    var target = PixelRect.FromSize(v[0], v[1], v[2], v[3]);
+    var own = WindowEnumerator.CurrentIntegrity();
+    var filter = new EligibilityFilter();
+    var window = WindowEnumerator.EnumerateTopLevel()
+        .FirstOrDefault(w => filter.Evaluate(w, own) is { IsCandidate: true, Manageable: true }
+            && w.ProcessName.Contains(args[0], StringComparison.OrdinalIgnoreCase))
+        ?? throw new ArgumentException($"No hay ventana candidata cuyo ejecutable contenga '{args[0]}'.");
+
+    var r = WindowMover.Place(window.Handle, target);
+    Console.WriteLine($"{window.ProcessName}: objetivo {r.Target} · obtenido {r.Actual} · {r.Error ?? (r.IsExact ? "exacto" : $"desviación {r.MaxDeviation}px")}");
+    return r.IsExact ? 0 : 1;
 }
 
 static int Restore()

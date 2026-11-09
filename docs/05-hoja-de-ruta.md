@@ -16,7 +16,7 @@ Objetivo: demostrar que se pueden mover ventanas reales de forma precisa y siemp
 
 Criterio de salida: CA1, CA2 y CA6 con layout fijo (sin escenas guardadas ni templates). Spikes S1–S5 documentados.
 
-**Estado (2026-11-09):** completo en el ultrawide. S4 pasa a M1, como estaba previsto. La app de bandeja asigna roles y ejecuta los comandos (`Adopt`, `Promote`, `SwapWithPrevious`, `ReturnToPanel`, `SendTo`, `Release`, `RestoreAll`). Atajos con `Ctrl+Alt+Mayús`: ↑ promover la ventana activa, ← volver a la anterior, ↓ devolver el Centro a su panel, Retroceso restaurar todas. Al arrancar tras una caída, ofrece restaurar. Pendiente: CA1 con el segundo monitor.
+**Estado (2026-11-09):** completo en el ultrawide. S4 pasa a M1, como estaba previsto. La app de bandeja asigna roles y ejecuta los comandos (`Adopt`, `Promote`, `SwapWithPrevious`, `ReturnToPanel`, `SendTo`, `Release`, `RestoreAll`). Atajos con `Ctrl+Alt+Mayús`: ↑ promover la ventana activa, ← volver a la anterior, ↓ devolver el Centro a su panel, Retroceso restaurar todas. Al arrancar tras una caída, ofrece restaurar. Con el segundo monitor (estándar al 125 %): colocación exacta en cualquiera de los dos, restauración entre DPI distintos y sin desbordes sobre el monitor vecino. Una escena que reparta los paneles entre ambos monitores llega con los layouts por huella (M1).
 
 ## M1 — Paneles, templates y escenas
 

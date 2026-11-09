@@ -159,4 +159,12 @@ En este orden:
 
 Cada ajuste genera una nota en lenguaje natural, por ejemplo: "Contexto se amplió 54 px (el Centro queda en 1830 px) porque Slack necesita 670 px de ancho". Esa nota alimentará la microbarra y cumple el principio de que toda acción automática se explique.
 
-**Limitación conocida:** con varios monitores, "fuera de pantalla" puede caer en el monitor vecino. Antes de usar el desborde hacia fuera con dos monitores hay que comprobar si el borde exterior limita con otro monitor y, en ese caso, preferir la pila o recortar al borde.
+### Bordes compartidos con otro monitor
+
+Con varios monitores, "fuera de pantalla" puede caer en el monitor vecino. Por eso, cuando el borde exterior de un panel limita con otro monitor (`PanelInput.OuterEdgeShared`, calculado con `DisplayTopology.SharedEdges`), el paso 4 cambia:
+
+- El Centro puede ceder más que la mitad: baja hasta el mínimo de su ventana, pero nunca por debajo del 30 % del ancho de trabajo (`SharedEdgeMinCenterFraction`), por si ese mínimo no se conoce.
+- La ventana que ni así cabe **sale del layout**: se minimiza, con una nota que lo explica, y el resto del panel ocupa su sitio. Nunca invade el otro monitor ni el Centro.
+- Si los dos paneles tienen el borde compartido, el de la izquierda (Contexto) reserva antes lo que necesita el de la derecha (Trabajo).
+
+El borde exterior que no limita con nada mantiene la regla de desborde del paso 4.

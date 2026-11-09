@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Layout;
 
@@ -13,6 +13,9 @@ namespace FocusWShell.Core.Layout;
 /// de <see cref="SceneInput.MinCenterFraction"/> ni del mínimo de su ventana.</item>
 /// <item>Si aun así no cabe, la ventana se ancla al borde exterior del monitor: el exceso queda fuera
 /// de pantalla y nunca encima del Centro.</item>
+/// <item>Si ese borde exterior limita con otro monitor (<see cref="PanelInput.OuterEdgeShared"/>), el Centro
+/// puede bajar hasta el mínimo de su ventana (piso <see cref="SceneInput.SharedEdgeMinCenterFraction"/>);
+/// la ventana que ni así cabe sale del layout (se minimiza) en vez de invadir el otro monitor.</item>
 /// </list>
 /// </summary>
 public static class SceneLayoutEngine
@@ -36,6 +39,7 @@ public static class SceneLayoutEngine
         int needR = right.RequiredWidth;
         int needC = input.Center?.MinSize?.Width ?? 0;
         int centerFloor = Math.Max(needC, Math.Min(wc, (int)Math.Round(area.Width * input.MinCenterFraction)));
+        int sharedFloor = Math.Max(needC, Math.Min(wc, (int)Math.Round(area.Width * input.SharedEdgeMinCenterFraction)));
 
         // 3. El Centro crece primero a costa de Contexto (izquierda) y luego de Trabajo (derecha).
         if (wc < needC)
@@ -51,24 +55,45 @@ public static class SceneLayoutEngine
             notes.Add($"El Centro se amplió a {wc} px para que quepa {input.Center!.Label} (mínimo {needC} px).");
         }
 
-        // 4. Cada panel crece a costa del Centro, sin bajarlo de su piso.
-        wl = Grow(input.Left, left, wl, needL, ref wc, centerFloor, notes);
-        wr = Grow(input.Right, right, wr, needR, ref wc, centerFloor, notes);
+        // 4. Un panel cuyo borde exterior da a otro monitor no puede desbordar: saca del layout las
+        //    ventanas que no caben ni con el Centro en su piso compartido (reservando lo que necesita
+        //    el otro panel).
+        int leftFloor = input.Left.OuterEdgeShared ? sharedFloor : centerFloor;
+        int rightFloor = input.Right.OuterEdgeShared ? sharedFloor : centerFloor;
+        var excluded = new List<WindowTarget>();
+        if (input.Left.OuterEdgeShared)
+        {
+            int maxLeft = wl + Math.Max(0, wc - leftFloor - Math.Max(0, needR - wr));
+            left = ExcludeTooWide(left.Panel, maxLeft, area.Height, gap, excluded, notes);
+            needL = left.RequiredWidth;
+        }
 
-        // 5. Columnas definitivas (contiguas, con separación).
+        if (input.Right.OuterEdgeShared)
+        {
+            int maxRight = wr + Math.Max(0, wc - rightFloor - Math.Max(0, needL - wl));
+            right = ExcludeTooWide(right.Panel, maxRight, area.Height, gap, excluded, notes);
+            needR = right.RequiredWidth;
+        }
+
+        // 5. Cada panel crece a costa del Centro, sin bajarlo de su piso.
+        wl = Grow(input.Left, left, wl, needL, ref wc, leftFloor, notes);
+        wr = Grow(input.Right, right, wr, needR, ref wc, rightFloor, notes);
+
+        // 6. Columnas definitivas (contiguas, con separación).
         var leftCol = new PixelRect(area.Left, area.Top, area.Left + wl, area.Bottom);
         var centerCol = new PixelRect(leftCol.Right + gap, area.Top, leftCol.Right + gap + wc, area.Bottom);
         var rightCol = new PixelRect(centerCol.Right + gap, area.Top, area.Right, area.Bottom);
 
-        // 6. Destinos.
+        // 7. Destinos.
         var targets = new List<WindowTarget>();
-        PlacePanel(input.Left, left, leftCol, gap, targets, notes);
+        PlacePanel(left.Panel, left, leftCol, gap, targets, notes);
         if (input.Center is { } center)
         {
             targets.Add(new WindowTarget(center.Handle, center.Label, "Centro", TargetKind.Visible, FitCenter(center, centerCol, notes)));
         }
 
-        PlacePanel(input.Right, right, rightCol, gap, targets, notes);
+        PlacePanel(right.Panel, right, rightCol, gap, targets, notes);
+        targets.AddRange(excluded);
 
         return new SceneLayoutResult(
             leftCol,
@@ -79,14 +104,33 @@ public static class SceneLayoutEngine
             notes);
     }
 
-    private sealed record ResolvedPanel(PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
+    /// <param name="Panel">El panel con las ventanas que siguen en el layout.</param>
+    private sealed record ResolvedPanel(PanelInput Panel, PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
+
+    /// <summary>Saca del panel las ventanas más anchas que <paramref name="maxWidth"/> y vuelve a resolverlo.</summary>
+    private static ResolvedPanel ExcludeTooWide(
+        PanelInput panel, int maxWidth, int height, int gap, List<WindowTarget> excluded, List<string> notes)
+    {
+        var tooWide = panel.Windows.Where(w => (w.MinSize?.Width ?? 0) > maxWidth).ToList();
+        foreach (var w in tooWide)
+        {
+            excluded.Add(new WindowTarget(w.Handle, w.Label, panel.Name, TargetKind.Minimized, default));
+            notes.Add(
+                $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.Name} puede tener como mucho {maxWidth} " +
+                "sin invadir el Centro ni el otro monitor; se minimiza y queda fuera del layout.");
+        }
+
+        // Al volver a resolver no se repiten las notas de template que ya se dieron.
+        var remaining = panel with { Windows = panel.Windows.Except(tooWide).ToList() };
+        return Resolve(remaining, height, gap, tooWide.Count > 0 ? notes : []);
+    }
 
     private static ResolvedPanel Resolve(PanelInput panel, int height, int gap, List<string> notes)
     {
         var windows = panel.Windows;
         if (windows.Count == 0)
         {
-            return new ResolvedPanel(panel.Template, [], 0);
+            return new ResolvedPanel(panel, panel.Template, [], 0);
         }
 
         var template = panel.Template;
@@ -103,7 +147,7 @@ public static class SceneLayoutEngine
         }
 
         IReadOnlyList<LayoutWindow> visible = template == PanelTemplate.Stack ? [windows[0]] : windows;
-        return new ResolvedPanel(template, visible, visible.Max(w => w.MinSize?.Width ?? 0));
+        return new ResolvedPanel(panel, template, visible, visible.Max(w => w.MinSize?.Width ?? 0));
     }
 
     private static int Grow(

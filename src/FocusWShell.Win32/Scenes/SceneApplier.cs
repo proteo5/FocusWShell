@@ -1,4 +1,4 @@
-using FocusWShell.Core.Displays;
+﻿using FocusWShell.Core.Displays;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 using FocusWShell.Core.Windows;
@@ -106,14 +106,16 @@ public sealed class SceneApplier
         LayoutWindow ToLayout(WindowSnapshot w) =>
             new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), _display.Dpi));
 
+        // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera.
+        var shared = DisplayTopology.SharedEdges(_display, DisplayEnumerator.Enumerate());
         return SceneLayoutEngine.Compute(new SceneInput(
             _display.WorkArea,
             new PanelInput("Contexto", PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
-                _assignment.Context.Select(ToLayout).ToList()),
+                _assignment.Context.Select(ToLayout).ToList(), shared.Left),
             _options.CenterWeight,
             _assignment.Center is null ? null : ToLayout(_assignment.Center),
             new PanelInput("Trabajo", PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
-                _assignment.Work.Select(ToLayout).ToList()),
+                _assignment.Work.Select(ToLayout).ToList(), shared.Right),
             _options.Gap));
     }
 

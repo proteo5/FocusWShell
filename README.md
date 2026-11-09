@@ -21,7 +21,7 @@ Una ventana sólo cambia de lugar cuando tú lo decides. Hacer clic en el chat o
 
 ## Estado
 
-Hito M0 (núcleo): primera versión usable con un layout fijo Contexto | Centro | Trabajo en el monitor más ancho. Todavía sin escenas guardadas, templates por panel ni segundo monitor.
+Hito M0 (núcleo): primera versión usable con un layout fijo Contexto | Centro | Trabajo en el monitor más ancho. Funciona con varios monitores y escalas distintas, pero la escena vive en un solo monitor. Todavía sin escenas guardadas ni templates por panel.
 
 ```bash
 dotnet run --project src/FocusWShell.App

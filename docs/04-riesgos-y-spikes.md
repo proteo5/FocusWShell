@@ -6,7 +6,7 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 
 | # | Riesgo | Impacto | Probabilidad | Mitigación |
 | --- | --- | --- | --- | --- |
-| R1 | Huecos o solapes entre ventanas por los bordes invisibles y el DPI mixto | Alto: el layout se ve roto | Alta | Medir con `DWMWA_EXTENDED_FRAME_BOUNDS`, compensar por ventana y verificar tras mover. |
+| R1 | Huecos o solapes entre ventanas por los bordes invisibles y el DPI mixto | Alto: el layout se ve roto | Alta | Medir con `DWMWA_EXTENDED_FRAME_BOUNDS`, compensar por ventana y verificar tras mover. Comprobar que cada ejecutable lleva el manifiesto PerMonitorV2 (ver S2 con dos monitores). |
 | R2 | Una app se redimensiona por su cuenta después de moverla (`WM_DPICHANGED`, tamaño mínimo, Electron) | **Alto** (confirmado en S2: invade el Centro) | **Alta** | Verificar el rectángulo final; aprender el tamaño mínimo de cada app y que el layout lo respete (ver resultados de S2). |
 | R3 | Parpadeo visible al aplicar una escena con muchas ventanas | Medio: rompe la sensación de continuidad | Media | Movimiento paralelo con `SWP_ASYNCWINDOWPOS` (S3: ~13 ms para 6 apps; `DeferWindowPos` no agrupa entre procesos), primero minimizar y luego mover. |
 | R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Registro de geometrías esperadas con plazo. Con movimiento asíncrono (S3), los eventos propios llegan después de que `SetWindowPos` retorne: el plazo debe cubrir esa espera. |
@@ -105,7 +105,32 @@ Implementa la decisión que salió de S2. Ver [02 — Modelo de dominio](02-mode
   - **2ª colocación:** salió bien a la primera, sin nada nuevo que aprender. Trabajo sigue en tiles: GitHub Desktop recibe sus 661 px de alto y las otras dos filas se reparten el resto (357/358 px).
 - **Desborde hacia fuera:** Docker Desktop (942 px) en Contexto. El Centro sólo podía ceder hasta su piso (1720 px, 50 %), así que Contexto quedó en 780 px y Docker se ancló a la izquierda con 162 px fuera de pantalla. **Exacto y Centro protegido.**
 - **Restauración:** 6/6 y 4/4 exactas.
-- **Pendiente:** con el segundo monitor conectado, el desborde hacia fuera podría caer en el monitor vecino (ver la limitación en 02).
+- **Pendiente:** con el segundo monitor conectado, el desborde hacia fuera podría caer en el monitor vecino. Resuelto el mismo día: ver "S1 y S2 con dos monitores".
+
+### S1 y S2 con dos monitores (2026-11-09)
+
+- **Monitores:** ultrawide 3440×1440 al 100 % y, a su derecha, un monitor estándar 1920×1080 al 125 % (área de trabajo 1920×1020, 120 DPI).
+- **S1:** el filtro sigue dando 11 candidatas sin falsos positivos, con el DPI correcto de cada monitor.
+- **Hallazgo 1: el manifiesto no se aplicaba.** Al pasar el estándar al 125 %, el probe lo veía como 1536×864 a 96 DPI. Windows lo estaba virtualizando: el proceso no era PerMonitorV2.
+  - La causa: el manifiesto se asignaba en `Directory.Build.props`, donde `OutputType` aún no existe, así que los ejecutables llevaban el manifiesto por defecto de .NET.
+  - Se movió a `Directory.Build.targets`. Con un solo monitor al 100 % no había forma de notarlo: es justo el riesgo R1.
+  - La prueba hecha con el proceso virtualizado aprendió mínimos falsos (Explorer 658×845). Se borraron del catálogo.
+- **Hallazgo 2: restaurar entre monitores con distinto DPI reescala la ventana.**
+  - `SetWindowPlacement` dimensiona la ventana todavía en el monitor al 125 % y, al cruzar al de 100 %, la app se reescala: WhatsApp volvió con 734×663 en vez de 921×830, el factor 96/120.
+  - Ahora la restauración hace una segunda pasada si la colocación no coincide.
+  - Si ni así coincide, la entrada **se conserva** en el diario en lugar de descartarse, para no perder el original.
+- **S2 con DPI mixto:** escena WhatsApp | Explorer | ChatGPT en el estándar al 125 %.
+  - 3/3 exactas.
+  - Los bordes invisibles miden 8 px a 125 % (7 px a 100 %) y se compensan solos, porque se miden por ventana.
+  - El catálogo aprendió WhatsApp con 610 px físicos y lo guardó como 488 px lógicos; en el ultrawide se había medido 486. El catálogo independiente del DPI funciona.
+  - Restauración al ultrawide: 3/3 exactas, con dos pasadas.
+- **Borde compartido:**
+  - Antes del cambio, WhatsApp se desbordaba 44 px sobre el ultrawide.
+  - Con la regla nueva, Contexto pasa a 610 px y el Centro cede hasta 792 px (41 %) sin que nada cruce al otro monitor.
+  - ChatGPT, en el borde derecho, que no limita con nada, sigue desbordando hacia fuera como antes.
+- **Pendiente:**
+  - S6 (reconexión).
+  - Una escena que use los dos monitores a la vez (Contexto en el estándar), que llega con los layouts por huella de monitores (M1).
 
 ### S3 — Lote sin parpadeo (2026-11-09, sólo ultrawide)
 

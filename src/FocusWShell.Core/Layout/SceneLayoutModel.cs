@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Layout;
 
@@ -23,17 +23,26 @@ public enum PanelSide
 public sealed record LayoutWindow(nint Handle, string Label, PixelSize? MinSize = null);
 
 /// <summary>Un panel lateral y sus ventanas, en orden (la primera es la activa en modo pila).</summary>
+/// <param name="OuterEdgeShared">
+/// Si el borde exterior del panel limita con otro monitor. Entonces el desborde hacia fuera caería en
+/// ese monitor: el Centro puede encoger más y, si aun así no cabe, la ventana sale del layout.
+/// </param>
 public sealed record PanelInput(
     string Name,
     PanelSide Side,
     double Weight,
     PanelTemplate Template,
-    IReadOnlyList<LayoutWindow> Windows);
+    IReadOnlyList<LayoutWindow> Windows,
+    bool OuterEdgeShared = false);
 
 /// <summary>Escena de tres columnas: panel izquierdo | Centro | panel derecho.</summary>
 /// <param name="MinCenterFraction">
 /// Fracción del ancho de trabajo por debajo de la cual los paneles no pueden encoger el Centro
 /// para hacer sitio a sus ventanas. Por defecto, la mitad.
+/// </param>
+/// <param name="SharedEdgeMinCenterFraction">
+/// Piso del Centro frente a un panel cuyo borde exterior da a otro monitor: el Centro baja hasta el
+/// mínimo de su ventana, pero nunca por debajo de esta fracción (por si ese mínimo no se conoce).
 /// </param>
 public sealed record SceneInput(
     PixelRect WorkArea,
@@ -42,14 +51,15 @@ public sealed record SceneInput(
     LayoutWindow? Center,
     PanelInput Right,
     int Gap = 0,
-    double MinCenterFraction = 0.5);
+    double MinCenterFraction = 0.5,
+    double SharedEdgeMinCenterFraction = 0.3);
 
 public enum TargetKind
 {
     /// <summary>Visible en <see cref="WindowTarget.Rect"/>.</summary>
     Visible,
 
-    /// <summary>Minimizada (oculta en una pila).</summary>
+    /// <summary>Minimizada: oculta en una pila, o fuera del layout porque no cabe sin invadir otro monitor.</summary>
     Minimized,
 }
 

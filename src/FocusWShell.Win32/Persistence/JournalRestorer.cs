@@ -6,7 +6,7 @@ public enum RestoreOutcome
     /// <summary>Volvió exactamente a su colocación original. Sale del diario.</summary>
     Restored,
 
-    /// <summary>Se restauró, pero la colocación leída después no coincide. Sale del diario.</summary>
+    /// <summary>Se restauró, pero ni con dos pasadas coincide la colocación. Se conserva para reintentar.</summary>
     RestoredWithDifferences,
 
     /// <summary>La ventana ya no existe. Su entrada se descarta.</summary>
@@ -52,7 +52,8 @@ public static class JournalRestorer
 
             var result = RestoreOne(e);
             results.Add(result);
-            if (result.Outcome == RestoreOutcome.Pending)
+            // Una restauración imperfecta conserva la entrada: el original no se pierde y se puede reintentar.
+            if (result.Outcome is RestoreOutcome.Pending or RestoreOutcome.RestoredWithDifferences)
             {
                 keep.Add(e);
             }
@@ -69,16 +70,24 @@ public static class JournalRestorer
             return new(e, RestoreOutcome.Gone, "ya no existe");
         }
 
-        if (WindowMover.Restore(e) is { } error)
+        // Si la ventana cruza a un monitor con otro DPI, la app se reescala al llegar y el tamaño
+        // queda mal: una segunda pasada, ya en el monitor correcto, lo deja exacto.
+        SavedPlacement? now = null;
+        for (int attempt = 1; attempt <= 2; attempt++)
         {
-            return new(e, RestoreOutcome.Pending, error);
+            if (WindowMover.Restore(e) is { } error)
+            {
+                return new(e, RestoreOutcome.Pending, error);
+            }
+
+            now = WindowMover.Capture((nint)e.Handle, e.ProcessId, e.ProcessName, e.Title);
+            if (now is not null && now.NormalPosition == e.NormalPosition && now.ShowCmd == e.ShowCmd)
+            {
+                return new(e, RestoreOutcome.Restored, attempt == 1 ? "restaurada" : "restaurada (2 pasadas)");
+            }
         }
 
-        var now = WindowMover.Capture((nint)e.Handle, e.ProcessId, e.ProcessName, e.Title);
-        bool same = now is not null && now.NormalPosition == e.NormalPosition && now.ShowCmd == e.ShowCmd;
-        return same
-            ? new(e, RestoreOutcome.Restored, "restaurada")
-            : new(e, RestoreOutcome.RestoredWithDifferences,
-                $"quedó en {now?.NormalPosition} show {now?.ShowCmd} (original {e.NormalPosition} show {e.ShowCmd})");
+        return new(e, RestoreOutcome.RestoredWithDifferences,
+            $"quedó en {now?.NormalPosition} show {now?.ShowCmd} (original {e.NormalPosition} show {e.ShowCmd}); se conserva en el diario");
     }
 }
