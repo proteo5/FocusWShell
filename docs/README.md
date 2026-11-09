@@ -1,4 +1,4 @@
-# Documentación de FocusWShell
+﻿# Documentación de FocusWShell
 
 FocusWShell es un gestor de atención visual para Windows. Organiza las ventanas según el papel que cumplen en la atención de quien trabaja (tarea central, herramientas de apoyo, contexto periférico) y no sólo como rectángulos en una cuadrícula.
 
@@ -27,6 +27,7 @@ Esta carpeta es la documentación de ingeniería del proyecto. Parte de las nota
 | [0004](adr/0004-stack-dotnet-wpf-cswin32.md) | .NET 10 + C# + CsWin32 + WPF | Aceptada |
 | [0005](adr/0005-diario-de-recuperacion.md) | Diario de recuperación escrito antes de mover cualquier ventana | Aceptada |
 | [0006](adr/0006-ocultar-con-minimizar.md) | Las ventanas no visibles de una pila se minimizan, no se mueven fuera de pantalla | Propuesta |
+| [0007](adr/0007-cambios-externos-por-reconciliacion.md) | Los cambios externos se detectan reconciliando el estado final, no atribuyendo eventos | Aceptada |
 
 ## Fuentes
 

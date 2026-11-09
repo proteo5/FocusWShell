@@ -9,7 +9,7 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 | R1 | Huecos o solapes entre ventanas por los bordes invisibles y el DPI mixto | Alto: el layout se ve roto | Alta | Medir con `DWMWA_EXTENDED_FRAME_BOUNDS`, compensar por ventana y verificar tras mover. Comprobar que cada ejecutable lleva el manifiesto PerMonitorV2 (ver S2 con dos monitores). |
 | R2 | Una app se redimensiona por su cuenta después de moverla (`WM_DPICHANGED`, tamaño mínimo, Electron) | **Alto** (confirmado en S2: invade el Centro) | **Alta** | Verificar el rectángulo final; aprender el tamaño mínimo de cada app y que el layout lo respete (ver resultados de S2). |
 | R3 | Parpadeo visible al aplicar una escena con muchas ventanas | Medio: rompe la sensación de continuidad | Media | Movimiento paralelo con `SWP_ASYNCWINDOWPOS` (S3: ~13 ms para 6 apps; `DeferWindowPos` no agrupa entre procesos), primero minimizar y luego mover. |
-| R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Registro de geometrías esperadas con plazo. Con movimiento asíncrono (S3), los eventos propios llegan después de que `SetWindowPos` retorne: el plazo debe cubrir esa espera. |
+| R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Reconciliar el estado final con lo esperado tras 120 ms sin eventos ([ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)). Validado en S4: 0 falsos positivos. |
 | R5 | Ventanas elevadas o protegidas que no se pueden mover | Bajo si se detecta | Segura | Detectar y mostrarlas como "no gestionables"; nunca elevar el gestor. |
 | R6 | Perder la geometría original tras una caída | Alto: rompe la confianza | Baja con diario | Diario escrito antes de mover ([ADR 0005](adr/0005-diario-de-recuperacion.md)). |
 | R7 | Reconexión de monitores: eventos en ráfaga, `HMONITOR` nuevos, ventanas fuera de pantalla | Alto | Alta | Identidad por ruta de dispositivo, *debounce*, layouts por huella. |
@@ -106,6 +106,27 @@ Implementa la decisión que salió de S2. Ver [02 — Modelo de dominio](02-mode
 - **Desborde hacia fuera:** Docker Desktop (942 px) en Contexto. El Centro sólo podía ceder hasta su piso (1720 px, 50 %), así que Contexto quedó en 780 px y Docker se ancló a la izquierda con 162 px fuera de pantalla. **Exacto y Centro protegido.**
 - **Restauración:** 6/6 y 4/4 exactas.
 - **Pendiente:** con el segundo monitor conectado, el desborde hacia fuera podría caer en el monitor vecino. Resuelto el mismo día: ver "S1 y S2 con dos monitores".
+
+### S4 — Eventos propios (2026-11-09)
+
+Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md): reconciliar el estado final de cada ventana en lugar de atribuir eventos.
+
+- **Prueba:** `focus-probe watch <escena> --cycles 5`.
+  - **Fase 1:** aplica la escena y la revierte 5 veces vigilando los eventos: son 11 aplicaciones propias y ninguna debe atribuirse al usuario.
+  - **Fase 2:** mueve, minimiza, muestra y maximiza una ventana sin avisar al observador, como lo haría otra app. Cada cambio debe detectarse.
+  - **Fase 3 (opcional):** con `--listen N`, escucha durante N segundos lo que haga el usuario.
+- **Resultado en el ultrawide** (5 apps): 55 eventos propios, **0 falsos positivos**, **4/4** cambios externos detectados.
+- **Resultado en el monitor al 125 %**, con las ventanas cruzando entre DPI en cada ciclo:
+  - **Primer intento: 33 "falsos positivos", que no lo eran.** Las ventanas estaban de verdad fuera de sitio: ChatGPT quedó en 750×1275 en vez de 600×1020 (×1,25), y al volver al ultrawide en ×0,8.
+  - **La causa:** el movimiento asíncrono se daba por llegado en cuanto la ventana alcanzaba el rectángulo pedido. Pero al cambiar de DPI la app recibe `WM_DPICHANGED` y se reescala *después*. En `place` no se notaba porque la segunda pasada lo corregía; en los ciclos de S3 no hay segunda pasada.
+  - **Arreglo en el aplicador:** si una ventana cambia a un monitor con otro DPI, se espera a que lleve 100 ms quieta y después se verifica y corrige.
+  - **Tras el arreglo:** 150 eventos propios, **0 falsos positivos**, **4/4** detectados.
+- **Coste del arreglo:** una transición que cruza DPI tarda unos 240 ms (con una corrección por ventana) en lugar de 9 ms. Sin cruce de DPI no cambia nada (9 ms).
+  - Mejora posible: pedir de antemano el tamaño ya escalado para que el reescalado de la app caiga en el destino.
+- **No medido:**
+  - Arrastres y redimensionados hechos con el ratón por una persona: la fase 3 está lista, pero nadie la ha ejecutado aún.
+  - Escritorios virtuales (`CLOAKED`).
+- **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
 ### S1 y S2 con dos monitores (2026-11-09)
 

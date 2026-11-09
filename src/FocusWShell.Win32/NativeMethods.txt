@@ -78,3 +78,11 @@ DestroyIcon
 // Comandos de foco
 GetForegroundWindow
 SetForegroundWindow
+
+// Eventos de ventanas (S4)
+SetWinEventHook
+UnhookWinEvent
+SetTimer
+KillTimer
+WM_TIMER
+MonitorFromRect

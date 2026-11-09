@@ -105,7 +105,8 @@ S3 midió que `BeginDeferWindowPos`/`DeferWindowPos`/`EndDeferWindowPos` **no ag
 3. Normaliza sin activar (`SW_SHOWNOACTIVATE`) las que estén maximizadas o minimizadas y mide los bordes invisibles de todas.
 4. Pide todos los movimientos con `SetWindowPos(… SWP_ASYNCWINDOWPOS)`. Cada app los recibe en su cola y se mueven en paralelo: la escena llega en ~13 ms.
 5. Espera a que cada ventana alcance el rectángulo pedido. Si una se queda 150 ms quieta en otro tamaño, la app impuso su mínimo: se da por llegada y alimenta el catálogo de mínimos.
-6. Corrige individualmente las que no quedaron exactas.
+6. Si una ventana cambia a un monitor con otro DPI, espera a que lleve 100 ms quieta: la app se reescala por su cuenta (`WM_DPICHANGED`) *después* de que el movimiento asíncrono se diera por llegado. S4 lo encontró.
+7. Corrige individualmente las que no quedaron exactas.
 
 `SWP_ASYNCWINDOWPOS` además evita que una app lenta bloquee el hilo del aplicador. `PlaceBatch` conserva el modo con `DeferWindowPos` y, si el lote falla, vuelve a `SetWindowPos` ventana por ventana; queda sólo para comparar.
 
@@ -148,7 +149,7 @@ La lista de exclusión del usuario (por ejecutable, AUMID o clase) se aplica enc
 
 Todos los callbacks filtran `idObject == OBJID_WINDOW` e `idChild == CHILDID_SELF`.
 
-**Eventos propios:** cada vez que el aplicador mueve una ventana, registra la geometría esperada con un plazo corto. Los `LOCATIONCHANGE` que coincidan con ella se ignoran; así el gestor no confunde sus propios movimientos con los del usuario.
+**Eventos propios ([ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)):** no se intenta atribuir cada evento. `WindowEventWatcher` espera a que una ventana vigilada lleve 120 ms sin eventos (o a que termine un arrastre) y `ExpectationRegistry` compara su estado final con lo que el gestor dejó en ella. Mientras el gestor mueve ventanas (`OwnChange()`) no se evalúa nada; antes de terminar, registra como expectativa el rectángulo verificado de cada ventana.
 
 ## Monitores
 
