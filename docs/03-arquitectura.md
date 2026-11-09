@@ -34,7 +34,7 @@ tests/
   FocusWShell.Win32.Tests/ Pruebas de integración manuales o semiautomáticas con ventanas de prueba.
 tools/
   FocusWShell.Probe/       `focus-probe`: consola de diagnóstico para los spikes (listar, colocar, restaurar).
-  TestWindows/             App que abre ventanas "maniquí" con distintos DPI, estilos y comportamientos.
+  FocusWShell.TestWindows/ Ventanas "maniquí" en estado controlado (normal, maximizada, minimizada).
 ```
 
 Los ejecutables comparten `build/app.manifest` (PerMonitorV2, `asInvoker`) desde `Directory.Build.props`. Los proyectos Windows apuntan a `net10.0-windows10.0.19041.0` (Windows 10 2004 o posterior).

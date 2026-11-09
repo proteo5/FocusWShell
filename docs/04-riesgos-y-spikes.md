@@ -75,3 +75,23 @@ Cada spike deja una nota breve en esta sección: fecha, configuración de monito
   - si una ventana sigue sin caber, se ancla al borde exterior del monitor para que el exceso nunca invada el Centro.
   
   Se recoge en [02 — Modelo de dominio](02-modelo-de-dominio.md#tamaños-mínimos).
+
+### S5 — Diario y caída (2026-11-09, sólo ultrawide)
+
+- **Preparación:** `tools/FocusWShell.TestWindows` abre ventanas de prueba en un estado controlado. Proceso A: `normal maximized minimized`; proceso B: `normal`. A eso se suma Docker Desktop, una app Electron real que estaba minimizada.
+- **Prueba:**
+  1. `focus-probe place --context docker --center testwindows --work testwindows,testwindows,testwindows --gap 8 --pause-after 4`: el probe captura las 5 ventanas en el diario, mueve 4 y se detiene.
+  2. `taskkill /F` del probe a mitad de la escena: cuatro ventanas movidas y una sin tocar.
+  3. `taskkill /F` del proceso B, para simular una app que se cierra mientras el gestor está caído.
+  4. `focus-probe restore` desde un proceso nuevo.
+- **Resultado:**
+  - Tras la caída, el diario tenía las 5 ventanas con su estado **original**: `ShowCmd` 2 (minimizada), 3 (maximizada) y 1 (normal).
+  - Restauración: 4/4 ventanas vivas volvieron exactamente a su estado. La maximizada volvió maximizada y las dos minimizadas (Docker y la de prueba) volvieron minimizadas. La que no se llegó a mover quedó intacta.
+  - La ventana del proceso cerrado se detectó (handle inválido o de otro proceso), se descartó sin error y el diario se borró.
+- **Hallazgos:**
+  - Escribir el diario **antes** de mover es suficiente: una caída en cualquier punto deja un diario completo y correcto.
+  - Restaurar sobre una ventana que no se movió no tiene efectos visibles, así que no hace falta registrar cuáles se llegaron a mover.
+  - Docker Desktop (Electron) también tiene un ancho mínimo, de 942 px, y en Contexto se desbordó 326 px. Confirma el hallazgo de S2 sobre los tamaños mínimos.
+  - `SetWindowPlacement` con `SW_SHOWMAXIMIZED` activa la ventana: no hay variante sin activación. Restaurar una ventana maximizada puede cambiar el foco; se acepta para la restauración de emergencia.
+  - Si una ventana sigue viva pero no se puede restaurar (por ejemplo, la app no responde), su entrada se conserva en el diario para reintentar.
+- **Decisión:** S5 aprobado. El ADR 0005 pasa a **Aceptada**.

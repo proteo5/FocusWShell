@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ventanas "maniquí" para los spikes: estados, tamaños y estilos controlados. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!-- WinForms declara el DPI por código; el manifiesto compartido entraría en conflicto. -->
+    <ApplicationManifest></ApplicationManifest>
+  </PropertyGroup>
+
+</Project>

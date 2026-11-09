@@ -25,7 +25,7 @@ Esta carpeta es la documentación de ingeniería del proyecto. Parte de las nota
 | [0002](adr/0002-no-reemplazar-shell.md) | Convivir con Explorer; no reemplazar el shell en la primera etapa | Aceptada |
 | [0003](adr/0003-rol-independiente-del-foco.md) | El rol de una ventana es independiente del foco de Windows | Aceptada |
 | [0004](adr/0004-stack-dotnet-wpf-cswin32.md) | .NET 10 + C# + CsWin32 + WPF | Aceptada |
-| [0005](adr/0005-diario-de-recuperacion.md) | Diario de recuperación escrito antes de mover cualquier ventana | Propuesta |
+| [0005](adr/0005-diario-de-recuperacion.md) | Diario de recuperación escrito antes de mover cualquier ventana | Aceptada |
 | [0006](adr/0006-ocultar-con-minimizar.md) | Las ventanas no visibles de una pila se minimizan, no se mueven fuera de pantalla | Propuesta |
 
 ## Fuentes

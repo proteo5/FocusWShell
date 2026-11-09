@@ -1,6 +1,6 @@
 # ADR 0005 — Diario de recuperación escrito antes de mover cualquier ventana
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada (validada en S5)
 - **Fecha:** 2026-11-09
 
 ## Contexto

@@ -45,7 +45,7 @@ static int Usage(string? error = null)
               Lista las ventanas top-level y si son candidatas. Sólo lee.
           focus-probe monitors
               Lista los monitores, su área de trabajo y DPI. Sólo lee.
-          focus-probe place --context a,b --center c --work d,e [--split 18,55,27] [--gap 8] [--dry-run]
+          focus-probe place --context a,b --center c --work d,e [--split 18,55,27] [--gap 8] [--dry-run] [--pause-after N]
               Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho.
               Cada nombre busca una ventana candidata cuyo ejecutable lo contenga (p. ej. slack, msedge).
               Antes de mover nada guarda la colocación original en el diario.
@@ -156,6 +156,7 @@ static int Place(string[] args)
 
     int gap = int.Parse(Option(args, "--gap") ?? "0", CultureInfo.InvariantCulture);
     bool dryRun = Has(args, "--dry-run");
+    int? pauseAfter = Option(args, "--pause-after") is { } p ? int.Parse(p, CultureInfo.InvariantCulture) : null;
 
     // Monitor más ancho: en esta configuración, el ultrawide.
     var display = DisplayEnumerator.Enumerate().MaxBy(d => d.WorkArea.Width)
@@ -235,8 +236,17 @@ static int Place(string[] args)
     Console.WriteLine(new string('-', 140));
 
     int exact = 0;
+    int placed = 0;
     foreach (var (region, w, target) in plan)
     {
+        if (pauseAfter is int limit && placed == limit)
+        {
+            // S5: deja el proceso detenido a mitad de la escena para matarlo desde fuera.
+            Console.WriteLine($"PAUSA tras {placed} ventanas (pid {Environment.ProcessId}). Esperando a ser terminado…");
+            Thread.Sleep(Timeout.Infinite);
+        }
+
+        placed++;
         var r = WindowMover.Place(w.Handle, target);
         var a = r.Actual;
         string outcome = r.Error ?? (r.IsExact ? "exacto" : $"desviación {r.MaxDeviation}px");
@@ -267,13 +277,22 @@ static int Restore()
     }
 
     int ok = 0;
+    int gone = 0;
+    var pending = new List<SavedPlacement>();
     foreach (var e in entries)
     {
-        var error = WindowMover.Restore(e);
         string verdict;
-        if (error is not null)
+        if (!WindowMover.IsSameWindow(e.Handle, e.ProcessId))
         {
-            verdict = error;
+            // La ventana se cerró: no hay nada que restaurar y su entrada ya no sirve.
+            verdict = "ya no existe (se descarta)";
+            gone++;
+        }
+        else if (WindowMover.Restore(e) is { } error)
+        {
+            // Sigue viva pero no se pudo restaurar: se conserva para reintentar.
+            verdict = $"{error} (se conserva en el diario)";
+            pending.Add(e);
         }
         else
         {
@@ -289,10 +308,20 @@ static int Restore()
         Console.WriteLine($"{Trim(e.ProcessName, 22),-22} {e.NormalPosition,-24} {verdict}");
     }
 
-    ProbeJournal.Delete();
     Console.WriteLine();
-    Console.WriteLine($"{ok}/{entries.Count} ventanas restauradas exactamente. Diario borrado.");
-    return ok == entries.Count ? 0 : 1;
+    Console.WriteLine($"{ok} restauradas exactamente · {gone} ya cerradas · {pending.Count} pendientes · {entries.Count - ok - gone - pending.Count} con diferencias");
+    if (pending.Count == 0)
+    {
+        ProbeJournal.Delete();
+        Console.WriteLine("Diario borrado.");
+    }
+    else
+    {
+        ProbeJournal.Save(pending);
+        Console.WriteLine($"Diario conservado con {pending.Count} entradas pendientes.");
+    }
+
+    return ok + gone == entries.Count ? 0 : 1;
 }
 
 static string Trim(string value, int max) =>
