@@ -27,6 +27,8 @@ Objetivo: el modelo completo de roles con las dos presentaciones básicas.
 - Comandos `Park`, `Restore`, `SendTo`, `SetTemplate`, `ReturnToPanel`.
 - Detección de eventos del usuario (minimizar, maximizar, arrastrar) y sus interpretaciones (S4).
 - Escenas con nombre, guardar y aplicar; layouts por huella de monitores.
+- Paneles en monitores auxiliares, con template `Fill` ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md)).
+- Mantener la pantalla encendida ([ADR 0010](adr/0010-mantener-pantalla-encendida.md)). **Hecho.**
 - Atajos configurables.
 
 Criterio de salida: CA3, CA4 y CA7. Spike S7 resuelto.
@@ -37,7 +39,7 @@ Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspens
 
 - `EnterFullscreen` / `ExitFullscreen` por monitor.
 - Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor.
-- Cambios de monitores con *debounce* y layouts derivados (S6).
+- Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)).
 - Reanudación tras suspensión.
 - Detección y presentación de ventanas no gestionables (elevadas).
 - Lista de exclusión editable.

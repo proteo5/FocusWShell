@@ -40,6 +40,15 @@ Scene ────────────────────┘           
 
 Si no hay layout para la huella actual, se deriva uno por defecto (ver [Cambios de monitores](#cambios-de-monitores)).
 
+### Monitor principal y monitores auxiliares
+
+Ver [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md).
+
+- El **monitor principal** (por defecto, el principal de Windows) es el único que tiene `CenterRegion`. Aloja Contexto | Centro | Trabajo.
+- Un **monitor auxiliar** (cualquier otro, incluidas las tablets que extienden el escritorio, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)) sólo tiene `PanelRegion`. Cada panel auxiliar tiene un hogar (`Work` o `Context`).
+- `Promote` siempre lleva la ventana al Centro del principal. Al volver, regresa al panel del que salió, aunque esté en un auxiliar.
+- Si un auxiliar desaparece, sus ventanas pasan a los paneles de su mismo hogar en el principal (en pila si no caben), nunca al Centro.
+
 ### Region, PanelRegion y PanelTemplate
 
 - **CenterRegion:** una por escena. Aloja como máximo una ventana.
@@ -50,6 +59,7 @@ Si no hay layout para la huella actual, se deriva uno por defecto (ver [Cambios 
 | --- | --- | --- |
 | `Tiles` | orientación, proporciones de los divisores | Todas las ventanas `InPanel` visibles a la vez, una por tile. Si sobran ventanas, las de más se apilan en el último tile. |
 | `Stack` | ventana activa | Una ventana visible; las demás minimizadas y accesibles desde la tira de pestañas del gestor. |
+| `Fill` | ventana activa | Sólo en monitores auxiliares: una ventana maximizada ocupa el monitor entero (monitoreo, depuración). Las demás, como en `Stack`. Maximizar con el botón de Windows en un auxiliar equivale a elegir `Fill`. |
 | `Collapsible` *(post-MVP)* | ventana expandida | Una expandida; el resto como encabezados de 1 línea. |
 | `Mixed` *(post-MVP)* | composición de los anteriores | Por ejemplo, un tile fijo arriba y una pila debajo. |
 
@@ -130,7 +140,11 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 Cuando cambia la huella de monitores:
 
 1. Si la escena tiene un `SceneLayout` para la nueva huella, se aplica.
-2. Si no, se deriva uno: si falta el monitor estándar, el panel de Contexto se mueve al extremo izquierdo del ultrawide; si falta el ultrawide, el Centro y el Trabajo se reparten el monitor que queda; y así sucesivamente. El layout derivado se marca como "provisional" y no se guarda hasta que el usuario lo ajuste o lo confirme.
+2. Si no, se deriva uno:
+   - Si falta un auxiliar, sus paneles se funden con los del mismo hogar en el principal.
+   - Si falta el principal, el auxiliar más grande pasa a principal y recibe el Centro.
+
+   El layout derivado se marca como "provisional" y no se guarda hasta que el usuario lo ajuste o lo confirme.
 3. Las ventanas nunca quedan fuera de todas las áreas visibles.
 
 Al volver la huella original, se aplica de nuevo su layout guardado.
