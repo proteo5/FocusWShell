@@ -125,3 +125,13 @@ Cuando cambia la huella de monitores:
 3. Las ventanas nunca quedan fuera de todas las áreas visibles.
 
 Al volver la huella original, se aplica de nuevo su layout guardado.
+
+## Tamaños mínimos
+
+Muchas apps imponen un tamaño mínimo y lo aplican aunque el gestor pida otro. En S2, Slack exigió 670 px de ancho y GitHub Desktop 962×661. Windows no ofrece una forma de consultar ese mínimo desde otro proceso, así que el gestor lo **aprende**:
+
+- Tras cada colocación se compara lo pedido con lo obtenido. Si la app quedó más grande, se guarda el tamaño obtenido como `MinSize` de esa app (por ejecutable o AUMID), en `settings.json`.
+- El motor de layout respeta estos invariantes adicionales:
+  1. **El Centro nunca es invadido.** Si una ventana de panel no cabe, se ancla al borde exterior del monitor (izquierda para un panel izquierdo, derecha para uno derecho) y el exceso queda fuera de pantalla, no sobre el Centro.
+  2. **Un panel en tiles cuyas ventanas no caben pasa a pila** de forma automática y temporal, y lo indica en su microbarra. No cambia el template guardado.
+  3. Si el Centro tiene su propio mínimo y no cabe, se reduce primero el panel de Contexto y luego el de Trabajo, nunca por debajo del mínimo de su ventana visible.

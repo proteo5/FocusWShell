@@ -7,7 +7,7 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 | # | Riesgo | Impacto | Probabilidad | Mitigación |
 | --- | --- | --- | --- | --- |
 | R1 | Huecos o solapes entre ventanas por los bordes invisibles y el DPI mixto | Alto: el layout se ve roto | Alta | Medir con `DWMWA_EXTENDED_FRAME_BOUNDS`, compensar por ventana y verificar tras mover. |
-| R2 | Una app se redimensiona por su cuenta después de moverla (`WM_DPICHANGED`, tamaño mínimo, Electron) | Medio | Media | Verificar el rectángulo final y reintentar una vez; si persiste, aceptar el tamaño de la app y centrarla en su región. |
+| R2 | Una app se redimensiona por su cuenta después de moverla (`WM_DPICHANGED`, tamaño mínimo, Electron) | **Alto** (confirmado en S2: invade el Centro) | **Alta** | Verificar el rectángulo final; aprender el tamaño mínimo de cada app y que el layout lo respete (ver resultados de S2). |
 | R3 | Parpadeo visible al aplicar una escena con muchas ventanas | Medio: rompe la sensación de continuidad | Media | `DeferWindowPos`, orden de aplicación (primero minimizar, luego mover, luego mostrar), y medir. |
 | R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Registro de geometrías esperadas con plazo. |
 | R5 | Ventanas elevadas o protegidas que no se pueden mover | Bajo si se detecta | Segura | Detectar y mostrarlas como "no gestionables"; nunca elevar el gestor. |
@@ -48,3 +48,30 @@ Cada spike deja una nota breve en esta sección: fecha, configuración de monito
   - NetBird (366×653) es candidata. Es una ventana de configuración de una app de bandeja; se deja como candidata y se resolverá con la lista de exclusión del usuario.
   - Faltan casos por ver en vivo: una ventana elevada (debería salir `NO-GESTIONABLE`), un juego o vídeo en pantalla completa (`Fullscreen`), una ventana en otro escritorio virtual (`Cloaked`) y el monitor estándar con escala distinta.
 - **Decisión:** el filtro es suficiente para continuar con S2. Repetir S1 con los dos monitores y los casos pendientes.
+
+### S2 — Colocación precisa (2026-11-09, sólo ultrawide)
+
+- **Comando:** `focus-probe place --context slack,whatsapp --center msedge --work explorer,ssms,githubdesktop`, con `--gap 0` y luego `--gap 8`; después `focus-probe restore`.
+- **Monitor:** ultrawide 3440×1440 al 100 %, área de trabajo 3440×1392. Sin escala mixta: la parte de DPI de S2 queda pendiente para cuando se conecte el segundo monitor.
+- **Layout:** pesos 18/55/27 → Contexto 619 px, Centro 1892 px, Trabajo 929 px. Contexto con 2 filas y Trabajo con 3.
+
+| App | Tecnología | Bordes invisibles (L,T,R,B) | Resultado |
+| --- | --- | --- | --- |
+| Edge | Chromium | 7,0,7,7 | Exacto al primer intento |
+| WhatsApp | WinUI 3 | 7,0,7,7 | Exacto |
+| Explorador | Win32 clásico | 7,0,7,7 | Exacto |
+| SSMS | WPF / shell de Visual Studio | **5,0,5,5** | Exacto |
+| Slack | Electron | 7,0,7,7 | **Mínimo de 670 px de ancho**: se pasa 51–54 px a la derecha, dentro del Centro |
+| GitHub Desktop | Electron | 7,0,7,7 | **Mínimo de 962×661**: se pasa 33–38 px a la derecha y ~200 px por debajo del área de trabajo |
+
+- **Restauración:** 6/6 ventanas volvieron exactamente a su `WINDOWPLACEMENT` original. El diario conservó la primera captura aunque se colocó dos veces, como exige el ADR 0005.
+- **Hallazgos:**
+  1. La compensación de bordes funciona, y los márgenes **varían según la app** (SSMS usa 5 px, no 7). Hay que medirlos por ventana, como ya preveía la arquitectura.
+  2. **Los tamaños mínimos de las apps son el problema real**, no la precisión. Una app que no cabe en su región se desborda, y en el caso de Slack invade el Centro. Eso rompe la regla del centro protegido.
+  3. No hay una API para preguntar a otra app su tamaño mínimo (`WM_GETMINMAXINFO` no cruza procesos). La única forma fiable es **medirlo**: pedir un tamaño y ver qué acepta la app.
+- **Decisión:** S2 aprobado en precisión y restauración. Antes de M1, el motor de layout tiene que tratar los mínimos:
+  - recordar el tamaño mínimo observado por app (ejecutable o AUMID);
+  - un panel donde sus ventanas no caben en tiles pasa a mostrarlas como pila;
+  - si una ventana sigue sin caber, se ancla al borde exterior del monitor para que el exceso nunca invada el Centro.
+  
+  Se recoge en [02 — Modelo de dominio](02-modelo-de-dominio.md#tamaños-mínimos).

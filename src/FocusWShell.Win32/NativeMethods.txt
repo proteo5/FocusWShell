@@ -46,3 +46,14 @@ SHGetPropertyStoreForWindow
 IPropertyStore
 PKEY_AppUserModel_ID
 PropVariantClear
+
+// Colocación y restauración
+SetWindowPos
+SetWindowPlacement
+ShowWindow
+IsWindow
+IsHungAppWindow
+
+// Enumeración de monitores
+EnumDisplayMonitors
+GetDpiForMonitor
