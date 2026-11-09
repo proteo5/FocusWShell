@@ -23,6 +23,7 @@ try
         "monitors" => Monitors(),
         "place" => Place(rest),
         "restore" => Restore(),
+        "mins" => Mins(rest),
         _ => Usage($"Comando desconocido: {command}"),
     };
 }
@@ -45,12 +46,17 @@ static int Usage(string? error = null)
               Lista las ventanas top-level y si son candidatas. Sólo lee.
           focus-probe monitors
               Lista los monitores, su área de trabajo y DPI. Sólo lee.
-          focus-probe place --context a,b --center c --work d,e [--split 18,55,27] [--gap 8] [--dry-run] [--pause-after N]
-              Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho.
+          focus-probe place --context a,b --center c --work d,e [--split 18,55,27] [--gap 8]
+                            [--context-template tiles|stack] [--work-template tiles|stack]
+                            [--dry-run] [--no-learn] [--pause-after N]
+              Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho, respetando
+              los tamaños mínimos aprendidos. Si una app impone uno nuevo, lo aprende y recoloca.
               Cada nombre busca una ventana candidata cuyo ejecutable lo contenga (p. ej. slack, msedge).
               Antes de mover nada guarda la colocación original en el diario.
           focus-probe restore
               Devuelve todas las ventanas del diario a su colocación original y borra el diario.
+          focus-probe mins [--clear]
+              Muestra (u olvida) los tamaños mínimos aprendidos.
         """);
     return 2;
 }
@@ -156,12 +162,14 @@ static int Place(string[] args)
 
     int gap = int.Parse(Option(args, "--gap") ?? "0", CultureInfo.InvariantCulture);
     bool dryRun = Has(args, "--dry-run");
+    bool noLearn = Has(args, "--no-learn");
     int? pauseAfter = Option(args, "--pause-after") is { } p ? int.Parse(p, CultureInfo.InvariantCulture) : null;
+    var contextTemplate = ParseTemplate(Option(args, "--context-template"));
+    var workTemplate = ParseTemplate(Option(args, "--work-template"));
 
     // Monitor más ancho: en esta configuración, el ultrawide.
     var display = DisplayEnumerator.Enumerate().MaxBy(d => d.WorkArea.Width)
         ?? throw new InvalidOperationException("No se encontró ningún monitor.");
-    var columns = Splitter.Columns(display.WorkArea, split, gap);
 
     var ownIntegrity = WindowEnumerator.CurrentIntegrity();
     var filter = new EligibilityFilter();
@@ -183,47 +191,46 @@ static int Place(string[] args)
         return match;
     }
 
-    var plan = new List<(string Region, WindowSnapshot Window, PixelRect Target)>();
-    void AddStack(string region, string[] names, PixelRect area)
-    {
-        if (names.Length == 0)
-        {
-            return;
-        }
+    var context = contextNames.Select(Find).ToList();
+    var center = centerNames.Select(Find).FirstOrDefault();
+    var work = workNames.Select(Find).ToList();
+    var all = context.Concat(center is null ? [] : [center]).Concat(work).ToList();
+    var byHandle = all.ToDictionary(w => w.Handle);
 
-        var windows = names.Select(Find).ToList();
-        var rows = Splitter.EqualRows(area, windows.Count, gap);
-        for (int i = 0; i < windows.Count; i++)
-        {
-            plan.Add((region, windows[i], rows[i]));
-        }
+    var catalog = MinSizeStore.Load();
+
+    SceneLayoutResult Plan()
+    {
+        LayoutWindow ToLayout(WindowSnapshot w) =>
+            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), catalog.Get(MinSizeCatalog.KeyFor(w), display.Dpi));
+
+        return SceneLayoutEngine.Compute(new SceneInput(
+            display.WorkArea,
+            new PanelInput("Contexto", PanelSide.Left, split[0], contextTemplate, context.Select(ToLayout).ToList()),
+            split[1],
+            center is null ? null : ToLayout(center),
+            new PanelInput("Trabajo", PanelSide.Right, split[2], workTemplate, work.Select(ToLayout).ToList()),
+            gap));
     }
 
-    AddStack("Contexto", contextNames, columns[0]);
-    AddStack("Centro", centerNames, columns[1]);
-    AddStack("Trabajo", workNames, columns[2]);
+    Console.WriteLine($"Monitor {display.DeviceName}: trabajo {display.WorkArea}, {display.Dpi} DPI · pesos {string.Join("/", split)} · gap {gap}");
+    Console.WriteLine($"Mínimos conocidos: {MinSizeStore.FilePath} ({catalog.Entries.Count} apps)");
 
-    Console.WriteLine($"Monitor {display.DeviceName}: trabajo {display.WorkArea}, {display.Dpi} DPI · split {string.Join("/", split)} · gap {gap}");
-    Console.WriteLine();
+    var layout = Plan();
+    PrintLayout(layout);
 
     if (dryRun)
     {
-        foreach (var (region, w, target) in plan)
-        {
-            Console.WriteLine($"{region,-9} {Trim(w.ProcessName, 22),-22} {target,-24} desde {w.VisibleBounds}{(w.IsMaximized ? " (max)" : string.Empty)}{(w.IsMinimized ? " (min)" : string.Empty)}");
-        }
-
-        Console.WriteLine();
         Console.WriteLine("--dry-run: no se movió nada.");
         return 0;
     }
 
     // Diario ANTES de mover (ADR 0005).
-    var captures = plan
-        .Select(p => WindowMover.Capture(p.Window.Handle, p.Window.ProcessId, p.Window.ProcessName, p.Window.Title))
+    var captures = all
+        .Select(w => WindowMover.Capture(w.Handle, w.ProcessId, w.ProcessName, w.Title))
         .OfType<SavedPlacement>()
         .ToList();
-    if (captures.Count != plan.Count)
+    if (captures.Count != all.Count)
     {
         Console.Error.WriteLine("No se pudo capturar el estado original de todas las ventanas; no se movió nada.");
         return 1;
@@ -231,23 +238,80 @@ static int Place(string[] args)
 
     ProbeJournal.AddIfMissing(captures);
     Console.WriteLine($"Diario: {ProbeJournal.FilePath}");
-    Console.WriteLine();
-    Console.WriteLine($"{"Región",-9} {"Proceso",-22} {"Objetivo",-24} {"Obtenido",-24} {"ΔL",4} {"ΔT",4} {"ΔR",4} {"ΔB",4} {"Bordes",-10} {"Int.",4}  Resultado");
-    Console.WriteLine(new string('-', 140));
 
-    int exact = 0;
-    int placed = 0;
-    foreach (var (region, w, target) in plan)
+    const int MaxPasses = 3;
+    List<(WindowTarget Target, PlacementResult? Result)> applied = [];
+    for (int pass = 1; pass <= MaxPasses; pass++)
     {
-        if (pauseAfter is int limit && placed == limit)
+        applied = [];
+        int placed = 0;
+        foreach (var target in layout.Targets)
         {
-            // S5: deja el proceso detenido a mitad de la escena para matarlo desde fuera.
-            Console.WriteLine($"PAUSA tras {placed} ventanas (pid {Environment.ProcessId}). Esperando a ser terminado…");
-            Thread.Sleep(Timeout.Infinite);
+            if (pauseAfter is int limit && placed == limit)
+            {
+                // S5: deja el proceso detenido a mitad de la escena para matarlo desde fuera.
+                Console.WriteLine($"PAUSA tras {placed} ventanas (pid {Environment.ProcessId}). Esperando a ser terminado…");
+                Thread.Sleep(Timeout.Infinite);
+            }
+
+            placed++;
+            if (target.Kind == TargetKind.Minimized)
+            {
+                WindowMover.Minimize(target.Handle);
+                applied.Add((target, null));
+            }
+            else
+            {
+                applied.Add((target, WindowMover.Place(target.Handle, target.Rect)));
+            }
         }
 
-        placed++;
-        var r = WindowMover.Place(w.Handle, target);
+        if (noLearn)
+        {
+            break;
+        }
+
+        var learned = new List<string>();
+        foreach (var (target, result) in applied)
+        {
+            if (result is { Error: null } r)
+            {
+                var w = byHandle[target.Handle];
+                var key = MinSizeCatalog.KeyFor(w);
+                var requested = new PixelSize(r.Target.Width, r.Target.Height);
+                var actual = new PixelSize(r.Actual.Width, r.Actual.Height);
+                if (catalog.Observe(key, requested, actual, display.Dpi))
+                {
+                    learned.Add($"{target.Label} → mínimo {catalog.Get(key, display.Dpi)}");
+                }
+            }
+        }
+
+        if (learned.Count == 0)
+        {
+            break;
+        }
+
+        MinSizeStore.Save(catalog);
+        Console.WriteLine();
+        Console.WriteLine($"Pasada {pass}: aprendido {string.Join("; ", learned)}. Recalculando…");
+        layout = Plan();
+        PrintLayout(layout);
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"{"Región",-9} {"App",-18} {"Objetivo",-24} {"Obtenido",-24} {"ΔL",4} {"ΔT",4} {"ΔR",4} {"ΔB",4} {"Bordes",-10}  Resultado");
+    Console.WriteLine(new string('-', 130));
+    int exact = 0;
+    foreach (var (t, r) in applied)
+    {
+        if (r is null)
+        {
+            Console.WriteLine($"{t.Region,-9} {Trim(t.Label, 18),-18} (minimizada)");
+            exact++;
+            continue;
+        }
+
         var a = r.Actual;
         string outcome = r.Error ?? (r.IsExact ? "exacto" : $"desviación {r.MaxDeviation}px");
         if (r.IsExact)
@@ -256,15 +320,64 @@ static int Place(string[] args)
         }
 
         Console.WriteLine(
-            $"{region,-9} {Trim(w.ProcessName, 22),-22} {target,-24} {a,-24} " +
-            $"{a.Left - target.Left,4} {a.Top - target.Top,4} {a.Right - target.Right,4} {a.Bottom - target.Bottom,4} " +
-            $"{r.Margins,-10} {r.Attempts,4}  {outcome}");
+            $"{t.Region,-9} {Trim(t.Label, 18),-18} {t.Rect,-24} {a,-24} " +
+            $"{a.Left - t.Rect.Left,4} {a.Top - t.Rect.Top,4} {a.Right - t.Rect.Right,4} {a.Bottom - t.Rect.Bottom,4} " +
+            $"{r.Margins,-10}  {outcome}");
     }
 
+    var centerInvaders = applied
+        .Where(x => x.Result is not null && x.Target.Region != "Centro")
+        .Where(x => !x.Result!.Actual.Intersect(layout.CenterColumn).IsEmpty)
+        .Select(x => x.Target.Label)
+        .ToList();
+
     Console.WriteLine();
-    Console.WriteLine($"{exact}/{plan.Count} ventanas colocadas con precisión de ±1 px.");
+    Console.WriteLine($"{exact}/{applied.Count} ventanas en su destino (±1 px).");
+    Console.WriteLine(centerInvaders.Count == 0
+        ? "Centro protegido: ninguna ventana de panel lo invade."
+        : $"CENTRO INVADIDO por: {string.Join(", ", centerInvaders)}");
     Console.WriteLine("Para devolverlas a su lugar: focus-probe restore");
-    return exact == plan.Count ? 0 : 1;
+    return exact == applied.Count && centerInvaders.Count == 0 ? 0 : 1;
+}
+
+static PanelTemplate ParseTemplate(string? value) => value?.ToLowerInvariant() switch
+{
+    null or "tiles" => PanelTemplate.Tiles,
+    "stack" => PanelTemplate.Stack,
+    _ => throw new ArgumentException($"Template desconocido: {value} (tiles | stack)"),
+};
+
+static void PrintLayout(SceneLayoutResult layout)
+{
+    Console.WriteLine();
+    Console.WriteLine(
+        $"Columnas: Contexto {layout.LeftColumn.Width} px ({layout.EffectiveTemplates["Contexto"]}) · " +
+        $"Centro {layout.CenterColumn.Width} px · Trabajo {layout.RightColumn.Width} px ({layout.EffectiveTemplates["Trabajo"]})");
+    foreach (var note in layout.Notes)
+    {
+        Console.WriteLine($"  · {note}");
+    }
+}
+
+static int Mins(string[] args)
+{
+    if (Has(args, "--clear"))
+    {
+        MinSizeStore.Save(new MinSizeCatalog());
+        Console.WriteLine("Mínimos olvidados.");
+        return 0;
+    }
+
+    var catalog = MinSizeStore.Load();
+    Console.WriteLine(MinSizeStore.FilePath);
+    foreach (var (key, size) in catalog.Entries.OrderBy(e => e.Key, StringComparer.OrdinalIgnoreCase))
+    {
+        string width = size.Width > 0 ? size.Width.ToString(CultureInfo.InvariantCulture) : "-";
+        string height = size.Height > 0 ? size.Height.ToString(CultureInfo.InvariantCulture) : "-";
+        Console.WriteLine($"  {key,-40} {width,5} x {height,-5} (px a 96 DPI)");
+    }
+
+    return 0;
 }
 
 static int Restore()

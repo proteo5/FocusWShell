@@ -128,10 +128,26 @@ Al volver la huella original, se aplica de nuevo su layout guardado.
 
 ## Tamaños mínimos
 
-Muchas apps imponen un tamaño mínimo y lo aplican aunque el gestor pida otro. En S2, Slack exigió 670 px de ancho y GitHub Desktop 962×661. Windows no ofrece una forma de consultar ese mínimo desde otro proceso, así que el gestor lo **aprende**:
+Muchas apps imponen un tamaño mínimo y lo aplican aunque el gestor pida otro. En S2 y S5, Slack exigió 670 px de ancho, GitHub Desktop 962×661 y Docker Desktop 942 px de ancho. Windows no ofrece una forma de consultar ese mínimo desde otro proceso, así que el gestor lo **aprende**.
 
-- Tras cada colocación se compara lo pedido con lo obtenido. Si la app quedó más grande, se guarda el tamaño obtenido como `MinSize` de esa app (por ejecutable o AUMID), en `settings.json`.
-- El motor de layout respeta estos invariantes adicionales:
-  1. **El Centro nunca es invadido.** Si una ventana de panel no cabe, se ancla al borde exterior del monitor (izquierda para un panel izquierdo, derecha para uno derecho) y el exceso queda fuera de pantalla, no sobre el Centro.
-  2. **Un panel en tiles cuyas ventanas no caben pasa a pila** de forma automática y temporal, y lo indica en su microbarra. No cambia el template guardado.
-  3. Si el Centro tiene su propio mínimo y no cabe, se reduce primero el panel de Contexto y luego el de Trabajo, nunca por debajo del mínimo de su ventana visible.
+### Aprendizaje (`MinSizeCatalog`)
+
+- Tras cada colocación se compara lo pedido con lo obtenido. Si una dimensión quedó más de 1 px por encima, la medida obtenida se guarda como mínimo de esa app. Si ya había un mínimo, se queda el mayor de los dos.
+- La clave es el AUMID de la app si lo tiene y, si no, el nombre del ejecutable.
+- Se guarda en píxeles lógicos (96 DPI), redondeando hacia arriba, para poder usarlo en monitores con otra escala.
+- Si en una colocación se aprende algo nuevo, se recalcula el layout y se vuelve a colocar en el mismo momento. Así la primera vez puede haber un instante de desborde, pero a partir de la siguiente el layout ya sale bien a la primera.
+
+### Reglas del motor (`SceneLayoutEngine`)
+
+En este orden:
+
+1. **Template efectivo.** Un panel en tiles cuyas ventanas no caben en altura (suma de mínimos + separaciones) se muestra como pila. Es temporal y se explica; no cambia el template guardado. En modo pila sólo cuenta el mínimo de la ventana visible.
+2. **Centro con mínimo.** Si la ventana del Centro no cabe, el Centro crece primero a costa de Contexto y luego de Trabajo. Ningún panel baja del mínimo de su ventana más ancha.
+3. **Paneles con mínimo.** Un panel que no cabe crece a costa del Centro, pero el Centro no baja de su **piso**: el mayor entre el mínimo de su ventana y la mitad del ancho de trabajo (`MinCenterFraction`, 0,5 por defecto, o el ancho pedido si es menor).
+4. **Desborde hacia fuera.** Si aun así una ventana de panel no cabe, se ancla al borde exterior del monitor y el exceso queda fuera de pantalla. **Nunca encima del Centro.**
+5. **Filas.** Dentro de un panel en tiles, cada fila recibe al menos su mínimo y el resto de la altura se reparte por igual.
+6. Si la ventana del Centro sigue sin caber después del paso 2, se centra sobre su columna. Es el único caso en que una ventana invade un panel, y nunca al revés.
+
+Cada ajuste genera una nota en lenguaje natural, por ejemplo: "Contexto se amplió 54 px (el Centro queda en 1830 px) porque Slack necesita 670 px de ancho". Esa nota alimentará la microbarra y cumple el principio de que toda acción automática se explique.
+
+**Limitación conocida:** con varios monitores, "fuera de pantalla" puede caer en el monitor vecino. Antes de usar el desborde hacia fuera con dos monitores hay que comprobar si el borde exterior limita con otro monitor y, en ese caso, preferir la pila o recortar al borde.

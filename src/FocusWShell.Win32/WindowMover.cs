@@ -146,6 +146,24 @@ public static class WindowMover
         return new PlacementResult(visibleTarget, actual, margins, MaxAttempts, null);
     }
 
+    /// <summary>Minimiza sin activar (ventanas ocultas de una pila, ADR 0006).</summary>
+    public static unsafe string? Minimize(nint handle)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (!PInvoke.IsWindow(hwnd))
+        {
+            return "la ventana ya no existe";
+        }
+
+        if (PInvoke.IsHungAppWindow(hwnd))
+        {
+            return "la aplicación no responde";
+        }
+
+        PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOWMINNOACTIVE);
+        return null;
+    }
+
     private static unsafe (PixelRect Bounds, PixelRect Visible) ReadRects(HWND hwnd)
     {
         PInvoke.GetWindowRect(hwnd, out var r);

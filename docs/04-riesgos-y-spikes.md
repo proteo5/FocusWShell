@@ -95,3 +95,14 @@ Cada spike deja una nota breve en esta sección: fecha, configuración de monito
   - `SetWindowPlacement` con `SW_SHOWMAXIMIZED` activa la ventana: no hay variante sin activación. Restaurar una ventana maximizada puede cambiar el foco; se acepta para la restauración de emergencia.
   - Si una ventana sigue viva pero no se puede restaurar (por ejemplo, la app no responde), su entrada se conserva en el diario para reintentar.
 - **Decisión:** S5 aprobado. El ADR 0005 pasa a **Aceptada**.
+
+### Tamaños mínimos (2026-11-09, sólo ultrawide)
+
+Implementa la decisión que salió de S2. Ver [02 — Modelo de dominio](02-modelo-de-dominio.md#tamaños-mínimos).
+
+- **Escena de S2 repetida** (`--gap 8`), empezando con el catálogo vacío:
+  - **1ª colocación:** se aprendieron Slack (670 px de ancho) y GitHub Desktop (962×661). El layout se recalculó en la misma ejecución: Contexto pasó a 670 px, Trabajo a 962 px y el Centro a 1792 px (52 %). **6/6 exactas y Centro protegido.**
+  - **2ª colocación:** salió bien a la primera, sin nada nuevo que aprender. Trabajo sigue en tiles: GitHub Desktop recibe sus 661 px de alto y las otras dos filas se reparten el resto (357/358 px).
+- **Desborde hacia fuera:** Docker Desktop (942 px) en Contexto. El Centro sólo podía ceder hasta su piso (1720 px, 50 %), así que Contexto quedó en 780 px y Docker se ancló a la izquierda con 162 px fuera de pantalla. **Exacto y Centro protegido.**
+- **Restauración:** 6/6 y 4/4 exactas.
+- **Pendiente:** con el segundo monitor conectado, el desborde hacia fuera podría caer en el monitor vecino (ver la limitación en 02).
