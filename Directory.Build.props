@@ -8,8 +8,5 @@
     <Deterministic>true</Deterministic>
   </PropertyGroup>
 
-  <!-- Ejecutables: PerMonitorV2 + asInvoker. Ver docs/adr/0004. -->
-  <PropertyGroup Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">
-    <ApplicationManifest>$(MSBuildThisFileDirectory)build\app.manifest</ApplicationManifest>
-  </PropertyGroup>
+  <!-- El manifiesto compartido se asigna en Directory.Build.targets: aquí OutputType aún no existe. -->
 </Project>

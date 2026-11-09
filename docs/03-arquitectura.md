@@ -39,7 +39,7 @@ tools/
   FocusWShell.TestWindows/ Ventanas "maniquí" en estado controlado (normal, maximizada, minimizada).
 ```
 
-Los ejecutables comparten `build/app.manifest` (PerMonitorV2, `asInvoker`) desde `Directory.Build.props`. Los proyectos Windows apuntan a `net10.0-windows10.0.19041.0` (Windows 10 2004 o posterior).
+Los ejecutables comparten `build/app.manifest` (PerMonitorV2, `asInvoker`) desde `Directory.Build.targets`. Va en `.targets` y no en `.props` porque necesita `OutputType`, que cada proyecto define después de importar el `.props`. Hasta el 2026-11-09 estuvo en el `.props` y no se aplicaba; con un solo monitor al 100 % no se notaba. `TestWindows` se excluye con `UseSharedManifest=false` porque WinForms declara el DPI por código. Los proyectos Windows apuntan a `net10.0-windows10.0.19041.0` (Windows 10 2004 o posterior).
 
 La regla de dependencias es estricta: `Core` no referencia a `Win32` ni a `App`. Ver [ADR 0004](adr/0004-stack-dotnet-wpf-cswin32.md).
 

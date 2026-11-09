@@ -7,7 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <!-- WinForms declara el DPI por código; el manifiesto compartido entraría en conflicto. -->
-    <ApplicationManifest></ApplicationManifest>
+    <UseSharedManifest>false</UseSharedManifest>
   </PropertyGroup>
 
 </Project>

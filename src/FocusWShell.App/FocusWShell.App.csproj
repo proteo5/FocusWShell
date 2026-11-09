@@ -8,6 +8,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>FocusWShell</AssemblyName>
     <RootNamespace>FocusWShell.App</RootNamespace>
+    <!-- WPF fija el DPI con el manifiesto compartido; WinForms sólo aporta el NotifyIcon. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
