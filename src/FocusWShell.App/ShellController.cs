@@ -156,7 +156,7 @@ public sealed class ShellController : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Refresh();
         var aux = OrderedAux();
-        int? AuxIndex(string? display) => display is null ? null : aux.FindIndex(d => d.DeviceName == display) is int i and >= 0 ? i + 1 : null;
+        int? AuxIndex(string? display) => display is null ? null : aux.FindIndex(d => d.Key == display) is int i and >= 0 ? i + 1 : null;
 
         SavedScene scene;
         lock (_gate)
@@ -216,7 +216,7 @@ public sealed class ShellController : IDisposable
 
             if (index.Value <= aux.Count)
             {
-                return aux[index.Value - 1].DeviceName;
+                return aux[index.Value - 1].Key;
             }
 
             notes.Add($"El monitor auxiliar {index} no está conectado: sus paneles van al principal.");
@@ -322,12 +322,12 @@ public sealed class ShellController : IDisposable
         }
     }
 
-    private ControllerResult RunLocked(IReadOnlyList<Command> commands)
+    private ControllerResult RunLocked(IReadOnlyList<Command> commands, bool forceLayout = false)
     {
         // Lo que el gestor mueva aquí no es del usuario: el observador calla hasta que haya
         // expectativas nuevas (ADR 0007).
         using var own = _watcher?.OwnChange();
-        var result = RunEffectsLocked(commands);
+        var result = RunEffectsLocked(commands, forceLayout);
         SyncExpectations(result.Applied);
         if (result.Applied is { Error: null } applied)
         {
@@ -378,7 +378,7 @@ public sealed class ShellController : IDisposable
         }
     }
 
-    private ControllerResult RunEffectsLocked(IReadOnlyList<Command> commands)
+    private ControllerResult RunEffectsLocked(IReadOnlyList<Command> commands, bool forceLayout)
     {
         var rejections = new List<string>();
         var effects = new List<Effect>();
@@ -417,7 +417,7 @@ public sealed class ShellController : IDisposable
         }
 
         SceneApplyReport? applied = null;
-        if (effects.Any(e => e is ApplyLayout) && _workspace.Windows.Count > 0)
+        if ((forceLayout || effects.Any(e => e is ApplyLayout)) && _workspace.Windows.Count > 0)
         {
             applied = ApplyLayoutLocked();
         }
@@ -430,16 +430,111 @@ public sealed class ShellController : IDisposable
         return new ControllerResult(rejections, restores, applied);
     }
 
+    /// <summary>
+    /// Compara los monitores que conoce el modelo con los conectados (S6): los que faltan dejan sus
+    /// ventanas en el principal; los que vuelven las recuperan. Devuelve si cambió algo.
+    /// </summary>
+    private bool ReconcileDisplaysLocked(IReadOnlyList<DisplayInfo> displays)
+    {
+        var principal = DisplayTopology.Principal(displays);
+        foreach (var d in displays)
+        {
+            _displayNames[d.Key] = d.FriendlyName ?? d.DeviceName;
+        }
+
+        var connected = displays.Where(d => d != principal).Select(d => d.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        bool changed = false;
+        foreach (var known in _workspace.KnownDisplays)
+        {
+            bool present = connected.Contains(known);
+            bool wasMissing = _workspace.IsDisplayMissing(known);
+            Command command = present ? new DisplayAdded(known) : new DisplayRemoved(known);
+            changed |= _workspace.Execute(command).Effects.Count > 0;
+            if (present && wasMissing)
+            {
+                _displayEvents.Add($"Volvió {NameOf(known)}: sus ventanas regresan a él.");
+            }
+            else if (!present && !wasMissing)
+            {
+                _displayEvents.Add($"Se desconectó {NameOf(known)}: sus ventanas pasan a los paneles del principal hasta que vuelva.");
+            }
+        }
+
+        return changed;
+    }
+
+    private readonly Dictionary<string, string> _displayNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _displayEvents = [];
+    private IDisposable? _displayChange;
+
+    private string NameOf(string key) => _displayNames.GetValueOrDefault(key, "un monitor");
+
+    public bool IsDisplayMissing(string? display)
+    {
+        lock (_gate)
+        {
+            return _workspace.IsDisplayMissing(display);
+        }
+    }
+
+    /// <summary>
+    /// Windows avisó de un cambio de monitores (S6). Mientras dure, el observador calla: Windows mueve
+    /// ventanas por su cuenta y no deben tomarse como movimientos del usuario.
+    /// </summary>
+    public void BeginDisplayChange()
+    {
+        lock (_gate)
+        {
+            _displayChange ??= _watcher?.OwnChange() ?? new NoScope();
+        }
+    }
+
+    /// <summary>
+    /// La configuración de monitores se estabilizó: se reconcilian los monitores, se reaplica el layout
+    /// y vuelve la escucha. Devuelve qué cambió (vacío si nada que contar).
+    /// </summary>
+    public (IReadOnlyList<string> Events, ControllerResult? Result) EndDisplayChange()
+    {
+        Refresh();
+        lock (_gate)
+        {
+            try
+            {
+                _displayEvents.Clear();
+                ControllerResult? result = null;
+                if (_workspace.Windows.Count > 0)
+                {
+                    // ApplyLayoutLocked reconcilia los monitores antes de calcular.
+                    result = RunLocked([], forceLayout: true);
+                }
+                else
+                {
+                    ReconcileDisplaysLocked(DisplayEnumerator.Enumerate());
+                }
+
+                return ([.. _displayEvents], result);
+            }
+            finally
+            {
+                _displayChange?.Dispose();
+                _displayChange = null;
+            }
+        }
+    }
+
+    private sealed class NoScope : IDisposable
+    {
+        public void Dispose()
+        {
+        }
+    }
+
     private SceneApplyReport ApplyLayoutLocked()
     {
         var displays = DisplayEnumerator.Enumerate();
         var principal = DisplayTopology.Principal(displays) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
 
-        // Un auxiliar que ya no está: sus ventanas pasan a los paneles del principal (ADR 0008).
-        foreach (var gone in _workspace.Composition.Aux.Select(a => a.Display).Where(d => displays.All(x => x.DeviceName != d)).ToList())
-        {
-            _workspace.Execute(new DisplayRemoved(gone));
-        }
+        ReconcileDisplaysLocked(displays);
 
         var c = _workspace.Composition;
         List<WindowSnapshot> Map(IEnumerable<nint> handles) =>
@@ -453,7 +548,7 @@ public sealed class ShellController : IDisposable
             Parked = Map(c.Parked),
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
-                    displays.First(d => d.DeviceName == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))
+                    displays.First(d => d.Key == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))
                 .ToList(),
         };
         var options = new SceneOptions
@@ -463,7 +558,7 @@ public sealed class ShellController : IDisposable
             PanelTopInset = StripHeight,
         };
         _lastPrincipalDpi = principal.Dpi;
-        _lastAuxDpi = assignment.Aux.ToDictionary(a => a.Display.DeviceName, a => a.Display.Dpi);
+        _lastAuxDpi = assignment.Aux.ToDictionary(a => a.Display.Key, a => a.Display.Dpi);
         var applier = new SceneApplier(principal, assignment, options, MinSizes);
         return applier.Apply(Journal);
     }

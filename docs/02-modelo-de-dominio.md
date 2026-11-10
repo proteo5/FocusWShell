@@ -63,7 +63,7 @@ Ver [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md).
 - El **monitor principal** (por defecto, el principal de Windows) es el único que tiene `CenterRegion`. Aloja Contexto | Centro | Trabajo.
 - Un **monitor auxiliar** (cualquier otro, incluidas las tablets que extienden el escritorio, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)) sólo tiene `PanelRegion`. Cada panel auxiliar tiene un hogar (`Work` o `Context`).
 - `Promote` siempre lleva la ventana al Centro del principal. Al volver, regresa al panel del que salió, aunque esté en un auxiliar.
-- Si un auxiliar desaparece, sus ventanas pasan a los paneles de su mismo hogar en el principal (en pila si no caben), nunca al Centro.
+- Si un auxiliar desaparece, sus ventanas pasan a los paneles de su mismo hogar en el principal (en pila si no caben), nunca al Centro. Siguen siendo de ese monitor: cuando vuelve (`DisplayAdded`), regresan a él con sus templates. Los monitores se reconocen por su ruta de dispositivo, estable entre reconexiones (S6).
 
 ### Region, PanelRegion y PanelTemplate
 

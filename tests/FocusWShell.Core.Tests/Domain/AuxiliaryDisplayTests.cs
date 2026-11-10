@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Domain;
@@ -108,6 +108,61 @@ public class AuxiliaryDisplayTests
         Assert.Empty(ws.Composition.Aux);
         Assert.Equal(Edge, ws.Composition.Center);
         Assert.Equal([Grafana, Logs], ws.Composition.Work);
+    }
+
+    [Fact]
+    public void ReconnectedDisplayGetsItsWindowsAndTemplatesBack()
+    {
+        // S6: desconectar y reconectar no pierde nada.
+        var ws = Sample();
+        ws.Execute(new SetTemplate(Aux, Home.Work, PanelTemplate.Fill));
+
+        ws.Execute(new DisplayRemoved(Aux));
+        Assert.Equal([Edge, Grafana, Logs], ws.Composition.Work);
+        Assert.Equal(Aux, ws.Find(Grafana)!.Display);
+        Assert.True(ws.IsDisplayMissing(Aux));
+
+        var outcome = ws.Execute(new DisplayAdded(Aux));
+
+        Assert.Contains(outcome.Effects, e => e is ApplyLayout);
+        Assert.Equal([Edge], ws.Composition.Work);
+        var aux = ws.Composition.Aux.Single();
+        Assert.Equal([Grafana, Logs], aux.Work);
+        Assert.Equal(PanelTemplate.Fill, aux.WorkTemplate);
+    }
+
+    [Fact]
+    public void RemovingTwiceOrAddingAKnownDisplayDoesNothing()
+    {
+        var ws = Sample();
+        ws.Execute(new DisplayRemoved(Aux));
+
+        Assert.Empty(ws.Execute(new DisplayRemoved(Aux)).Effects);
+        ws.Execute(new DisplayAdded(Aux));
+        Assert.Empty(ws.Execute(new DisplayAdded(Aux)).Effects);
+    }
+
+    [Fact]
+    public void WindowSentToAMissingDisplayWaitsOnThePrincipal()
+    {
+        var ws = Sample();
+        ws.Execute(new DisplayRemoved(Aux));
+
+        ws.Execute(new SendToDisplay(Slack, Aux));
+        Assert.Equal([Slack], ws.Composition.Context);
+
+        ws.Execute(new DisplayAdded(Aux));
+        Assert.Empty(ws.Composition.Context);
+        Assert.Equal([Slack], ws.Composition.Aux.Single().Context);
+    }
+
+    [Fact]
+    public void MaximizingAWindowWhoseDisplayIsMissingDetachesItInsteadOfFill()
+    {
+        var ws = Sample();
+        ws.Execute(new DisplayRemoved(Aux));
+
+        Assert.Equal([new Detach(Grafana)], ws.Interpret(Grafana, ExternalChange.Maximized));
     }
 
     [Fact]

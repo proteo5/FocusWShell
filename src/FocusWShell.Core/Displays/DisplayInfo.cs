@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Displays;
 
@@ -15,4 +15,16 @@ public sealed record DisplayInfo(
     int Dpi)
 {
     public double Scale => Dpi / 96.0;
+
+    /// <summary>
+    /// Ruta del dispositivo del monitor (<c>monitorDevicePath</c> de <c>QueryDisplayConfig</c>): estable
+    /// entre reconexiones, a diferencia de <see cref="DeviceName"/> y de <see cref="Handle"/>.
+    /// </summary>
+    public string? StableId { get; init; }
+
+    /// <summary>Nombre del monitor (p. ej. "DELL U3419W"), para mostrarlo.</summary>
+    public string? FriendlyName { get; init; }
+
+    /// <summary>Clave con la que el modelo y las escenas recuerdan este monitor.</summary>
+    public string Key => StableId ?? DeviceName;
 }

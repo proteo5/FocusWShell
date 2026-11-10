@@ -83,15 +83,15 @@ public partial class MainWindow : Window
         var display = ShellController.TargetDisplay();
         var aux = ShellController.AuxiliaryDisplays();
         HeaderText.Text =
-            $"Principal {display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
-            string.Concat(aux.Select(a => $"   ·   Auxiliar {a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
+            $"Principal {display.FriendlyName ?? display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
+            string.Concat(aux.Select(a => $"   ·   Auxiliar {a.FriendlyName ?? a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
             "Atajos Ctrl+Alt+Mayús: ↑ al Centro · ← anterior · ↓ Centro al panel · P pantalla encendida · Retroceso restaurar todas";
 
         DisplayOptions.Clear();
         DisplayOptions.Add(new DisplayOption(DisplayOption.PrincipalKey, $"Principal ({display.WorkArea.Width}×{display.WorkArea.Height})"));
         foreach (var a in aux)
         {
-            DisplayOptions.Add(new DisplayOption(a.DeviceName, $"{a.DeviceName.TrimStart('\\', '.')} ({a.WorkArea.Width}×{a.WorkArea.Height})"));
+            DisplayOptions.Add(new DisplayOption(a.Key, $"{a.FriendlyName ?? a.DeviceName.TrimStart('\\', '.')} ({a.WorkArea.Width}×{a.WorkArea.Height})"));
         }
 
         BuildTemplates(aux);
@@ -111,7 +111,7 @@ public partial class MainWindow : Window
             var role = _pending.TryGetValue(w.Handle, out var p) ? p : m is null ? SceneRole.None : RoleOf(m);
             var row = new WindowRow(w, role)
             {
-                State = StateOf(m),
+                State = StateOf(m) + (m is not null && _controller.IsDisplayMissing(m.Display) ? " (monitor desconectado)" : ""),
                 Display = _pendingDisplay.TryGetValue(w.Handle, out var pd) ? pd : DisplayOption.FromModel(m?.Display),
             };
             row.PropertyChanged += Row_PropertyChanged;
@@ -183,9 +183,9 @@ public partial class MainWindow : Window
         Add(null, "Principal · Trabajo", Home.Work, allowFill: false);
         foreach (var a in aux)
         {
-            string name = a.DeviceName.TrimStart('\\', '.');
-            Add(a.DeviceName, $"{name} · Contexto", Home.Context, allowFill: true);
-            Add(a.DeviceName, $"{name} · Trabajo", Home.Work, allowFill: true);
+            string name = a.FriendlyName ?? a.DeviceName.TrimStart('\\', '.');
+            Add(a.Key, $"{name} · Contexto", Home.Context, allowFill: true);
+            Add(a.Key, $"{name} · Trabajo", Home.Work, allowFill: true);
         }
 
         _buildingTemplates = false;
@@ -502,11 +502,12 @@ public partial class MainWindow : Window
         sb.AppendLine(
             CultureInfo.CurrentCulture,
             $"Principal: Contexto {layout.LeftColumn.Width} px · Centro {layout.CenterColumn.Width} px · Trabajo {layout.RightColumn.Width} px");
+        var names = FocusWShell.Win32.DisplayEnumerator.Enumerate().ToDictionary(d => d.Key, d => d.FriendlyName ?? d.DeviceName);
         foreach (var aux in report.Layout.Aux)
         {
             sb.AppendLine(
                 CultureInfo.CurrentCulture,
-                $"{aux.Display}: {string.Join(" · ", aux.Columns.Select(c => $"{c.Key} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})"))}");
+                $"{names.GetValueOrDefault(aux.Display, aux.Display)}: {string.Join(" · ", aux.Columns.Select(c => $"{c.Key} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})"))}");
         }
 
         foreach (var note in report.Layout.Notes)

@@ -164,6 +164,7 @@ Todos los callbacks filtran `idObject == OBJID_WINDOW` e `idChild == CHILDID_SEL
 - Identidad estable: `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` (`DISPLAYCONFIG_TARGET_DEVICE_NAME.monitorDevicePath`). `HMONITOR` y `\\.\DISPLAYn` cambian entre reconexiones y no sirven como clave.
 - Señales de cambio: `WM_DISPLAYCHANGE`, `WM_SETTINGCHANGE` (área de trabajo), `WM_DPICHANGED` en la ventana oculta del gestor, más reanudación de suspensión (`WM_POWERBROADCAST`).
 - Tras un cambio se espera a que la configuración se estabilice (unos 1,5 s sin más cambios) antes de recalcular. Las reconexiones suelen generar varios eventos seguidos.
+- Implementado en `DisplayChangeListener` (una ventana oculta de nivel superior, porque las ventanas sólo de mensajes no reciben estos avisos) y en `ShellController.BeginDisplayChange` / `EndDisplayChange`. Desde el primer aviso hasta reaplicar el layout, el observador de S4 calla, porque Windows mueve ventanas por su cuenta durante el cambio.
 - Las áreas de las regiones se calculan sobre `rcWork` (sin barra de tareas). La pantalla completa usa `rcMonitor`.
 
 ## Identidad de ventanas

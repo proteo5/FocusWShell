@@ -19,6 +19,7 @@ public partial class App : Application
     private GlobalHotkeys? _hotkeys;
     private MainWindow? _main;
     private StripManager? _strips;
+    private DisplayChangeListener? _displays;
     private readonly DisplayKeepAwake _keepAwake = new();
     private AppSettings _settings = new();
 
@@ -65,6 +66,31 @@ public partial class App : Application
         }));
         _controller.LayoutChanged += () => Dispatcher.BeginInvoke(() => _strips?.Refresh());
         _controller.StartWatching();
+
+        // S6: monitores que se conectan o desconectan (también tablets por wifi).
+        _displays = new DisplayChangeListener(
+            _controller.BeginDisplayChange,
+            () => Task.Run(() =>
+            {
+                var (events, result) = _controller.EndDisplayChange();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (events.Count > 0)
+                    {
+                        _tray?.Notify("Monitores", string.Join(" ", events));
+                    }
+
+                    if (_main?.IsVisible == true)
+                    {
+                        _main.Refresh();
+                        if (events.Count > 0)
+                        {
+                            _main.SetStatus(string.Join(Environment.NewLine, events) +
+                                (result is null ? "" : Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result)));
+                        }
+                    }
+                });
+            }));
         _settings = AppSettings.Load();
         _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
@@ -247,6 +273,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _displays?.Dispose();
         _strips?.CloseAll();
         _hotkeys?.Dispose();
         _controller.Dispose();

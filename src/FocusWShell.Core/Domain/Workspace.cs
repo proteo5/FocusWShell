@@ -83,8 +83,14 @@ public sealed record SendToDisplay(nint Handle, string? Display) : Command;
 /// <summary>Cambia el template de un panel. <c>Fill</c> sólo vale en monitores auxiliares.</summary>
 public sealed record SetTemplate(string? Display, Home Home, PanelTemplate Template) : Command;
 
-/// <summary>Evento externo: se desconectó un monitor auxiliar. Sus ventanas pasan al principal, nunca al Centro.</summary>
+/// <summary>
+/// Evento externo: se desconectó un monitor auxiliar. Mientras falte, sus ventanas se colocan en los
+/// paneles de su mismo hogar en el principal, nunca en el Centro, pero siguen siendo de ese monitor.
+/// </summary>
 public sealed record DisplayRemoved(string Display) : Command;
+
+/// <summary>Evento externo: volvió un monitor que faltaba. Sus ventanas vuelven a él, con sus templates.</summary>
+public sealed record DisplayAdded(string Display) : Command;
 
 /// <summary>Aparta la ventana (minimizada) sin quitarle su hogar. Aparece como estacionada en su panel (CA4).</summary>
 public sealed record Park(nint Handle) : Command;
@@ -157,6 +163,19 @@ public sealed class Workspace
     /// <summary>Ventanas que ocuparon el Centro, de la más reciente a la más antigua.</summary>
     private readonly List<nint> _centerHistory = [];
 
+    /// <summary>Monitores auxiliares desconectados: sus ventanas se colocan en el principal hasta que vuelvan.</summary>
+    private readonly HashSet<string> _missingDisplays = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool IsDisplayMissing(string? display) => display is not null && _missingDisplays.Contains(display);
+
+    /// <summary>Monitores auxiliares que el modelo conoce: los de sus ventanas y los que faltan.</summary>
+    public IReadOnlyCollection<string> KnownDisplays =>
+        _windows.Where(w => w.Display is not null).Select(w => w.Display!).Concat(_missingDisplays)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+    /// <summary>Monitor donde se coloca de verdad: el suyo o, si falta, el principal.</summary>
+    private string? Effective(ManagedWindow w) => IsDisplayMissing(w.Display) ? null : w.Display;
+
     /// <summary>Template de cada panel, por monitor (<c>null</c> = principal) y hogar. Por defecto, Tiles.</summary>
     private readonly Dictionary<(string? Display, Home Home), PanelTemplate> _templates = [];
 
@@ -182,7 +201,7 @@ public sealed class Workspace
         ContextTemplate = TemplateOf(null, Home.Context),
         WorkTemplate = TemplateOf(null, Home.Work),
         Aux = _windows
-            .Where(w => w.Display is not null && w.Placement == Placement.InPanel && !w.Detached)
+            .Where(w => Effective(w) is not null && w.Placement == Placement.InPanel && !w.Detached)
             .Select(w => w.Display!)
             .Distinct()
             .Select(d => new AuxComposition(
@@ -204,6 +223,7 @@ public sealed class Workspace
         SendToDisplay c => DoSendToDisplay(c),
         SetTemplate c => DoSetTemplate(c),
         DisplayRemoved c => DoDisplayRemoved(c.Display),
+        DisplayAdded c => DoDisplayAdded(c.Display),
         Park c => DoPark(c.Handle),
         Restore c => DoRestore(c.Handle),
         Detach c => DoDetach(c.Handle),
@@ -218,7 +238,7 @@ public sealed class Workspace
     };
 
     private List<nint> InPanel(string? display, Home home) =>
-        _windows.Where(w => w.Display == display && w.Home == home && w.Placement == Placement.InPanel && !w.Detached)
+        _windows.Where(w => Effective(w) == display && w.Home == home && w.Placement == Placement.InPanel && !w.Detached)
             .Select(w => w.Handle).ToList();
 
     private void Replace(ManagedWindow updated) =>
@@ -353,21 +373,19 @@ public sealed class Workspace
 
     private CommandOutcome DoDisplayRemoved(string display)
     {
-        var affected = _windows.Where(w => w.Display == display).ToList();
-        if (affected.Count == 0)
-        {
-            return CommandOutcome.Accept();
-        }
+        // Se recuerda aunque no tenga ventanas: si después se le envía alguna, debe ir al principal.
+        bool added = _missingDisplays.Add(display);
+        return added && _windows.Any(w => w.Display == display)
+            ? CommandOutcome.Accept(new ApplyLayout())
+            : CommandOutcome.Accept();
+    }
 
-        // Al final de los paneles de su mismo hogar en el principal. La del Centro, si venía de ahí,
-        // sigue en el Centro y volverá al principal.
-        foreach (var w in affected)
-        {
-            _windows.Remove(w);
-            _windows.Add(w with { Display = null });
-        }
-
-        return CommandOutcome.Accept(new ApplyLayout());
+    private CommandOutcome DoDisplayAdded(string display)
+    {
+        bool removed = _missingDisplays.Remove(display);
+        return removed && _windows.Any(w => w.Display == display)
+            ? CommandOutcome.Accept(new ApplyLayout())
+            : CommandOutcome.Accept();
     }
 
     private CommandOutcome DoPark(nint handle)
@@ -456,7 +474,7 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
-    private static bool SamePanel(ManagedWindow a, ManagedWindow b) => a.Display == b.Display && a.Home == b.Home;
+    private bool SamePanel(ManagedWindow a, ManagedWindow b) => Effective(a) == Effective(b) && a.Home == b.Home;
 
     /// <summary>
     /// Si el layout la tiene minimizada sin que esté estacionada: no es la primera de un panel en pila
@@ -471,7 +489,7 @@ public sealed class Workspace
         }
 
         var panel = _windows.Where(x => SamePanel(x, w) && x.Placement == Placement.InPanel && !x.Detached).ToList();
-        var template = TemplateOf(w.Display, w.Home);
+        var template = TemplateOf(Effective(w), w.Home);
         if (template is PanelTemplate.Stack or PanelTemplate.Fill)
         {
             return panel[0].Handle != handle;
@@ -479,9 +497,10 @@ public sealed class Workspace
 
         // Otro panel del mismo auxiliar en Fill la tapa.
         var other = w.Home == Home.Work ? Home.Context : Home.Work;
-        return w.Display is not null
-            && TemplateOf(w.Display, other) == PanelTemplate.Fill
-            && _windows.Any(x => x.Display == w.Display && x.Home == other && x.Placement == Placement.InPanel && !x.Detached);
+        var display = Effective(w);
+        return display is not null
+            && TemplateOf(display, other) == PanelTemplate.Fill
+            && _windows.Any(x => Effective(x) == display && x.Home == other && x.Placement == Placement.InPanel && !x.Detached);
     }
 
     /// <summary>
@@ -511,13 +530,13 @@ public sealed class Workspace
             ExternalChange.Shown => [],
 
             // Maximizar en un auxiliar es pedir Fill para su panel; en el principal, salir del layout.
-            ExternalChange.Maximized when w is { Display: not null, Placement: Placement.InPanel } =>
-                [new MakeActiveInPanel(handle), new SetTemplate(w.Display, w.Home, PanelTemplate.Fill)],
+            ExternalChange.Maximized when w.Placement == Placement.InPanel && Effective(w) is { } aux =>
+                [new MakeActiveInPanel(handle), new SetTemplate(aux, w.Home, PanelTemplate.Fill)],
             ExternalChange.Maximized => [new Detach(handle)],
 
             // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles.
-            ExternalChange.Unmaximized when w.Display is not null && TemplateOf(w.Display, w.Home) == PanelTemplate.Fill =>
-                [new SetTemplate(w.Display, w.Home, PanelTemplate.Tiles)],
+            ExternalChange.Unmaximized when Effective(w) is { } shown && TemplateOf(shown, w.Home) == PanelTemplate.Fill =>
+                [new SetTemplate(shown, w.Home, PanelTemplate.Tiles)],
             ExternalChange.Unmaximized => [new Detach(handle)],
 
             ExternalChange.MovedOrResized => [new Detach(handle)],
