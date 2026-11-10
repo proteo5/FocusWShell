@@ -165,7 +165,7 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 
 ## Eventos externos y cómo los interpreta el núcleo
 
-`Workspace.Interpret` traduce cada cambio externo detectado (S4, [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)) en comandos. Nunca genera `Promote` ni `SwapWithPrevious` (CA7, verificado en las pruebas). En la app ya está activo:
+`Workspace.Interpret` traduce cada cambio externo detectado (S4, [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)) en comandos. Nunca genera `Promote` ni `SwapWithPrevious` (CA7, verificado en las pruebas): llevar al foco lo deciden el controlador, cuando sabe que hubo un gesto del usuario, o el lugar donde se soltó una ventana. En la app ya está activo:
 
 | Cambio detectado | Comandos |
 | --- | --- |
@@ -175,9 +175,22 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 | La maximizaste en un auxiliar | `MakeActiveInPanel` + `SetTemplate(…, Fill)` |
 | La maximizaste en el principal | `Detach` (fuera de layout) |
 | La des-maximizaste estando su panel en `Fill` | `SetTemplate(…, Tiles)` |
-| La arrastraste o redimensionaste | `Detach`; los demás de su panel ocupan su sitio |
+| La des-maximizaste en el principal | `SnapBack`: vuelve a su sitio |
+| La arrastraste o redimensionaste | `SnapBack`: vuelve a su sitio. El controlador lo cambia según dónde la soltaste (abajo) |
 
-Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), pero el gestor no la mueve hasta que se **reencaje** (`Reattach`), se promueva o se estacione.
+Al soltar una ventana arrastrada, el controlador mira dónde quedó su centro según el último layout:
+
+| La soltaste sobre… | Comandos |
+| --- | --- |
+| La columna del foco | `Promote` |
+| La columna o el monitor de otro panel | `SendTo(panel)`; si estaba en el foco, antes `ReturnToPanel` |
+| Su propio panel o ningún panel | `SnapBack` |
+
+Redimensionar por el borde que comparte con la columna vecina moverá el separador cuando lleguen las proporciones ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)); por ahora también vuelve a su sitio. Las ventanas libres no se tocan.
+
+Los gestos de Windows que eligen una ventana de un panel (Alt+Tab, vista de tareas, barra de tareas y, si se activa, el clic) la llevan al foco con `Promote` ([ADR 0003, enmienda](adr/0003-rol-independiente-del-foco.md#enmienda-2026-11-09-los-gestos-de-cambio-de-ventana-cuentan-como-comando)).
+
+Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), pero el gestor no la mueve hasta que se **reencaje** (`Reattach`), se des-maximice, se promueva o se estacione. Sólo maximizar en el principal la deja fuera de layout.
 
 | Evento | Interpretación |
 | --- | --- |
@@ -185,8 +198,9 @@ Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), 
 | El usuario la minimiza con el botón de Windows | Se interpreta como `Park`. |
 | El usuario la restaura desde la barra de tareas | Si estaba `Parked`, se interpreta como `Restore`. |
 | El usuario la maximiza con el botón de Windows | Se respeta: la ventana pasa a estar "fuera de layout" hasta que la desmaximice o el usuario aplique la escena otra vez. El gestor no pelea con el usuario. |
-| El usuario la arrastra o redimensiona | Igual que maximizar: queda fuera de layout. Un comando "reencajar" la devuelve a su rectángulo. |
-| Recibe foco o notificación | Nada. Como mucho, se actualiza un indicador en la microbarra. |
+| El usuario la arrastra o redimensiona | Vuelve a su sitio al soltarla, salvo que la suelte sobre el foco o sobre otro panel (tabla de arriba). |
+| El usuario la elige con Alt+Tab, la vista de tareas o la barra de tareas | Pasa al foco (cada gesto se puede desactivar). |
+| Recibe foco o notificación sin un gesto del usuario | Nada. Como mucho, se actualiza un indicador en la microbarra. |
 | Aparece una ventana nueva elegible | En el MVP no se adopta sola; se ofrece en la lista "sin gestionar". |
 
 ## Cambios de monitores

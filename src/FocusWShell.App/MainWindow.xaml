@@ -16,6 +16,14 @@
                 <Button x:Name="SaveSceneButton" Content="Guardar escena actual" Padding="10,2" Margin="6,0,0,0" Click="SaveScene_Click"
                         ToolTip="Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza." />
             </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Llevar al foco la ventana de un panel que elijas con:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <CheckBox x:Name="GestureAltTab" Content="Alt+Tab" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureTaskView" Content="Vista de tareas (Win+Tab)" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureTaskbar" Content="Barra de tareas" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureClick" Content="Clic en la ventana" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed"
+                          ToolTip="Desactivado por defecto: con él, cada clic en un panel movería ventanas bajo el cursor." />
+            </StackPanel>
             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="DimGray"
                        Text="Elige el panel de cada ventana (o déjala libre) y pulsa Aplicar. El foco está siempre en el monitor principal. En la sección Paneles puedes renombrarlos, moverlos a otro monitor, cambiar su presentación, borrarlos o crear nuevos; borrar un panel deja sus ventanas libres, donde estén." />
         </StackPanel>
@@ -32,7 +40,7 @@
             <Button x:Name="UnparkButton" DockPanel.Dock="Left" Content="Recuperar" Padding="12,4" Margin="0,0,8,0" Click="Unpark_Click"
                     ToolTip="Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pasa si la abres desde la barra de tareas." />
             <Button x:Name="ReattachButton" DockPanel.Dock="Left" Content="Reencajar" Padding="12,4" Margin="0,0,8,0" Click="Reattach_Click"
-                    ToolTip="Devuelve al layout una ventana que moviste o maximizaste tú" />
+                    ToolTip="Devuelve al layout una ventana que maximizaste tú" />
             <Button x:Name="ReleaseButton" DockPanel.Dock="Left" Content="Liberar" Padding="12,4" Margin="0,0,8,0" Click="Release_Click"
                     ToolTip="Devuelve la ventana seleccionada a su sitio original y deja de gestionarla" />
             <Button x:Name="ApplyButton" DockPanel.Dock="Right" Content="Aplicar" Padding="12,4" IsDefault="True" Click="Apply_Click" />

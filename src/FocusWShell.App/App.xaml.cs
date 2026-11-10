@@ -50,7 +50,8 @@ public partial class App : Application
 
         _controller.LoadPanels();
         _controller.LoadCatalog();
-        _main = new MainWindow(_controller);
+        _settings = AppSettings.Load();
+        _main = new MainWindow(_controller, _settings);
 
         // S4: lo que haga el usuario con las ventanas gestionadas se traduce en comandos.
         _controller.ExternalChangeHandled += handled => Dispatcher.BeginInvoke(() =>
@@ -71,6 +72,22 @@ public partial class App : Application
             }
         }));
         _controller.LayoutChanged += () => Dispatcher.BeginInvoke(() => _strips?.Refresh());
+        _controller.FocusGestureEnabled = g => g switch
+        {
+            SwitchGesture.AltTab => _settings.FocusOnAltTab,
+            SwitchGesture.TaskView => _settings.FocusOnTaskView,
+            SwitchGesture.Taskbar => _settings.FocusOnTaskbar,
+            SwitchGesture.Click => _settings.FocusOnClick,
+            _ => false,
+        };
+        _controller.FocusGestureHandled += (message, result) => Dispatcher.BeginInvoke(() =>
+        {
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(message + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result));
+            }
+        });
         _controller.StartWatching();
 
         // S6: monitores que se conectan o desconectan (también tablets por wifi).
@@ -97,7 +114,6 @@ public partial class App : Application
                     }
                 });
             }));
-        _settings = AppSettings.Load();
         _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
         RefreshTrayScenes();

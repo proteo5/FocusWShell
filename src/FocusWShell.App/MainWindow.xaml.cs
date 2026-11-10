@@ -24,16 +24,41 @@ public partial class MainWindow : Window
     /// <summary>Opciones de la columna Panel: libre, al foco y cada panel.</summary>
     public ObservableCollection<AssignmentOption> AssignmentOptions { get; } = [];
 
-    public MainWindow(ShellController controller)
+    private readonly AppSettings _settings;
+    private bool _loadingGestures;
+
+    public MainWindow(ShellController controller, AppSettings settings)
     {
         _controller = controller;
+        _settings = settings;
         InitializeComponent();
+        _loadingGestures = true;
+        GestureAltTab.IsChecked = settings.FocusOnAltTab;
+        GestureTaskView.IsChecked = settings.FocusOnTaskView;
+        GestureTaskbar.IsChecked = settings.FocusOnTaskbar;
+        GestureClick.IsChecked = settings.FocusOnClick;
+        _loadingGestures = false;
         DataContext = this;
         WindowList.ItemsSource = _rows;
         LoadScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(LoadScenes);
         _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => BuildCatalog(_controller.Panels()));
         Refresh();
+    }
+
+    /// <summary>Qué gestos de Windows llevan al foco (ADR 0003, enmienda). Se guarda al momento.</summary>
+    private void Gesture_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingGestures)
+        {
+            return;
+        }
+
+        _settings.FocusOnAltTab = GestureAltTab.IsChecked == true;
+        _settings.FocusOnTaskView = GestureTaskView.IsChecked == true;
+        _settings.FocusOnTaskbar = GestureTaskbar.IsChecked == true;
+        _settings.FocusOnClick = GestureClick.IsChecked == true;
+        _settings.Save();
     }
 
     /// <summary>Cerrar la ventana sólo la oculta: el gestor sigue en la bandeja.</summary>

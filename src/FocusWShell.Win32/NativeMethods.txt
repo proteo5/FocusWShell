@@ -105,3 +105,6 @@ QueryDisplayConfig
 DisplayConfigGetDeviceInfo
 DISPLAYCONFIG_TARGET_DEVICE_NAME
 DISPLAYCONFIG_SOURCE_DEVICE_NAME
+
+// Gestos de cambio de ventana
+GetAsyncKeyState

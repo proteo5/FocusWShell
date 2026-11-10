@@ -215,15 +215,39 @@ public class ParkAndExternalChangeTests
     }
 
     [Fact]
-    public void DragDetachesAndRepeatedDragsDoNothingMore()
+    public void DraggingAPanelWindowSnapsItBack()
     {
         var ws = Sample();
 
-        Run(ws, ws.Interpret(Slack, ExternalChange.MovedOrResized));
-        var again = ws.Interpret(Slack, ExternalChange.MovedOrResized).Select(ws.Execute).ToList();
+        var commands = ws.Interpret(Slack, ExternalChange.MovedOrResized);
+        var outcome = ws.Execute(Assert.Single(commands));
 
-        Assert.True(ws.Find(Slack)!.Detached);
-        Assert.All(again, o => Assert.Empty(o.Effects));
+        Assert.Equal(new SnapBack(Slack), commands[0]);
+        Assert.Contains(outcome.Effects, e => e is ApplyLayout); // el layout la devuelve a su sitio
+        Assert.False(ws.Find(Slack)!.Detached);
+        Assert.Equal([Slack], ws.Composition.Context);
+    }
+
+    [Fact]
+    public void UnmaximizingADetachedWindowBringsItBackToItsPanel()
+    {
+        var ws = Sample();
+        Run(ws, ws.Interpret(Explorer, ExternalChange.Maximized));
+        Assert.True(ws.Find(Explorer)!.Detached);
+
+        Run(ws, ws.Interpret(Explorer, ExternalChange.Unmaximized));
+
+        Assert.False(ws.Find(Explorer)!.Detached);
+        Assert.Equal([Explorer, GitHub, Edge], ws.Composition.Work);
+    }
+
+    [Fact]
+    public void SnapBackOfAParkedWindowDoesNothing()
+    {
+        var ws = Sample();
+        ws.Execute(new Park(GitHub));
+
+        Assert.Empty(ws.Execute(new SnapBack(GitHub)).Effects);
     }
 
     [Fact]

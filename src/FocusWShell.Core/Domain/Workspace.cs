@@ -131,6 +131,12 @@ public sealed record Detach(nint Handle) : Command;
 /// <summary>"Reencajar": devuelve al layout una ventana que estaba fuera.</summary>
 public sealed record Reattach(nint Handle) : Command;
 
+/// <summary>
+/// La ventana vuelve a su sitio en el layout (p. ej. tras arrastrarla o redimensionarla). Si estaba
+/// fuera de layout, vuelve a entrar.
+/// </summary>
+public sealed record SnapBack(nint Handle) : Command;
+
 /// <summary>La pone la primera de su panel: en una pila, la pestaña visible.</summary>
 public sealed record MakeActiveInPanel(nint Handle) : Command;
 
@@ -301,6 +307,7 @@ public sealed class Workspace
         Restore c => DoRestore(c.Handle),
         Detach c => DoDetach(c.Handle),
         Reattach c => DoReattach(c.Handle),
+        SnapBack c => DoSnapBack(c.Handle),
         MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
         ApplyScene c => DoApplyScene(c),
         ReplacePanels c => DoReplacePanels(c.Panels),
@@ -635,6 +642,23 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
+    private CommandOutcome DoSnapBack(nint handle)
+    {
+        var w = Find(handle);
+        if (w is null || w.Placement == Placement.Parked)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        if (w.Detached)
+        {
+            Replace(w with { Detached = false });
+        }
+
+        // Aunque el modelo no cambie, el layout se vuelve a aplicar: es lo que devuelve la ventana.
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
     private CommandOutcome DoMakeActiveInPanel(nint handle)
     {
         var w = Find(handle);
@@ -713,12 +737,15 @@ public sealed class Workspace
                 [new MakeActiveInPanel(handle), new SetPresentation(panel.Id, PanelTemplate.Fill)],
             ExternalChange.Maximized => [new Detach(handle)],
 
-            // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles.
+            // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles; en otro caso,
+            // la ventana vuelve a su sitio.
             ExternalChange.Unmaximized when onAux && panel.Template == PanelTemplate.Fill =>
                 [new SetPresentation(panel.Id, PanelTemplate.Tiles)],
-            ExternalChange.Unmaximized => [new Detach(handle)],
+            ExternalChange.Unmaximized => [new SnapBack(handle)],
 
-            ExternalChange.MovedOrResized => [new Detach(handle)],
+            // Arrastrarla o redimensionarla: al soltarla vuelve a su sitio. (Soltarla sobre otro panel
+            // o sobre el foco lo decide quien conoce la geometría: ver ShellController.)
+            ExternalChange.MovedOrResized => [new SnapBack(handle)],
             _ => [],
         };
     }

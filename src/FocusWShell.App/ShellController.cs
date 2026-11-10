@@ -47,7 +47,11 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Maximized, [MakeActiveInPanel, SetPresentation]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
         (ExternalChange.Unmaximized, [SetPresentation]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
-        (_, [Detach]) => $"{Label}: la moviste tú; queda fuera de layout hasta que la reencajes.",
+        (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
+        (_, [SnapBack]) => $"{Label}: la moviste; vuelve a su sitio.",
+        (_, [Promote]) => $"{Label}: la soltaste sobre el foco; pasa al foco.",
+        (_, [SendTo s]) => $"{Label}: la soltaste sobre otro panel; se queda en él.",
+        (_, [ReturnToPanel, SendTo]) => $"{Label}: la sacaste del foco a otro panel.",
         _ => $"{Label}: {Change}.",
     };
 }
@@ -98,9 +102,100 @@ public sealed class ShellController : IDisposable
         _watcher ??= WindowEventWatcher.Start(
             _expectations.IsWatched,
             observed => Task.Run(() => OnSettled(observed.Handle)));
+        _switches ??= FocusSwitchWatcher.Start((hwnd, gesture) => Task.Run(() => OnFocusSwitch(hwnd, gesture)));
     }
 
-    public void Dispose() => _watcher?.Dispose();
+    public void Dispose()
+    {
+        _switches?.Dispose();
+        _watcher?.Dispose();
+    }
+
+    private FocusSwitchWatcher? _switches;
+
+    /// <summary>Qué gestos de cambio de ventana llevan al foco (se leen de la configuración).</summary>
+    public Func<SwitchGesture, bool> FocusGestureEnabled { get; set; } = g => g is SwitchGesture.AltTab or SwitchGesture.TaskView or SwitchGesture.Taskbar;
+
+    /// <summary>Se dispara cuando un gesto de Windows llevó una ventana al foco.</summary>
+    public event Action<string, ControllerResult>? FocusGestureHandled;
+
+    /// <summary>
+    /// Una ventana llegó al primer plano por un gesto del usuario. Si el gesto está activado y la ventana
+    /// es de un panel, va al foco (ADR 0003, enmienda). Los cambios que no vienen de un gesto
+    /// (una app que se activa sola, un diálogo) nunca mueven nada (CA7).
+    /// </summary>
+    private void OnFocusSwitch(nint hwnd, SwitchGesture gesture)
+    {
+        if (gesture == SwitchGesture.Other || !FocusGestureEnabled(gesture))
+        {
+            return;
+        }
+
+        string message;
+        ControllerResult result;
+        lock (_gate)
+        {
+            if (_workspace.Find(hwnd) is not { Placement: Placement.InPanel or Placement.Parked, Detached: false } w)
+            {
+                return;
+            }
+
+            result = RunLocked([new Promote(hwnd)]);
+            message = gesture switch
+            {
+                SwitchGesture.AltTab => $"{w.Label}: elegida con Alt+Tab; pasa al foco.",
+                SwitchGesture.TaskView => $"{w.Label}: elegida en la vista de tareas; pasa al foco.",
+                SwitchGesture.Taskbar => $"{w.Label}: elegida en la barra de tareas; pasa al foco.",
+                _ => $"{w.Label}: clic; pasa al foco.",
+            };
+        }
+
+        FocusGestureHandled?.Invoke(message, result);
+    }
+
+    /// <summary>
+    /// Dónde se soltó una ventana arrastrada, según el último layout: en la columna del foco, en la de
+    /// otro panel o en ninguna.
+    /// </summary>
+    private (bool Focus, string? PanelId) DropTarget(ObservedWindow observed)
+    {
+        if (_lastReport is null || observed.Minimized)
+        {
+            return (false, null);
+        }
+
+        int x = observed.Visible.Left + (observed.Visible.Width / 2);
+        int y = observed.Visible.Top + (observed.Visible.Height / 2);
+        var principal = _lastReport.Layout.Principal;
+        var composition = _workspace.Composition;
+        if (principal.CenterColumn.Contains(x, y))
+        {
+            return (true, null);
+        }
+
+        if (principal.LeftColumn.Contains(x, y) && composition.Left is { } left)
+        {
+            return (false, left.Panel.Id);
+        }
+
+        if (principal.RightColumn.Contains(x, y) && composition.Right is { } right)
+        {
+            return (false, right.Panel.Id);
+        }
+
+        foreach (var aux in _lastReport.Layout.Aux)
+        {
+            foreach (var (panelId, column) in aux.Columns)
+            {
+                if (column.Contains(x, y))
+                {
+                    return (false, panelId);
+                }
+            }
+        }
+
+        return (false, null);
+    }
 
     /// <summary>
     /// Una ventana vigilada se calmó. Dentro del lock se vuelve a leer su estado: si entretanto el
@@ -119,6 +214,22 @@ public sealed class ShellController : IDisposable
 
             var label = _workspace.Find(handle)?.Label ?? "?";
             var commands = _workspace.Interpret(handle, change);
+
+            // Arrastrada y soltada: sobre el foco va al foco; sobre otro panel, a ese panel; si no, vuelve.
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && _workspace.Find(handle) is { } dragged)
+            {
+                var (focus, panelId) = DropTarget(WindowMover.Observe(handle));
+                if (focus && dragged.Placement != Placement.Center)
+                {
+                    commands = [new Promote(handle)];
+                }
+                else if (panelId is not null && panelId != _workspace.EffectivePanel(dragged).Id)
+                {
+                    commands = dragged.Placement == Placement.Center
+                        ? [new ReturnToPanel(handle), new SendTo(handle, panelId)]
+                        : [new SendTo(handle, panelId)];
+                }
+            }
             var result = commands.Count > 0 ? RunLocked(commands) : new ControllerResult([], [], null);
             handled = new ExternalChangeHandled(label, change, commands, result);
         }

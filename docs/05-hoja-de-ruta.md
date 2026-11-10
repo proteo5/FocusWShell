@@ -79,10 +79,7 @@ Objetivo: que el estado del escritorio se entienda de un vistazo. Sólo si la va
 
 - Sugerencias de asignación por app al aplicar una escena ("Outlook suele ir a Contexto, ¿aplicar?").
 - Reglas automáticas con modo de prueba, explicación de cada acción y deshacer.
-- **Propuesta: "Alt+Tab lleva al foco"**, opcional y desactivada por defecto.
-  - Si el usuario termina un Alt+Tab en una ventana de un panel, ésta pasa al foco. Se detecta con `EVENT_SYSTEM_SWITCHSTART/END`.
-  - Win+Tab sólo si se demuestra fiable.
-  - Un clic en la ventana o en la barra de tareas nunca mueve nada: no se puede distinguir de "sólo quiero escribir aquí un momento". Por defecto se mantiene el [ADR 0003](adr/0003-rol-independiente-del-foco.md) y la compatibilidad con Windows.
+- ~~Propuesta: "Alt+Tab lleva al foco"~~. **Adelantado a M1b** y ampliado: Alt+Tab, la vista de tareas y la barra de tareas llevan al foco (activados); el clic en la ventana, desactivado. Soltar una ventana arrastrada sobre el foco o sobre otro panel la lleva allí; si no, vuelve a su sitio. Ver [ADR 0003, enmienda](adr/0003-rol-independiente-del-foco.md#enmienda-2026-11-09-los-gestos-de-cambio-de-ventana-cuentan-como-comando).
 
 ## Más adelante (sin compromiso)
 

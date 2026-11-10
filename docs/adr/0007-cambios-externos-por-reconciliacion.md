@@ -1,4 +1,4 @@
-# ADR 0007 — Los cambios externos se detectan reconciliando el estado final, no atribuyendo eventos
+﻿# ADR 0007 — Los cambios externos se detectan reconciliando el estado final, no atribuyendo eventos
 
 - **Estado:** Aceptada (validada en S4)
 - **Fecha:** 2026-11-09
@@ -30,3 +30,4 @@ La idea original de [03 — Arquitectura](../03-arquitectura.md#eventos-que-se-e
 - Un cambio que el usuario deshace antes de 120 ms (mover y volver al mismo sitio) no se detecta. Es el comportamiento deseado.
 - Una app que se mueve sola (por ejemplo, al reconectar un monitor) se trata como cambio externo. Es correcto: el gestor no la dejó así.
 - Hay que vigilar sólo las ventanas gestionadas: el filtro por handle se hace en el callback, antes de guardar nada.
+- Qué hacer con un `MovedOrResized` depende de la geometría: el núcleo propone `SnapBack` y el controlador, que conoce el último layout, lo cambia por `Promote` o `SendTo` según dónde se soltó la ventana (ver [02 — Modelo de dominio](../02-modelo-de-dominio.md#eventos-externos-y-cómo-los-interpreta-el-núcleo)). Hasta el 2026-11-09 un arrastre dejaba la ventana fuera de layout (`Detach`).
