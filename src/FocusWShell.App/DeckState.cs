@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.App;
@@ -10,7 +10,11 @@ public sealed record DeckApp(string Name, string AppKey, nint? Handle, ListItemS
 
 /// <summary>Un panel en el deck, con sus apps.</summary>
 /// <param name="Where">Dónde está, para la UI ("principal, izquierda", "HP 24fw, derecha").</param>
-public sealed record DeckPanel(string Id, string Name, string Where, IReadOnlyList<DeckApp> Apps);
+public sealed record DeckPanel(string Id, string Name, string Where, IReadOnlyList<DeckApp> Apps)
+{
+    /// <summary>Monitor del panel (<c>null</c>: el principal).</summary>
+    public string? Display { get; init; }
+}
 
 /// <summary>
 /// "API de deck" (ADR 0013): el estado que muestra el deck, calculado en un solo sitio para que lo use la

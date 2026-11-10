@@ -18,7 +18,9 @@ public sealed record DeckActions(
     Action ToggleKeepAwake,
     Func<bool> KeepAwake,
     Action RestoreAll,
-    Action Hide);
+    Action Hide,
+    Action<DeckDock?> Dock,
+    Func<DeckDock?> CurrentDock);
 
 /// <summary>
 /// El deck (ADR 0013, fase 2): una superficie de control en una esquina del monitor principal. Muestra el
@@ -93,6 +95,16 @@ public sealed class DeckWindow : Window
         var close = SmallButton("✕", "Ocultar el deck", () => _actions.Hide());
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
+        var send = SmallButton("📌", "Mandar el deck a", () => { });
+        send.Margin = new Thickness(0, 0, 6, 0);
+        send.ContextMenu = SendMenu(state);
+        send.Click += (_, _) =>
+        {
+            send.ContextMenu.PlacementTarget = send;
+            send.ContextMenu.IsOpen = true;
+        };
+        DockPanel.SetDock(send, Dock.Right);
+        header.Children.Add(send);
         var focus = new StackPanel();
         focus.Children.Add(Label("FOCO"));
         focus.Children.Add(new TextBlock
@@ -173,7 +185,10 @@ public sealed class DeckWindow : Window
                 scenes.Children.Add(WideButton(name, true, () =>
                 {
                     _actions.ApplyScene(name);
-                    _actions.Hide();
+                    if (!Docked)
+                    {
+                        _actions.Hide();
+                    }
                 }));
             }
 
@@ -199,7 +214,10 @@ public sealed class DeckWindow : Window
             {
                 _restoreArmed = DateTime.MinValue;
                 _actions.RestoreAll();
-                _actions.Hide();
+                if (!Docked)
+                {
+                    _actions.Hide();
+                }
             }
             else
             {
@@ -270,7 +288,11 @@ public sealed class DeckWindow : Window
     {
         if (app.State == ListItemState.Closed)
         {
-            _actions.Hide();
+            if (!Docked)
+            {
+                _actions.Hide();
+            }
+
             await _actions.OpenApp(app.AppKey, app.PanelId!);
             return;
         }
@@ -333,10 +355,41 @@ public sealed class DeckWindow : Window
     private string DefaultPanel() =>
         _state!.Panels.FirstOrDefault(p => p.Where.StartsWith("principal, derecha", StringComparison.Ordinal))?.Id ?? _state.Panels[0].Id;
 
-    /// <summary>Ejecuta comandos; si <paramref name="hide"/>, el deck se oculta (se eligió una app).</summary>
+    /// <summary>
+    /// "Mandar el deck a…": la esquina del principal (se oculta solo) o un monitor, en una mitad o entero;
+    /// entero sólo si ese monitor no tiene paneles.
+    /// </summary>
+    private ContextMenu SendMenu(DeckState state)
+    {
+        var menu = new ContextMenu();
+        var current = _actions.CurrentDock();
+        void Item(string header, DeckDock? dock, bool enabled = true)
+        {
+            var item = new MenuItem { Header = header, IsEnabled = enabled, IsCheckable = true, IsChecked = Equals(current, dock) };
+            item.Click += (_, _) => _actions.Dock(dock);
+            menu.Items.Add(item);
+        }
+
+        Item("Esquina del monitor principal (se oculta solo)", null);
+        foreach (var (display, name) in state.Displays.Where(d => d.Display is not null))
+        {
+            bool hasPanels = state.Panels.Any(p => string.Equals(p.Display, display, StringComparison.OrdinalIgnoreCase));
+            menu.Items.Add(new Separator());
+            Item($"{name}: mitad izquierda", new DeckDock(display!, DeckZone.LeftHalf));
+            Item($"{name}: mitad derecha", new DeckDock(display!, DeckZone.RightHalf));
+            Item(hasPanels ? $"{name}: entero (tiene paneles)" : $"{name}: entero", new DeckDock(display!, DeckZone.Whole), !hasPanels);
+        }
+
+        return menu;
+    }
+
+    /// <summary>Fijado en un monitor, el deck no se oculta al elegir: vive ahí.</summary>
+    private bool Docked => _actions.CurrentDock() is not null;
+
+    /// <summary>Ejecuta comandos; si <paramref name="hide"/> (se eligió una app), el deck de la esquina se oculta.</summary>
     private async Task Run(bool hide, params Command[] commands)
     {
-        if (hide)
+        if (hide && !Docked)
         {
             _actions.Hide();
         }

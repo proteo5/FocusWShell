@@ -53,5 +53,16 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
 - **Pendiente:**
   - arrastrar iconos entre paneles;
   - el control de navegación (pestañas, paneles, template, ancho del foco);
-  - la fase 4, «mandar el deck a…» otro monitor (la tablet ya funciona como monitor extendido);
   - el [ADR 0014](0014-mapa-de-controles-en-el-deck.md).
+
+## Implementación de la fase 4 (2026-11-10)
+
+- **«Mandar el deck a…»** (📌 en el deck): a la esquina del principal, como siempre, o a otro monitor. En otro monitor se elige la **mitad izquierda**, la **mitad derecha** o **entero**; entero sólo si ese monitor no tiene paneles.
+- **Fijado en un monitor:**
+  - el deck **no se oculta al elegir**: vive ahí;
+  - los paneles de ese monitor se colocan **en el resto de la pantalla** (`DeckDock.Split`), porque el controlador reduce el área de trabajo de ese monitor antes de calcular el layout.
+- **Se guarda** en `settings.json` (`DeckDisplay`, `DeckZone`) y se recupera al arrancar.
+- **Desconexión:** si su monitor se desconecta, el deck se oculta; si vuelve, reaparece allí.
+- **Pendiente:**
+  - comprobar la desconexión con la tablet de verdad;
+  - un panel de pantalla completa con pestañas junto al deck (la idea de Spotify en la tablet).

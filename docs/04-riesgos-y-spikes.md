@@ -389,6 +389,18 @@ Herramienta: `tools/FocusWShell.TouchSpike`. Una ventana tipo deck en WPF (la te
 
 Que tocarlo no robe el foco ya lo confirmó el S8 con la misma técnica de ventana.
 
+### Deck en la tablet (M1b, 2026-11-10)
+
+Tablet por Apollo/Artemis como monitor extendido («Lenovo tablet», 1280×720):
+
+| Caso | Resultado |
+| --- | --- |
+| 📌 → «Lenovo tablet: entero» | El deck ocupa el área de trabajo de la tablet y el ajuste se guarda en `settings.json` |
+| Tocar una Paint libre en el deck fijado | Pasa a Trabajo y al foco; el deck sigue a la vista en la tablet |
+| Panel «Tableta» en la tablet, con una Calculadora; 📌 → «mitad izquierda» | El deck queda a la izquierda; el panel, con su tira, a la derecha, sin taparse. «Entero» sale como no disponible («tiene paneles») |
+
+Sin probar: desconectar y reconectar la tablet con el deck fijado.
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

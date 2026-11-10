@@ -215,7 +215,7 @@ public sealed class ShellController : IDisposable
                 apps.AddRange(_catalog.Apps
                     .Where(a => a.LastPanelId == p.Id && !a.Hidden && !openKeys.Contains(a.AppKey))
                     .Select(a => new DeckApp(a.Name, a.AppKey, null, ListItemState.Closed, "", p.Id, a)));
-                return new DeckPanel(p.Id, p.Name, Where(p), apps);
+                return new DeckPanel(p.Id, p.Name, Where(p), apps) { Display = p.Display };
             }).ToList();
 
             var free = _snapshots.Values
@@ -232,6 +232,26 @@ public sealed class ShellController : IDisposable
             return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays);
         }
     }
+
+    /// <summary>El deck fijado en un monitor (ADR 0013, fase 4), o <c>null</c> si vive en la esquina del principal.</summary>
+    public DeckDock? DeckDock { get; private set; }
+
+    /// <summary>Fija el deck en un monitor (o lo devuelve a la esquina) y recoloca los paneles de ese monitor.</summary>
+    public ControllerResult SetDeckDock(DeckDock? dock)
+    {
+        lock (_gate)
+        {
+            DeckDock = dock;
+            return RunLocked([], forceLayout: true);
+        }
+    }
+
+    /// <summary>El monitor con su área de trabajo reducida a lo que deja libre el deck, si está fijado en él.</summary>
+    private DisplayInfo WithoutDeck(DisplayInfo display) =>
+        DeckDock is { } dock && string.Equals(dock.Display, display.Key, StringComparison.OrdinalIgnoreCase)
+            && Core.Layout.DeckDock.Split(display.WorkArea, dock.Zone).Panels is { } rest
+            ? display with { WorkArea = rest }
+            : display;
 
     /// <summary>Panel por defecto para una ventana que va al foco sin tener panel: el derecho del principal.</summary>
     public string DefaultPanelId()
@@ -1322,7 +1342,7 @@ public sealed class ShellController : IDisposable
                 : null,
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
-                    displays.First(d => d.Key == a.Display),
+                    WithoutDeck(displays.First(d => d.Key == a.Display)),
                     a.Panels.Select(v => Assign(v)!).ToList()))
                 .ToList(),
         };

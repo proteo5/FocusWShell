@@ -134,6 +134,7 @@ public partial class App : Application
                 var (events, result) = _controller.EndDisplayChange();
                 Dispatcher.BeginInvoke(() =>
                 {
+                    FollowDeckMonitor();
                     if (events.Count > 0)
                     {
                         _tray?.Notify("Monitores", string.Join(" ", events));
@@ -158,6 +159,16 @@ public partial class App : Application
 
         ShowMain();
         Task.Run(_controller.ShowLists);
+
+        // El deck fijado en un monitor (ADR 0013, fase 4) vuelve a su sitio al arrancar, si el monitor está.
+        if (_settings.DeckDisplay is { } deckDisplay && Enum.TryParse<DeckZone>(_settings.DeckZone, out var zone))
+        {
+            Task.Run(() =>
+            {
+                _controller.SetDeckDock(new DeckDock(deckDisplay, zone));
+                Dispatcher.BeginInvoke(FollowDeckMonitor);
+            });
+        }
     }
 
     /// <summary>Atajos en uso: los de siempre con los cambios del usuario (M1, atajos configurables).</summary>
@@ -251,15 +262,85 @@ public partial class App : Application
             ToggleKeepAwake: ToggleKeepAwake,
             KeepAwake: () => _keepAwake.IsActive,
             RestoreAll: RestoreFromTray,
-            Hide: () => _deck?.Hide()));
+            Hide: () => _deck?.Hide(),
+            Dock: dock => DockDeck(dock),
+            CurrentDock: () => _controller.DeckDock));
 
+        PresentDeck();
+    }
+
+    /// <summary>Lo muestra donde toca: fijado en su monitor si está conectado; si no, en la esquina del principal.</summary>
+    private void PresentDeck()
+    {
         Task.Run(() =>
         {
             _controller.Refresh();
             var state = _controller.DeckState();
-            var display = ShellController.TargetDisplay();
-            Dispatcher.BeginInvoke(() => _deck.Present(state, DeckArea(display)));
+            var area = DeckPlace();
+            Dispatcher.BeginInvoke(() => _deck?.Present(state, area));
         });
+    }
+
+    /// <summary>Dónde va el deck ahora: su zona en el monitor donde está fijado, o la esquina del principal.</summary>
+    private Core.Geometry.PixelRect DeckPlace()
+    {
+        if (_controller.DeckDock is { } dock
+            && ShellController.AuxiliaryDisplays().FirstOrDefault(d => string.Equals(d.Key, dock.Display, StringComparison.OrdinalIgnoreCase)) is { } display)
+        {
+            return DeckDock.Split(display.WorkArea, dock.Zone).Deck;
+        }
+
+        return DeckArea(ShellController.TargetDisplay());
+    }
+
+    /// <summary>"Mandar el deck a…": se guarda, los paneles de ese monitor dejan su sitio y el deck se mueve.</summary>
+    private void DockDeck(DeckDock? dock)
+    {
+        _settings.DeckDisplay = dock?.Display;
+        _settings.DeckZone = dock?.Zone.ToString();
+        _settings.Save();
+        Task.Run(() =>
+        {
+            var result = _controller.SetDeckDock(dock);
+            Dispatcher.BeginInvoke(() =>
+            {
+                RefreshAfter(result);
+                if (dock is null)
+                {
+                    _deck?.Hide();
+                }
+                else
+                {
+                    PresentDeck();
+                }
+            });
+        });
+    }
+
+    /// <summary>
+    /// Tras un cambio de monitores: si el deck está fijado y su monitor se fue, se oculta; si volvió (o
+    /// aparece al arrancar), se muestra allí.
+    /// </summary>
+    private void FollowDeckMonitor()
+    {
+        if (_controller.DeckDock is not { } dock)
+        {
+            return;
+        }
+
+        bool present = ShellController.AuxiliaryDisplays().Any(d => string.Equals(d.Key, dock.Display, StringComparison.OrdinalIgnoreCase));
+        if (!present)
+        {
+            _deck?.Hide();
+        }
+        else if (_deck?.IsVisible != true)
+        {
+            ToggleDeck();
+        }
+        else
+        {
+            PresentDeck();
+        }
     }
 
     /// <summary>Esquina inferior derecha del área de trabajo del principal, con margen.</summary>

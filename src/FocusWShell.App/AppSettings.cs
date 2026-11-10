@@ -38,6 +38,12 @@ public sealed class AppSettings
     /// </summary>
     public Dictionary<string, string> Hotkeys { get; set; } = [];
 
+    /// <summary>Monitor donde está fijado el deck (ADR 0013, fase 4); <c>null</c>: la esquina del principal.</summary>
+    public string? DeckDisplay { get; set; }
+
+    /// <summary>Zona del deck fijado: LeftHalf, RightHalf o Whole.</summary>
+    public string? DeckZone { get; set; }
+
     /// <summary>Al aplicar una escena, abrir las apps que falten y ponerlas en su panel (ADR 0011).</summary>
     public bool OpenMissingApps { get; set; } = true;
 
