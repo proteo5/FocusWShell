@@ -15,17 +15,74 @@ public sealed record ControllerResult(
     IReadOnlyList<RestoreReport> Restores,
     SceneApplyReport? Applied);
 
+/// <summary>Un cambio que hizo el usuario (u otra app) y lo que el gestor hizo con él.</summary>
+public sealed record ExternalChangeHandled(string Label, ExternalChange Change, IReadOnlyList<Command> Commands, ControllerResult Result)
+{
+    public string Describe() => (Change, Commands) switch
+    {
+        (ExternalChange.Minimized, [Park]) => $"{Label}: la minimizaste; queda estacionada en su panel.",
+        (ExternalChange.Shown, [Restore]) => $"{Label}: la abriste desde la barra de tareas; vuelve a su panel.",
+        (ExternalChange.Shown, [MakeActiveInPanel]) => $"{Label}: la abriste; pasa a ser la visible de su panel.",
+        (ExternalChange.Maximized, [MakeActiveInPanel, SetTemplate]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
+        (ExternalChange.Unmaximized, [SetTemplate]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
+        (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
+        (_, [Detach]) => $"{Label}: la moviste tú; queda fuera de layout hasta que la reencajes.",
+        _ => $"{Label}: {Change}.",
+    };
+}
+
 /// <summary>
 /// Dueño del modelo (<see cref="Workspace"/>) y único punto por el que la app mueve o restaura
 /// ventanas. Ejecuta los comandos y luego sus efectos, en orden: capturas y restauraciones primero,
-/// un solo layout al final y, por último, el foco. Un lock serializa todo, porque los atajos llegan
-/// desde otro hilo.
+/// un solo layout al final y, por último, el foco. Un lock serializa todo, porque los atajos y los
+/// eventos de ventanas llegan desde otros hilos.
+/// Además observa las ventanas gestionadas (S4, ADR 0007) y traduce lo que haga el usuario en
+/// comandos: minimizar estaciona, arrastrar deja fuera de layout, etc.
 /// </summary>
-public sealed class ShellController
+public sealed class ShellController : IDisposable
 {
     private readonly Lock _gate = new();
     private readonly EligibilityFilter _filter = new();
     private readonly Workspace _workspace = new();
+    private readonly ExpectationRegistry _expectations = new();
+    private WindowEventWatcher? _watcher;
+
+    /// <summary>Se dispara (en un hilo de fondo) cada vez que el gestor reacciona a un cambio externo.</summary>
+    public event Action<ExternalChangeHandled>? ExternalChangeHandled;
+
+    /// <summary>Empieza a observar las ventanas gestionadas.</summary>
+    public void StartWatching()
+    {
+        _watcher ??= WindowEventWatcher.Start(
+            _expectations.IsWatched,
+            observed => Task.Run(() => OnSettled(observed.Handle)));
+    }
+
+    public void Dispose() => _watcher?.Dispose();
+
+    /// <summary>
+    /// Una ventana vigilada se calmó. Dentro del lock se vuelve a leer su estado: si entretanto el
+    /// gestor la movió, la observación del observador ya no vale.
+    /// </summary>
+    private void OnSettled(nint handle)
+    {
+        ExternalChangeHandled? handled = null;
+        lock (_gate)
+        {
+            var change = _expectations.Reconcile(WindowMover.Observe(handle));
+            if (change == ExternalChange.None)
+            {
+                return;
+            }
+
+            var label = _workspace.Find(handle)?.Label ?? "?";
+            var commands = _workspace.Interpret(handle, change);
+            var result = commands.Count > 0 ? RunLocked(commands) : new ControllerResult([], [], null);
+            handled = new ExternalChangeHandled(label, change, commands, result);
+        }
+
+        ExternalChangeHandled?.Invoke(handled);
+    }
 
     /// <summary>Última foto de cada ventana conocida: el layout y el diario necesitan proceso y título.</summary>
     private readonly Dictionary<nint, WindowSnapshot> _snapshots = [];
@@ -124,6 +181,56 @@ public sealed class ShellController
 
     private ControllerResult RunLocked(IReadOnlyList<Command> commands)
     {
+        // Lo que el gestor mueva aquí no es del usuario: el observador calla hasta que haya
+        // expectativas nuevas (ADR 0007).
+        using var own = _watcher?.OwnChange();
+        var result = RunEffectsLocked(commands);
+        SyncExpectations(result.Applied);
+        return result;
+    }
+
+    /// <summary>
+    /// Deja como expectativa lo que el aplicador verificó. Las ventanas que el layout no tocó (fuera de
+    /// layout, o sin layout en este comando) se vigilan desde su estado actual si aún no tenían
+    /// expectativa; las que dejaron de gestionarse se olvidan.
+    /// </summary>
+    private void SyncExpectations(SceneApplyReport? applied)
+    {
+        var managed = _workspace.Windows.Select(w => w.Handle).ToHashSet();
+        foreach (var handle in _snapshots.Keys.Where(h => !managed.Contains(h) && _expectations.IsWatched(h)).ToList())
+        {
+            _expectations.Forget(handle);
+        }
+
+        var placed = new HashSet<nint>();
+        foreach (var (target, result) in applied?.Applied ?? [])
+        {
+            placed.Add(target.Handle);
+            _expectations.Expect(target.Handle, (target.Kind, result) switch
+            {
+                (_, null) => new ExpectMinimized(),
+                (TargetKind.Maximized, _) => new ExpectMaximized(target.Rect),
+                _ => new ExpectVisible(result.Actual),
+            });
+        }
+
+        foreach (var w in _workspace.Windows.Where(w => !placed.Contains(w.Handle)))
+        {
+            if (w.Detached || !_expectations.IsWatched(w.Handle))
+            {
+                var o = WindowMover.Observe(w.Handle);
+                _expectations.Expect(w.Handle, o switch
+                {
+                    { Minimized: true } => new ExpectMinimized(),
+                    { Maximized: true } => new ExpectMaximized(o.Visible),
+                    _ => new ExpectVisible(o.Visible),
+                });
+            }
+        }
+    }
+
+    private ControllerResult RunEffectsLocked(IReadOnlyList<Command> commands)
+    {
         var rejections = new List<string>();
         var effects = new List<Effect>();
         foreach (var command in commands)
@@ -194,6 +301,7 @@ public sealed class ShellController
             c.Center is { } center && _snapshots.TryGetValue(center, out var w) ? w : null,
             Map(c.Work))
         {
+            Parked = Map(c.Parked),
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
                     displays.First(d => d.DeviceName == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))

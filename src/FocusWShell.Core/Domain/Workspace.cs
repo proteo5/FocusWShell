@@ -23,7 +23,11 @@ public enum Placement
 /// en el Centro conserva esa posición, así que al volver recupera su puesto.
 /// </summary>
 /// <param name="Display">Monitor auxiliar de su panel, o <c>null</c> si su panel está en el principal (ADR 0008).</param>
-public sealed record ManagedWindow(nint Handle, string Label, Home Home, Placement Placement, string? Display = null);
+/// <param name="Detached">
+/// "Fuera de layout": el usuario la arrastró, la redimensionó o la maximizó en el principal. El gestor
+/// no la mueve hasta que se reencaje, se promueva o se estacione; los demás de su panel ocupan su sitio.
+/// </param>
+public sealed record ManagedWindow(nint Handle, string Label, Home Home, Placement Placement, string? Display = null, bool Detached = false);
 
 /// <summary>Paneles de un monitor auxiliar, en orden.</summary>
 public sealed record AuxComposition(
@@ -45,6 +49,10 @@ public sealed record SceneComposition(IReadOnlyList<nint> Context, nint? Center,
     /// <summary>Monitores auxiliares con alguna ventana, por orden de aparición.</summary>
     public IReadOnlyList<AuxComposition> Aux { get; init; } = [];
 
+    /// <summary>Ventanas estacionadas: el aplicador las deja minimizadas.</summary>
+    public IReadOnlyList<nint> Parked { get; init; } = [];
+
+    /// <summary>Ventanas que el layout coloca (sin las estacionadas ni las que están fuera de layout).</summary>
     public IEnumerable<nint> All => Context.Concat(Center is { } c ? [c] : []).Concat(Work)
         .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)));
 }
@@ -77,6 +85,21 @@ public sealed record SetTemplate(string? Display, Home Home, PanelTemplate Templ
 
 /// <summary>Evento externo: se desconectó un monitor auxiliar. Sus ventanas pasan al principal, nunca al Centro.</summary>
 public sealed record DisplayRemoved(string Display) : Command;
+
+/// <summary>Aparta la ventana (minimizada) sin quitarle su hogar. Aparece como estacionada en su panel (CA4).</summary>
+public sealed record Park(nint Handle) : Command;
+
+/// <summary>Devuelve una ventana estacionada a su panel, en el puesto que tenía (CA4).</summary>
+public sealed record Restore(nint Handle) : Command;
+
+/// <summary>Deja la ventana fuera de layout: el usuario la movió y el gestor no pelea con él.</summary>
+public sealed record Detach(nint Handle) : Command;
+
+/// <summary>"Reencajar": devuelve al layout una ventana que estaba fuera.</summary>
+public sealed record Reattach(nint Handle) : Command;
+
+/// <summary>La pone la primera de su panel: en una pila, la pestaña visible.</summary>
+public sealed record MakeActiveInPanel(nint Handle) : Command;
 
 /// <summary>Devuelve la ventana a su estado original y deja de gestionarla.</summary>
 public sealed record Release(nint Handle) : Command;
@@ -146,13 +169,14 @@ public sealed class Workspace
 
     public SceneComposition Composition => new(
         InPanel(null, Home.Context),
-        Center?.Handle,
+        Center is { Detached: false } center ? center.Handle : null,
         InPanel(null, Home.Work))
     {
+        Parked = _windows.Where(w => w.Placement == Placement.Parked).Select(w => w.Handle).ToList(),
         ContextTemplate = TemplateOf(null, Home.Context),
         WorkTemplate = TemplateOf(null, Home.Work),
         Aux = _windows
-            .Where(w => w.Display is not null && w.Placement == Placement.InPanel)
+            .Where(w => w.Display is not null && w.Placement == Placement.InPanel && !w.Detached)
             .Select(w => w.Display!)
             .Distinct()
             .Select(d => new AuxComposition(
@@ -174,6 +198,11 @@ public sealed class Workspace
         SendToDisplay c => DoSendToDisplay(c),
         SetTemplate c => DoSetTemplate(c),
         DisplayRemoved c => DoDisplayRemoved(c.Display),
+        Park c => DoPark(c.Handle),
+        Restore c => DoRestore(c.Handle),
+        Detach c => DoDetach(c.Handle),
+        Reattach c => DoReattach(c.Handle),
+        MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
         Release c => DoRelease(c.Handle),
         RestoreAll => DoRestoreAll(),
         WindowClosed c => DoWindowClosed(c.Handle),
@@ -182,7 +211,8 @@ public sealed class Workspace
     };
 
     private List<nint> InPanel(string? display, Home home) =>
-        _windows.Where(w => w.Display == display && w.Home == home && w.Placement == Placement.InPanel).Select(w => w.Handle).ToList();
+        _windows.Where(w => w.Display == display && w.Home == home && w.Placement == Placement.InPanel && !w.Detached)
+            .Select(w => w.Handle).ToList();
 
     private void Replace(ManagedWindow updated) =>
         _windows[_windows.FindIndex(w => w.Handle == updated.Handle)] = updated;
@@ -225,7 +255,7 @@ public sealed class Workspace
         }
 
         _centerHistory.Remove(handle);
-        Replace(w with { Placement = Placement.Center });
+        Replace(w with { Placement = Placement.Center, Detached = false });
         return CommandOutcome.Accept(new ApplyLayout(), new Activate(handle));
     }
 
@@ -331,6 +361,161 @@ public sealed class Workspace
         }
 
         return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoPark(nint handle)
+    {
+        var w = Find(handle);
+        if (w is null)
+        {
+            return CommandOutcome.Reject("La ventana no está gestionada.");
+        }
+
+        if (w.Placement == Placement.Parked)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        if (w.Placement is not (Placement.InPanel or Placement.Center))
+        {
+            return CommandOutcome.Reject($"{w.Label} no se puede estacionar desde {w.Placement}.");
+        }
+
+        if (w.Placement == Placement.Center)
+        {
+            // El Centro queda vacío; la ventana queda como "anterior" para volver con un atajo.
+            _centerHistory.Remove(handle);
+            _centerHistory.Insert(0, handle);
+        }
+
+        Replace(w with { Placement = Placement.Parked, Detached = false });
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoRestore(nint handle)
+    {
+        var w = Find(handle);
+        if (w is not { Placement: Placement.Parked })
+        {
+            return CommandOutcome.Reject("Sólo se puede restaurar una ventana estacionada.");
+        }
+
+        // Conserva su puesto en el panel: su posición en la lista no cambió al estacionarla.
+        Replace(w with { Placement = Placement.InPanel });
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoDetach(nint handle)
+    {
+        var w = Find(handle);
+        if (w is null || w.Detached || w.Placement == Placement.Parked)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        Replace(w with { Detached = true });
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoReattach(nint handle)
+    {
+        var w = Find(handle);
+        if (w is not { Detached: true })
+        {
+            return CommandOutcome.Reject("La ventana no está fuera de layout.");
+        }
+
+        Replace(w with { Detached = false });
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoMakeActiveInPanel(nint handle)
+    {
+        var w = Find(handle);
+        if (w is not { Placement: Placement.InPanel })
+        {
+            return CommandOutcome.Accept();
+        }
+
+        int first = _windows.FindIndex(x => SamePanel(x, w) && x.Placement == Placement.InPanel && !x.Detached);
+        int index = _windows.IndexOf(w);
+        if (first < 0 || first == index)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        _windows.RemoveAt(index);
+        _windows.Insert(first, w);
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private static bool SamePanel(ManagedWindow a, ManagedWindow b) => a.Display == b.Display && a.Home == b.Home;
+
+    /// <summary>
+    /// Si el layout la tiene minimizada sin que esté estacionada: no es la primera de un panel en pila
+    /// o Fill, o es de un panel tapado por el Fill de otro en el mismo auxiliar.
+    /// </summary>
+    public bool IsHiddenByLayout(nint handle)
+    {
+        var w = Find(handle);
+        if (w is not { Placement: Placement.InPanel, Detached: false })
+        {
+            return false;
+        }
+
+        var panel = _windows.Where(x => SamePanel(x, w) && x.Placement == Placement.InPanel && !x.Detached).ToList();
+        var template = TemplateOf(w.Display, w.Home);
+        if (template is PanelTemplate.Stack or PanelTemplate.Fill)
+        {
+            return panel[0].Handle != handle;
+        }
+
+        // Otro panel del mismo auxiliar en Fill la tapa.
+        var other = w.Home == Home.Work ? Home.Context : Home.Work;
+        return w.Display is not null
+            && TemplateOf(w.Display, other) == PanelTemplate.Fill
+            && _windows.Any(x => x.Display == w.Display && x.Home == other && x.Placement == Placement.InPanel && !x.Detached);
+    }
+
+    /// <summary>
+    /// Traduce un cambio que hizo otro (el usuario, otra app) en comandos del modelo
+    /// (02-modelo-de-dominio, "Eventos externos"). Nunca promueve: el foco no mueve nada (CA7).
+    /// </summary>
+    public IReadOnlyList<Command> Interpret(nint handle, ExternalChange change)
+    {
+        var w = Find(handle);
+        if (w is null)
+        {
+            return [];
+        }
+
+        return change switch
+        {
+            ExternalChange.Closed => [new WindowClosed(handle)],
+
+            // Minimizar con el botón de Windows es estacionar (salvo que ya lo estuviera).
+            ExternalChange.Minimized when w.Placement == Placement.Parked => [],
+            ExternalChange.Minimized => [new Park(handle)],
+
+            // Mostrarla desde la barra de tareas: si estaba estacionada, vuelve a su panel; si la
+            // escondía la pila, pasa a ser la pestaña visible.
+            ExternalChange.Shown when w.Placement == Placement.Parked => [new Restore(handle)],
+            ExternalChange.Shown when IsHiddenByLayout(handle) => [new MakeActiveInPanel(handle)],
+            ExternalChange.Shown => [],
+
+            // Maximizar en un auxiliar es pedir Fill para su panel; en el principal, salir del layout.
+            ExternalChange.Maximized when w is { Display: not null, Placement: Placement.InPanel } =>
+                [new MakeActiveInPanel(handle), new SetTemplate(w.Display, w.Home, PanelTemplate.Fill)],
+            ExternalChange.Maximized => [new Detach(handle)],
+
+            // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles.
+            ExternalChange.Unmaximized when w.Display is not null && TemplateOf(w.Display, w.Home) == PanelTemplate.Fill =>
+                [new SetTemplate(w.Display, w.Home, PanelTemplate.Tiles)],
+            ExternalChange.Unmaximized => [new Detach(handle)],
+
+            ExternalChange.MovedOrResized => [new Detach(handle)],
+            _ => [],
+        };
     }
 
     private CommandOutcome DoRelease(nint handle)

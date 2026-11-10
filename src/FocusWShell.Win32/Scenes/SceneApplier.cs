@@ -35,9 +35,13 @@ public sealed record SceneAssignment(
 {
     public IReadOnlyList<AuxAssignment> Aux { get; init; } = [];
 
+    /// <summary>Ventanas estacionadas: se dejan minimizadas.</summary>
+    public IReadOnlyList<WindowSnapshot> Parked { get; init; } = [];
+
     public IEnumerable<WindowSnapshot> All =>
         Context.Concat(Center is null ? [] : [Center]).Concat(Work)
-            .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)));
+            .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)))
+            .Concat(Parked);
 }
 
 public sealed record SceneOptions
@@ -59,7 +63,10 @@ public sealed record SceneOptions
 /// <summary>Plan de toda la escena: el monitor principal y cada auxiliar.</summary>
 public sealed record ScenePlan(SceneLayoutResult Principal, IReadOnlyList<AuxLayoutResult> Aux)
 {
-    public IReadOnlyList<WindowTarget> Targets => [.. Principal.Targets, .. Aux.SelectMany(a => a.Targets)];
+    /// <summary>Ventanas estacionadas (minimizadas).</summary>
+    public IReadOnlyList<WindowTarget> Parked { get; init; } = [];
+
+    public IReadOnlyList<WindowTarget> Targets => [.. Principal.Targets, .. Aux.SelectMany(a => a.Targets), .. Parked];
 
     public IReadOnlyList<string> Notes => [.. Principal.Notes, .. Aux.SelectMany(a => a.Notes)];
 }
@@ -166,7 +173,12 @@ public sealed class SceneApplier
                 _options.Gap)))
             .ToList();
 
-        return new ScenePlan(principal, aux);
+        return new ScenePlan(principal, aux)
+        {
+            Parked = _assignment.Parked
+                .Select(w => new WindowTarget(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), "Estacionada", TargetKind.Minimized, default))
+                .ToList(),
+        };
     }
 
     /// <summary>

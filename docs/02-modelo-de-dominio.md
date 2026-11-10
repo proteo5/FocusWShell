@@ -139,6 +139,20 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 
 ## Eventos externos y cómo los interpreta el núcleo
 
+`Workspace.Interpret` traduce cada cambio externo detectado (S4, [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)) en comandos. Nunca genera `Promote` ni `SwapWithPrevious` (CA7, verificado en las pruebas). En la app ya está activo:
+
+| Cambio detectado | Comandos |
+| --- | --- |
+| Se cerró | `WindowClosed` |
+| La minimizaste | `Park`; si ya estaba estacionada, nada |
+| La abriste desde la barra de tareas | Si estaba estacionada, `Restore`; si la escondía una pila o un `Fill`, `MakeActiveInPanel` (pasa a ser la visible) |
+| La maximizaste en un auxiliar | `MakeActiveInPanel` + `SetTemplate(…, Fill)` |
+| La maximizaste en el principal | `Detach` (fuera de layout) |
+| La des-maximizaste estando su panel en `Fill` | `SetTemplate(…, Tiles)` |
+| La arrastraste o redimensionaste | `Detach`; los demás de su panel ocupan su sitio |
+
+Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), pero el gestor no la mueve hasta que se **reencaje** (`Reattach`), se promueva o se estacione.
+
 | Evento | Interpretación |
 | --- | --- |
 | La ventana se cierra | Se elimina del modelo. Si estaba en el Centro, el Centro queda vacío. **No** se promueve otra automáticamente. |

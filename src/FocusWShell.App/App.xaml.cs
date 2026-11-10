@@ -43,6 +43,17 @@ public partial class App : Application
         OfferRecovery();
 
         _main = new MainWindow(_controller);
+
+        // S4: lo que haga el usuario con las ventanas gestionadas se traduce en comandos.
+        _controller.ExternalChangeHandled += handled => Dispatcher.BeginInvoke(() =>
+        {
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(handled.Describe() + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(handled.Result));
+            }
+        });
+        _controller.StartWatching();
         _settings = AppSettings.Load();
         _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
@@ -194,6 +205,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _hotkeys?.Dispose();
+        _controller.Dispose();
         _keepAwake.Dispose();
         _tray?.Dispose();
         if (_singleInstance is not null)

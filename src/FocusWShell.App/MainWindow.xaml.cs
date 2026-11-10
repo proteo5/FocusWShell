@@ -69,6 +69,8 @@ public partial class MainWindow : Window
     private static string StateOf(ManagedWindow? m) => m switch
     {
         null => "",
+        { Placement: Placement.Parked } => m.Display is null ? "Estacionada" : "Estacionada (auxiliar)",
+        { Detached: true } => "Fuera de layout",
         { Placement: Placement.Center } => $"Centro (vuelve a {(m.Home == Home.Context ? "Contexto" : "Trabajo")}{(m.Display is null ? "" : " auxiliar")})",
         { Home: Home.Context } => m.Display is null ? "En Contexto" : "En Contexto auxiliar",
         _ => m.Display is null ? "En Trabajo" : "En Trabajo auxiliar",
@@ -339,6 +341,26 @@ public partial class MainWindow : Window
         Refresh();
     }
 
+    private async void Park_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Park(h));
+
+    private async void Unpark_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Restore(h));
+
+    private async void Reattach_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Reattach(h));
+
+    /// <summary>Ejecuta un comando sobre la ventana seleccionada.</summary>
+    private async Task OnSelected(Func<nint, Command> command)
+    {
+        if (WindowList.SelectedItem is not WindowRow row)
+        {
+            SetStatus("Selecciona una ventana de la lista.");
+            return;
+        }
+
+        _pending.Remove(row.Snapshot.Handle);
+        await Run(() => _controller.Execute(command(row.Snapshot.Handle)));
+        Refresh();
+    }
+
     private async void Release_Click(object sender, RoutedEventArgs e)
     {
         if (WindowList.SelectedItem is not WindowRow row)
@@ -361,7 +383,7 @@ public partial class MainWindow : Window
 
     private async Task Run(Func<ControllerResult> action)
     {
-        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, SwapButton, ReturnButton, ReleaseButton };
+        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, SwapButton, ReturnButton, ParkButton, UnparkButton, ReattachButton, ReleaseButton };
         foreach (var b in buttons)
         {
             b.IsEnabled = false;

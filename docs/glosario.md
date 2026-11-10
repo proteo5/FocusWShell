@@ -1,4 +1,4 @@
-# Glosario
+﻿# Glosario
 
 La documentación está en español y el código en inglés. Esta tabla fija la correspondencia para que no haya dos nombres para lo mismo.
 
@@ -9,7 +9,11 @@ La documentación está en español y el código en inglés. Esta tabla fija la 
 | Contexto | `Context` | Hogar de la información periférica: correo, chat, calendario, estados. |
 | Hogar | `Home` | Panel al que pertenece una ventana (`Work` o `Context`). Persistente. |
 | Ubicación | `Placement` | Dónde está la ventana ahora: `InPanel`, `Center`, `Parked`, `Fullscreen`. |
-| Estacionada | `Parked` | Abierta pero apartada (minimizada); se recupera desde la tira de su panel. |
+| Estacionada | `Parked` | Abierta pero apartada (minimizada); se recupera desde la tira de su panel. Minimizarla con el botón de Windows la estaciona. |
+| Estacionar / Recuperar | `Park` / `Restore` | Apartar una ventana sin quitarle su panel, y devolverla a su puesto. En la UI, "Recuperar" para no confundirlo con "Restaurar todas". |
+| Fuera de layout | `Detached` | La ventana que el usuario arrastró, redimensionó o maximizó en el principal. El gestor no la mueve hasta que se reencaje. |
+| Reencajar | `Reattach` | Devolver al layout una ventana que estaba fuera. |
+| Fill | `PanelTemplate.Fill` | Template de un panel de un monitor auxiliar: la primera ventana ocupa el monitor, maximizada. |
 | Pantalla completa | `Fullscreen` | Inmersión explícita en un monitor elegido. Distinta del Centro y del botón Maximizar de Windows. |
 | Promover al foco | `Promote` | Llevar una ventana al Centro. La anterior vuelve a su hogar. No se llama "Maximizar". |
 | Devolver | `ReturnToPanel` | Sacar la ventana del Centro y devolverla a su hogar. |

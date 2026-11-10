@@ -129,6 +129,23 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
+### Estacionar y reaccionar al usuario (2026-11-09)
+
+La app usa la detección de S4. Prueba de principio a fin: la escena se armó desde la interfaz, y cada cambio se hizo desde **otro proceso**, igual que si lo hiciera el usuario o la barra de tareas.
+
+| Acción externa | Reacción del gestor |
+| --- | --- |
+| Minimizar GitHub Desktop | Queda **estacionada**; Explorer ocupa todo el panel de Trabajo |
+| Abrirla otra vez (`SW_RESTORE`) | **Vuelve a su panel**, en su mismo puesto |
+| Arrastrar Explorer 300 px | Queda **fuera de layout** y el gestor no la devuelve; GitHub ocupa su sitio |
+| Botón "Reencajar" | Explorer vuelve al layout |
+| Maximizar WhatsApp en el monitor auxiliar | Su panel pasa a **Fill** |
+| Restaurar todas | 5/5; el gestor no reacciona a su propia restauración |
+
+- **Pendiente:**
+  - Probarlo con arrastres reales con el ratón y con la barra de tareas de Windows de verdad.
+  - Estacionar desde la tira de pestañas del panel, que llega con la capa visual.
+
 ### Monitores auxiliares (2026-11-09)
 
 Implementa el [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md) con el monitor estándar al 125 % como auxiliar.
