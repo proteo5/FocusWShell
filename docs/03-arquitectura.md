@@ -200,3 +200,20 @@ Formato JSON con `System.Text.Json` y un campo `schemaVersion` en cada archivo.
 - El Centro no tiene overlay permanente. Su microbarra, si existe, aparece sólo al acercar el cursor al borde y se superpone al margen, no al contenido.
 - En pantalla completa, los overlays de ese display se ocultan.
 - Las miniaturas DWM (`DwmRegisterThumbnail`) son una mejora posterior para previsualizar pestañas; no forman parte del MVP.
+
+### Implementación (M1)
+
+- **Franja reservada:** `SceneInput.PanelTopInset` y `AuxInput.TopInset`, 28 px lógicos convertidos al DPI de cada monitor (35 px al 125 %). Las ventanas de los paneles empiezan debajo; el Centro y los paneles en `Fill` no tienen franja.
+- **Ventanas de las tiras:** `PanelStripWindow` es una ventana WPF sin XAML, con `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE`. Se coloca en píxeles físicos con `SetWindowPos` en dos pasadas, porque WPF reescala al cruzar de DPI. Hay que mostrarla con `Show()` antes de colocarla: si sólo se hace visible con `SetWindowPos`, WPF no la mide ni la pinta.
+- **Qué muestra cada tira:** `ShellController.Strips()` la calcula a partir del modelo y del último plan aplicado. `StripManager` crea, actualiza y cierra las ventanas cada vez que el controlador avisa (`LayoutChanged`).
+- **Pestañas:** una por ventana del panel, en su orden.
+  - Visible: resaltada.
+  - Oculta en la pila: normal.
+  - Estacionada: `⏸`, en cursiva y atenuada.
+  - En el Centro: `↑`.
+  - Fuera de layout: `↗`.
+- **Acciones de una pestaña:**
+  - **Clic:** la acción natural según su estado (mostrarla, recuperarla, devolverla del Centro o reencajarla).
+  - **Doble clic:** al Centro.
+  - **Menú contextual:** Al Centro, Estacionar, Recuperar, Reencajar y Liberar.
+- **Clic simple frente a doble clic:** el clic simple espera el tiempo de doble clic del sistema antes de actuar. Si actuara al momento, la tira se redibujaría entre los dos clics y el segundo caería en otra pestaña, que es lo que pasó en la primera prueba.

@@ -18,6 +18,7 @@ public partial class App : Application
     private TrayIcon? _tray;
     private GlobalHotkeys? _hotkeys;
     private MainWindow? _main;
+    private StripManager? _strips;
     private readonly DisplayKeepAwake _keepAwake = new();
     private AppSettings _settings = new();
 
@@ -53,6 +54,16 @@ public partial class App : Application
                 _main.SetStatus(handled.Describe() + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(handled.Result));
             }
         });
+        // Tiras de pestañas: se rehacen cada vez que cambia el layout.
+        _strips = new StripManager(_controller, result => Dispatcher.BeginInvoke(() =>
+        {
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(global::FocusWShell.App.MainWindow.Describe(result));
+            }
+        }));
+        _controller.LayoutChanged += () => Dispatcher.BeginInvoke(() => _strips?.Refresh());
         _controller.StartWatching();
         _settings = AppSettings.Load();
         _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
@@ -204,6 +215,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _strips?.CloseAll();
         _hotkeys?.Dispose();
         _controller.Dispose();
         _keepAwake.Dispose();

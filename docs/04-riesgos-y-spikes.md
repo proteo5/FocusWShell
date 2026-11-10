@@ -129,6 +129,28 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
+### Tiras de pestañas (2026-11-09)
+
+- **Posición:** Contexto 670×28 y Trabajo 962×28 en el principal; 1920×35 en el auxiliar al 125 %. Las ventanas de los paneles empiezan justo debajo y el Centro sigue ocupando toda la altura.
+- **Clics**, por UI Automation y con el ratón:
+
+  | Acción | Resultado |
+  | --- | --- |
+  | Clic en una pestaña oculta de la pila | Pasa a ser la visible |
+  | Clic en `↑ msedge` | Edge vuelve del Centro a su panel |
+  | Clic en `⏸ explorer` | Se recupera |
+  | Doble clic real en una pestaña | La lleva al Centro con el foco |
+  | Restaurar todas | Cierra todas las tiras |
+
+- **Dos fallos encontrados y corregidos:**
+  - Las tiras salían negras: se mostraban sin `Show()`, así que WPF no las pintaba.
+  - Un doble clic promovía la pestaña equivocada: el primer clic reordenaba la tira antes del segundo.
+- **Pendiente:**
+  - Probar las tiras en uso diario: legibilidad, y si 28 px son suficientes.
+  - Tamaño táctil en los auxiliares (M3).
+  - Arrastrar pestañas entre paneles.
+  - Tira para una ventana en `Fill`, que ahora cubre todo el monitor.
+
 ### Estacionar y reaccionar al usuario (2026-11-09)
 
 La app usa la detección de S4. Prueba de principio a fin: la escena se armó desde la interfaz, y cada cambio se hizo desde **otro proceso**, igual que si lo hiciera el usuario o la barra de tareas.

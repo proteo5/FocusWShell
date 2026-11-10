@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Layout;
@@ -37,6 +37,16 @@ public class AuxLayoutEngineTests
         Assert.Equal(new PixelRect(3440, 0, 5360, 510), Target(r, 1).Rect);
         Assert.Equal(new PixelRect(3440, 510, 5360, 1020), Target(r, 2).Rect);
         Assert.Empty(r.Notes);
+    }
+
+    [Fact]
+    public void TopInsetAppliesToPanelsButNotToFill()
+    {
+        var tiles = AuxLayoutEngine.Compute(new AuxInput("aux", Area, [Panel("Trabajo", PanelTemplate.Tiles, Win(1, "Logs"))], TopInset: 35));
+        var fill = AuxLayoutEngine.Compute(new AuxInput("aux", Area, [Panel("Trabajo", PanelTemplate.Fill, Win(1, "Logs"))], TopInset: 35));
+
+        Assert.Equal(new PixelRect(3440, 35, 5360, 1020), Target(tiles, 1).Rect);
+        Assert.Equal(Area, Target(fill, 1).Rect);
     }
 
     [Fact]

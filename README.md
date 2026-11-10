@@ -31,6 +31,10 @@ dotnet run --project src/FocusWShell.App
   - El Centro está siempre en el monitor principal.
   - Los demás monitores alojan paneles auxiliares.
   - Con el template **Fill**, la primera ventana de un panel auxiliar ocupa ese monitor, maximizada.
+- Encima de cada panel aparece una **tira de pestañas**, una por ventana del panel:
+  - **Clic:** la muestra, la recupera si está estacionada (`⏸`) o la devuelve si está en el Centro (`↑`).
+  - **Doble clic:** la lleva al Centro.
+  - **Clic derecho:** el resto de acciones.
 - Cerrarla no detiene el gestor: sigue en el área de notificación. Desde su menú, **Salir** devuelve todas las ventanas a su sitio.
 - Atajos globales con `Ctrl+Alt+Mayús`:
 

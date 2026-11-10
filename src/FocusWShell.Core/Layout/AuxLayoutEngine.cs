@@ -1,9 +1,10 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Layout;
 
 /// <summary>Paneles de un monitor auxiliar, de izquierda a derecha.</summary>
-public sealed record AuxInput(string Display, PixelRect WorkArea, IReadOnlyList<PanelInput> Panels, int Gap = 0);
+/// <param name="TopInset">Franja reservada arriba de cada panel para su tira de pestañas (no en Fill).</param>
+public sealed record AuxInput(string Display, PixelRect WorkArea, IReadOnlyList<PanelInput> Panels, int Gap = 0, int TopInset = 0);
 
 /// <summary>Resultado del motor de un monitor auxiliar.</summary>
 /// <param name="Columns">Columna de cada panel visible, por nombre.</param>
@@ -65,8 +66,12 @@ public static class AuxLayoutEngine
                 notes);
         }
 
+        // Bajo la franja de la tira de pestañas (Fill no la tiene: la ventana ocupa el monitor).
+        int inset = Math.Clamp(input.TopInset, 0, area.Height / 2);
+        var panelArea = area with { Top = area.Top + inset };
+
         // 2. Template efectivo (tiles que no caben en alto pasan a pila).
-        var resolved = panels.Select(p => SceneLayoutEngine.Resolve(p, area.Height, gap, notes)).ToList();
+        var resolved = panels.Select(p => SceneLayoutEngine.Resolve(p, panelArea.Height, gap, notes)).ToList();
 
         // 3. Ventanas que no caben ni dejando a los demás paneles en su mínimo.
         int available = area.Width - (gap * Math.Max(0, resolved.Count - 1));
@@ -87,7 +92,7 @@ public static class AuxLayoutEngine
             }
 
             var remaining = resolved[i].Panel with { Windows = resolved[i].Panel.Windows.Except(tooWide).ToList() };
-            resolved[i] = SceneLayoutEngine.Resolve(remaining, area.Height, gap, []);
+            resolved[i] = SceneLayoutEngine.Resolve(remaining, panelArea.Height, gap, []);
         }
 
         resolved = resolved.Where(r => r.Visible.Count > 0).ToList();
@@ -129,7 +134,7 @@ public static class AuxLayoutEngine
         for (int i = 0; i < resolved.Count; i++)
         {
             int right = i == resolved.Count - 1 ? area.Right : left + widths[i];
-            var column = new PixelRect(left, area.Top, right, area.Bottom);
+            var column = new PixelRect(left, panelArea.Top, right, area.Bottom);
             columns[resolved[i].Panel.Name] = column;
             var rows = SceneLayoutEngine.DistributeRows(column, resolved[i].Visible.Select(w => w.MinSize?.Height ?? 0).ToList(), gap);
             for (int r = 0; r < resolved[i].Visible.Count; r++)

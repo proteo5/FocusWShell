@@ -46,6 +46,10 @@ public sealed record PanelInput(
 /// Fracción del ancho de trabajo por debajo de la cual los paneles no pueden encoger el Centro
 /// para hacer sitio a sus ventanas. Por defecto, la mitad.
 /// </param>
+/// <param name="PanelTopInset">
+/// Alto, en píxeles físicos, de la franja reservada arriba de cada panel para su tira de pestañas.
+/// Las ventanas de los paneles empiezan debajo; el Centro no tiene franja.
+/// </param>
 /// <param name="SharedEdgeMinCenterFraction">
 /// Piso del Centro frente a un panel cuyo borde exterior da a otro monitor: el Centro baja hasta el
 /// mínimo de su ventana, pero nunca por debajo de esta fracción (por si ese mínimo no se conoce).
@@ -58,7 +62,8 @@ public sealed record SceneInput(
     PanelInput Right,
     int Gap = 0,
     double MinCenterFraction = 0.5,
-    double SharedEdgeMinCenterFraction = 0.3);
+    double SharedEdgeMinCenterFraction = 0.3,
+    int PanelTopInset = 0);
 
 public enum TargetKind
 {

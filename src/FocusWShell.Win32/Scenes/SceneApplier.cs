@@ -54,6 +54,9 @@ public sealed record SceneOptions
     public PanelTemplate WorkTemplate { get; init; } = PanelTemplate.Tiles;
     public MoveMode Mode { get; init; } = MoveMode.Async;
 
+    /// <summary>Franja para la tira de pestañas arriba de cada panel, en píxeles lógicos (96 DPI). 0 = sin tiras.</summary>
+    public int PanelTopInset { get; init; }
+
     /// <summary>Si una app impone un tamaño mínimo nuevo, aprenderlo y recolocar.</summary>
     public bool Learn { get; init; } = true;
 
@@ -160,7 +163,8 @@ public sealed class SceneApplier
             _assignment.Center is null ? null : ToLayout(_assignment.Center, dpi),
             new PanelInput("Trabajo", PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
                 _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right),
-            _options.Gap));
+            _options.Gap,
+            PanelTopInset: Scale(_options.PanelTopInset, dpi)));
 
         var aux = _assignment.Aux
             .Select(a => AuxLayoutEngine.Compute(new AuxInput(
@@ -170,7 +174,8 @@ public sealed class SceneApplier
                     new PanelInput("Contexto", PanelSide.Left, 1, a.ContextTemplate, a.Context.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
                     new PanelInput("Trabajo", PanelSide.Right, 1, a.WorkTemplate, a.Work.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
                 ],
-                _options.Gap)))
+                _options.Gap,
+                Scale(_options.PanelTopInset, a.Display.Dpi))))
             .ToList();
 
         return new ScenePlan(principal, aux)
@@ -298,6 +303,9 @@ public sealed class SceneApplier
 
         return clock.Elapsed;
     }
+
+    /// <summary>Píxeles lógicos (96 DPI) a físicos del monitor.</summary>
+    public static int Scale(int logical, int dpi) => (int)Math.Round(logical * dpi / 96.0);
 
     private List<string> Learn(IReadOnlyList<AppliedWindow> applied)
     {

@@ -50,6 +50,27 @@ public sealed class ShellController : IDisposable
     /// <summary>Se dispara (en un hilo de fondo) cada vez que el gestor reacciona a un cambio externo.</summary>
     public event Action<ExternalChangeHandled>? ExternalChangeHandled;
 
+    /// <summary>Se dispara (en cualquier hilo) cuando cambia lo que deben mostrar las tiras de pestañas.</summary>
+    public event Action? LayoutChanged;
+
+    /// <summary>Alto de la tira de pestañas de cada panel, en píxeles lógicos.</summary>
+    public const int StripHeight = 28;
+
+    private SceneApplyReport? _lastReport;
+    private int _lastPrincipalDpi = 96;
+    private Dictionary<string, int> _lastAuxDpi = [];
+
+    /// <summary>Tiras de pestañas de los paneles, según el último layout aplicado.</summary>
+    public IReadOnlyList<PanelStrip> Strips()
+    {
+        lock (_gate)
+        {
+            return _lastReport is null || _workspace.Windows.Count == 0
+                ? []
+                : PanelStripBuilder.Build(_workspace, _lastReport, _lastPrincipalDpi, _lastAuxDpi);
+        }
+    }
+
     /// <summary>Empieza a observar las ventanas gestionadas.</summary>
     public void StartWatching()
     {
@@ -186,6 +207,12 @@ public sealed class ShellController : IDisposable
         using var own = _watcher?.OwnChange();
         var result = RunEffectsLocked(commands);
         SyncExpectations(result.Applied);
+        if (result.Applied is { Error: null } applied)
+        {
+            _lastReport = applied;
+        }
+
+        LayoutChanged?.Invoke();
         return result;
     }
 
@@ -307,7 +334,14 @@ public sealed class ShellController : IDisposable
                     displays.First(d => d.DeviceName == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))
                 .ToList(),
         };
-        var options = new SceneOptions { ContextTemplate = c.ContextTemplate, WorkTemplate = c.WorkTemplate };
+        var options = new SceneOptions
+        {
+            ContextTemplate = c.ContextTemplate,
+            WorkTemplate = c.WorkTemplate,
+            PanelTopInset = StripHeight,
+        };
+        _lastPrincipalDpi = principal.Dpi;
+        _lastAuxDpi = assignment.Aux.ToDictionary(a => a.Display.DeviceName, a => a.Display.Dpi);
         var applier = new SceneApplier(principal, assignment, options, MinSizes);
         return applier.Apply(Journal);
     }
