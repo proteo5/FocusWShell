@@ -108,3 +108,9 @@ DISPLAYCONFIG_SOURCE_DEVICE_NAME
 
 // Gestos de cambio de ventana
 GetAsyncKeyState
+
+// Miniaturas en vivo (lista tipo Explorador, ADR 0015)
+DwmRegisterThumbnail
+DwmUnregisterThumbnail
+DwmUpdateThumbnailProperties
+DWM_THUMBNAIL_PROPERTIES

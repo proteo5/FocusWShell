@@ -35,6 +35,9 @@ public sealed record Panel(
     PanelSlot Slot = PanelSlot.Upper,
     double Height = 1)
 {
+    /// <summary>Modo de la lista, si su presentación es <see cref="PanelTemplate.List"/> (ADR 0015).</summary>
+    public ListLayout ListLayout { get; init; }
+
     /// <summary>Si ocupa la misma columna que <paramref name="other"/> (mismo monitor y mismo lado).</summary>
     public bool SharesColumnWith(Panel other) =>
         other is not null && Side == other.Side && string.Equals(Display, other.Display, StringComparison.OrdinalIgnoreCase);
@@ -169,6 +172,9 @@ public sealed record MovePanel(string PanelId, string? Display, PanelSide Side, 
 /// relativos: p. ej. los altos en píxeles de cada banda.
 /// </summary>
 public sealed record SplitColumn(string UpperId, double UpperHeight, string LowerId, double LowerHeight) : Command;
+
+/// <summary>Cambia el modo de la lista de un panel: iconos grandes, lista o detalles (ADR 0015).</summary>
+public sealed record SetListLayout(string PanelId, ListLayout Layout) : Command;
 
 /// <summary>Cambia la presentación de un panel. <c>Fill</c> sólo vale en monitores auxiliares.</summary>
 public sealed record SetPresentation(string PanelId, PanelTemplate Template) : Command;
@@ -442,6 +448,7 @@ public sealed class Workspace
         MovePanel c => DoMovePanel(c),
         SetPresentation c => DoSetPresentation(c),
         SplitColumn c => DoSplitColumn(c),
+        SetListLayout c => DoSetListLayout(c),
         DeletePanel c => DoDeletePanel(c.PanelId),
         DisplayRemoved c => DoDisplayRemoved(c.Display),
         DisplayAdded c => DoDisplayAdded(c.Display),
@@ -725,6 +732,23 @@ public sealed class Workspace
 
         _panels[_panels.IndexOf(panel)] = panel with { Display = c.Display, Side = c.Side, Slot = c.Slot };
         return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoSetListLayout(SetListLayout c)
+    {
+        if (FindPanel(c.PanelId) is not { } panel)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
+        if (!Enum.IsDefined(c.Layout))
+        {
+            return CommandOutcome.Reject($"Modo de lista desconocido: {c.Layout}.");
+        }
+
+        // No mueve ventanas: sólo cambia lo que dibuja la lista.
+        _panels[_panels.IndexOf(panel)] = panel with { ListLayout = c.Layout };
+        return CommandOutcome.Accept();
     }
 
     private CommandOutcome DoSplitColumn(SplitColumn c)

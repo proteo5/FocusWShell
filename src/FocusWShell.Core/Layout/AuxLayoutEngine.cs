@@ -34,6 +34,9 @@ public sealed record AuxLayoutResult(
 
     /// <summary>Filas de los paneles en tiles que no caben enteros, por nombre.</summary>
     public IReadOnlyDictionary<string, TilePages> Pages { get; init; } = new Dictionary<string, TilePages>();
+
+    /// <summary>Área (bajo su franja) de cada panel en lista: ahí va la ventana de la lista.</summary>
+    public IReadOnlyDictionary<string, PixelRect> Lists { get; init; } = new Dictionary<string, PixelRect>();
 }
 
 /// <summary>
@@ -148,7 +151,7 @@ public static class AuxLayoutEngine
         var columns = new Dictionary<string, PixelRect>();
         var bands = new Dictionary<string, PixelRect>();
         var pages = new Dictionary<string, TilePages>();
-        var grid = new GridOptions(input.MinCellWidth, input.MinRowHeight);
+        var grid = new GridOptions(input.MinCellWidth, input.MinRowHeight) { Lists = [] };
         int left = area.Left;
         for (int i = 0; i < cols.Count; i++)
         {
@@ -168,6 +171,7 @@ public static class AuxLayoutEngine
             Bands = bands,
             StripHeight = inset,
             Pages = pages,
+            Lists = grid.Lists,
         };
     }
 }

@@ -282,6 +282,7 @@ public partial class MainWindow : Window
             (PanelTemplate.Tiles, "Tiles"),
             (PanelTemplate.Stack, "Pestañas"),
             (PanelTemplate.Fill, "Pantalla completa"),
+            (PanelTemplate.List, "Lista (tipo Explorador)"),
         };
 
         System.Windows.Controls.ComboBox LocationCombo(string label, string? display, PanelSide side, PanelSlot slot)

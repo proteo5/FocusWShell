@@ -20,6 +20,7 @@ public partial class App : Application
     private GlobalHotkeys? _hotkeys;
     private MainWindow? _main;
     private StripManager? _strips;
+    private ListManager? _lists;
     private DisplayChangeListener? _displays;
     private readonly DisplayKeepAwake _keepAwake = new();
     private AppSettings _settings = new();
@@ -72,7 +73,24 @@ public partial class App : Application
                 _main.SetStatus(global::FocusWShell.App.MainWindow.Describe(result));
             }
         }));
-        _controller.LayoutChanged += () => Dispatcher.BeginInvoke(() => _strips?.Refresh());
+        // Listas tipo Explorador (ADR 0015): también cambian con el catálogo (apps abiertas o cerradas).
+        _lists = new ListManager(
+            _controller,
+            result => Dispatcher.BeginInvoke(() =>
+            {
+                if (_main?.IsVisible == true)
+                {
+                    _main.Refresh();
+                    _main.SetStatus(global::FocusWShell.App.MainWindow.Describe(result));
+                }
+            }),
+            message => Dispatcher.BeginInvoke(() => _main?.SetStatus(message)));
+        _controller.LayoutChanged += () => Dispatcher.BeginInvoke(() =>
+        {
+            _strips?.Refresh();
+            _lists?.Refresh();
+        });
+        _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => _lists?.Refresh());
         _controller.FocusGestureEnabled = g => g switch
         {
             SwitchGesture.AltTab => _settings.FocusOnAltTab,
@@ -333,6 +351,7 @@ public partial class App : Application
     {
         _displays?.Dispose();
         _strips?.CloseAll();
+        _lists?.CloseAll();
         _hotkeys?.Dispose();
         _controller.Dispose();
         _keepAwake.Dispose();

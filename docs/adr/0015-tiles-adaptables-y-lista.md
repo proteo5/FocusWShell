@@ -109,6 +109,18 @@ Detalles de implementación que siguen de esto:
 - **Tiras:** ▲ «a–b / n» ▼ a la derecha, la rueda del ratón para recorrer las filas, y "Tamaño: Pequeño / Mediano / Grande" en el menú contextual de cada pestaña.
 - **Cambio de comportamiento:** un panel en tiles que no cabe en alto ya no pasa a pestañas; se ven las filas que caben.
 
+## Implementación de la lista (2026-11-10)
+
+- **Motor:** la presentación `List` coloca cada ventana del panel en el área de la lista (bajo su tira), detrás de ella. La que no cabe se minimiza, para que no asome fuera de la lista. La lista no ensancha su columna. El resultado trae `Lists` (el área de cada panel en lista).
+- **Modelo:** `Panel.ListLayout` (Iconos grandes, Lista, Detalles) y `SetListLayout`, que no mueve ventanas. Se guarda en `panels.json`.
+- **Ventana de la lista** (`ListPanelWindow`, una por panel en lista, gestionada por `ListManager`): sin foco y fuera de la barra de tareas, como las tiras. Tiene los tres modos en botones arriba a la derecha.
+  - En Iconos grandes, cada tarjeta lleva la miniatura en vivo de su ventana (`DwmThumbnail`), encajada sin deformarla. Se oculta la que sale de la zona visible del scroll.
+  - Las apps cerradas (en el catálogo, con este panel como último) salen con su icono apagado. Tocar una abierta la lleva al foco; tocar una cerrada la abre en este panel.
+- **Se oculta** en el monitor de la pantalla completa. Se actualiza con cada layout y cada cambio del catálogo. Una ventana cerrada pasa a "cerrada" enseguida.
+- **Pendiente:**
+  - un panel en lista sin ninguna ventana abierta no ocupa sitio, así que su lista no se ve (sólo con apps cerradas, todavía no hace de lanzador);
+  - si se desactivan los gestos y se activa una ventana que está detrás de la lista, queda tapada por la lista.
+
 ## Consecuencias
 
 - "Tiles" pasa a ser la rejilla adaptable y `PanelTemplate` gana `List`.

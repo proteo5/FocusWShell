@@ -296,6 +296,22 @@ Herramienta: `tools/FocusWShell.ThumbSpike`. Fuentes: una ventana propia animada
 
 **Conclusión:** la opción B del [ADR 0015](adr/0015-tiles-adaptables-y-lista.md) (las ventanas detrás de la lista, sin minimizar) da miniaturas en vivo con un coste despreciable. Las miniaturas de ventanas minimizadas (estacionadas, o en pestañas en otros paneles) se muestran congeladas, que basta para reconocerlas. Queda por confirmar en uso real que Chromium no deja de pintar tras más tiempo tapado.
 
+### Lista tipo Explorador (M1b, 2026-11-10)
+
+Panel de prueba «Monitoreo» en lista, en el monitor HP, con dos Paint y una Calculadora:
+
+| Caso | Resultado |
+| --- | --- |
+| Iconos grandes | Tres tarjetas con miniatura en vivo de las ventanas que hay detrás, y los nombres del catálogo («Calculator», «Paint») |
+| Clic en la tarjeta de Calculator | Pasa al foco; en la lista queda con «↑» |
+| Detalles y Lista | Nombre, título y estado; o icono y nombre en columnas. El modo se guarda en `panels.json` |
+| Cerrar la Calculadora | Sale enseguida como cerrada, con su icono apagado |
+| Tocar la Calculadora cerrada | Se abre y entra en «Monitoreo» |
+
+Encontrado al probar:
+- **La lista no veía cerrada una app recién cerrada**, porque la foto de ventanas abiertas era la anterior al cierre. Corregido: al detectar el cierre, la ventana sale de la foto.
+- **Un clic de prueba caía fuera de su tarjeta.** El fallo estaba en el script de prueba, no en la app: se declaraba sólo «system-aware» y Windows reescalaba sus coordenadas en el monitor de 120 DPI. Las pruebas con ratón en monitores de otro DPI deben declararse per-monitor (`SetProcessDpiAwarenessContext(-4)`).
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

@@ -16,6 +16,25 @@ public enum PanelTemplate
     /// resto del panel, y los demás paneles de ese monitor, se minimizan.
     /// </summary>
     Fill,
+
+    /// <summary>
+    /// Lista tipo Explorador (ADR 0015): una ventana de FocusWShell ocupa el panel y muestra sus apps;
+    /// las ventanas quedan detrás de ella, sin minimizar, para que sus miniaturas sigan en vivo.
+    /// </summary>
+    List,
+}
+
+/// <summary>Modo de la lista tipo Explorador (ADR 0015).</summary>
+public enum ListLayout
+{
+    /// <summary>Iconos grandes con miniatura en vivo.</summary>
+    LargeIcons,
+
+    /// <summary>Icono y nombre, en varias columnas.</summary>
+    List,
+
+    /// <summary>Icono, nombre, título y estado.</summary>
+    Details,
 }
 
 /// <summary>Lado del Centro en el que está un panel. Define cuál es su borde exterior.</summary>
@@ -247,4 +266,7 @@ public sealed record SceneLayoutResult(
 
     /// <summary>Filas de los paneles en tiles que no caben enteros, por nombre.</summary>
     public IReadOnlyDictionary<string, TilePages> Pages { get; init; } = new Dictionary<string, TilePages>();
+
+    /// <summary>Área (bajo su franja) de cada panel en lista: ahí va la ventana de la lista.</summary>
+    public IReadOnlyDictionary<string, PixelRect> Lists { get; init; } = new Dictionary<string, PixelRect>();
 }
