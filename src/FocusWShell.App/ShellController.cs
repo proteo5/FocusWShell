@@ -57,6 +57,7 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Maximized, [SetPresentation, MakeActiveInPanel]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
         (ExternalChange.Unmaximized, [SetPresentation]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
+        (ExternalChange.MovedOrResized, [Detach]) => $"{Label}: se puso en pantalla completa; queda fuera de layout y vuelve a su sitio al salir.",
         (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
         (_, [SnapBack]) => $"{Label}: la moviste; vuelve a su sitio.",
         (_, [ExitFullscreen]) => $"{Label}: dejó de estar maximizada; sale de pantalla completa y vuelve al foco.",
@@ -98,15 +99,37 @@ public sealed class ShellController : IDisposable
     private int _lastPrincipalDpi = 96;
     private Dictionary<string, int> _lastAuxDpi = [];
 
-    /// <summary>Tiras de pestañas de los paneles, según el último layout aplicado.</summary>
+    /// <summary>Tiras de pestañas de los paneles, según el último layout aplicado. Ninguna en el monitor en pausa.</summary>
     public IReadOnlyList<PanelStrip> Strips()
     {
         lock (_gate)
         {
             return _lastReport is null || _workspace.Windows.Count == 0
                 ? []
-                : PanelStripBuilder.Build(_workspace, _lastReport, _lastPrincipalDpi, _lastAuxDpi);
+                : PanelStripBuilder.Build(_workspace, _lastReport, _lastPrincipalDpi, _lastAuxDpi).Where(s => !IsPaused(s.Band)).ToList();
         }
+    }
+
+    private AppFullscreenWatcher? _appFullscreen;
+
+    /// <summary>
+    /// Monitor ocupado por una app en pantalla completa propia (M2): F11, un vídeo, un juego. Mientras dure,
+    /// el gestor no pone tiras, listas ni el deck encima.
+    /// </summary>
+    public PixelRect? PausedMonitor { get; private set; }
+
+    /// <summary>Se dispara (en cualquier hilo) al empezar o terminar una pantalla completa propia de una app.</summary>
+    public event Action<PixelRect?>? PauseChanged;
+
+    /// <summary>Si un rectángulo (una tira, una lista, el deck) cae en el monitor en pausa.</summary>
+    public bool IsPaused(PixelRect rect) =>
+        PausedMonitor is { } paused && paused.Contains(rect.Left + (rect.Width / 2), rect.Top + (rect.Height / 2));
+
+    private void OnAppFullscreen(PixelRect? monitor)
+    {
+        PausedMonitor = monitor;
+        PauseChanged?.Invoke(monitor);
+        LayoutChanged?.Invoke();
     }
 
     /// <summary>
@@ -134,7 +157,7 @@ public sealed class ShellController : IDisposable
 
                 foreach (var (panelId, area) in lists)
                 {
-                    if (_workspace.FindPanel(panelId) is not { } panel)
+                    if (_workspace.FindPanel(panelId) is not { } panel || IsPaused(area))
                     {
                         continue;
                     }
@@ -174,6 +197,98 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>
+    /// Estado del deck (ADR 0013): el foco, la vista, cada panel con sus apps abiertas y las cerradas del
+    /// catálogo cuyo último panel es ése, las ventanas libres, las escenas y los monitores. Usa la última
+    /// enumeración de ventanas; quien lo muestra llama antes a <see cref="Refresh"/> si quiere lo último.
+    /// </summary>
+    public DeckState DeckState()
+    {
+        var scenes = SceneNames();
+        var aux = AuxiliaryDisplays();
+        lock (_gate)
+        {
+            string NameOf(WindowSnapshot s, string fallback) => _catalog.Find(MinSizeCatalog.KeyFor(s))?.Name ?? fallback;
+            DeckApp Managed(ManagedWindow w, WindowSnapshot s) => new(
+                NameOf(s, w.Label),
+                MinSizeCatalog.KeyFor(s),
+                w.Handle,
+                w switch
+                {
+                    { Placement: Placement.Center or Placement.Fullscreen } => ListItemState.InFocus,
+                    { Placement: Placement.Parked } => ListItemState.Parked,
+                    { Detached: true } => ListItemState.Detached,
+                    _ => ListItemState.InPanel,
+                },
+                s.Title,
+                w.PanelId,
+                _catalog.Find(MinSizeCatalog.KeyFor(s)));
+
+            var openKeys = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            string Where(Panel p) => p.Display is null
+                ? $"principal, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}{(p.Slot == PanelSlot.Lower ? " abajo" : "")}"
+                : $"{aux.FirstOrDefault(d => d.Key == p.Display)?.FriendlyName ?? "monitor desconectado"}, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}";
+
+            var panels = _workspace.Panels.Select(p =>
+            {
+                var apps = _workspace.Windows
+                    .Where(w => _workspace.EffectivePanel(w).Id == p.Id && _snapshots.ContainsKey(w.Handle))
+                    .Select(w => Managed(w, _snapshots[w.Handle]))
+                    .ToList();
+                apps.AddRange(_catalog.Apps
+                    .Where(a => a.LastPanelId == p.Id && !a.Hidden && !openKeys.Contains(a.AppKey))
+                    .Select(a => new DeckApp(a.Name, a.AppKey, null, ListItemState.Closed, "", p.Id, a)));
+                return new DeckPanel(p.Id, p.Name, Where(p), apps) { Display = p.Display, Template = p.Template };
+            }).ToList();
+
+            var free = _snapshots.Values
+                .Where(s => !_workspace.IsManaged(s.Handle))
+                .Select(s => new DeckApp(NameOf(s, Path.GetFileNameWithoutExtension(s.ProcessName)), MinSizeCatalog.KeyFor(s), s.Handle, ListItemState.InPanel, s.Title, null, _catalog.Find(MinSizeCatalog.KeyFor(s))))
+                .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            var focused = _workspace.Focused is { } f && _snapshots.TryGetValue(f.Handle, out var fs) ? Managed(f, fs) : null;
+            var current = focused?.Handle;
+            bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h));
+            var displays = new List<(string?, string)> { (null, "Principal") };
+            displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
+            return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays)
+            {
+                Weights = _workspace.ProportionsOf(_workspace.View),
+            };
+        }
+    }
+
+    /// <summary>El deck fijado en un monitor (ADR 0013, fase 4), o <c>null</c> si vive en la esquina del principal.</summary>
+    public DeckDock? DeckDock { get; private set; }
+
+    /// <summary>Fija el deck en un monitor (o lo devuelve a la esquina) y recoloca los paneles de ese monitor.</summary>
+    public ControllerResult SetDeckDock(DeckDock? dock)
+    {
+        lock (_gate)
+        {
+            DeckDock = dock;
+            return RunLocked([], forceLayout: true);
+        }
+    }
+
+    /// <summary>El monitor con su área de trabajo reducida a lo que deja libre el deck, si está fijado en él.</summary>
+    private DisplayInfo WithoutDeck(DisplayInfo display) =>
+        DeckDock is { } dock && string.Equals(dock.Display, display.Key, StringComparison.OrdinalIgnoreCase)
+            && Core.Layout.DeckDock.Split(display.WorkArea, dock.Zone).Panels is { } rest
+            ? display with { WorkArea = rest }
+            : display;
+
+    /// <summary>Panel por defecto para una ventana que va al foco sin tener panel: el derecho del principal.</summary>
+    public string DefaultPanelId()
+    {
+        lock (_gate)
+        {
+            return _workspace.Panels.FirstOrDefault(p => p.Display is null && p.Side == PanelSide.Right)?.Id
+                ?? _workspace.Panels.First(p => p.Display is null).Id;
+        }
+    }
+
     /// <summary>Empieza a observar las ventanas gestionadas.</summary>
     public void StartWatching()
     {
@@ -181,11 +296,13 @@ public sealed class ShellController : IDisposable
             _expectations.IsWatched,
             observed => Task.Run(() => OnSettled(observed.Handle)));
         _switches ??= FocusSwitchWatcher.Start((hwnd, gesture) => Task.Run(() => OnFocusSwitch(hwnd, gesture)));
+        _appFullscreen ??= AppFullscreenWatcher.Start(OnAppFullscreen);
     }
 
     public void Dispose()
     {
         _switches?.Dispose();
+        _appFullscreen?.Dispose();
         _watcher?.Dispose();
     }
 
@@ -331,6 +448,14 @@ public sealed class ShellController : IDisposable
             if (change == ExternalChange.Closed && _snapshots.Remove(handle))
             {
                 _openApps = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+
+            // Se puso en pantalla completa ella misma (F11, un vídeo): no se le quita. Queda fuera de layout
+            // y, al salir, el siguiente cambio la devuelve a su sitio (M2).
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized
+                && AppFullscreen.Covers(observed.Visible, WindowEnumerator.MonitorBoundsOf(handle), observed.Maximized))
+            {
+                commands = [new Detach(handle)];
             }
 
             // Redimensionada sólo por el borde que da al otro panel de su columna: es mover el separador
@@ -920,11 +1045,21 @@ public sealed class ShellController : IDisposable
 
             ObserveApps(windows);
             var alive = windows.Select(w => w.Handle).ToHashSet();
-            var closed = _workspace.Windows.Where(m => !alive.Contains(m.Handle)).Select(m => new WindowClosed(m.Handle)).ToList();
+            // Sólo se da por cerrada la ventana que ya no existe. Una gestionada puede dejar de ser "elegible"
+            // un rato sin cerrarse (p. ej. en pantalla completa propia cambia de estilo): sigue gestionada.
+            var closed = _workspace.Windows
+                .Where(m => !alive.Contains(m.Handle) && !WindowMover.Observe(m.Handle).Exists)
+                .Select(m => new WindowClosed(m.Handle))
+                .ToList();
             if (closed.Count > 0)
             {
                 RunLocked(closed);
             }
+
+            // Las gestionadas que siguen vivas pero no son elegibles ahora siguen en la lista, con su última foto.
+            windows.AddRange(_workspace.Windows
+                .Where(m => !alive.Contains(m.Handle) && _snapshots.ContainsKey(m.Handle))
+                .Select(m => _snapshots[m.Handle]));
         }
 
         return windows;
@@ -1253,8 +1388,11 @@ public sealed class ShellController : IDisposable
                 : null,
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
-                    displays.First(d => d.Key == a.Display),
-                    a.Panels.Select(v => Assign(v)!).ToList()))
+                    WithoutDeck(displays.First(d => d.Key == a.Display)),
+                    a.Panels.Select(v => Assign(v)!).ToList())
+                {
+                    NoMaximize = DeckDock is { } dock && string.Equals(dock.Display, a.Display, StringComparison.OrdinalIgnoreCase),
+                })
                 .ToList(),
         };
         var (leftWeight, centerWeight, rightWeight) = c.Weights;

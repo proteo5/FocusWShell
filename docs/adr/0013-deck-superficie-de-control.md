@@ -1,6 +1,6 @@
 ﻿# ADR 0013 — El deck es una superficie de control opcional, en el monitor que se elija
 
-- **Estado:** Propuesta (pendiente del spike S8)
+- **Estado:** Propuesta; S8 hecho (2026-11-10): tocar una ventana WPF sin foco, también desde la tablet por Artemis, no le quita el foco a la app del Centro
 - **Fecha:** 2026-11-10
 
 ## Contexto
@@ -34,3 +34,36 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
 - La ventana del deck es nuestra, con `WS_EX_NOACTIVATE`, como las tiras de pestañas. El riesgo principal es que un toque remoto (Apollo/Artemis) o físico **robe el foco** a la app del foco. El spike S8 lo mide antes de construir las fases 2 y 3.
 - Los objetivos táctiles necesitan unos 48 px a la escala del monitor (R11, ADR 0009). En el principal, con ratón, pueden ser más pequeños.
 - El deck reacciona a la desconexión de su monitor como cualquier auxiliar (S6): vuelve a la esquina del principal, oculto.
+
+## Implementación de la fase 2 (2026-11-10, primera versión)
+
+- **Ventana del deck** (`DeckWindow`): sin foco y siempre encima, en la esquina inferior derecha del área de trabajo del principal (640 × 980 px lógicos como máximo).
+- **Qué muestra:**
+  - el foco y su título, con «Anterior» (`SwapWithPrevious`) y «Foco al panel»;
+  - las tres vistas, con la actual resaltada;
+  - cada panel con sus apps: abiertas con su icono, cerradas del catálogo apagadas, y marcas ↑ (en el foco), ⏸ (estacionada) y ↗ (fuera de layout);
+  - las ventanas libres;
+  - las escenas;
+  - «Pantalla encendida» y «Restaurar todas», éste con un segundo toque de confirmación.
+- **Toques:** botones de 48 px como mínimo.
+  - Tocar una app la lleva al foco. Si es libre, primero la asigna al panel derecho del principal; si está cerrada, la abre en su panel.
+  - Clic derecho, o pulsación larga en táctil, abre su menú: al foco, pantalla completa en un monitor, estacionar o recuperar, mover a otro panel, liberar.
+- **Se oculta solo** al elegir una app o una escena. También con su ✕, con **Ctrl+Alt+Mayús+D** (configurable), con «Mostrar u ocultar el deck» en la bandeja o con el botón «Deck» de la ventana principal.
+- **«API de deck»:** `ShellController.DeckState()` reúne el estado en un solo sitio; los comandos son los de siempre.
+- **Arrastrar:** soltar una app sobre otro panel la mueve (`SendTo`); soltar una ventana libre la asigna (`Adopt`). La zona se ilumina al pasar por encima. Moverla menos de 12 px cuenta como un toque.
+- **Navegación:**
+  - en la cabecera de cada panel, ◀ ▶ recorren sus pestañas (en pestañas o pantalla completa) y un botón muestra la presentación y pasa a la siguiente (Tiles, Pestañas, Lista y, en un auxiliar, Pantalla completa);
+  - bajo «Vista», los presets de ancho del foco, con el actual resaltado.
+- **Pendiente:** el [ADR 0014](0014-mapa-de-controles-en-el-deck.md).
+
+## Implementación de la fase 4 (2026-11-10)
+
+- **«Mandar el deck a…»** (📌 en el deck): a la esquina del principal, como siempre, o a otro monitor. En otro monitor se elige la **mitad izquierda**, la **mitad derecha** o **entero**; entero sólo si ese monitor no tiene paneles.
+- **Fijado en un monitor:**
+  - el deck **no se oculta al elegir**: vive ahí;
+  - los paneles de ese monitor se colocan **en el resto de la pantalla** (`DeckDock.Split`), porque el controlador reduce el área de trabajo de ese monitor antes de calcular el layout.
+- **Se guarda** en `settings.json` (`DeckDisplay`, `DeckZone`) y se recupera al arrancar.
+- **Desconexión:** si su monitor se desconecta, el deck se oculta; si vuelve, reaparece allí.
+- **Pendiente:**
+  - comprobar la desconexión con la tablet de verdad;
+- **Pantalla completa junto al deck:** en el monitor donde está fijado el deck, un panel en «Pantalla completa» no se maximiza. Ocupa el área que deja el deck, bajo su tira de pestañas (`AuxInput.NoMaximize`). Es la idea de Spotify en la tablet.

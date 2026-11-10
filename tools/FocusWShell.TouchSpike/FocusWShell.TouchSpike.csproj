@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Spike S8 (ADR 0013, R12): tocar una ventana sin foco no debe quitarle el foco a la app del Centro. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>touch-spike</AssemblyName>
+    <!-- Herramienta de medida desechable: P/Invoke directo, sin las reglas de análisis del producto. -->
+    <AnalysisLevel>none</AnalysisLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);SYSLIB1054;CA1416</NoWarn>
+  </PropertyGroup>
+
+</Project>

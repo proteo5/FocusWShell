@@ -11,6 +11,12 @@ public sealed record AuxInput(string Display, PixelRect WorkArea, IReadOnlyList<
 
     /// <summary>Alto mínimo de una fila de tiles.</summary>
     public int MinRowHeight { get; init; }
+
+    /// <summary>
+    /// No maximizar (Fill): el monitor comparte pantalla con el deck fijado (ADR 0013, fase 4), así que la
+    /// ventana de un panel en Fill ocupa el área que queda, bajo su tira de pestañas, en vez de maximizarse.
+    /// </summary>
+    public bool NoMaximize { get; init; }
 }
 
 /// <summary>Resultado del motor de un monitor auxiliar.</summary>
@@ -72,7 +78,11 @@ public static class AuxLayoutEngine
         if (panels.FirstOrDefault(p => p.Template == PanelTemplate.Fill) is { } fill)
         {
             var main = fill.Windows[0];
-            targets.Add(new WindowTarget(main.Handle, main.Label, fill.Name, TargetKind.Maximized, area));
+            int fillInset = input.NoMaximize ? Math.Clamp(input.TopInset, 0, area.Height / 2) : 0;
+            var fillArea = area with { Top = area.Top + fillInset };
+            targets.Add(input.NoMaximize
+                ? new WindowTarget(main.Handle, main.Label, fill.Name, TargetKind.Visible, fillArea)
+                : new WindowTarget(main.Handle, main.Label, fill.Name, TargetKind.Maximized, area));
             foreach (var p in panels)
             {
                 foreach (var w in p.Windows.Where(w => w.Handle != main.Handle))
@@ -87,13 +97,18 @@ public static class AuxLayoutEngine
                 notes.Add($"{main.Label} ocupa el monitor ({fill.DisplayTitle} en Fill); {string.Join(" y ", hidden)} se minimiza.");
             }
 
+            // Sin maximizar, el panel en Fill lleva su tira de pestañas (como una pila que ocupa el monitor).
             return new AuxLayoutResult(
                 input.Display,
                 area,
-                new Dictionary<string, PixelRect> { [fill.Name] = area },
-                panels.ToDictionary(p => p.Name, p => p == fill ? PanelTemplate.Fill : PanelTemplate.Stack),
+                new Dictionary<string, PixelRect> { [fill.Name] = fillArea },
+                panels.ToDictionary(p => p.Name, p => p == fill && !input.NoMaximize ? PanelTemplate.Fill : PanelTemplate.Stack),
                 targets,
-                notes);
+                notes)
+            {
+                Bands = input.NoMaximize ? new Dictionary<string, PixelRect> { [fill.Name] = area } : new Dictionary<string, PixelRect>(),
+                StripHeight = fillInset,
+            };
         }
 
         // 2. Columnas por lado (de izquierda a derecha); en cada una, hasta dos paneles apilados con su

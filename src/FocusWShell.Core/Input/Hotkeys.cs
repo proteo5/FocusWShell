@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace FocusWShell.Core.Input;
 
@@ -161,6 +161,9 @@ public static class Hotkeys
 {
     public const string Emergency = "restaurar-todas";
 
+    /// <summary>Mostrar u ocultar el deck (ADR 0013).</summary>
+    public const string Deck = "deck";
+
     private static KeyChord Cas(uint vk) => new(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Shift, vk);
 
     /// <summary>Las acciones, en el orden en que se muestran, con los atajos de siempre (Ctrl+Alt+Mayús+…).</summary>
@@ -173,6 +176,7 @@ public static class Hotkeys
         new("pantalla-completa", "Pantalla completa", Cas(0x46)),
         new("vista", "Cambiar de vista", Cas(0x56)),
         new("pantalla-encendida", "Pantalla encendida", Cas(0x50)),
+        new(Deck, "Mostrar u ocultar el deck", Cas(0x44)),
         .. Enumerable.Range(1, 9).Select(n => new HotkeyAction($"escena-{n}", $"Escena {n}", Cas((uint)(0x30 + n)))),
     ];
 

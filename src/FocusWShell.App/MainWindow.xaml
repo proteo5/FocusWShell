@@ -20,6 +20,8 @@
                 <ComboBox x:Name="ProportionsCombo" Width="260" Margin="0,0,24,0" AutomationProperties.Name="Proporciones"
                           SelectionChanged="ProportionsCombo_SelectionChanged"
                           ToolTip="Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ventana que da a la columna vecina: se guarda." />
+                <Button x:Name="DeckButton" Content="Deck" Padding="10,2" Margin="0,0,8,0" Click="Deck_Click"
+                        ToolTip="Mostrar u ocultar el deck en la esquina del monitor principal" />
                 <Button x:Name="HotkeysButton" Content="Atajos…" Padding="10,2" Margin="0,0,24,0" Click="Hotkeys_Click"
                         ToolTip="Ver y cambiar los atajos globales" />
                 <TextBlock Text="Escena:" VerticalAlignment="Center" Margin="0,0,6,0" />

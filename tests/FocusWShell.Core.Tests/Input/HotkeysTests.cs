@@ -1,4 +1,4 @@
-using FocusWShell.Core.Input;
+﻿using FocusWShell.Core.Input;
 
 namespace FocusWShell.Core.Tests.Input;
 
@@ -46,6 +46,7 @@ public class HotkeysTests
         Assert.Equal("Ctrl+Alt+Mayús+Retroceso", map.Chords[Hotkeys.Emergency].Display());
         Assert.Equal("Ctrl+Alt+Mayús+↑", map.Chords["al-foco"].Display());
         Assert.Equal("Ctrl+Alt+Mayús+9", map.Chords["escena-9"].Display());
+        Assert.Equal("Ctrl+Alt+Mayús+D", map.Chords[Hotkeys.Deck].Display());
         Assert.Equal(Hotkeys.Actions.Count, map.Chords.Count);
     }
 

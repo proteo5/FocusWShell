@@ -49,9 +49,9 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
    Todo se usa desde la ventana, los atajos y las tiras.
 
    **Estado (2026-11-10):** fase sin deck completa.
-2. **Deck en una esquina del monitor principal**, que se muestra y se oculta con un clic o un atajo, y se oculta solo al elegir.
-3. **Spike S8:** que el toque desde una tablet (Apollo/Artemis) y desde un monitor táctil físico no robe el foco (R12).
-4. **"Mandar el deck a…"** otro monitor, con paneles de pantalla completa con pestañas para tablets.
+2. **Deck en una esquina del monitor principal**, que se muestra y se oculta con un clic o un atajo, y se oculta solo al elegir. **Hecho** (ver [ADR 0013](adr/0013-deck-superficie-de-control.md#implementación-de-la-fase-2-2026-11-10-primera-versión)), con arrastrar entre paneles, el control de navegación y los presets de ancho del foco.
+3. **Spike S8:** que el toque desde una tablet (Apollo/Artemis) y desde un monitor táctil físico no robe el foco (R12). **Hecho:** con toques inyectados, con ratón y con la tablet por Apollo/Artemis (como monitor extendido), el deck no roba el foco y responde al momento.
+4. **"Mandar el deck a…"** otro monitor, con paneles de pantalla completa con pestañas para tablets. **Hecho** el deck fijado en un monitor (en una mitad o entero), con los paneles de ese monitor en el resto, y un panel en pantalla completa a su lado con sus pestañas; falta probar la desconexión real.
 
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.
 
@@ -60,7 +60,7 @@ Criterio de salida: una semana de uso diario cambiando de vista y llevando apps 
 Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspensión, apps difíciles.
 
 - `EnterFullscreen` / `ExitFullscreen` por monitor. **Hecho en M1b** ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)).
-- Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor.
+- Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor. **Hecho** (F11 en Edge, ver [riesgos](04-riesgos-y-spikes.md)); falta probar un juego y una presentación.
 - Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)). **Hecho** para monitores auxiliares que se desconectan y vuelven; falta probar una tablet, la pérdida del monitor principal y la suspensión.
 - Reanudación tras suspensión.
 - Detección y presentación de ventanas no gestionables (elevadas).

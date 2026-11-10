@@ -17,7 +17,7 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 | R9 | La tira de pestañas (overlay) queda tapada o desalineada | Medio | Media | Franja reservada sin solape; reposicionar tras cada plan y tras cambios de DPI. |
 | R10 | El modelo de roles no mejora lo que ya dan FancyZones + DisplayFusion | Alto: el proyecto no se justifica | Desconocida | Validación diaria temprana ([06](06-validacion.md)) antes de invertir en UI. |
 | R11 | Monitores remotos (tablets por wifi) que se desconectan a menudo; Windows mueve sus ventanas al principal, encima del Centro | Alto: rompe el foco justo en el monitor que importa | Media | Reaccionar al cambio de monitores antes de que se note: reubicar en paneles del principal, nunca en el Centro ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md), [0009](adr/0009-tablets-como-monitores-auxiliares.md)). Probar S6 con una tablet. |
-| R12 | El toque en el deck, desde una tablet por streaming o un monitor táctil, le quita el foco a la app del Centro | Alto: el deck interrumpiría justo lo que debe proteger | Desconocida | Ventanas del deck con `WS_EX_NOACTIVATE`; medir en S8 antes de construir el deck en otro monitor ([ADR 0013](adr/0013-deck-superficie-de-control.md)). |
+| R12 | El toque en el deck, desde una tablet por streaming o un monitor táctil, le quita el foco a la app del Centro | Alto: el deck interrumpiría justo lo que debe proteger | Desconocida | Ventanas del deck con `WS_EX_NOACTIVATE`; medir en S8 antes de construir el deck en otro monitor ([ADR 0013](adr/0013-deck-superficie-de-control.md)). **Descartado por S8** (2026-11-10). |
 
 ## Spikes
 
@@ -32,7 +32,7 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S5 — Diario y caída | ¿Se recupera todo tras matar el proceso? | Aplicar escena, `taskkill /f`, arrancar de nuevo, restaurar. | Todas las ventanas vuelven a su `WINDOWPLACEMENT` original, incluidas las que estaban maximizadas o minimizadas. | R6 |
 | S6 — Reconexión | ¿Qué pasa al desconectar y reconectar el monitor estándar? | Con escena aplicada, desconectar el cable, esperar y reconectar. | Ninguna ventana queda fuera de pantalla; al reconectar se reaplica el layout guardado. | R7 |
 | S7 — Pila | ¿Minimizar funciona bien para las ventanas ocultas de la pila? | Alternar pestañas 50 veces entre 3–4 apps. | Sin pérdidas de estado; la alternancia se siente inmediata. | R8 · **Hecho** |
-| S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 |
+| S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 · **Hecho** (toques inyectados y tablet con Artemis) |
 | S9 — Apuntar desde el deck | ¿Se puede apuntar con precisión en la app del foco desde el deck? | Miniatura DWM en vivo con cuadrícula y zoom en la tablet; scroll por franja lateral en Edge; lectura de controles con UI Automation en Edge, Slack, SSMS y VS Code. | El toque cae a ±1 control del objetivo con zoom; el scroll mueve la zona tocada; lectura de controles < 300 ms en apps nativas y < 1 s en Chromium. | — |
 | S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — · **Hecho** (opción B confirmada) |
 
@@ -347,6 +347,86 @@ Panel Trabajo en pestañas con dos Paint y una Calculadora. Se alternó 50 veces
 | Ctrl+Alt+Mayús+↑ con una ventana de Trabajo activa | Ya no hace nada |
 | Ctrl+Alt+Mayús+J | La lleva al foco |
 | «Por defecto» y guardar | Vuelve a Ctrl+Alt+Mayús+↑; el cambio desaparece de `settings.json` |
+
+### S8 — Toque sin robar el foco (2026-11-10)
+
+Herramienta: `tools/FocusWShell.TouchSpike`. Una ventana tipo deck en WPF (la tecnología del deck), con `WS_EX_NOACTIVATE`, siempre encima, fuera de la barra de tareas, y seis botones grandes. Una Paint propia hace de "app del Centro", en primer plano. Los toques se inyectan con `InjectTouchInput`: Windows los trata como toques de verdad, con la misma pila de entrada que un dedo.
+
+| Entrada | Registradas | El primer plano dejó Paint | Paint perdió el foco de teclado | Latencia hasta el `Click` (mediana · p95 · máx.) |
+| --- | --- | --- | --- | --- |
+| 50 toques inyectados | 50 | 0 veces | 0 veces | 5 · 24 · 92 ms, desde que se levanta el dedo |
+| 20 clics de ratón (`SendInput`) | 20 | 0 veces | 0 veces | 35 · 39 · 53 ms, que incluyen los 30 ms entre pulsar y soltar |
+
+- WPF recibe el toque como `StylusDown(touch)`, `TouchDown` y `Click`. El deck puede reaccionar al tocar (`TouchDown`) o al soltar (`Click`).
+- **Conclusión, de momento:** en este equipo, tocar o hacer clic en una ventana WPF sin foco no le quita el foco a la app del Centro, y la respuesta queda muy por debajo de los 100 ms.
+**Con la tablet (Apollo 0.4.6 + Artemis 20.2.6):**
+
+- **Montaje:**
+  - Apollo instalado en el PC; detecta los codificadores AMF de la Radeon 780M.
+  - Para que la tablet **extienda** el escritorio en vez de duplicar el principal, la app «Desktop» necesita «Always use Virtual Display». En «Audio/Video → Advanced display device options → Device configuration» va «Verify that display is enabled», para que el monitor físico siga siendo el principal.
+  - Windows ve la tablet como un monitor más (`DISPLAY6`, 1280×720).
+  - Apollo crea un dispositivo táctil virtual, así que Artemis manda toques de verdad, no clics de ratón.
+  - El aviso de Apollo «ViGEmBus is not installed» sólo afecta a los mandos de juego.
+- **Prueba:** `touch-spike manual x y ancho alto` puso el deck en la pantalla de la tablet. El usuario tocó sus botones desde la tablet mientras escribía en el PC.
+
+| Toques | Llegaron como | El deck tomó el primer plano | Primer plano durante la prueba |
+| --- | --- | --- | --- |
+| 17 | toque (`StylusDown(touch)`, `TouchDown`, `Click`) | 0 veces | Claude (6 toques) y Notepad++ (11), sin cambios |
+
+- El botón reacciona al tocar, y el `Click` llega de 20 a 60 ms después, al levantar el dedo.
+- **Conclusión:** R12 queda descartado con la tablet por streaming. El deck puede ser una ventana WPF sin foco, como las tiras, y reaccionar en `TouchDown` para que se sienta inmediato.
+- **Falta:** un monitor táctil físico. Es opcional, porque usa la misma pila de entrada que los toques inyectados, que también pasaron.
+
+### Deck, primera versión (M1b, 2026-11-10)
+
+| Caso | Resultado |
+| --- | --- |
+| Ctrl+Alt+Mayús+D | El deck aparece en la esquina inferior derecha del ultrawide: el foco, las vistas, Contexto («sin apps»), Trabajo con una Paint, las ventanas libres con sus iconos, las escenas del usuario y los botones fijos |
+| Tocar la Paint de Trabajo | Pasa al foco y el deck se oculta solo; al volver a abrirlo, el foco muestra «Paint» |
+| «Izquierda» y luego «Centro» | La vista cambia y la ventana principal lo refleja |
+| «Foco al panel» | La Paint vuelve a Trabajo |
+| ✕ | El deck se oculta |
+
+Que tocarlo no robe el foco ya lo confirmó el S8 con la misma técnica de ventana.
+
+### Deck en la tablet (M1b, 2026-11-10)
+
+Tablet por Apollo/Artemis como monitor extendido («Lenovo tablet», 1280×720):
+
+| Caso | Resultado |
+| --- | --- |
+| 📌 → «Lenovo tablet: entero» | El deck ocupa el área de trabajo de la tablet y el ajuste se guarda en `settings.json` |
+| Tocar una Paint libre en el deck fijado | Pasa a Trabajo y al foco; el deck sigue a la vista en la tablet |
+| Panel «Tableta» en la tablet, con una Calculadora; 📌 → «mitad izquierda» | El deck queda a la izquierda; el panel, con su tira, a la derecha, sin taparse. «Entero» sale como no disponible («tiene paneles») |
+
+| Arrastrar con el ratón una Paint de Trabajo a Contexto, y una Paint libre a Trabajo | Se mueve la primera; la segunda queda asignada a Trabajo |
+| Botón de presentación de Trabajo → «Pestañas», luego ▶ | Trabajo pasa a pestañas; ▶ pone la Calculadora como pestaña visible |
+| Preset «Foco ancho» | La vista queda en 12 · 70 · 18 % |
+| Panel «Tableta» en la tablet, en Pantalla completa; deck fijado en la mitad izquierda; arrastrar la Calculadora a Tableta | La Calculadora ocupa la mitad derecha sin maximizarse, con su tira «TABLETA \| Calculator» |
+
+Sin probar: desconectar y reconectar la tablet con el deck fijado.
+
+### Pantalla completa propia de las apps (M2, 2026-11-10)
+
+Regla (`Core.Windows.AppFullscreen`): una ventana está en pantalla completa propia si cubre su monitor entero, barra de tareas incluida (±2 px), sin estar maximizada. Una maximizada en un monitor sin barra también lo cubre, pero no cuenta. Hay dos vías:
+
+- **El vigilante** (`AppFullscreenWatcher`): mira la ventana en primer plano cada 500 ms y avisa sólo cuando cambia. Mientras dure la pantalla completa, ese monitor queda **en pausa**: sin tiras, sin listas y sin deck encima.
+- **Al reaccionar a un cambio externo:** si una ventana gestionada se movió o cambió de tamaño hasta cubrir su monitor, no se le devuelve a su sitio (`SnapBack`), sino que se suelta del layout (`Detach`). Al salir, el siguiente cambio la reencaja.
+
+Probado con Edge (F11) en el panel Trabajo y el deck abierto en el principal:
+
+| Momento | Resultado |
+| --- | --- |
+| F11 | Edge ocupa 3440×1440. El estado dice «se puso en pantalla completa». La tira de Trabajo y el deck desaparecen |
+| «Actualizar lista» durante la pantalla completa | Edge sigue gestionada |
+| F11 otra vez | Edge vuelve a su sitio en Trabajo («la moviste; vuelve a su sitio»). La tira y el deck vuelven |
+
+Encontrado aquí y ya corregido:
+
+- **Una gestionada en pantalla completa se daba por cerrada.** Al refrescar, una ventana que dejaba de ser «elegible» (en pantalla completa Edge cambia de estilo) se trataba como cerrada y se olvidaba. Ahora sólo se da por cerrada la que ya no existe.
+- **La lista no la mostraba.** Ahora una gestionada viva que no es elegible sigue en la lista, con su última foto.
+
+Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
 
 ### S6 — Reconexión (2026-11-10)
 

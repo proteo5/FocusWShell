@@ -11,5 +11,6 @@
     <Project Path="tools/FocusWShell.Probe/FocusWShell.Probe.csproj" />
     <Project Path="tools/FocusWShell.TestWindows/FocusWShell.TestWindows.csproj" />
     <Project Path="tools/FocusWShell.ThumbSpike/FocusWShell.ThumbSpike.csproj" />
+    <Project Path="tools/FocusWShell.TouchSpike/FocusWShell.TouchSpike.csproj" />
   </Folder>
 </Solution>

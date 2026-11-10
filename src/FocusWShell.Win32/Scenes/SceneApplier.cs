@@ -34,6 +34,9 @@ public sealed record PanelAssignment(string Id, string Title, PanelSide Side, Pa
 /// <summary>Paneles de un monitor auxiliar, de izquierda a derecha (ADR 0008).</summary>
 public sealed record AuxAssignment(DisplayInfo Display, IReadOnlyList<PanelAssignment> Panels)
 {
+    /// <summary>No maximizar en este monitor: comparte pantalla con el deck fijado.</summary>
+    public bool NoMaximize { get; init; }
+
     /// <summary>Atajo para el probe: un panel "Contexto" a la izquierda y uno "Trabajo" a la derecha.</summary>
     public static AuxAssignment FromSides(
         DisplayInfo display,
@@ -290,6 +293,7 @@ public sealed class SceneApplier
             {
                 MinCellWidth = Scale(_options.MinCellWidth, a.Display.Dpi),
                 MinRowHeight = Scale(_options.MinRowHeight, a.Display.Dpi),
+                NoMaximize = a.NoMaximize,
             }))
             .ToList();
 
