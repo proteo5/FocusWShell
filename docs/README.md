@@ -31,7 +31,7 @@ Esta carpeta es la documentación de ingeniería del proyecto. Parte de las nota
 | [0008](adr/0008-centro-solo-en-monitor-principal.md) | El Centro sólo existe en el monitor principal; los demás son auxiliares | Aceptada |
 | [0009](adr/0009-tablets-como-monitores-auxiliares.md) | Las tablets que extienden el escritorio son monitores auxiliares; sin drivers ni clientes propios (se sugieren Sunshine + Moonlight, Apollo + Artemis y otros) | Aceptada |
 | [0010](adr/0010-mantener-pantalla-encendida.md) | FocusWShell incluye "mantener la pantalla encendida" | Aceptada |
-| [0011](adr/0011-grupos-de-apps-y-catalogo.md) | Grupos de apps libres y un catálogo que se llena por detección | Propuesta |
+| [0011](adr/0011-paneles-y-catalogo.md) | Paneles con nombre, ubicación y presentación; ventanas libres; catálogo por detección | Propuesta |
 | [0012](adr/0012-vistas-posicion-del-foco.md) | Vistas: un solo foco, a la izquierda, al centro o a la derecha | Propuesta |
 | [0013](adr/0013-deck-superficie-de-control.md) | El deck es una superficie de control opcional, en el monitor que se elija | Propuesta |
 | [0014](adr/0014-mapa-de-controles-en-el-deck.md) | Apuntar en la app del foco desde el deck: imagen en vivo, cuadrícula y controles detectados | Propuesta |

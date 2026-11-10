@@ -142,11 +142,11 @@ Cambiar de template sólo recalcula rectángulos y visibilidad. Ninguna ventana 
   - **Nada se desborda**: la ventana que no cabe se minimiza con una nota.
   - Con `Fill`, la primera ventana del panel se maximiza y todo lo demás de ese monitor se minimiza. Si dos paneles están en `Fill`, gana el primero.
 
-## Hacia grupos, vistas y deck (propuesta)
+## Hacia paneles, vistas y deck (propuesta)
 
 Tres decisiones propuestas cambiarán este modelo en la siguiente etapa:
 
-- **Grupos de apps ([ADR 0011](adr/0011-grupos-de-apps-y-catalogo.md)).** El hogar de una ventana deja de ser `Work` o `Context` y pasa a ser un grupo libre con un tipo: lateral, monitor, compacto o deck. Los grupos se llenan desde un catálogo de apps que aprende con el uso, y las apps cerradas se pueden abrir desde él.
+- **Paneles ([ADR 0011](adr/0011-paneles-y-catalogo.md)).** El hogar de una ventana deja de ser `Work` o `Context` y pasa a ser un **panel**: una entidad con nombre, ubicación y presentación, que se crea, renombra, mueve y borra. Hay hasta dos paneles por columna. Las ventanas empiezan **libres** y se asignan cuando el usuario quiere. Un catálogo de apps se llena por detección y permite abrir las cerradas.
 - **Vistas ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)).** Sigue habiendo un solo foco, pero puede ir a la izquierda, al centro o a la derecha del monitor principal, con proporciones propias por vista. El invariante 1 no cambia. Pantalla completa significa maximizada en el monitor elegido.
 - **Deck ([ADR 0013](adr/0013-deck-superficie-de-control.md)).** Una vista y un control táctil sobre todo lo anterior, opcional, en una esquina del principal o en otro monitor.
 
