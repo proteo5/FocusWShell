@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FocusWShell.App/FocusWShell.App.csproj" />
+    <Project Path="src/FocusWShell.Core/FocusWShell.Core.csproj" />
+    <Project Path="src/FocusWShell.Win32/FocusWShell.Win32.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FocusWShell.Core.Tests/FocusWShell.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/FocusWShell.Probe/FocusWShell.Probe.csproj" />
+    <Project Path="tools/FocusWShell.TestWindows/FocusWShell.TestWindows.csproj" />
+  </Folder>
+</Solution>

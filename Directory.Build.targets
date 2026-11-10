@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Ejecutables: manifiesto compartido con PerMonitorV2 + asInvoker (ADR 0004).
+    Va en .targets y no en .props porque necesita OutputType, que el proyecto define después de
+    importar Directory.Build.props. Un proyecto puede excluirse con UseSharedManifest=false.
+  -->
+  <PropertyGroup Condition="('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe') and '$(UseSharedManifest)' != 'false'">
+    <ApplicationManifest>$(MSBuildThisFileDirectory)build\app.manifest</ApplicationManifest>
+  </PropertyGroup>
+</Project>
