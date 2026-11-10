@@ -174,6 +174,75 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>
+    /// Estado del deck (ADR 0013): el foco, la vista, cada panel con sus apps abiertas y las cerradas del
+    /// catálogo cuyo último panel es ése, las ventanas libres, las escenas y los monitores. Usa la última
+    /// enumeración de ventanas; quien lo muestra llama antes a <see cref="Refresh"/> si quiere lo último.
+    /// </summary>
+    public DeckState DeckState()
+    {
+        var scenes = SceneNames();
+        var aux = AuxiliaryDisplays();
+        lock (_gate)
+        {
+            string NameOf(WindowSnapshot s, string fallback) => _catalog.Find(MinSizeCatalog.KeyFor(s))?.Name ?? fallback;
+            DeckApp Managed(ManagedWindow w, WindowSnapshot s) => new(
+                NameOf(s, w.Label),
+                MinSizeCatalog.KeyFor(s),
+                w.Handle,
+                w switch
+                {
+                    { Placement: Placement.Center or Placement.Fullscreen } => ListItemState.InFocus,
+                    { Placement: Placement.Parked } => ListItemState.Parked,
+                    { Detached: true } => ListItemState.Detached,
+                    _ => ListItemState.InPanel,
+                },
+                s.Title,
+                w.PanelId,
+                _catalog.Find(MinSizeCatalog.KeyFor(s)));
+
+            var openKeys = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            string Where(Panel p) => p.Display is null
+                ? $"principal, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}{(p.Slot == PanelSlot.Lower ? " abajo" : "")}"
+                : $"{aux.FirstOrDefault(d => d.Key == p.Display)?.FriendlyName ?? "monitor desconectado"}, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}";
+
+            var panels = _workspace.Panels.Select(p =>
+            {
+                var apps = _workspace.Windows
+                    .Where(w => _workspace.EffectivePanel(w).Id == p.Id && _snapshots.ContainsKey(w.Handle))
+                    .Select(w => Managed(w, _snapshots[w.Handle]))
+                    .ToList();
+                apps.AddRange(_catalog.Apps
+                    .Where(a => a.LastPanelId == p.Id && !a.Hidden && !openKeys.Contains(a.AppKey))
+                    .Select(a => new DeckApp(a.Name, a.AppKey, null, ListItemState.Closed, "", p.Id, a)));
+                return new DeckPanel(p.Id, p.Name, Where(p), apps);
+            }).ToList();
+
+            var free = _snapshots.Values
+                .Where(s => !_workspace.IsManaged(s.Handle))
+                .Select(s => new DeckApp(NameOf(s, Path.GetFileNameWithoutExtension(s.ProcessName)), MinSizeCatalog.KeyFor(s), s.Handle, ListItemState.InPanel, s.Title, null, _catalog.Find(MinSizeCatalog.KeyFor(s))))
+                .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            var focused = _workspace.Focused is { } f && _snapshots.TryGetValue(f.Handle, out var fs) ? Managed(f, fs) : null;
+            var current = focused?.Handle;
+            bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h));
+            var displays = new List<(string?, string)> { (null, "Principal") };
+            displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
+            return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays);
+        }
+    }
+
+    /// <summary>Panel por defecto para una ventana que va al foco sin tener panel: el derecho del principal.</summary>
+    public string DefaultPanelId()
+    {
+        lock (_gate)
+        {
+            return _workspace.Panels.FirstOrDefault(p => p.Display is null && p.Side == PanelSide.Right)?.Id
+                ?? _workspace.Panels.First(p => p.Display is null).Id;
+        }
+    }
+
     /// <summary>Empieza a observar las ventanas gestionadas.</summary>
     public void StartWatching()
     {

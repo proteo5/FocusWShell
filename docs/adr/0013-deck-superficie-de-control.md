@@ -34,3 +34,24 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
 - La ventana del deck es nuestra, con `WS_EX_NOACTIVATE`, como las tiras de pestañas. El riesgo principal es que un toque remoto (Apollo/Artemis) o físico **robe el foco** a la app del foco. El spike S8 lo mide antes de construir las fases 2 y 3.
 - Los objetivos táctiles necesitan unos 48 px a la escala del monitor (R11, ADR 0009). En el principal, con ratón, pueden ser más pequeños.
 - El deck reacciona a la desconexión de su monitor como cualquier auxiliar (S6): vuelve a la esquina del principal, oculto.
+
+## Implementación de la fase 2 (2026-11-10, primera versión)
+
+- **Ventana del deck** (`DeckWindow`): sin foco y siempre encima, en la esquina inferior derecha del área de trabajo del principal (640 × 980 px lógicos como máximo).
+- **Qué muestra:**
+  - el foco y su título, con «Anterior» (`SwapWithPrevious`) y «Foco al panel»;
+  - las tres vistas, con la actual resaltada;
+  - cada panel con sus apps: abiertas con su icono, cerradas del catálogo apagadas, y marcas ↑ (en el foco), ⏸ (estacionada) y ↗ (fuera de layout);
+  - las ventanas libres;
+  - las escenas;
+  - «Pantalla encendida» y «Restaurar todas», éste con un segundo toque de confirmación.
+- **Toques:** botones de 48 px como mínimo.
+  - Tocar una app la lleva al foco. Si es libre, primero la asigna al panel derecho del principal; si está cerrada, la abre en su panel.
+  - Clic derecho, o pulsación larga en táctil, abre su menú: al foco, pantalla completa en un monitor, estacionar o recuperar, mover a otro panel, liberar.
+- **Se oculta solo** al elegir una app o una escena. También con su ✕, con **Ctrl+Alt+Mayús+D** (configurable), con «Mostrar u ocultar el deck» en la bandeja o con el botón «Deck» de la ventana principal.
+- **«API de deck»:** `ShellController.DeckState()` reúne el estado en un solo sitio; los comandos son los de siempre.
+- **Pendiente:**
+  - arrastrar iconos entre paneles;
+  - el control de navegación (pestañas, paneles, template, ancho del foco);
+  - la fase 4, «mandar el deck a…» otro monitor (la tablet ya funciona como monitor extendido);
+  - el [ADR 0014](0014-mapa-de-controles-en-el-deck.md).

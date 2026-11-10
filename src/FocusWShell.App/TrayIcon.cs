@@ -15,12 +15,13 @@ public sealed class TrayIcon : IDisposable
     private readonly Forms.ToolStripMenuItem _restoreItem;
     private Func<int, string> _sceneChord = n => "";
 
-    public TrayIcon(Action open, Action toggleKeepAwake, Action restoreAll, Action exit)
+    public TrayIcon(Action open, Action toggleKeepAwake, Action restoreAll, Action exit, Action toggleDeck)
     {
         _normal = DrawIcon(Color.FromArgb(40, 120, 220));
         _awake = DrawIcon(Color.FromArgb(235, 160, 30));
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Abrir FocusWShell", null, (_, _) => open());
+        menu.Items.Add("Mostrar u ocultar el deck", null, (_, _) => toggleDeck());
         menu.Items.Add(_scenesItem);
         _keepAwakeItem = new Forms.ToolStripMenuItem("Mantener la pantalla encendida", null, (_, _) => toggleKeepAwake());
         menu.Items.Add(_keepAwakeItem);

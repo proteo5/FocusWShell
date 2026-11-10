@@ -54,12 +54,14 @@ public partial class MainWindow : Window
         var parts = new[]
         {
             ("al-foco", "al foco"), ("anterior", "anterior"), ("foco-al-panel", "foco al panel"), ("pantalla-completa", "pantalla completa"),
-            ("vista", "vista"), ("pantalla-encendida", "pantalla encendida"), (Core.Input.Hotkeys.Emergency, "restaurar todas"),
+            ("vista", "vista"), (Core.Input.Hotkeys.Deck, "deck"), ("pantalla-encendida", "pantalla encendida"), (Core.Input.Hotkeys.Emergency, "restaurar todas"),
         }
             .Where(p => app.ChordOf(p.Item1).Length > 0)
             .Select(p => $"{app.ChordOf(p.Item1)} {p.Item2}");
         return "Atajos: " + string.Join(" · ", parts);
     }
+
+    private void Deck_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ToggleDeck();
 
     private void Hotkeys_Click(object sender, RoutedEventArgs e)
     {

@@ -377,6 +377,18 @@ Herramienta: `tools/FocusWShell.TouchSpike`. Una ventana tipo deck en WPF (la te
 - **Conclusión:** R12 queda descartado con la tablet por streaming. El deck puede ser una ventana WPF sin foco, como las tiras, y reaccionar en `TouchDown` para que se sienta inmediato.
 - **Falta:** un monitor táctil físico. Es opcional, porque usa la misma pila de entrada que los toques inyectados, que también pasaron.
 
+### Deck, primera versión (M1b, 2026-11-10)
+
+| Caso | Resultado |
+| --- | --- |
+| Ctrl+Alt+Mayús+D | El deck aparece en la esquina inferior derecha del ultrawide: el foco, las vistas, Contexto («sin apps»), Trabajo con una Paint, las ventanas libres con sus iconos, las escenas del usuario y los botones fijos |
+| Tocar la Paint de Trabajo | Pasa al foco y el deck se oculta solo; al volver a abrirlo, el foco muestra «Paint» |
+| «Izquierda» y luego «Centro» | La vista cambia y la ventana principal lo refleja |
+| «Foco al panel» | La Paint vuelve a Trabajo |
+| ✕ | El deck se oculta |
+
+Que tocarlo no robe el foco ya lo confirmó el S8 con la misma técnica de ventana.
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

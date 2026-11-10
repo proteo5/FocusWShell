@@ -49,7 +49,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
    Todo se usa desde la ventana, los atajos y las tiras.
 
    **Estado (2026-11-10):** fase sin deck completa.
-2. **Deck en una esquina del monitor principal**, que se muestra y se oculta con un clic o un atajo, y se oculta solo al elegir.
+2. **Deck en una esquina del monitor principal**, que se muestra y se oculta con un clic o un atajo, y se oculta solo al elegir. **Primera versión hecha** (ver [ADR 0013](adr/0013-deck-superficie-de-control.md#implementación-de-la-fase-2-2026-11-10-primera-versión)); falta arrastrar entre paneles y el control de navegación.
 3. **Spike S8:** que el toque desde una tablet (Apollo/Artemis) y desde un monitor táctil físico no robe el foco (R12). **Hecho:** con toques inyectados, con ratón y con la tablet por Apollo/Artemis (como monitor extendido), el deck no roba el foco y responde al momento.
 4. **"Mandar el deck a…"** otro monitor, con paneles de pantalla completa con pestañas para tablets.
 

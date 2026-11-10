@@ -90,8 +90,13 @@ public partial class App : Application
         {
             _strips?.Refresh();
             _lists?.Refresh();
+            RefreshDeck();
         });
-        _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => _lists?.Refresh());
+        _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() =>
+        {
+            _lists?.Refresh();
+            RefreshDeck();
+        });
         _controller.ForegroundChanged += hwnd => Dispatcher.BeginInvoke(() => _lists?.OnForeground(hwnd));
         _controller.FocusGestureEnabled = g => g switch
         {
@@ -145,7 +150,7 @@ public partial class App : Application
                     }
                 });
             }));
-        _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
+        _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore, () => Dispatcher.BeginInvoke(ToggleDeck));
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
         RefreshTrayScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(RefreshTrayScenes);
@@ -184,6 +189,7 @@ public partial class App : Application
                     _ => FocusPosition.Center,
                 }))),
             ["pantalla-encendida"] = () => Dispatcher.BeginInvoke(ToggleKeepAwake),
+            [Hotkeys.Deck] = () => Dispatcher.BeginInvoke(ToggleDeck),
         };
         for (int n = 1; n <= 9; n++)
         {
@@ -211,6 +217,86 @@ public partial class App : Application
         _tray?.SetHotkeys(ChordOf("pantalla-encendida"), ChordOf(Hotkeys.Emergency), n => ChordOf($"escena-{n}"));
         RefreshTrayScenes();
         return warnings;
+    }
+
+    private DeckWindow? _deck;
+
+    /// <summary>Muestra el deck (ADR 0013) en la esquina inferior derecha del principal, o lo oculta.</summary>
+    public void ToggleDeck()
+    {
+        if (_deck?.IsVisible == true)
+        {
+            _deck.Hide();
+            return;
+        }
+
+        _deck ??= new DeckWindow(new DeckActions(
+            Run: async commands =>
+            {
+                var result = await Task.Run(() => _controller.Execute(commands));
+                if (result.Rejections.Count > 0)
+                {
+                    _tray?.Notify("Deck", string.Join(" ", result.Rejections), Forms.ToolTipIcon.None);
+                }
+
+                RefreshAfter(result);
+            },
+            OpenApp: async (appKey, panelId) =>
+            {
+                var message = await Task.Run(() => _controller.OpenApp(appKey, panelId));
+                _tray?.Notify("Deck", message);
+                _main?.Refresh();
+            },
+            ApplyScene: name => Task.Run(() => ApplyScene(name)),
+            ToggleKeepAwake: ToggleKeepAwake,
+            KeepAwake: () => _keepAwake.IsActive,
+            RestoreAll: RestoreFromTray,
+            Hide: () => _deck?.Hide()));
+
+        Task.Run(() =>
+        {
+            _controller.Refresh();
+            var state = _controller.DeckState();
+            var display = ShellController.TargetDisplay();
+            Dispatcher.BeginInvoke(() => _deck.Present(state, DeckArea(display)));
+        });
+    }
+
+    /// <summary>Esquina inferior derecha del área de trabajo del principal, con margen.</summary>
+    private static Core.Geometry.PixelRect DeckArea(Core.Displays.DisplayInfo display)
+    {
+        double scale = display.Dpi / 96.0;
+        var area = display.WorkArea;
+        int margin = (int)(16 * scale);
+        int width = Math.Min((int)(640 * scale), area.Width - (2 * margin));
+        int height = Math.Min((int)(980 * scale), area.Height - (2 * margin));
+        return Core.Geometry.PixelRect.FromSize(area.Right - width - margin, area.Bottom - height - margin, width, height);
+    }
+
+    /// <summary>Si el deck está a la vista, lo pone al día (otro panel, otra app abierta…).</summary>
+    private void RefreshDeck()
+    {
+        if (_deck?.IsVisible != true)
+        {
+            return;
+        }
+
+        Task.Run(() =>
+        {
+            var state = _controller.DeckState();
+            Dispatcher.BeginInvoke(() => _deck?.Update(state));
+        });
+    }
+
+    private void RefreshAfter(ControllerResult result)
+    {
+        if (_main?.IsVisible == true)
+        {
+            _main.Refresh();
+            _main.SetStatus(global::FocusWShell.App.MainWindow.Describe(result));
+        }
+
+        RefreshDeck();
     }
 
     /// <summary>Deja de escuchar los atajos (mientras se eligen otros: si no, Windows se quedaría las teclas).</summary>
