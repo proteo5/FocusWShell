@@ -17,6 +17,7 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 | R9 | La tira de pestañas (overlay) queda tapada o desalineada | Medio | Media | Franja reservada sin solape; reposicionar tras cada plan y tras cambios de DPI. |
 | R10 | El modelo de roles no mejora lo que ya dan FancyZones + DisplayFusion | Alto: el proyecto no se justifica | Desconocida | Validación diaria temprana ([06](06-validacion.md)) antes de invertir en UI. |
 | R11 | Monitores remotos (tablets por wifi) que se desconectan a menudo; Windows mueve sus ventanas al principal, encima del Centro | Alto: rompe el foco justo en el monitor que importa | Media | Reaccionar al cambio de monitores antes de que se note: reubicar en paneles del principal, nunca en el Centro ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md), [0009](adr/0009-tablets-como-monitores-auxiliares.md)). Probar S6 con una tablet. |
+| R12 | El toque en el deck, desde una tablet por streaming o un monitor táctil, le quita el foco a la app del Centro | Alto: el deck interrumpiría justo lo que debe proteger | Desconocida | Ventanas del deck con `WS_EX_NOACTIVATE`; medir en S8 antes de construir el deck en otro monitor ([ADR 0013](adr/0013-deck-superficie-de-control.md)). |
 
 ## Spikes
 
@@ -31,6 +32,7 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S5 — Diario y caída | ¿Se recupera todo tras matar el proceso? | Aplicar escena, `taskkill /f`, arrancar de nuevo, restaurar. | Todas las ventanas vuelven a su `WINDOWPLACEMENT` original, incluidas las que estaban maximizadas o minimizadas. | R6 |
 | S6 — Reconexión | ¿Qué pasa al desconectar y reconectar el monitor estándar? | Con escena aplicada, desconectar el cable, esperar y reconectar. | Ninguna ventana queda fuera de pantalla; al reconectar se reaplica el layout guardado. | R7 |
 | S7 — Pila | ¿Minimizar funciona bien para las ventanas ocultas de la pila? | Alternar pestañas 50 veces entre 3–4 apps. | Sin pérdidas de estado; la alternancia se siente inmediata. | R8 |
+| S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 |
 
 S1–S5 forman el hito M0. S6 y S7 se pueden posponer a M1, pero deben resolverse antes de dar por bueno el MVP.
 
