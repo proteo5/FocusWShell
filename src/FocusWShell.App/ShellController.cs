@@ -1,6 +1,7 @@
-using System.IO;
+﻿using System.IO;
 using FocusWShell.Core.Displays;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Layout;
 using FocusWShell.Core.Windows;
 using FocusWShell.Win32;
 using FocusWShell.Win32.Persistence;
@@ -14,17 +15,116 @@ public sealed record ControllerResult(
     IReadOnlyList<RestoreReport> Restores,
     SceneApplyReport? Applied);
 
+/// <summary>Resultado de aplicar una escena guardada.</summary>
+/// <param name="Missing">Apps de la escena que no están abiertas.</param>
+/// <param name="Notes">Ajustes (p. ej. un monitor auxiliar que no está conectado).</param>
+public sealed record SceneResult(string Name, ControllerResult Result, IReadOnlyList<SceneWindow> Missing, IReadOnlyList<string> Notes)
+{
+    public string Summary
+    {
+        get
+        {
+            var lines = new List<string> { $"Escena «{Name}» aplicada." };
+            if (Missing.Count > 0)
+            {
+                lines.Add($"No están abiertas: {string.Join(", ", Missing.Select(m => m.Label))}.");
+            }
+
+            lines.AddRange(Notes);
+            return string.Join(Environment.NewLine, lines);
+        }
+    }
+}
+
+/// <summary>Un cambio que hizo el usuario (u otra app) y lo que el gestor hizo con él.</summary>
+public sealed record ExternalChangeHandled(string Label, ExternalChange Change, IReadOnlyList<Command> Commands, ControllerResult Result)
+{
+    public string Describe() => (Change, Commands) switch
+    {
+        (ExternalChange.Minimized, [Park]) => $"{Label}: la minimizaste; queda estacionada en su panel.",
+        (ExternalChange.Shown, [Restore]) => $"{Label}: la abriste desde la barra de tareas; vuelve a su panel.",
+        (ExternalChange.Shown, [MakeActiveInPanel]) => $"{Label}: la abriste; pasa a ser la visible de su panel.",
+        (ExternalChange.Maximized, [MakeActiveInPanel, SetTemplate]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
+        (ExternalChange.Unmaximized, [SetTemplate]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
+        (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
+        (_, [Detach]) => $"{Label}: la moviste tú; queda fuera de layout hasta que la reencajes.",
+        _ => $"{Label}: {Change}.",
+    };
+}
+
 /// <summary>
 /// Dueño del modelo (<see cref="Workspace"/>) y único punto por el que la app mueve o restaura
 /// ventanas. Ejecuta los comandos y luego sus efectos, en orden: capturas y restauraciones primero,
-/// un solo layout al final y, por último, el foco. Un lock serializa todo, porque los atajos llegan
-/// desde otro hilo.
+/// un solo layout al final y, por último, el foco. Un lock serializa todo, porque los atajos y los
+/// eventos de ventanas llegan desde otros hilos.
+/// Además observa las ventanas gestionadas (S4, ADR 0007) y traduce lo que haga el usuario en
+/// comandos: minimizar estaciona, arrastrar deja fuera de layout, etc.
 /// </summary>
-public sealed class ShellController
+public sealed class ShellController : IDisposable
 {
     private readonly Lock _gate = new();
     private readonly EligibilityFilter _filter = new();
     private readonly Workspace _workspace = new();
+    private readonly ExpectationRegistry _expectations = new();
+    private WindowEventWatcher? _watcher;
+
+    /// <summary>Se dispara (en un hilo de fondo) cada vez que el gestor reacciona a un cambio externo.</summary>
+    public event Action<ExternalChangeHandled>? ExternalChangeHandled;
+
+    /// <summary>Se dispara (en cualquier hilo) cuando cambia lo que deben mostrar las tiras de pestañas.</summary>
+    public event Action? LayoutChanged;
+
+    /// <summary>Alto de la tira de pestañas de cada panel, en píxeles lógicos.</summary>
+    public const int StripHeight = 28;
+
+    private SceneApplyReport? _lastReport;
+    private int _lastPrincipalDpi = 96;
+    private Dictionary<string, int> _lastAuxDpi = [];
+
+    /// <summary>Tiras de pestañas de los paneles, según el último layout aplicado.</summary>
+    public IReadOnlyList<PanelStrip> Strips()
+    {
+        lock (_gate)
+        {
+            return _lastReport is null || _workspace.Windows.Count == 0
+                ? []
+                : PanelStripBuilder.Build(_workspace, _lastReport, _lastPrincipalDpi, _lastAuxDpi);
+        }
+    }
+
+    /// <summary>Empieza a observar las ventanas gestionadas.</summary>
+    public void StartWatching()
+    {
+        _watcher ??= WindowEventWatcher.Start(
+            _expectations.IsWatched,
+            observed => Task.Run(() => OnSettled(observed.Handle)));
+    }
+
+    public void Dispose() => _watcher?.Dispose();
+
+    /// <summary>
+    /// Una ventana vigilada se calmó. Dentro del lock se vuelve a leer su estado: si entretanto el
+    /// gestor la movió, la observación del observador ya no vale.
+    /// </summary>
+    private void OnSettled(nint handle)
+    {
+        ExternalChangeHandled? handled = null;
+        lock (_gate)
+        {
+            var change = _expectations.Reconcile(WindowMover.Observe(handle));
+            if (change == ExternalChange.None)
+            {
+                return;
+            }
+
+            var label = _workspace.Find(handle)?.Label ?? "?";
+            var commands = _workspace.Interpret(handle, change);
+            var result = commands.Count > 0 ? RunLocked(commands) : new ControllerResult([], [], null);
+            handled = new ExternalChangeHandled(label, change, commands, result);
+        }
+
+        ExternalChangeHandled?.Invoke(handled);
+    }
 
     /// <summary>Última foto de cada ventana conocida: el layout y el diario necesitan proceso y título.</summary>
     private readonly Dictionary<nint, WindowSnapshot> _snapshots = [];
@@ -33,9 +133,110 @@ public sealed class ShellController
 
     public MinSizeStore MinSizes { get; } = new(MinSizeStore.DefaultPath);
 
-    /// <summary>Monitor donde se aplica el layout fijo de M0: el más ancho.</summary>
+    public SceneStore Scenes { get; } = new(SceneStore.DefaultPath);
+
+    /// <summary>Monitores auxiliares de izquierda a derecha: el 1 es el primero. Así se guardan en las escenas.</summary>
+    private static List<DisplayInfo> OrderedAux() =>
+        [.. AuxiliaryDisplays().OrderBy(d => d.Bounds.Left).ThenBy(d => d.Bounds.Top)];
+
+    /// <summary>Se dispara al guardar o borrar una escena.</summary>
+    public event Action? ScenesChanged;
+
+    public IReadOnlyList<string> SceneNames() => Scenes.Load().Select(s => s.Name).ToList();
+
+    public void DeleteScene(string name)
+    {
+        Scenes.Delete(name);
+        ScenesChanged?.Invoke();
+    }
+
+    /// <summary>Guarda (o reemplaza) la escena actual con ese nombre.</summary>
+    public SavedScene SaveScene(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Refresh();
+        var aux = OrderedAux();
+        int? AuxIndex(string? display) => display is null ? null : aux.FindIndex(d => d.DeviceName == display) is int i and >= 0 ? i + 1 : null;
+
+        SavedScene scene;
+        lock (_gate)
+        {
+            var windows = _workspace.Windows
+                .Where(w => _snapshots.ContainsKey(w.Handle))
+                .Select(w =>
+                {
+                    var snapshot = _snapshots[w.Handle];
+                    var placement = w.Placement switch
+                    {
+                        Placement.Center => ScenePlacement.Center,
+                        Placement.Parked => ScenePlacement.Parked,
+                        _ => ScenePlacement.InPanel,
+                    };
+                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.Home, placement, AuxIndex(w.Display));
+                })
+                .ToList();
+            var displays = new List<string?> { null };
+            displays.AddRange(_workspace.Windows.Where(w => w.Display is not null).Select(w => w.Display).Distinct());
+            var templates = displays
+                .SelectMany(d => new[] { Home.Context, Home.Work }.Select(h => new ScenePanelTemplate(AuxIndex(d), h, _workspace.TemplateOf(d, h))))
+                .Where(t => t.AuxIndex is not null || t.Template != PanelTemplate.Fill)
+                .ToList();
+            scene = new SavedScene(name.Trim(), windows, templates);
+        }
+
+        Scenes.Upsert(scene);
+        ScenesChanged?.Invoke();
+        return scene;
+    }
+
+    /// <summary>
+    /// Aplica una escena guardada: empareja sus ventanas con las abiertas y la monta de una vez.
+    /// Las ventanas gestionadas que no son de la escena vuelven a su sitio original.
+    /// </summary>
+    public SceneResult ApplySavedScene(string name)
+    {
+        var scene = Scenes.Load().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (scene is null)
+        {
+            return new SceneResult(name, new ControllerResult([$"No existe la escena \"{name}\"."], [], null), [], []);
+        }
+
+        var open = Refresh()
+            .Select(w => new OpenWindow(w.Handle, MinSizeCatalog.KeyFor(w), w.Title))
+            .ToList();
+        var match = SceneMatcher.Match(scene, open);
+        var aux = OrderedAux();
+        var notes = new List<string>();
+        string? DisplayOf(int? index)
+        {
+            if (index is null)
+            {
+                return null;
+            }
+
+            if (index.Value <= aux.Count)
+            {
+                return aux[index.Value - 1].DeviceName;
+            }
+
+            notes.Add($"El monitor auxiliar {index} no está conectado: sus paneles van al principal.");
+            return null;
+        }
+
+        var entries = match.Matched
+            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.Home, m.Entry.Placement, DisplayOf(m.Entry.AuxIndex)))
+            .ToList();
+        var templates = scene.Templates
+            .Where(t => t.AuxIndex is null || t.AuxIndex <= aux.Count)
+            .Select(t => (DisplayOf(t.AuxIndex), t.Home, t.Template))
+            .ToList();
+        var result = Execute(new ApplyScene(entries, templates));
+        return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
+    }
+
+    /// <summary>Monitor del Centro: el principal de Windows (ADR 0008).</summary>
     public static DisplayInfo TargetDisplay() =>
-        DisplayEnumerator.Enumerate().MaxBy(d => d.WorkArea.Width)
+        DisplayTopology.Principal(DisplayEnumerator.Enumerate())
         ?? throw new InvalidOperationException("No se encontró ningún monitor.");
 
     public static string LabelFor(WindowSnapshot w)
@@ -123,6 +324,62 @@ public sealed class ShellController
 
     private ControllerResult RunLocked(IReadOnlyList<Command> commands)
     {
+        // Lo que el gestor mueva aquí no es del usuario: el observador calla hasta que haya
+        // expectativas nuevas (ADR 0007).
+        using var own = _watcher?.OwnChange();
+        var result = RunEffectsLocked(commands);
+        SyncExpectations(result.Applied);
+        if (result.Applied is { Error: null } applied)
+        {
+            _lastReport = applied;
+        }
+
+        LayoutChanged?.Invoke();
+        return result;
+    }
+
+    /// <summary>
+    /// Deja como expectativa lo que el aplicador verificó. Las ventanas que el layout no tocó (fuera de
+    /// layout, o sin layout en este comando) se vigilan desde su estado actual si aún no tenían
+    /// expectativa; las que dejaron de gestionarse se olvidan.
+    /// </summary>
+    private void SyncExpectations(SceneApplyReport? applied)
+    {
+        var managed = _workspace.Windows.Select(w => w.Handle).ToHashSet();
+        foreach (var handle in _snapshots.Keys.Where(h => !managed.Contains(h) && _expectations.IsWatched(h)).ToList())
+        {
+            _expectations.Forget(handle);
+        }
+
+        var placed = new HashSet<nint>();
+        foreach (var (target, result) in applied?.Applied ?? [])
+        {
+            placed.Add(target.Handle);
+            _expectations.Expect(target.Handle, (target.Kind, result) switch
+            {
+                (_, null) => new ExpectMinimized(),
+                (TargetKind.Maximized, _) => new ExpectMaximized(target.Rect),
+                _ => new ExpectVisible(result.Actual),
+            });
+        }
+
+        foreach (var w in _workspace.Windows.Where(w => !placed.Contains(w.Handle)))
+        {
+            if (w.Detached || !_expectations.IsWatched(w.Handle))
+            {
+                var o = WindowMover.Observe(w.Handle);
+                _expectations.Expect(w.Handle, o switch
+                {
+                    { Minimized: true } => new ExpectMinimized(),
+                    { Maximized: true } => new ExpectMaximized(o.Visible),
+                    _ => new ExpectVisible(o.Visible),
+                });
+            }
+        }
+    }
+
+    private ControllerResult RunEffectsLocked(IReadOnlyList<Command> commands)
+    {
         var rejections = new List<string>();
         var effects = new List<Effect>();
         foreach (var command in commands)
@@ -175,6 +432,15 @@ public sealed class ShellController
 
     private SceneApplyReport ApplyLayoutLocked()
     {
+        var displays = DisplayEnumerator.Enumerate();
+        var principal = DisplayTopology.Principal(displays) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
+
+        // Un auxiliar que ya no está: sus ventanas pasan a los paneles del principal (ADR 0008).
+        foreach (var gone in _workspace.Composition.Aux.Select(a => a.Display).Where(d => displays.All(x => x.DeviceName != d)).ToList())
+        {
+            _workspace.Execute(new DisplayRemoved(gone));
+        }
+
         var c = _workspace.Composition;
         List<WindowSnapshot> Map(IEnumerable<nint> handles) =>
             handles.Where(_snapshots.ContainsKey).Select(h => _snapshots[h]).ToList();
@@ -182,8 +448,39 @@ public sealed class ShellController
         var assignment = new SceneAssignment(
             Map(c.Context),
             c.Center is { } center && _snapshots.TryGetValue(center, out var w) ? w : null,
-            Map(c.Work));
-        var applier = new SceneApplier(TargetDisplay(), assignment, new SceneOptions(), MinSizes);
+            Map(c.Work))
+        {
+            Parked = Map(c.Parked),
+            Aux = c.Aux
+                .Select(a => new AuxAssignment(
+                    displays.First(d => d.DeviceName == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))
+                .ToList(),
+        };
+        var options = new SceneOptions
+        {
+            ContextTemplate = c.ContextTemplate,
+            WorkTemplate = c.WorkTemplate,
+            PanelTopInset = StripHeight,
+        };
+        _lastPrincipalDpi = principal.Dpi;
+        _lastAuxDpi = assignment.Aux.ToDictionary(a => a.Display.DeviceName, a => a.Display.Dpi);
+        var applier = new SceneApplier(principal, assignment, options, MinSizes);
         return applier.Apply(Journal);
+    }
+
+    /// <summary>Monitores auxiliares conectados (todos menos el principal), en orden de Windows.</summary>
+    public static IReadOnlyList<DisplayInfo> AuxiliaryDisplays()
+    {
+        var displays = DisplayEnumerator.Enumerate();
+        var principal = DisplayTopology.Principal(displays);
+        return displays.Where(d => d != principal).ToList();
+    }
+
+    public PanelTemplate TemplateOf(string? display, Home home)
+    {
+        lock (_gate)
+        {
+            return _workspace.TemplateOf(display, home);
+        }
     }
 }

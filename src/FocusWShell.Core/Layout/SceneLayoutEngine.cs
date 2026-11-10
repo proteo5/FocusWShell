@@ -27,9 +27,13 @@ public static class SceneLayoutEngine
         var area = input.WorkArea;
         int gap = input.Gap;
 
+        // Los paneles empiezan bajo su tira de pestañas; el Centro ocupa toda la altura.
+        int inset = Math.Clamp(input.PanelTopInset, 0, area.Height / 2);
+        int panelHeight = area.Height - inset;
+
         // 1. Template efectivo de cada panel según la altura disponible.
-        var left = Resolve(input.Left, area.Height, gap, notes);
-        var right = Resolve(input.Right, area.Height, gap, notes);
+        var left = Resolve(input.Left, panelHeight, gap, notes);
+        var right = Resolve(input.Right, panelHeight, gap, notes);
 
         // 2. Anchos ideales según los pesos.
         var ideal = Splitter.Columns(area, [input.Left.Weight, input.CenterWeight, input.Right.Weight], gap);
@@ -64,14 +68,14 @@ public static class SceneLayoutEngine
         if (input.Left.OuterEdgeShared)
         {
             int maxLeft = wl + Math.Max(0, wc - leftFloor - Math.Max(0, needR - wr));
-            left = ExcludeTooWide(left.Panel, maxLeft, area.Height, gap, excluded, notes);
+            left = ExcludeTooWide(left.Panel, maxLeft, panelHeight, gap, excluded, notes);
             needL = left.RequiredWidth;
         }
 
         if (input.Right.OuterEdgeShared)
         {
             int maxRight = wr + Math.Max(0, wc - rightFloor - Math.Max(0, needL - wl));
-            right = ExcludeTooWide(right.Panel, maxRight, area.Height, gap, excluded, notes);
+            right = ExcludeTooWide(right.Panel, maxRight, panelHeight, gap, excluded, notes);
             needR = right.RequiredWidth;
         }
 
@@ -80,9 +84,9 @@ public static class SceneLayoutEngine
         wr = Grow(input.Right, right, wr, needR, ref wc, rightFloor, notes);
 
         // 6. Columnas definitivas (contiguas, con separación).
-        var leftCol = new PixelRect(area.Left, area.Top, area.Left + wl, area.Bottom);
+        var leftCol = new PixelRect(area.Left, area.Top + inset, area.Left + wl, area.Bottom);
         var centerCol = new PixelRect(leftCol.Right + gap, area.Top, leftCol.Right + gap + wc, area.Bottom);
-        var rightCol = new PixelRect(centerCol.Right + gap, area.Top, area.Right, area.Bottom);
+        var rightCol = new PixelRect(centerCol.Right + gap, area.Top + inset, area.Right, area.Bottom);
 
         // 7. Destinos.
         var targets = new List<WindowTarget>();
@@ -105,7 +109,7 @@ public static class SceneLayoutEngine
     }
 
     /// <param name="Panel">El panel con las ventanas que siguen en el layout.</param>
-    private sealed record ResolvedPanel(PanelInput Panel, PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
+    internal sealed record ResolvedPanel(PanelInput Panel, PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
 
     /// <summary>Saca del panel las ventanas más anchas que <paramref name="maxWidth"/> y vuelve a resolverlo.</summary>
     private static ResolvedPanel ExcludeTooWide(
@@ -125,7 +129,7 @@ public static class SceneLayoutEngine
         return Resolve(remaining, height, gap, tooWide.Count > 0 ? notes : []);
     }
 
-    private static ResolvedPanel Resolve(PanelInput panel, int height, int gap, List<string> notes)
+    internal static ResolvedPanel Resolve(PanelInput panel, int height, int gap, List<string> notes)
     {
         var windows = panel.Windows;
         if (windows.Count == 0)
@@ -146,7 +150,8 @@ public static class SceneLayoutEngine
             }
         }
 
-        IReadOnlyList<LayoutWindow> visible = template == PanelTemplate.Stack ? [windows[0]] : windows;
+        // Fill sólo tiene sentido en monitores auxiliares; aquí se comporta como una pila.
+        IReadOnlyList<LayoutWindow> visible = template is PanelTemplate.Stack or PanelTemplate.Fill ? [windows[0]] : windows;
         return new ResolvedPanel(panel, template, visible, visible.Max(w => w.MinSize?.Width ?? 0));
     }
 

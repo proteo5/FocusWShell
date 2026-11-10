@@ -27,7 +27,17 @@ Hito M0 (núcleo): primera versión usable con un layout fijo Contexto | Centro 
 dotnet run --project src/FocusWShell.App
 ```
 
-- La ventana lista las apps que se pueden gestionar. Elige un rol para cada una y pulsa **Aplicar layout**.
+- La ventana lista las apps que se pueden gestionar. Elige un rol y un monitor para cada una y pulsa **Aplicar roles**.
+  - El Centro está siempre en el monitor principal.
+  - Los demás monitores alojan paneles auxiliares.
+  - Con el template **Fill**, la primera ventana de un panel auxiliar ocupa ese monitor, maximizada.
+- Encima de cada panel aparece una **tira de pestañas**, una por ventana del panel:
+  - **Clic:** la muestra, la recupera si está estacionada (`⏸`) o la devuelve si está en el Centro (`↑`).
+  - **Doble clic:** la lleva al Centro.
+  - **Clic derecho:** el resto de acciones.
+- **Escenas:**
+  - **Guardar:** escribe un nombre y pulsa "Guardar escena actual". Se guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates.
+  - **Aplicar:** desde la ventana, desde el submenú de la bandeja o con `Ctrl+Alt+Mayús+1…9`. Las ventanas que no son de la escena vuelven a su sitio original.
 - Cerrarla no detiene el gestor: sigue en el área de notificación. Desde su menú, **Salir** devuelve todas las ventanas a su sitio.
 - Atajos globales con `Ctrl+Alt+Mayús`:
 
@@ -36,6 +46,7 @@ dotnet run --project src/FocusWShell.App
   | ↑ | Lleva al Centro la ventana activa, si está gestionada. La que estaba vuelve a su panel. |
   | ← | Vuelve a poner en el Centro la ventana anterior. Repetirlo alterna entre las dos. |
   | ↓ | Devuelve la ventana del Centro a su panel. |
+  | P | Mantener la pantalla encendida (activa o desactiva; se recuerda). |
   | Retroceso | **Emergencia:** restaura todas las ventanas en cualquier momento. |
 - Si el gestor muere sin cerrarse, al volver a abrirlo ofrece restaurar las ventanas que dejó movidas.
 

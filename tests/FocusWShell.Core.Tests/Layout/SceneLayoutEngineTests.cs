@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Layout;
@@ -35,6 +35,22 @@ public class SceneLayoutEngineTests
         {
             Assert.True(t.Rect.Intersect(r.CenterColumn).IsEmpty, $"{t.Label} invade el Centro: {t.Rect} ∩ {r.CenterColumn}");
         }
+    }
+
+    [Fact]
+    public void PanelTopInsetLeavesRoomForTheTabStripButNotInTheCenter()
+    {
+        var input = Scene([Win(1, "Chat")], Win(2, "Editor"), [Win(3, "Terminal"), Win(4, "Logs")]) with { PanelTopInset = 28 };
+
+        var r = SceneLayoutEngine.Compute(input);
+
+        Assert.Equal(28, r.LeftColumn.Top);
+        Assert.Equal(28, r.RightColumn.Top);
+        Assert.Equal(0, r.CenterColumn.Top);
+        Assert.Equal(28, Target(r, 1).Rect.Top);
+        Assert.Equal(28, Target(r, 3).Rect.Top);
+        Assert.Equal(Work.Bottom, Target(r, 4).Rect.Bottom);
+        Assert.Equal(new PixelRect(r.CenterColumn.Left, 0, r.CenterColumn.Right, Work.Bottom), Target(r, 2).Rect);
     }
 
     [Fact]

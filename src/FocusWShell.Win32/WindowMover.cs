@@ -207,6 +207,11 @@ public static class WindowMover
 
         var margins = new FrameMargins[items.Count];
         var requests = new PixelRect[items.Count];
+
+        // Ventanas que cambian a un monitor con otro DPI: la app se reescala por su cuenta al llegar
+        // (WM_DPICHANGED), después de que el movimiento asíncrono ya se diera por bueno.
+        var crossesDpi = live.Where(i =>
+            PInvoke.GetDpiForWindow(new HWND((void*)items[i].Handle)) != DpiAt(items[i].Target)).ToList();
         foreach (int i in live)
         {
             var (bounds, visible) = ReadRects(new HWND((void*)items[i].Handle));
@@ -274,6 +279,11 @@ public static class WindowMover
             }
         }
 
+        if (crossesDpi.Count > 0)
+        {
+            WaitUntilQuiet(items, crossesDpi, clock);
+        }
+
         var moved = clock.Elapsed;
 
         // Verificación: las que la app ajustó (bordes que cambian al moverse, DPI) se corrigen una a una.
@@ -293,6 +303,39 @@ public static class WindowMover
         }
 
         return new BatchPlacement(results.Select(r => r!).ToList(), batched, normalized, corrections, moved, clock.Elapsed, settle);
+    }
+
+    /// <summary>DPI del monitor donde cae el rectángulo.</summary>
+    private static unsafe uint DpiAt(PixelRect rect)
+    {
+        var r = new RECT(rect.Left, rect.Top, rect.Right, rect.Bottom);
+        var monitor = PInvoke.MonitorFromRect(&r, Windows.Win32.Graphics.Gdi.MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST);
+        return PInvoke.GetDpiForMonitor(monitor, Windows.Win32.UI.HiDpi.MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, out var dpi, out _).Succeeded
+            ? dpi
+            : 96;
+    }
+
+    /// <summary>Espera a que las ventanas lleven 100 ms sin cambiar de rectángulo (máximo 800 ms).</summary>
+    private static unsafe void WaitUntilQuiet(
+        IReadOnlyList<(nint Handle, PixelRect Target)> items, List<int> which, System.Diagnostics.Stopwatch clock)
+    {
+        var quiet = TimeSpan.FromMilliseconds(100);
+        var deadline = clock.Elapsed + TimeSpan.FromMilliseconds(800);
+        var last = which.ToDictionary(i => i, i => ReadRects(new HWND((void*)items[i].Handle)).Bounds);
+        var changedAt = which.ToDictionary(i => i, _ => clock.Elapsed);
+        while (clock.Elapsed < deadline && which.Any(i => clock.Elapsed - changedAt[i] < quiet))
+        {
+            Thread.Sleep(5);
+            foreach (int i in which)
+            {
+                var now = ReadRects(new HWND((void*)items[i].Handle)).Bounds;
+                if (now != last[i])
+                {
+                    last[i] = now;
+                    changedAt[i] = clock.Elapsed;
+                }
+            }
+        }
     }
 
     private static unsafe bool TryDefer(IReadOnlyList<(nint Handle, PixelRect Target)> items, List<int> live, PixelRect[] requests)
@@ -335,8 +378,94 @@ public static class WindowMover
     /// <summary>Da el foco a la ventana. Sólo funciona justo después de input del usuario al gestor (atajo o clic).</summary>
     public static unsafe bool Activate(nint handle) => PInvoke.SetForegroundWindow(new HWND((void*)handle));
 
+    /// <summary>Estado actual de la ventana, para compararlo con lo que el gestor espera (S4).</summary>
+    public static unsafe FocusWShell.Core.Domain.ObservedWindow Observe(nint handle)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (!PInvoke.IsWindow(hwnd))
+        {
+            return new(handle, false, false, false, default);
+        }
+
+        bool minimized = PInvoke.IsIconic(hwnd);
+        return new(handle, true, minimized, PInvoke.IsZoomed(hwnd), minimized ? default : ReadRects(hwnd).Visible);
+    }
+
     /// <summary>Ventana en primer plano.</summary>
     public static nint Foreground() => PInvoke.GetForegroundWindow();
+
+    /// <summary>Si la ventana ya está maximizada en el monitor de <paramref name="workArea"/>.</summary>
+    public static unsafe bool IsMaximizedOn(nint handle, PixelRect workArea)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (!PInvoke.IsWindow(hwnd) || !PInvoke.IsZoomed(hwnd))
+        {
+            return false;
+        }
+
+        var visible = ReadRects(hwnd).Visible;
+        return !visible.Intersect(workArea).IsEmpty && workArea.Contains(visible.Left + (visible.Width / 2), visible.Top + (visible.Height / 2));
+    }
+
+    /// <summary>
+    /// Maximiza la ventana en el monitor de <paramref name="workArea"/> (template <c>Fill</c>, ADR 0008).
+    /// Si está maximizada en otro monitor, primero la lleva ahí. Windows no tiene un "maximizar sin
+    /// activar": si al maximizar se lleva el foco, se intenta devolvérselo a la ventana que lo tenía.
+    /// </summary>
+    public static unsafe PlacementResult MaximizeOn(nint handle, PixelRect workArea)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (!PInvoke.IsWindow(hwnd))
+        {
+            return new PlacementResult(workArea, default, default, 0, "la ventana ya no existe");
+        }
+
+        if (PInvoke.IsHungAppWindow(hwnd))
+        {
+            return new PlacementResult(workArea, default, default, 0, "la aplicación no responde");
+        }
+
+        if (!IsMaximizedOn(handle, workArea))
+        {
+            if (PInvoke.IsZoomed(hwnd) || PInvoke.IsIconic(hwnd) || !workArea.Contains(ReadRects(hwnd).Visible.Left + 1, ReadRects(hwnd).Visible.Top + 1))
+            {
+                // Maximizada en otro monitor, minimizada o fuera: primero a este monitor, en normal.
+                Place(handle, workArea);
+            }
+
+            var previous = PInvoke.GetForegroundWindow();
+            PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOWMAXIMIZED);
+            if (previous != hwnd && !previous.IsNull && PInvoke.GetForegroundWindow() == hwnd)
+            {
+                PInvoke.SetForegroundWindow(previous);
+            }
+        }
+
+        // Maximizar se anima: se espera a que el rectángulo deje de cambiar antes de medir.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var actual = ReadRects(hwnd).Visible;
+        var changedAt = TimeSpan.Zero;
+        while (clock.Elapsed - changedAt < TimeSpan.FromMilliseconds(60) && clock.Elapsed < TimeSpan.FromMilliseconds(500))
+        {
+            Thread.Sleep(5);
+            var now = ReadRects(hwnd).Visible;
+            if (now != actual)
+            {
+                actual = now;
+                changedAt = clock.Elapsed;
+            }
+        }
+
+        return new PlacementResult(workArea, actual, default, 1, null);
+    }
+
+    /// <summary>Muestra una ventana minimizada sin activarla.</summary>
+    public static unsafe void ShowNoActivate(nint handle) =>
+        PInvoke.ShowWindow(new HWND((void*)handle), SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
+
+    /// <summary>Maximiza la ventana (activándola: no hay variante sin activar). Sólo para pruebas.</summary>
+    public static unsafe void Maximize(nint handle) =>
+        PInvoke.ShowWindow(new HWND((void*)handle), SHOW_WINDOW_CMD.SW_SHOWMAXIMIZED);
 
     /// <summary>Minimiza sin activar (ventanas ocultas de una pila, ADR 0006).</summary>
     public static unsafe string? Minimize(nint handle)

@@ -40,6 +40,31 @@ Scene ────────────────────┘           
 
 Si no hay layout para la huella actual, se deriva uno por defecto (ver [Cambios de monitores](#cambios-de-monitores)).
 
+#### Implementación (M1)
+
+- **Qué guarda `SavedScene`:** por cada ventana, la app (`AppKey`: el AUMID, o el ejecutable), una pista de título, su hogar, si estaba en el Centro, en un panel o estacionada, y el monitor. Guarda también los templates de cada panel. Aún no guarda geometría propia: los pesos de las columnas son los de siempre.
+- **Monitores:** los auxiliares se guardan por orden de izquierda a derecha (`AuxIndex` 1, 2…), no por `\\.\DISPLAYn`. Si al aplicar falta ese auxiliar, sus ventanas van a los paneles del principal y se avisa. Los "layouts por huella" quedan para cuando haya geometría por escena.
+- **Emparejado (`SceneMatcher`):** cada ventana de la escena se empareja con una abierta de la misma app. Si hay varias, se prefiere:
+  1. el mismo título;
+  2. un título que contenga la pista, o al revés;
+  3. la primera en orden Z.
+
+  Las de título exacto se emparejan primero, para que una pista vaga no se lleve la ventana de otra. Las que no están abiertas se informan; todavía no se lanzan.
+- **`ApplyScene`** monta el modelo de una vez:
+  - las ventanas de la escena, en su orden, con sus templates;
+  - captura en el diario las nuevas;
+  - devuelve a su sitio original las que no son de la escena;
+  - la ventana anterior del Centro queda como "anterior" para `SwapWithPrevious`.
+
+### Monitor principal y monitores auxiliares
+
+Ver [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md).
+
+- El **monitor principal** (por defecto, el principal de Windows) es el único que tiene `CenterRegion`. Aloja Contexto | Centro | Trabajo.
+- Un **monitor auxiliar** (cualquier otro, incluidas las tablets que extienden el escritorio, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)) sólo tiene `PanelRegion`. Cada panel auxiliar tiene un hogar (`Work` o `Context`).
+- `Promote` siempre lleva la ventana al Centro del principal. Al volver, regresa al panel del que salió, aunque esté en un auxiliar.
+- Si un auxiliar desaparece, sus ventanas pasan a los paneles de su mismo hogar en el principal (en pila si no caben), nunca al Centro.
+
 ### Region, PanelRegion y PanelTemplate
 
 - **CenterRegion:** una por escena. Aloja como máximo una ventana.
@@ -50,6 +75,7 @@ Si no hay layout para la huella actual, se deriva uno por defecto (ver [Cambios 
 | --- | --- | --- |
 | `Tiles` | orientación, proporciones de los divisores | Todas las ventanas `InPanel` visibles a la vez, una por tile. Si sobran ventanas, las de más se apilan en el último tile. |
 | `Stack` | ventana activa | Una ventana visible; las demás minimizadas y accesibles desde la tira de pestañas del gestor. |
+| `Fill` | ventana activa | Sólo en monitores auxiliares: una ventana maximizada ocupa el monitor entero (monitoreo, depuración). Las demás, como en `Stack`. Maximizar con el botón de Windows en un auxiliar equivale a elegir `Fill`. |
 | `Collapsible` *(post-MVP)* | ventana expandida | Una expandida; el resto como encabezados de 1 línea. |
 | `Mixed` *(post-MVP)* | composición de los anteriores | Por ejemplo, un tile fijo arriba y una pila debajo. |
 
@@ -102,6 +128,20 @@ Cambiar de template sólo recalcula rectángulos y visibilidad. Ninguna ventana 
 - El historial del Centro guarda las ventanas que lo ocuparon, de la más reciente a la más antigua. `SwapWithPrevious` promueve la primera que siga gestionada; repetirlo alterna entre las dos últimas (CA2).
 - En M0 el cierre de una ventana se detecta al refrescar la lista (aún no hay hooks; S4 en M1).
 
+### Implementación de los monitores auxiliares (M1)
+
+- `ManagedWindow.Display` guarda el monitor auxiliar del panel de la ventana (`null` es el principal). Por ahora la clave es el nombre GDI (`\\.\DISPLAYn`); la identidad estable llega con S6.
+- Comandos nuevos:
+  - `SendToDisplay` mueve el panel de una ventana a otro monitor sin cambiar su hogar.
+  - `SetTemplate` cambia el template de un panel. `Fill` se rechaza en el principal.
+  - `DisplayRemoved` funde las ventanas de un auxiliar desconectado en los paneles del principal, nunca en el Centro.
+- `SceneComposition.Aux` lista, por monitor auxiliar, sus paneles de Contexto y Trabajo con su template.
+- `AuxLayoutEngine` coloca los paneles de un auxiliar:
+  - Los paneles vacíos no ocupan sitio, y el resto se reparte por peso.
+  - Un panel que no llega al mínimo de su ventana toma ancho de los otros.
+  - **Nada se desborda**: la ventana que no cabe se minimiza con una nota.
+  - Con `Fill`, la primera ventana del panel se maximiza y todo lo demás de ese monitor se minimiza. Si dos paneles están en `Fill`, gana el primero.
+
 ## Invariantes
 
 El núcleo debe garantizarlos después de cada comando; las pruebas unitarias los verifican:
@@ -114,6 +154,20 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 6. `RestoreAll` deja el conjunto de ventanas gestionadas vacío y el diario marcado como limpio.
 
 ## Eventos externos y cómo los interpreta el núcleo
+
+`Workspace.Interpret` traduce cada cambio externo detectado (S4, [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)) en comandos. Nunca genera `Promote` ni `SwapWithPrevious` (CA7, verificado en las pruebas). En la app ya está activo:
+
+| Cambio detectado | Comandos |
+| --- | --- |
+| Se cerró | `WindowClosed` |
+| La minimizaste | `Park`; si ya estaba estacionada, nada |
+| La abriste desde la barra de tareas | Si estaba estacionada, `Restore`; si la escondía una pila o un `Fill`, `MakeActiveInPanel` (pasa a ser la visible) |
+| La maximizaste en un auxiliar | `MakeActiveInPanel` + `SetTemplate(…, Fill)` |
+| La maximizaste en el principal | `Detach` (fuera de layout) |
+| La des-maximizaste estando su panel en `Fill` | `SetTemplate(…, Tiles)` |
+| La arrastraste o redimensionaste | `Detach`; los demás de su panel ocupan su sitio |
+
+Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), pero el gestor no la mueve hasta que se **reencaje** (`Reattach`), se promueva o se estacione.
 
 | Evento | Interpretación |
 | --- | --- |
@@ -130,7 +184,11 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 Cuando cambia la huella de monitores:
 
 1. Si la escena tiene un `SceneLayout` para la nueva huella, se aplica.
-2. Si no, se deriva uno: si falta el monitor estándar, el panel de Contexto se mueve al extremo izquierdo del ultrawide; si falta el ultrawide, el Centro y el Trabajo se reparten el monitor que queda; y así sucesivamente. El layout derivado se marca como "provisional" y no se guarda hasta que el usuario lo ajuste o lo confirme.
+2. Si no, se deriva uno:
+   - Si falta un auxiliar, sus paneles se funden con los del mismo hogar en el principal.
+   - Si falta el principal, el auxiliar más grande pasa a principal y recibe el Centro.
+
+   El layout derivado se marca como "provisional" y no se guarda hasta que el usuario lo ajuste o lo confirme.
 3. Las ventanas nunca quedan fuera de todas las áreas visibles.
 
 Al volver la huella original, se aplica de nuevo su layout guardado.

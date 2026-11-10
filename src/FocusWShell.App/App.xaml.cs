@@ -18,6 +18,9 @@ public partial class App : Application
     private TrayIcon? _tray;
     private GlobalHotkeys? _hotkeys;
     private MainWindow? _main;
+    private StripManager? _strips;
+    private readonly DisplayKeepAwake _keepAwake = new();
+    private AppSettings _settings = new();
 
     public bool IsExiting { get; private set; }
 
@@ -41,7 +44,32 @@ public partial class App : Application
         OfferRecovery();
 
         _main = new MainWindow(_controller);
-        _tray = new TrayIcon(ShowMain, RestoreFromTray, ExitAndRestore);
+
+        // S4: lo que haga el usuario con las ventanas gestionadas se traduce en comandos.
+        _controller.ExternalChangeHandled += handled => Dispatcher.BeginInvoke(() =>
+        {
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(handled.Describe() + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(handled.Result));
+            }
+        });
+        // Tiras de pestañas: se rehacen cada vez que cambia el layout.
+        _strips = new StripManager(_controller, result => Dispatcher.BeginInvoke(() =>
+        {
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(global::FocusWShell.App.MainWindow.Describe(result));
+            }
+        }));
+        _controller.LayoutChanged += () => Dispatcher.BeginInvoke(() => _strips?.Refresh());
+        _controller.StartWatching();
+        _settings = AppSettings.Load();
+        _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
+        SetKeepAwake(_settings.KeepDisplayOn, announce: false);
+        RefreshTrayScenes();
+        _controller.ScenesChanged += () => Dispatcher.BeginInvoke(RefreshTrayScenes);
         _hotkeys = GlobalHotkeys.Start(
         [
             new("Restaurar todas", GlobalHotkeys.VkBack, "Ctrl+Alt+Mayús+Retroceso", OnEmergencyHotkey),
@@ -49,6 +77,9 @@ public partial class App : Application
             new("Volver a la anterior", GlobalHotkeys.VkLeft, "Ctrl+Alt+Mayús+←",
                 () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious()))),
             new("Centro al panel", GlobalHotkeys.VkDown, "Ctrl+Alt+Mayús+↓", () => OnCommandHotkey("Centro al panel", _controller.ReturnCenter)),
+            new("Pantalla encendida", GlobalHotkeys.VkP, "Ctrl+Alt+Mayús+P", () => Dispatcher.BeginInvoke(ToggleKeepAwake)),
+            .. Enumerable.Range(1, 9).Select(n => new HotkeyBinding(
+                $"Escena {n}", (uint)(0x30 + n), $"Ctrl+Alt+Mayús+{n}", () => ApplySceneByIndex(n - 1))),
         ]);
         if (_hotkeys.Failed.Count > 0)
         {
@@ -88,6 +119,62 @@ public partial class App : Application
     }
 
     private void ShowMain() => _main?.ShowAndActivate();
+
+    private void RefreshTrayScenes() => _tray?.ShowScenes(_controller.SceneNames(), name => Task.Run(() => ApplyScene(name)));
+
+    /// <summary>Atajo Ctrl+Alt+Mayús+N: llega en el hilo de atajos.</summary>
+    private void ApplySceneByIndex(int index)
+    {
+        var names = _controller.SceneNames();
+        if (index < names.Count)
+        {
+            ApplyScene(names[index]);
+        }
+    }
+
+    private void ApplyScene(string name)
+    {
+        var result = _controller.ApplySavedScene(name);
+        Dispatcher.BeginInvoke(() =>
+        {
+            _tray?.Notify($"Escena «{result.Name}»", result.Missing.Count == 0 && result.Notes.Count == 0
+                ? "Aplicada."
+                : string.Join(" ", result.Summary.Split(Environment.NewLine).Skip(1)));
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(result.Summary + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result.Result));
+            }
+        });
+    }
+
+    private void ToggleKeepAwake() => SetKeepAwake(!_keepAwake.IsActive, announce: true);
+
+    /// <summary>Mantener la pantalla encendida (ADR 0010): aplica, recuerda y lo refleja en la bandeja.</summary>
+    private void SetKeepAwake(bool active, bool announce)
+    {
+        if (!_keepAwake.Set(active))
+        {
+            _tray?.Notify("Pantalla encendida", "Windows no aceptó la petición de energía.", Forms.ToolTipIcon.Warning);
+            return;
+        }
+
+        _tray?.ShowKeepAwake(active);
+        if (_settings.KeepDisplayOn != active)
+        {
+            _settings.KeepDisplayOn = active;
+            _settings.Save();
+        }
+
+        if (announce)
+        {
+            _tray?.Notify(
+                active ? "Pantalla siempre encendida" : "Pantalla con ahorro normal",
+                active
+                    ? "Ni la pantalla se apagará ni saltará el protector de pantalla mientras esté activo."
+                    : "Windows vuelve a apagar la pantalla por inactividad como siempre.");
+        }
+    }
 
     private void RestoreFromTray()
     {
@@ -160,7 +247,10 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _strips?.CloseAll();
         _hotkeys?.Dispose();
+        _controller.Dispose();
+        _keepAwake.Dispose();
         _tray?.Dispose();
         if (_singleInstance is not null)
         {

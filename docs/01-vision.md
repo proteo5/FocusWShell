@@ -1,4 +1,4 @@
-# 01 — Visión y alcance
+﻿# 01 — Visión y alcance
 
 ## El problema
 
@@ -81,7 +81,7 @@ Criterios de aceptación de la primera demo útil (se citan en el resto de la do
 
 | ID | Criterio |
 | --- | --- |
-| CA1 | Con ultrawide + segundo monitor, se colocan 3–4 apps conocidas en Centro, Trabajo y Contexto mediante atajos o menú. |
+| CA1 | Con ultrawide + segundo monitor, se colocan 3–4 apps conocidas en Centro, Trabajo y Contexto mediante atajos o menú. El Centro está siempre en el monitor principal; el segundo monitor aloja paneles auxiliares ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md)). |
 | CA2 | Una app de Trabajo pasa al Centro, y la anterior se recupera, en menos de dos acciones. |
 | CA3 | El panel de Trabajo cambia entre dos tiles y pila sin perder apps ni sesiones. |
 | CA4 | Una app estacionada se restaura a su panel original. |

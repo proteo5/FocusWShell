@@ -1,9 +1,10 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Windows;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Layout;
 using FocusWShell.Win32.Persistence;
 using FocusWShell.Win32.Scenes;
 
@@ -18,11 +19,22 @@ public partial class MainWindow : Window
     /// <summary>Roles que el usuario ha cambiado y aún no ha aplicado, por handle.</summary>
     private readonly Dictionary<nint, SceneRole> _pending = [];
 
+    /// <summary>Monitores que el usuario ha cambiado y aún no ha aplicado, por handle.</summary>
+    private readonly Dictionary<nint, string> _pendingDisplay = [];
+
+    private bool _buildingTemplates;
+
+    /// <summary>Opciones de la columna Monitor: el principal y cada auxiliar conectado.</summary>
+    public ObservableCollection<DisplayOption> DisplayOptions { get; } = [];
+
     public MainWindow(ShellController controller)
     {
         _controller = controller;
         InitializeComponent();
+        DataContext = this;
         WindowList.ItemsSource = _rows;
+        LoadScenes();
+        _controller.ScenesChanged += () => Dispatcher.BeginInvoke(LoadScenes);
         Refresh();
     }
 
@@ -59,17 +71,30 @@ public partial class MainWindow : Window
     private static string StateOf(ManagedWindow? m) => m switch
     {
         null => "",
-        { Placement: Placement.Center } => $"Centro (hogar: {(m.Home == Home.Context ? "Contexto" : "Trabajo")})",
-        { Home: Home.Context } => "En Contexto",
-        _ => "En Trabajo",
+        { Placement: Placement.Parked } => m.Display is null ? "Estacionada" : "Estacionada (auxiliar)",
+        { Detached: true } => "Fuera de layout",
+        { Placement: Placement.Center } => $"Centro (vuelve a {(m.Home == Home.Context ? "Contexto" : "Trabajo")}{(m.Display is null ? "" : " auxiliar")})",
+        { Home: Home.Context } => m.Display is null ? "En Contexto" : "En Contexto auxiliar",
+        _ => m.Display is null ? "En Trabajo" : "En Trabajo auxiliar",
     };
 
     public void Refresh()
     {
         var display = ShellController.TargetDisplay();
+        var aux = ShellController.AuxiliaryDisplays();
         HeaderText.Text =
-            $"Monitor {display.DeviceName} · área de trabajo {display.WorkArea} · {display.Dpi} DPI   |   " +
-            "Atajos Ctrl+Alt+Mayús: ↑ al Centro · ← anterior · ↓ Centro al panel · Retroceso restaurar todas";
+            $"Principal {display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
+            string.Concat(aux.Select(a => $"   ·   Auxiliar {a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
+            "Atajos Ctrl+Alt+Mayús: ↑ al Centro · ← anterior · ↓ Centro al panel · P pantalla encendida · Retroceso restaurar todas";
+
+        DisplayOptions.Clear();
+        DisplayOptions.Add(new DisplayOption(DisplayOption.PrincipalKey, $"Principal ({display.WorkArea.Width}×{display.WorkArea.Height})"));
+        foreach (var a in aux)
+        {
+            DisplayOptions.Add(new DisplayOption(a.DeviceName, $"{a.DeviceName.TrimStart('\\', '.')} ({a.WorkArea.Width}×{a.WorkArea.Height})"));
+        }
+
+        BuildTemplates(aux);
 
         var selected = (WindowList.SelectedItem as WindowRow)?.Snapshot.Handle;
         foreach (var row in _rows)
@@ -84,7 +109,11 @@ public partial class MainWindow : Window
         {
             managed.TryGetValue(w.Handle, out var m);
             var role = _pending.TryGetValue(w.Handle, out var p) ? p : m is null ? SceneRole.None : RoleOf(m);
-            var row = new WindowRow(w, role) { State = StateOf(m) };
+            var row = new WindowRow(w, role)
+            {
+                State = StateOf(m),
+                Display = _pendingDisplay.TryGetValue(w.Handle, out var pd) ? pd : DisplayOption.FromModel(m?.Display),
+            };
             row.PropertyChanged += Row_PropertyChanged;
             _rows.Add(row);
         }
@@ -94,11 +123,82 @@ public partial class MainWindow : Window
             _pending.Remove(gone);
         }
 
+        foreach (var gone in _pendingDisplay.Keys.Except(windows.Select(w => w.Handle)).ToList())
+        {
+            _pendingDisplay.Remove(gone);
+        }
+
         WindowList.SelectedItem = _rows.FirstOrDefault(r => r.Snapshot.Handle == selected);
+    }
+
+    /// <summary>Un selector de template por panel: el principal admite Tiles y Pila; los auxiliares, además Fill.</summary>
+    private void BuildTemplates(IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux)
+    {
+        _buildingTemplates = true;
+        TemplatesPanel.Children.Clear();
+        TemplatesPanel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "Templates:",
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+        });
+
+        void Add(string? display, string label, Home home, bool allowFill)
+        {
+            var options = new List<(PanelTemplate Template, string Label)> { (PanelTemplate.Tiles, "Tiles"), (PanelTemplate.Stack, "Pila") };
+            if (allowFill)
+            {
+                options.Add((PanelTemplate.Fill, "Fill (maximizada)"));
+            }
+
+            var combo = new System.Windows.Controls.ComboBox
+            {
+                Width = 140,
+                Margin = new Thickness(0, 0, 16, 0),
+                ItemsSource = options.Select(o => o.Label).ToList(),
+                SelectedIndex = Math.Max(0, options.FindIndex(o => o.Template == _controller.TemplateOf(display, home))),
+            };
+            System.Windows.Automation.AutomationProperties.SetName(combo, $"Template de {label}");
+            combo.SelectionChanged += async (_, _) =>
+            {
+                if (_buildingTemplates || combo.SelectedIndex < 0)
+                {
+                    return;
+                }
+
+                var template = options[combo.SelectedIndex].Template;
+                await Run(() => _controller.Execute(new SetTemplate(display, home, template)));
+                Refresh();
+            };
+            TemplatesPanel.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = label,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0),
+            });
+            TemplatesPanel.Children.Add(combo);
+        }
+
+        Add(null, "Principal · Contexto", Home.Context, allowFill: false);
+        Add(null, "Principal · Trabajo", Home.Work, allowFill: false);
+        foreach (var a in aux)
+        {
+            string name = a.DeviceName.TrimStart('\\', '.');
+            Add(a.DeviceName, $"{name} · Contexto", Home.Context, allowFill: true);
+            Add(a.DeviceName, $"{name} · Trabajo", Home.Work, allowFill: true);
+        }
+
+        _buildingTemplates = false;
     }
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (sender is WindowRow changed && e.PropertyName == nameof(WindowRow.Display))
+        {
+            _pendingDisplay[changed.Snapshot.Handle] = changed.Display;
+            return;
+        }
+
         if (sender is not WindowRow row || e.PropertyName != nameof(WindowRow.Role))
         {
             return;
@@ -131,8 +231,15 @@ public partial class MainWindow : Window
             var h = row.Snapshot.Handle;
             managed.TryGetValue(h, out var m);
             var current = m is null ? SceneRole.None : RoleOf(m);
+            var display = DisplayOption.ToModel(row.Display);
             if (row.Role == current)
             {
+                // Mismo rol: quizá cambió el monitor del panel.
+                if (m is not null && m.Display != display && row.Role != SceneRole.None)
+                {
+                    moves.Add(new SendToDisplay(h, display));
+                }
+
                 continue;
             }
 
@@ -142,9 +249,14 @@ public partial class MainWindow : Window
                     releases.Add(new Release(h));
                     break;
                 case SceneRole.Center:
+                    // El Centro está siempre en el principal; el monitor elegido es adonde vuelve.
                     if (m is null)
                     {
-                        moves.Add(new Adopt(h, row.App, Home.Work));
+                        moves.Add(new Adopt(h, row.App, Home.Work, display));
+                    }
+                    else if (m.Display != display)
+                    {
+                        moves.Add(new SendToDisplay(h, display));
                     }
 
                     promote = new Promote(h);
@@ -153,7 +265,7 @@ public partial class MainWindow : Window
                     var home = row.Role == SceneRole.Context ? Home.Context : Home.Work;
                     if (m is null)
                     {
-                        moves.Add(new Adopt(h, row.App, home));
+                        moves.Add(new Adopt(h, row.App, home, display));
                     }
                     else
                     {
@@ -163,6 +275,10 @@ public partial class MainWindow : Window
                         }
 
                         moves.Add(new SendTo(h, home));
+                        if (m.Display != display)
+                        {
+                            moves.Add(new SendToDisplay(h, display));
+                        }
                     }
 
                     break;
@@ -180,6 +296,7 @@ public partial class MainWindow : Window
     private void Refresh_Click(object sender, RoutedEventArgs e)
     {
         _pending.Clear();
+        _pendingDisplay.Clear();
         Refresh();
     }
 
@@ -194,6 +311,7 @@ public partial class MainWindow : Window
 
         await Run(() => _controller.Execute(commands));
         _pending.Clear();
+        _pendingDisplay.Clear();
         Refresh();
     }
 
@@ -225,6 +343,26 @@ public partial class MainWindow : Window
         Refresh();
     }
 
+    private async void Park_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Park(h));
+
+    private async void Unpark_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Restore(h));
+
+    private async void Reattach_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Reattach(h));
+
+    /// <summary>Ejecuta un comando sobre la ventana seleccionada.</summary>
+    private async Task OnSelected(Func<nint, Command> command)
+    {
+        if (WindowList.SelectedItem is not WindowRow row)
+        {
+            SetStatus("Selecciona una ventana de la lista.");
+            return;
+        }
+
+        _pending.Remove(row.Snapshot.Handle);
+        await Run(() => _controller.Execute(command(row.Snapshot.Handle)));
+        Refresh();
+    }
+
     private async void Release_Click(object sender, RoutedEventArgs e)
     {
         if (WindowList.SelectedItem is not WindowRow row)
@@ -247,7 +385,7 @@ public partial class MainWindow : Window
 
     private async Task Run(Func<ControllerResult> action)
     {
-        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, SwapButton, ReturnButton, ReleaseButton };
+        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, SwapButton, ReturnButton, ParkButton, UnparkButton, ReattachButton, ReleaseButton };
         foreach (var b in buttons)
         {
             b.IsEnabled = false;
@@ -268,6 +406,66 @@ public partial class MainWindow : Window
     }
 
     public void SetStatus(string text) => StatusText.Text = text;
+
+    private void LoadScenes()
+    {
+        var selected = SceneCombo.SelectedItem as string;
+        var names = _controller.SceneNames();
+        SceneCombo.ItemsSource = names.Select((n, i) => i < 9 ? $"{i + 1}. {n}" : n).ToList();
+        SceneCombo.Tag = names;
+        SceneCombo.SelectedIndex = selected is null ? (names.Count > 0 ? 0 : -1) : Math.Max(0, SceneCombo.Items.IndexOf(selected));
+    }
+
+    private string? SelectedScene() =>
+        SceneCombo.Tag is IReadOnlyList<string> names && SceneCombo.SelectedIndex >= 0 && SceneCombo.SelectedIndex < names.Count
+            ? names[SceneCombo.SelectedIndex]
+            : null;
+
+    private async void ApplyScene_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedScene() is not { } name)
+        {
+            SetStatus("No hay escenas guardadas. Coloca las ventanas, escribe un nombre y pulsa \"Guardar escena actual\".");
+            return;
+        }
+
+        _pending.Clear();
+        _pendingDisplay.Clear();
+        var result = await Task.Run(() => _controller.ApplySavedScene(name));
+        SetStatus(result.Summary + Environment.NewLine + Describe(result.Result));
+        Refresh();
+    }
+
+    private void SaveScene_Click(object sender, RoutedEventArgs e)
+    {
+        var name = string.IsNullOrWhiteSpace(SceneName.Text) ? SelectedScene() : SceneName.Text.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            SetStatus("Escribe un nombre para la escena.");
+            return;
+        }
+
+        var scene = _controller.SaveScene(name);
+        SceneName.Text = "";
+        SetStatus($"Escena «{scene.Name}» guardada: {scene.Windows.Count} ventanas, {scene.Templates.Count} templates.");
+        LoadScenes();
+        SceneCombo.SelectedIndex = Math.Max(0, (SceneCombo.Tag as IReadOnlyList<string>)?.ToList().FindIndex(n => n == scene.Name) ?? 0);
+    }
+
+    private void DeleteScene_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedScene() is not { } name)
+        {
+            return;
+        }
+
+        if (MessageBox.Show($"¿Borrar la escena «{name}»? Las ventanas no se mueven.", "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question)
+            == MessageBoxResult.Yes)
+        {
+            _controller.DeleteScene(name);
+            SetStatus($"Escena «{name}» borrada.");
+        }
+    }
 
     public static string Describe(ControllerResult result)
     {
@@ -300,11 +498,18 @@ public partial class MainWindow : Window
             return sb.ToString();
         }
 
-        var layout = report.Layout;
+        var layout = report.Layout.Principal;
         sb.AppendLine(
             CultureInfo.CurrentCulture,
-            $"Contexto {layout.LeftColumn.Width} px · Centro {layout.CenterColumn.Width} px · Trabajo {layout.RightColumn.Width} px");
-        foreach (var note in layout.Notes)
+            $"Principal: Contexto {layout.LeftColumn.Width} px · Centro {layout.CenterColumn.Width} px · Trabajo {layout.RightColumn.Width} px");
+        foreach (var aux in report.Layout.Aux)
+        {
+            sb.AppendLine(
+                CultureInfo.CurrentCulture,
+                $"{aux.Display}: {string.Join(" · ", aux.Columns.Select(c => $"{c.Key} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})"))}");
+        }
+
+        foreach (var note in report.Layout.Notes)
         {
             sb.AppendLine(CultureInfo.CurrentCulture, $"  · {note}");
         }

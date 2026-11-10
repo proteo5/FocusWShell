@@ -9,13 +9,14 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 | R1 | Huecos o solapes entre ventanas por los bordes invisibles y el DPI mixto | Alto: el layout se ve roto | Alta | Medir con `DWMWA_EXTENDED_FRAME_BOUNDS`, compensar por ventana y verificar tras mover. Comprobar que cada ejecutable lleva el manifiesto PerMonitorV2 (ver S2 con dos monitores). |
 | R2 | Una app se redimensiona por su cuenta después de moverla (`WM_DPICHANGED`, tamaño mínimo, Electron) | **Alto** (confirmado en S2: invade el Centro) | **Alta** | Verificar el rectángulo final; aprender el tamaño mínimo de cada app y que el layout lo respete (ver resultados de S2). |
 | R3 | Parpadeo visible al aplicar una escena con muchas ventanas | Medio: rompe la sensación de continuidad | Media | Movimiento paralelo con `SWP_ASYNCWINDOWPOS` (S3: ~13 ms para 6 apps; `DeferWindowPos` no agrupa entre procesos), primero minimizar y luego mover. |
-| R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Registro de geometrías esperadas con plazo. Con movimiento asíncrono (S3), los eventos propios llegan después de que `SetWindowPos` retorne: el plazo debe cubrir esa espera. |
+| R4 | El gestor confunde sus propios movimientos con los del usuario | Alto: bucles o ventanas que "se escapan" del layout | Alta si no se diseña | Reconciliar el estado final con lo esperado tras 120 ms sin eventos ([ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)). Validado en S4: 0 falsos positivos. |
 | R5 | Ventanas elevadas o protegidas que no se pueden mover | Bajo si se detecta | Segura | Detectar y mostrarlas como "no gestionables"; nunca elevar el gestor. |
 | R6 | Perder la geometría original tras una caída | Alto: rompe la confianza | Baja con diario | Diario escrito antes de mover ([ADR 0005](adr/0005-diario-de-recuperacion.md)). |
 | R7 | Reconexión de monitores: eventos en ráfaga, `HMONITOR` nuevos, ventanas fuera de pantalla | Alto | Alta | Identidad por ruta de dispositivo, *debounce*, layouts por huella. |
 | R8 | Minimizar en la pila produce animaciones molestas o apps que pausan contenido | Medio | Media | Probar con apps reales; alternativa: dejar la ventana restaurada detrás de la activa (sin minimizar). |
 | R9 | La tira de pestañas (overlay) queda tapada o desalineada | Medio | Media | Franja reservada sin solape; reposicionar tras cada plan y tras cambios de DPI. |
 | R10 | El modelo de roles no mejora lo que ya dan FancyZones + DisplayFusion | Alto: el proyecto no se justifica | Desconocida | Validación diaria temprana ([06](06-validacion.md)) antes de invertir en UI. |
+| R11 | Monitores remotos (tablets por wifi) que se desconectan a menudo; Windows mueve sus ventanas al principal, encima del Centro | Alto: rompe el foco justo en el monitor que importa | Media | Reaccionar al cambio de monitores antes de que se note: reubicar en paneles del principal, nunca en el Centro ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md), [0009](adr/0009-tablets-como-monitores-auxiliares.md)). Probar S6 con una tablet. |
 
 ## Spikes
 
@@ -106,6 +107,102 @@ Implementa la decisión que salió de S2. Ver [02 — Modelo de dominio](02-mode
 - **Desborde hacia fuera:** Docker Desktop (942 px) en Contexto. El Centro sólo podía ceder hasta su piso (1720 px, 50 %), así que Contexto quedó en 780 px y Docker se ancló a la izquierda con 162 px fuera de pantalla. **Exacto y Centro protegido.**
 - **Restauración:** 6/6 y 4/4 exactas.
 - **Pendiente:** con el segundo monitor conectado, el desborde hacia fuera podría caer en el monitor vecino. Resuelto el mismo día: ver "S1 y S2 con dos monitores".
+
+### S4 — Eventos propios (2026-11-09)
+
+Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md): reconciliar el estado final de cada ventana en lugar de atribuir eventos.
+
+- **Prueba:** `focus-probe watch <escena> --cycles 5`.
+  - **Fase 1:** aplica la escena y la revierte 5 veces vigilando los eventos: son 11 aplicaciones propias y ninguna debe atribuirse al usuario.
+  - **Fase 2:** mueve, minimiza, muestra y maximiza una ventana sin avisar al observador, como lo haría otra app. Cada cambio debe detectarse.
+  - **Fase 3 (opcional):** con `--listen N`, escucha durante N segundos lo que haga el usuario.
+- **Resultado en el ultrawide** (5 apps): 55 eventos propios, **0 falsos positivos**, **4/4** cambios externos detectados.
+- **Resultado en el monitor al 125 %**, con las ventanas cruzando entre DPI en cada ciclo:
+  - **Primer intento: 33 "falsos positivos", que no lo eran.** Las ventanas estaban de verdad fuera de sitio: ChatGPT quedó en 750×1275 en vez de 600×1020 (×1,25), y al volver al ultrawide en ×0,8.
+  - **La causa:** el movimiento asíncrono se daba por llegado en cuanto la ventana alcanzaba el rectángulo pedido. Pero al cambiar de DPI la app recibe `WM_DPICHANGED` y se reescala *después*. En `place` no se notaba porque la segunda pasada lo corregía; en los ciclos de S3 no hay segunda pasada.
+  - **Arreglo en el aplicador:** si una ventana cambia a un monitor con otro DPI, se espera a que lleve 100 ms quieta y después se verifica y corrige.
+  - **Tras el arreglo:** 150 eventos propios, **0 falsos positivos**, **4/4** detectados.
+- **Coste del arreglo:** una transición que cruza DPI tarda unos 240 ms (con una corrección por ventana) en lugar de 9 ms. Sin cruce de DPI no cambia nada (9 ms).
+  - Mejora posible: pedir de antemano el tamaño ya escalado para que el reescalado de la app caiga en el destino.
+- **No medido:**
+  - Arrastres y redimensionados hechos con el ratón por una persona: la fase 3 está lista, pero nadie la ha ejecutado aún.
+  - Escritorios virtuales (`CLOAKED`).
+- **Decisión:** S4 aprobado. Riesgo R4 mitigado.
+
+### Escenas guardadas (2026-11-09)
+
+- **Prueba:** desde la interfaz se guardaron dos escenas.
+  - **"Código":** cinco ventanas, una de ellas en el monitor auxiliar, y Trabajo en pila.
+  - **"Lectura":** Explorer en el Centro y Edge en Contexto.
+- **Cambiar con atajos:**
+  - `Ctrl+Alt+Mayús+1` montó "Código" entera: 5/5 exactas.
+  - `Ctrl+Alt+Mayús+2` pasó a "Lectura": las tres ventanas que no son de esa escena volvieron a su sitio original.
+- **Persistencia:** con la app cerrada y vuelta a abrir, "Código" se aplicó desde el selector: 5/5.
+- **Privacidad:** `scenes.json` guarda el título de cada ventana como pista para reconocerla, por ejemplo el nombre de un chat o de una página. Es un archivo local en `%LOCALAPPDATA%`, fuera del repositorio, pero conviene saberlo.
+- **Pendiente:**
+  - Lanzar las apps que faltan.
+  - Geometría por escena (pesos de columnas) y layouts por huella de monitores.
+  - Opción de estacionar en lugar de liberar las ventanas que no son de la escena.
+
+### Tiras de pestañas (2026-11-09)
+
+- **Posición:** Contexto 670×28 y Trabajo 962×28 en el principal; 1920×35 en el auxiliar al 125 %. Las ventanas de los paneles empiezan justo debajo y el Centro sigue ocupando toda la altura.
+- **Clics**, por UI Automation y con el ratón:
+
+  | Acción | Resultado |
+  | --- | --- |
+  | Clic en una pestaña oculta de la pila | Pasa a ser la visible |
+  | Clic en `↑ msedge` | Edge vuelve del Centro a su panel |
+  | Clic en `⏸ explorer` | Se recupera |
+  | Doble clic real en una pestaña | La lleva al Centro con el foco |
+  | Restaurar todas | Cierra todas las tiras |
+
+- **Dos fallos encontrados y corregidos:**
+  - Las tiras salían negras: se mostraban sin `Show()`, así que WPF no las pintaba.
+  - Un doble clic promovía la pestaña equivocada: el primer clic reordenaba la tira antes del segundo.
+- **Pendiente:**
+  - Probar las tiras en uso diario: legibilidad, y si 28 px son suficientes.
+  - Tamaño táctil en los auxiliares (M3).
+  - Arrastrar pestañas entre paneles.
+  - Tira para una ventana en `Fill`, que ahora cubre todo el monitor.
+
+### Estacionar y reaccionar al usuario (2026-11-09)
+
+La app usa la detección de S4. Prueba de principio a fin: la escena se armó desde la interfaz, y cada cambio se hizo desde **otro proceso**, igual que si lo hiciera el usuario o la barra de tareas.
+
+| Acción externa | Reacción del gestor |
+| --- | --- |
+| Minimizar GitHub Desktop | Queda **estacionada**; Explorer ocupa todo el panel de Trabajo |
+| Abrirla otra vez (`SW_RESTORE`) | **Vuelve a su panel**, en su mismo puesto |
+| Arrastrar Explorer 300 px | Queda **fuera de layout** y el gestor no la devuelve; GitHub ocupa su sitio |
+| Botón "Reencajar" | Explorer vuelve al layout |
+| Maximizar WhatsApp en el monitor auxiliar | Su panel pasa a **Fill** |
+| Restaurar todas | 5/5; el gestor no reacciona a su propia restauración |
+
+- **Pendiente:**
+  - Probarlo con arrastres reales con el ratón y con la barra de tareas de Windows de verdad.
+  - Estacionar desde la tira de pestañas del panel, que llega con la capa visual.
+
+### Monitores auxiliares (2026-11-09)
+
+Implementa el [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md) con el monitor estándar al 125 % como auxiliar.
+
+- **Tiles en el auxiliar:**
+  - Principal Slack | Edge | Explorer y auxiliar WhatsApp | ChatGPT: **5/5 exactas**, Centro protegido, en un solo lote para los dos monitores.
+  - Las dos ventanas que cruzaban de DPI necesitaron una corrección.
+- **Fill:**
+  - ChatGPT queda maximizado en el auxiliar y GitHub Desktop, minimizado. **5/5.**
+  - El foco siguió en Edge: maximizar no lo robó.
+  - Primer intento con 2 px de desviación, porque se midió durante la animación de maximizar. Ahora se mide cuando el rectángulo deja de cambiar.
+- **S4 con la escena en los dos monitores y Fill:** 99 eventos propios, **0 falsos positivos**, 4/4 cambios externos detectados. Se añadió la expectativa "maximizada en este monitor" y el cambio `Unmaximized`.
+- **App de principio a fin**, con UI Automation:
+  - Asignar monitor y rol a cada ventana, y pasar el Trabajo del auxiliar a Fill desde la ventana principal.
+  - Promover ChatGPT del auxiliar al Centro: sale de Fill, llega al Centro con el foco, y WhatsApp vuelve a verse en el auxiliar.
+  - `Volver a la anterior` lo devuelve maximizado a su panel auxiliar.
+  - Restaurar todas: 5/5.
+- **Pendiente:**
+  - Identidad estable de monitores y desconexión real de un auxiliar (S6).
+  - Reaccionar a eventos del usuario en la app: maximizar en un auxiliar debería equivaler a pasar ese panel a Fill (llega con Estacionar/Restaurar).
 
 ### S1 y S2 con dos monitores (2026-11-09)
 

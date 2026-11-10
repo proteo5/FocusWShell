@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using FocusWShell.Core.Displays;
+using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 using FocusWShell.Core.Windows;
@@ -27,6 +28,7 @@ try
         "restore" => Restore(),
         "mins" => Mins(rest),
         "move" => Move(rest),
+        "watch" => Watch(rest),
         _ => Usage($"Comando desconocido: {command}"),
     };
 }
@@ -53,17 +55,23 @@ static int Usage(string? error = null)
                             [--context-template tiles|stack] [--work-template tiles|stack]
                             [--dry-run] [--no-learn] [--pause-after N]
                             [--mode async|batch|seq] [--cycles N] [--cycle-delay ms] [--display N]
-              Coloca ventanas en Contexto | Centro | Trabajo del monitor más ancho (o del N-ésimo), respetando
+                            [--aux N --aux-context a --aux-work b [--aux-work-template tiles|stack|fill]]
+              Coloca ventanas en Contexto | Centro | Trabajo del monitor principal (o del N-ésimo), respetando
               los tamaños mínimos aprendidos. Si una app impone uno nuevo, lo aprende y recoloca.
               Cada nombre busca una ventana candidata cuyo ejecutable lo contenga (p. ej. slack, msedge).
               Antes de mover nada guarda la colocación original en el diario.
               --mode async (por defecto) pide el movimiento a todas en paralelo (SWP_ASYNCWINDOWPOS);
               batch usa un lote DeferWindowPos; seq, SetWindowPos una a una.
               --cycles N revierte y reaplica la escena N veces midiendo cada transición (S3).
+              --aux N añade paneles en el monitor auxiliar N (sin Centro; Fill maximiza la primera).
           focus-probe restore
               Devuelve todas las ventanas del diario a su colocación original y borra el diario.
           focus-probe mins [--clear]
               Muestra (u olvida) los tamaños mínimos aprendidos.
+          focus-probe watch <escena como en place> [--cycles 5] [--listen 0]
+              S4: aplica y revierte la escena --cycles veces vigilando los eventos (ningún cambio
+              debe atribuirse al usuario), luego simula cambios externos (mover, minimizar, mostrar,
+              maximizar) que sí deben detectarse, y escucha --listen segundos lo que hagas tú.
           focus-probe move <ejecutable> x,y,ancho,alto
               Coloca la parte visible de una ventana en ese rectángulo (píxeles físicos). Sin diario:
               sirve para devolver a mano una ventana a una geometría conocida.
@@ -147,7 +155,8 @@ static int Monitors()
     return 0;
 }
 
-static int Place(string[] args)
+/// <summary>Escena común a place y watch: ventanas por rol, opciones y monitor.</summary>
+static (SceneApplier Applier, SceneAssignment Assignment, SceneOptions Options, DisplayInfo Display, double[] Split, MinSizeStore MinSizes, int? PauseAfter) ParseScene(string[] args)
 {
     var contextNames = ListOption(args, "--context");
     var centerNames = ListOption(args, "--center");
@@ -195,17 +204,14 @@ static int Place(string[] args)
         Mode = mode,
         Learn = !Has(args, "--no-learn"),
     };
-    bool dryRun = Has(args, "--dry-run");
-    int cycles = int.Parse(Option(args, "--cycles") ?? "0", CultureInfo.InvariantCulture);
-    int cycleDelay = int.Parse(Option(args, "--cycle-delay") ?? "1500", CultureInfo.InvariantCulture);
 
-    // Por defecto, el monitor más ancho (el ultrawide); --display N elige el N-ésimo de "focus-probe monitors".
+    // Por defecto, el monitor principal, el único con Centro (ADR 0008); --display N elige el N-ésimo de "focus-probe monitors".
     var displays = DisplayEnumerator.Enumerate();
     var display = Option(args, "--display") is { } d
         ? (int.Parse(d, CultureInfo.InvariantCulture) is int n && n >= 1 && n <= displays.Count
             ? displays[n - 1]
             : throw new ArgumentException($"--display debe estar entre 1 y {displays.Count}."))
-        : displays.MaxBy(m => m.WorkArea.Width) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
+        : DisplayTopology.Principal(displays) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
 
     var ownIntegrity = WindowEnumerator.CurrentIntegrity();
     var filter = new EligibilityFilter();
@@ -231,8 +237,42 @@ static int Place(string[] args)
         contextNames.Select(Find).ToList(),
         centerNames.Select(Find).FirstOrDefault(),
         workNames.Select(Find).ToList());
+
+    // Monitor auxiliar (ADR 0008): --aux N con --aux-context / --aux-work y sus templates.
+    if (Option(args, "--aux") is { } auxIndex)
+    {
+        int auxNumber = int.Parse(auxIndex, CultureInfo.InvariantCulture);
+        if (auxNumber < 1 || auxNumber > displays.Count || displays[auxNumber - 1] == display)
+        {
+            throw new ArgumentException($"--aux debe ser otro monitor, entre 1 y {displays.Count}.");
+        }
+
+        assignment = assignment with
+        {
+            Aux =
+            [
+                new AuxAssignment(
+                    displays[auxNumber - 1],
+                    ListOption(args, "--aux-context").Select(Find).ToList(),
+                    ListOption(args, "--aux-work").Select(Find).ToList(),
+                    ParseTemplate(Option(args, "--aux-context-template")),
+                    ParseTemplate(Option(args, "--aux-work-template"))),
+            ],
+        };
+    }
     var minSizes = new MinSizeStore(MinSizeStore.DefaultPath);
     var applier = new SceneApplier(display, assignment, options, minSizes);
+    return (applier, assignment, options, display, split, minSizes, pauseAfter);
+}
+
+static int Place(string[] args)
+{
+    var (applier, assignment, options, display, split, minSizes, pauseAfter) = ParseScene(args);
+    var mode = options.Mode;
+    bool dryRun = Has(args, "--dry-run");
+    int cycles = int.Parse(Option(args, "--cycles") ?? "0", CultureInfo.InvariantCulture);
+    int cycleDelay = int.Parse(Option(args, "--cycle-delay") ?? "1500", CultureInfo.InvariantCulture);
+
 
     Console.WriteLine($"Monitor {display.DeviceName}: trabajo {display.WorkArea}, {display.Dpi} DPI · pesos {string.Join("/", split)} · gap {options.Gap}");
     Console.WriteLine($"Mínimos conocidos: {minSizes.FilePath} ({applier.Catalog.Entries.Count} apps)");
@@ -304,7 +344,7 @@ static void PrintPass(ApplyPass pass)
 // Ciclos de S3: revertir a la geometría de partida y reaplicar la escena, midiendo cada transición.
 static void RunCycles(
     SceneApplier applier,
-    SceneLayoutResult layout,
+    ScenePlan layout,
     List<(nint Handle, PixelRect Rect, bool Special)> originals,
     int cycles,
     int delayMs,
@@ -376,16 +416,25 @@ static PanelTemplate ParseTemplate(string? value) => value?.ToLowerInvariant() s
 {
     null or "tiles" => PanelTemplate.Tiles,
     "stack" => PanelTemplate.Stack,
-    _ => throw new ArgumentException($"Template desconocido: {value} (tiles | stack)"),
+    "fill" => PanelTemplate.Fill,
+    _ => throw new ArgumentException($"Template desconocido: {value} (tiles | stack | fill)"),
 };
 
-static void PrintLayout(SceneLayoutResult layout)
+static void PrintLayout(ScenePlan plan)
 {
+    var layout = plan.Principal;
     Console.WriteLine();
     Console.WriteLine(
-        $"Columnas: Contexto {layout.LeftColumn.Width} px ({layout.EffectiveTemplates["Contexto"]}) · " +
+        $"Principal: Contexto {layout.LeftColumn.Width} px ({layout.EffectiveTemplates["Contexto"]}) · " +
         $"Centro {layout.CenterColumn.Width} px · Trabajo {layout.RightColumn.Width} px ({layout.EffectiveTemplates["Trabajo"]})");
-    foreach (var note in layout.Notes)
+    foreach (var aux in plan.Aux)
+    {
+        Console.WriteLine(
+            $"Auxiliar {aux.Display}: " +
+            string.Join(" · ", aux.Columns.Select(c => $"{c.Key} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})")));
+    }
+
+    foreach (var note in plan.Notes)
     {
         Console.WriteLine($"  · {note}");
     }
@@ -411,6 +460,150 @@ static int Mins(string[] args)
     }
 
     return 0;
+}
+
+static int Watch(string[] args)
+{
+    var (applier, assignment, _, display, _, _, _) = ParseScene(args);
+    int cycles = int.Parse(Option(args, "--cycles") ?? "5", CultureInfo.InvariantCulture);
+    int listen = int.Parse(Option(args, "--listen") ?? "0", CultureInfo.InvariantCulture);
+    const int Delay = 700;
+
+    var labels = assignment.All.ToDictionary(w => w.Handle, w => Path.GetFileNameWithoutExtension(w.ProcessName));
+    var registry = new ExpectationRegistry();
+    var clock = System.Diagnostics.Stopwatch.StartNew();
+    string phase = "propia";
+    var detections = new System.Collections.Concurrent.ConcurrentQueue<(string Phase, string Label, ExternalChange Change)>();
+
+    using var watcher = WindowEventWatcher.Start(
+        registry.IsWatched,
+        observed =>
+        {
+            var change = registry.Reconcile(observed);
+            if (change != ExternalChange.None)
+            {
+                string label = labels.GetValueOrDefault(observed.Handle, "?");
+                detections.Enqueue((Volatile.Read(ref phase), label, change));
+                Console.WriteLine($"  [{clock.Elapsed.TotalSeconds,6:F2}s] {label,-16} {change}  {(observed.Minimized ? "" : observed.Visible.ToString())}");
+            }
+        });
+
+    void ExpectCurrent(nint h)
+    {
+        var o = WindowMover.Observe(h);
+        registry.Expect(h, o.Minimized ? new ExpectMinimized() : new ExpectVisible(o.Visible));
+    }
+
+    void ExpectApplied(IEnumerable<AppliedWindow> applied)
+    {
+        foreach (var (t, r) in applied)
+        {
+            registry.Expect(t.Handle, (t.Kind, r) switch
+            {
+                (_, null) => new ExpectMinimized(),
+                (TargetKind.Maximized, _) => new ExpectMaximized(t.Rect),
+                _ => new ExpectVisible(r.Actual),
+            });
+        }
+    }
+
+    foreach (var w in assignment.All)
+    {
+        ExpectCurrent(w.Handle);
+    }
+
+    var originals = assignment.All
+        .Where(w => !WindowMover.IsMinimizedOrMaximized(w.Handle))
+        .Select(w => (w.Handle, WindowMover.VisibleBounds(w.Handle)))
+        .ToList();
+
+    Console.WriteLine($"Monitor {display.DeviceName} · {labels.Count} ventanas vigiladas · {cycles} ciclos propios");
+    Console.WriteLine();
+    Console.WriteLine("Fase 1: movimientos del gestor (no debe aparecer nada).");
+    var journal = new RecoveryJournal(RecoveryJournal.DefaultPath);
+    SceneApplyReport? report;
+    using (watcher.OwnChange())
+    {
+        report = applier.Apply(journal);
+        if (report.Error is not null)
+        {
+            Console.Error.WriteLine(report.Error);
+            return 1;
+        }
+
+        ExpectApplied(report.Applied);
+    }
+
+    long eventsBefore = watcher.RawEventCount;
+    for (int c = 1; c <= cycles; c++)
+    {
+        Thread.Sleep(Delay);
+        using (watcher.OwnChange())
+        {
+            applier.MoveTo(originals);
+            foreach (var (h, _) in originals)
+            {
+                ExpectCurrent(h);
+            }
+        }
+
+        Thread.Sleep(Delay);
+        using (watcher.OwnChange())
+        {
+            ExpectApplied(applier.Move(report.Layout, out _, out _));
+        }
+    }
+
+    Thread.Sleep(600);
+    long ownEvents = watcher.RawEventCount - eventsBefore;
+    int falsePositives = detections.Count;
+    Console.WriteLine($"  {ownEvents} eventos recibidos · {falsePositives} atribuidos al usuario (falsos positivos)");
+
+    // Fase 2: cambios externos simulados. Se hacen fuera de OwnChange, igual que si fueran de otra app.
+    Volatile.Write(ref phase, "externa");
+    var victim = report.Applied.First(a => a.Result is not null && a.Target.Region != "Centro");
+    var h0 = victim.Target.Handle;
+    Console.WriteLine();
+    Console.WriteLine($"Fase 2: cambios externos sobre {labels[h0]} (cada uno debe aparecer).");
+    var expected = new List<ExternalChange>();
+
+    void External(string what, ExternalChange want, Action act)
+    {
+        Console.WriteLine($"  → {what}");
+        act();
+        expected.Add(want);
+        Thread.Sleep(Delay);
+    }
+
+    var rect = victim.Result!.Actual;
+    External("mover 60 px hacia abajo", ExternalChange.MovedOrResized, () => WindowMover.Place(h0, rect with { Top = rect.Top + 60, Bottom = rect.Bottom + 60 }));
+    External("minimizar", ExternalChange.Minimized, () => WindowMover.Minimize(h0));
+    External("mostrar de nuevo", ExternalChange.Shown, () => WindowMover.ShowNoActivate(h0));
+    External("maximizar", ExternalChange.Maximized, () => WindowMover.Maximize(h0));
+
+    var externalHits = detections.Where(d => d.Phase == "externa").Select(d => d.Change).ToList();
+    int detected = expected.Count(e => externalHits.Contains(e));
+    Console.WriteLine($"  {detected}/{expected.Count} cambios externos detectados");
+
+    // Devuelve la víctima a su sitio antes de escuchar.
+    using (watcher.OwnChange())
+    {
+        ExpectApplied(applier.Move(report.Layout, out _, out _));
+    }
+
+    if (listen > 0)
+    {
+        Volatile.Write(ref phase, "usuario");
+        Console.WriteLine();
+        Console.WriteLine($"Fase 3: durante {listen} s, mueve, minimiza o maximiza tú las ventanas de la escena.");
+        Thread.Sleep(TimeSpan.FromSeconds(listen));
+        Console.WriteLine($"  {detections.Count(d => d.Phase == "usuario")} cambios tuyos detectados");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"S4: {falsePositives} falsos positivos en {cycles * 2 + 1} aplicaciones propias · {detected}/{expected.Count} cambios externos detectados.");
+    Console.WriteLine("Para devolverlas a su lugar: focus-probe restore");
+    return falsePositives == 0 && detected == expected.Count ? 0 : 1;
 }
 
 static int Move(string[] args)

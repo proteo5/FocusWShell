@@ -48,6 +48,7 @@ La regla de dependencias es estricta: `Core` no referencia a `Win32` ni a `App`.
 - **Hilo de UI (WPF dispatcher):** es dueño del modelo. Todos los comandos y eventos se procesan aquí, en orden, uno a la vez. No hay locks en el dominio.
 - **Hooks de eventos:** `SetWinEventHook` con `WINEVENT_OUTOFCONTEXT` entrega los callbacks en el hilo que registró el hook, siempre que tenga un bucle de mensajes. Se registran en el hilo de UI. El callback sólo encola un evento ligero; el procesamiento ocurre después, con *debounce* (unos 50–100 ms) para agrupar ráfagas.
 - **Atajos globales:** un hilo propio con su cola de mensajes registra los atajos con `RegisterHotKey` sin ventana. Ejecuta los comandos desde ese hilo, así que el de emergencia responde aunque la UI esté ocupada, y `Promote` puede dar el foco porque el proceso acaba de recibir input.
+- **Observador de ventanas:** `WindowEventWatcher` corre en su propio hilo. Cuando una ventana se calma, el controlador la procesa en un hilo de fondo: toma el lock, **vuelve a leer** su estado (la observación pudo quedar vieja si el gestor la movió entretanto), reconcilia con lo esperado y ejecuta los comandos de `Workspace.Interpret`. Cada ejecución de comandos abre un `OwnChange()` y, al terminar, deja como expectativa lo que el aplicador verificó.
 - **En M0**, `ShellController` es dueño del modelo (`Workspace`) y serializa con un lock los comandos y sus efectos, vengan de la UI o del hilo de atajos. Cuando lleguen los hooks de eventos (M1), el modelo pasará al hilo de UI como se describe arriba y los atajos le encolarán los comandos; el de emergencia seguirá restaurando directamente desde el diario.
 - **Escritura del diario:** síncrona y antes de aplicar el plan. Es un archivo pequeño; no compensa hacerla asíncrona y perder la garantía.
 
@@ -105,7 +106,15 @@ S3 midió que `BeginDeferWindowPos`/`DeferWindowPos`/`EndDeferWindowPos` **no ag
 3. Normaliza sin activar (`SW_SHOWNOACTIVATE`) las que estén maximizadas o minimizadas y mide los bordes invisibles de todas.
 4. Pide todos los movimientos con `SetWindowPos(… SWP_ASYNCWINDOWPOS)`. Cada app los recibe en su cola y se mueven en paralelo: la escena llega en ~13 ms.
 5. Espera a que cada ventana alcance el rectángulo pedido. Si una se queda 150 ms quieta en otro tamaño, la app impuso su mínimo: se da por llegada y alimenta el catálogo de mínimos.
-6. Corrige individualmente las que no quedaron exactas.
+6. Si una ventana cambia a un monitor con otro DPI, espera a que lleve 100 ms quieta: la app se reescala por su cuenta (`WM_DPICHANGED`) *después* de que el movimiento asíncrono se diera por llegado. S4 lo encontró.
+7. Corrige individualmente las que no quedaron exactas.
+8. Maximiza las ventanas en `Fill` de los monitores auxiliares (ADR 0008):
+   - Si ya están maximizadas en ese monitor, no se tocan.
+   - Si no, el paso 4 ya las llevó a su monitor en modo normal (así cruzan de DPI sin activarse) y aquí se maximizan.
+   - Windows no tiene un "maximizar sin activar": si el foco cambia, se devuelve a la ventana que lo tenía.
+   - Se mide cuando termina la animación.
+
+Todos los monitores se mueven en el mismo lote: `SceneApplier` combina el plan del principal (`SceneLayoutEngine`) y el de cada auxiliar (`AuxLayoutEngine`) en un `ScenePlan`.
 
 `SWP_ASYNCWINDOWPOS` además evita que una app lenta bloquee el hilo del aplicador. `PlaceBatch` conserva el modo con `DeferWindowPos` y, si el lote falla, vuelve a `SetWindowPos` ventana por ventana; queda sólo para comparar.
 
@@ -148,7 +157,7 @@ La lista de exclusión del usuario (por ejecutable, AUMID o clase) se aplica enc
 
 Todos los callbacks filtran `idObject == OBJID_WINDOW` e `idChild == CHILDID_SELF`.
 
-**Eventos propios:** cada vez que el aplicador mueve una ventana, registra la geometría esperada con un plazo corto. Los `LOCATIONCHANGE` que coincidan con ella se ignoran; así el gestor no confunde sus propios movimientos con los del usuario.
+**Eventos propios ([ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)):** no se intenta atribuir cada evento. `WindowEventWatcher` espera a que una ventana vigilada lleve 120 ms sin eventos (o a que termine un arrastre) y `ExpectationRegistry` compara su estado final con lo que el gestor dejó en ella. Mientras el gestor mueve ventanas (`OwnChange()`) no se evalúa nada; antes de terminar, registra como expectativa el rectángulo verificado de cada ventana.
 
 ## Monitores
 
@@ -191,3 +200,20 @@ Formato JSON con `System.Text.Json` y un campo `schemaVersion` en cada archivo.
 - El Centro no tiene overlay permanente. Su microbarra, si existe, aparece sólo al acercar el cursor al borde y se superpone al margen, no al contenido.
 - En pantalla completa, los overlays de ese display se ocultan.
 - Las miniaturas DWM (`DwmRegisterThumbnail`) son una mejora posterior para previsualizar pestañas; no forman parte del MVP.
+
+### Implementación (M1)
+
+- **Franja reservada:** `SceneInput.PanelTopInset` y `AuxInput.TopInset`, 28 px lógicos convertidos al DPI de cada monitor (35 px al 125 %). Las ventanas de los paneles empiezan debajo; el Centro y los paneles en `Fill` no tienen franja.
+- **Ventanas de las tiras:** `PanelStripWindow` es una ventana WPF sin XAML, con `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE`. Se coloca en píxeles físicos con `SetWindowPos` en dos pasadas, porque WPF reescala al cruzar de DPI. Hay que mostrarla con `Show()` antes de colocarla: si sólo se hace visible con `SetWindowPos`, WPF no la mide ni la pinta.
+- **Qué muestra cada tira:** `ShellController.Strips()` la calcula a partir del modelo y del último plan aplicado. `StripManager` crea, actualiza y cierra las ventanas cada vez que el controlador avisa (`LayoutChanged`).
+- **Pestañas:** una por ventana del panel, en su orden.
+  - Visible: resaltada.
+  - Oculta en la pila: normal.
+  - Estacionada: `⏸`, en cursiva y atenuada.
+  - En el Centro: `↑`.
+  - Fuera de layout: `↗`.
+- **Acciones de una pestaña:**
+  - **Clic:** la acción natural según su estado (mostrarla, recuperarla, devolverla del Centro o reencajarla).
+  - **Doble clic:** al Centro.
+  - **Menú contextual:** Al Centro, Estacionar, Recuperar, Reencajar y Liberar.
+- **Clic simple frente a doble clic:** el clic simple espera el tiempo de doble clic del sistema antes de actuar. Si actuara al momento, la tira se redibujaría entre los dos clics y el segundo caería en otra pestaña, que es lo que pasó en la primera prueba.
