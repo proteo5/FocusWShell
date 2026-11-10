@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Spike S10 (ADR 0015): miniaturas DWM y PrintWindow. Ver docs/04-riesgos-y-spikes.md. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <UseSharedManifest>false</UseSharedManifest>
+    <AssemblyName>thumb-spike</AssemblyName>
+    <!-- Herramienta de medida desechable: P/Invoke directo, sin las reglas de análisis del producto. -->
+    <AnalysisLevel>none</AnalysisLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);SYSLIB1054;CA1416</NoWarn>
+  </PropertyGroup>
+
+</Project>

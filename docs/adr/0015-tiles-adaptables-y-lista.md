@@ -1,6 +1,6 @@
 ﻿# ADR 0015 — Presentaciones: tiles adaptables y lista tipo Explorador
 
-- **Estado:** Aceptada (2026-11-10); la opción B de la lista, pendiente del spike S10
+- **Estado:** Aceptada (2026-11-10); la opción B de la lista, confirmada por el spike S10
 - **Fecha:** 2026-11-10
 
 ## Contexto
@@ -94,7 +94,7 @@ Cambian la propuesta en estos puntos; lo demás queda como está arriba.
 2. **Densidad automática.** Las filas no se eligen: se calculan con el alto disponible y los mínimos de las apps. Lo que no cabe pasa a filas de más abajo (▲ ▼).
 3. **Clic en la lista: la lleva al foco** (`Promote`). No hay "mostrar en el panel".
 4. **Las apps cerradas salen siempre en la lista**, apagadas; tocarlas las abre.
-5. **Opción B** (ventanas detrás de la lista, miniaturas en vivo), **a verificar con S10** antes de darla por buena.
+5. **Opción B** (ventanas detrás de la lista, miniaturas en vivo). **S10 la confirma:** las miniaturas de ventanas tapadas por una ventana propia siguen en vivo, también en Chromium, y 20 a la vez apenas cuestan. Las minimizadas se ven con su última imagen. Ver [04 — Riesgos y spikes](../04-riesgos-y-spikes.md#s10--miniaturas-2026-11-10).
 
 Detalles de implementación que siguen de esto:
 
