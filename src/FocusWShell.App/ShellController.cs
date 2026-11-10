@@ -54,7 +54,7 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Minimized, [Park]) => $"{Label}: la minimizaste; queda estacionada en su panel.",
         (ExternalChange.Shown, [Restore]) => $"{Label}: la abriste desde la barra de tareas; vuelve a su panel.",
         (ExternalChange.Shown, [MakeActiveInPanel]) => $"{Label}: la abriste; pasa a ser la visible de su panel.",
-        (ExternalChange.Maximized, [MakeActiveInPanel, SetPresentation]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
+        (ExternalChange.Maximized, [SetPresentation, MakeActiveInPanel]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
         (ExternalChange.Unmaximized, [SetPresentation]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
         (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
@@ -608,7 +608,7 @@ public sealed class ShellController : IDisposable
                         Placement.Parked => ScenePlacement.Parked,
                         _ => ScenePlacement.InPanel,
                     };
-                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.PanelId, placement);
+                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.PanelId, placement) { Size = w.Size };
                 })
                 .ToList();
             var panels = _workspace.Panels
@@ -662,7 +662,7 @@ public sealed class ShellController : IDisposable
         }
 
         var entries = match.Matched
-            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.PanelId ?? Workspace.WorkPanel, m.Entry.Placement))
+            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.PanelId ?? Workspace.WorkPanel, m.Entry.Placement) { Size = m.Entry.Size })
             .ToList();
         var panels = scene.Panels
             .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot, p.Height))
@@ -757,7 +757,7 @@ public sealed class ShellController : IDisposable
                         continue;
                     }
 
-                    List<Command> place = [new Adopt(window.Handle, o.Entry.Label, o.PanelId)];
+                    List<Command> place = [new Adopt(window.Handle, o.Entry.Label, o.PanelId), new SetTileSize(window.Handle, o.Entry.Size)];
                     if (o.Entry.Placement == ScenePlacement.Center)
                     {
                         place.Add(new Promote(window.Handle));
@@ -1122,6 +1122,10 @@ public sealed class ShellController : IDisposable
             ContextLower = Assign(c.LeftLower),
             WorkLower = Assign(c.RightLower),
             Parked = Map(c.Parked),
+            TileSizes = _workspace.Windows.ToDictionary(w => w.Handle, w => w.Size),
+            Scroll = new[] { c.Left, c.LeftLower, c.Right, c.RightLower }.OfType<PanelView>().Concat(c.Aux.SelectMany(a => a.Panels))
+                .Where(v => v.ScrollRow > 0 || v.Reveal is not null)
+                .ToDictionary(v => v.Panel.Id, v => (v.ScrollRow, v.Reveal)),
             Fullscreen = c.Fullscreen is { } full && _snapshots.TryGetValue(full.Handle, out var fullWindow)
                 ? (fullWindow, full.Display is { } fd && displays.FirstOrDefault(d => d.Key == fd) is { } fullDisplay ? fullDisplay : principal)
                 : null,

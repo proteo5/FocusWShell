@@ -257,6 +257,10 @@ Con el foco en un extremo, la columna derecha queda en medio y no puede desborda
 
 **Proporciones.** Cada vista tiene las suyas (`ViewWeights`: izquierda, foco, derecha); las que no se han tocado son las de partida. `SetProportions(vista, pesos)` las cambia (un preset o el separador arrastrado) y sólo mueve algo si es la vista actual; con `null` vuelven a las de partida. Redimensionar una ventana del principal sólo por el borde que comparte con la columna vecina es mover el separador: el controlador lo detecta con `ColumnSeparator` y manda `SetProportions` + `SnapBack` en lugar de sólo `SnapBack`.
 
+### Tiles adaptables ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))
+
+En un panel en tiles, cada ventana tiene un tamaño (`Size`: Pequeño, Mediano o Grande = 1, 2 o 3 columnas) y el panel una fila de partida. `SetTileSize` cambia el tamaño y `ScrollPanel` la fila. `MakeActiveInPanel` depende de la presentación: en pestañas pone la ventana la primera; en tiles no reordena, sólo pide que se vea su fila. El motor (`TileGrid`) decide columnas, huecos y qué filas caben.
+
 ### Dos paneles en una columna
 
 Cada panel tiene un **puesto** en su columna (`Slot`: arriba o abajo), y en cada columna (monitor y lado) cabe un panel por puesto: como máximo dos ([ADR 0011](adr/0011-paneles-y-catalogo.md)). Crear o mover un panel a un puesto ocupado se rechaza diciendo quién lo ocupa. Al aplicar una escena, un panel nuevo cuyo puesto ya está ocupado manda sus ventanas al que lo ocupa.

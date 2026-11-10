@@ -124,13 +124,48 @@ public class ParkAndExternalChangeTests
     }
 
     [Fact]
-    public void MakeActiveInPanelPutsItFirst()
+    public void MakeActiveInPanelPutsItFirstInTabs()
     {
         var ws = Sample();
+        ws.Execute(new SetPresentation(Workspace.WorkPanel, PanelTemplate.Stack));
 
         ws.Execute(new MakeActiveInPanel(Edge));
 
         Assert.Equal([Edge, Explorer, GitHub], ws.Composition.Work);
+    }
+
+    [Fact]
+    public void MakeActiveInPanelInTilesScrollsToItWithoutReordering()
+    {
+        var ws = Sample();
+
+        var outcome = ws.Execute(new MakeActiveInPanel(Edge));
+
+        Assert.Contains(outcome.Effects, e => e is ApplyLayout);
+        Assert.Equal([Explorer, GitHub, Edge], ws.Composition.Work);
+        Assert.Equal(Edge, ws.Composition.Right!.Reveal);
+
+        ws.Execute(new ScrollPanel(Workspace.WorkPanel, 2));
+        Assert.Equal(2, ws.Composition.Right!.ScrollRow);
+        Assert.Null(ws.Composition.Right.Reveal);
+    }
+
+    [Fact]
+    public void ShowingAWindowHiddenByTheRowsRevealsIt()
+    {
+        var ws = Sample();
+
+        Assert.Equal([new MakeActiveInPanel(GitHub)], ws.Interpret(GitHub, ExternalChange.Shown));
+    }
+
+    [Fact]
+    public void TileSizeIsPerWindow()
+    {
+        var ws = Sample();
+
+        Assert.Contains(ws.Execute(new SetTileSize(Edge, TileSize.Large)).Effects, e => e is ApplyLayout);
+        Assert.Equal(TileSize.Large, ws.Find(Edge)!.Size);
+        Assert.Empty(ws.Execute(new SetTileSize(Edge, TileSize.Large)).Effects);
     }
 
     [Fact]

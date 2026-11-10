@@ -24,7 +24,11 @@ public enum TabState
     Detached,
 }
 
-public sealed record StripTab(nint Handle, string Label, TabState State);
+public sealed record StripTab(nint Handle, string Label, TabState State)
+{
+    /// <summary>Tamaño de tile de la ventana (ADR 0015).</summary>
+    public TileSize Size { get; init; } = TileSize.Small;
+}
 
 /// <summary>Tira de pestañas de un panel: dónde va (franja reservada) y qué muestra.</summary>
 /// <param name="PanelId">Panel al que pertenece (ADR 0011).</param>
@@ -32,6 +36,12 @@ public sealed record StripTab(nint Handle, string Label, TabState State);
 /// <param name="Band">Franja en píxeles físicos, encima de las ventanas del panel.</param>
 public sealed record PanelStrip(string PanelId, string Title, PixelRect Band, int Dpi, IReadOnlyList<StripTab> Tabs)
 {
+    /// <summary>Filas del panel en tiles si no caben todas (▲ ▼).</summary>
+    public TilePages? Pages { get; init; }
+
+    /// <summary>Presentación efectiva del panel: el tamaño de tile sólo tiene sentido en tiles.</summary>
+    public PanelTemplate Template { get; init; } = PanelTemplate.Tiles;
+
     public string Key => PanelId;
 }
 
@@ -51,7 +61,7 @@ public static class PanelStripBuilder
         var strips = new List<PanelStrip>();
 
         // Cada panel con ventanas tiene su banda; la tira ocupa la franja de arriba de la banda.
-        void Add(string panelId, PixelRect band, int stripHeight, int dpi, PanelTemplate effective)
+        void Add(string panelId, PixelRect band, int stripHeight, int dpi, PanelTemplate effective, TilePages? pages)
         {
             // Sin franja reservada (p. ej. Fill) no hay tira.
             if (workspace.FindPanel(panelId) is not { } panel || band.IsEmpty || stripHeight <= 0 || effective == PanelTemplate.Fill)
@@ -62,7 +72,11 @@ public static class PanelStripBuilder
             var tabs = TabsOf(workspace, kinds, panel.Id);
             if (tabs.Count > 0)
             {
-                strips.Add(new PanelStrip(panel.Id, panel.Name, band with { Bottom = band.Top + stripHeight }, dpi, tabs));
+                strips.Add(new PanelStrip(panel.Id, panel.Name, band with { Bottom = band.Top + stripHeight }, dpi, tabs)
+                {
+                    Pages = pages,
+                    Template = effective,
+                });
             }
         }
 
@@ -72,14 +86,14 @@ public static class PanelStripBuilder
         IEnumerable<KeyValuePair<string, PixelRect>> principalBands = fullscreen is { Display: null } ? [] : principal.Bands;
         foreach (var (panelId, band) in principalBands)
         {
-            Add(panelId, band, principal.StripHeight, principalDpi, PanelTemplate.Tiles);
+            Add(panelId, band, principal.StripHeight, principalDpi, principal.EffectiveTemplates.GetValueOrDefault(panelId), principal.Pages.GetValueOrDefault(panelId));
         }
 
         foreach (var aux in report.Layout.Aux.Where(a => fullscreen?.Display is not { } d || !string.Equals(d, a.Display, StringComparison.OrdinalIgnoreCase)))
         {
             foreach (var (panelId, band) in aux.Bands)
             {
-                Add(panelId, band, aux.StripHeight, auxDpi.GetValueOrDefault(aux.Display, 96), aux.EffectiveTemplates.GetValueOrDefault(panelId));
+                Add(panelId, band, aux.StripHeight, auxDpi.GetValueOrDefault(aux.Display, 96), aux.EffectiveTemplates.GetValueOrDefault(panelId), aux.Pages.GetValueOrDefault(panelId));
             }
         }
 
@@ -96,6 +110,6 @@ public static class PanelStripBuilder
                 { Placement: Placement.Parked } => TabState.Parked,
                 { Detached: true } => TabState.Detached,
                 _ => kinds.GetValueOrDefault(w.Handle) == TargetKind.Minimized ? TabState.Hidden : TabState.Active,
-            }))
+            }) { Size = w.Size })
             .ToList();
 }

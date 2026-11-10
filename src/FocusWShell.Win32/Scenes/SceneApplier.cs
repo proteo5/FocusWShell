@@ -69,6 +69,12 @@ public sealed record SceneAssignment(
 
     public string WorkTitle { get; init; } = "Trabajo";
 
+    /// <summary>Tamaño de tile de cada ventana (ADR 0015); las que no están, Pequeño.</summary>
+    public IReadOnlyDictionary<nint, TileSize> TileSizes { get; init; } = new Dictionary<nint, TileSize>();
+
+    /// <summary>Desplazamiento de cada panel en tiles: fila pedida y ventana a mostrar.</summary>
+    public IReadOnlyDictionary<string, (int Row, nint? Reveal)> Scroll { get; init; } = new Dictionary<string, (int, nint?)>();
+
     /// <summary>La ventana del foco en pantalla completa y su monitor, si la hay (ADR 0012).</summary>
     public (WindowSnapshot Window, DisplayInfo Display)? Fullscreen { get; init; }
 
@@ -107,6 +113,12 @@ public sealed record SceneOptions
     public FocusPosition Focus { get; init; }
 
     public MoveMode Mode { get; init; } = MoveMode.Async;
+
+    /// <summary>Ancho mínimo de una columna de tiles, en píxeles lógicos (ADR 0015). 0 = una sola columna.</summary>
+    public int MinCellWidth { get; init; } = 480;
+
+    /// <summary>Alto mínimo de una fila de tiles, en píxeles lógicos.</summary>
+    public int MinRowHeight { get; init; } = 160;
 
     /// <summary>Franja para la tira de pestañas arriba de cada panel, en píxeles lógicos (96 DPI). 0 = sin tiras.</summary>
     public int PanelTopInset { get; init; }
@@ -212,7 +224,11 @@ public sealed class SceneApplier
     public ScenePlan Plan()
     {
         LayoutWindow ToLayout(WindowSnapshot w, int dpi) =>
-            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), dpi));
+            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), dpi))
+            {
+                TileSize = _assignment.TileSizes.GetValueOrDefault(w.Handle, TileSize.Small),
+            };
+        PanelInput Scrolled(PanelInput p) => _assignment.Scroll.TryGetValue(p.Name, out var s) ? p with { ScrollRow = s.Row, Reveal = s.Reveal } : p;
 
         // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera. Qué borde toca cada
         // columna depende de la vista: con el foco a un lado, la izquierda (Contexto) va al otro borde y la
@@ -225,7 +241,7 @@ public sealed class SceneApplier
             _ => (edges.Left, edges.Right),
         };
         int dpi = _display.Dpi;
-        var principal = SceneLayoutEngine.Compute(new SceneInput(
+        var principalInput = new SceneInput(
             _display.WorkArea,
             new PanelInput(_assignment.ContextId, PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
                 _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left) { Title = _assignment.ContextTitle, Height = _assignment.ContextHeight },
@@ -237,8 +253,17 @@ public sealed class SceneApplier
             PanelTopInset: Scale(_options.PanelTopInset, dpi))
         {
             Focus = _options.Focus,
+            MinCellWidth = Scale(_options.MinCellWidth, dpi),
+            MinRowHeight = Scale(_options.MinRowHeight, dpi),
             LeftLower = Lower(_assignment.ContextLower, PanelSide.Left, _options.ContextWeight, shared.Left),
             RightLower = Lower(_assignment.WorkLower, PanelSide.Right, _options.WorkWeight, shared.Right),
+        };
+        var principal = SceneLayoutEngine.Compute(principalInput with
+        {
+            Left = Scrolled(principalInput.Left),
+            Right = Scrolled(principalInput.Right),
+            LeftLower = principalInput.LeftLower is { } ll ? Scrolled(ll) : null,
+            RightLower = principalInput.RightLower is { } rl ? Scrolled(rl) : null,
         });
 
         PanelInput? Lower(PanelAssignment? p, PanelSide side, double weight, bool sharedEdge) =>
@@ -258,10 +283,14 @@ public sealed class SceneApplier
                 a.Panels
                     .OrderBy(p => p.Side)
                     .ThenBy(p => p.Slot)
-                    .Select(p => new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title, Slot = p.Slot, Height = p.Height })
+                    .Select(p => Scrolled(new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title, Slot = p.Slot, Height = p.Height }))
                     .ToList(),
                 _options.Gap,
-                Scale(_options.PanelTopInset, a.Display.Dpi))))
+                Scale(_options.PanelTopInset, a.Display.Dpi))
+            {
+                MinCellWidth = Scale(_options.MinCellWidth, a.Display.Dpi),
+                MinRowHeight = Scale(_options.MinRowHeight, a.Display.Dpi),
+            }))
             .ToList();
 
         return new ScenePlan(principal, aux)

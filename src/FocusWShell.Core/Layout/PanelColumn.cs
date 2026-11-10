@@ -2,6 +2,9 @@
 
 namespace FocusWShell.Core.Layout;
 
+/// <summary>Medidas de la rejilla de tiles, en píxeles físicos del monitor.</summary>
+internal sealed record GridOptions(int MinCellWidth, int MinRowHeight);
+
 /// <summary>
 /// Una columna de paneles (ADR 0011): uno, o dos uno encima del otro. Los paneles sin ventanas no ocupan
 /// sitio; con dos, se reparten el alto a partes iguales y cada uno lleva su franja de pestañas arriba.
@@ -135,15 +138,26 @@ internal sealed class PanelColumn
         int right,
         PanelSide? outerEdge,
         int gap,
+        GridOptions grid,
         List<WindowTarget> targets,
         List<string> notes,
         Dictionary<string, PixelRect> areas,
-        Dictionary<string, PixelRect> bands)
+        Dictionary<string, PixelRect> bands,
+        Dictionary<string, TilePages> pages)
     {
         foreach (var band in _bands)
         {
             var resolved = band.Resolved;
             var panel = resolved.Panel;
+            if (resolved.Template == PanelTemplate.Tiles && resolved.Visible.Count > 0)
+            {
+                var windowArea = new PixelRect(left, band.Top + _inset, right, band.Bottom);
+                areas[panel.Name] = windowArea;
+                bands[panel.Name] = new PixelRect(left, band.Top, right, band.Bottom);
+                PlaceGrid(panel, resolved.Visible, windowArea, outerEdge, gap, grid, targets, notes, pages);
+                continue;
+            }
+
             if (resolved.Visible.Count > 0)
             {
                 var windowArea = new PixelRect(left, band.Top + _inset, right, band.Bottom);
@@ -162,6 +176,44 @@ internal sealed class PanelColumn
             {
                 targets.Add(new WindowTarget(hidden.Handle, hidden.Label, panel.Name, TargetKind.Minimized, default));
             }
+        }
+    }
+
+    /// <summary>Rejilla adaptable de un panel en tiles (ADR 0015); las ventanas de filas que no se ven, minimizadas.</summary>
+    private static void PlaceGrid(
+        PanelInput panel,
+        IReadOnlyList<LayoutWindow> windows,
+        PixelRect area,
+        PanelSide? outerEdge,
+        int gap,
+        GridOptions grid,
+        List<WindowTarget> targets,
+        List<string> notes,
+        Dictionary<string, TilePages> pages)
+    {
+        var arranged = TileGrid.Arrange(area, windows, gap, grid.MinCellWidth, grid.MinRowHeight, panel.ScrollRow, panel.Reveal);
+        foreach (var p in arranged.Placements)
+        {
+            if (p.Rect is not { } cell)
+            {
+                targets.Add(new WindowTarget(p.Window.Handle, p.Window.Label, panel.Name, TargetKind.Minimized, default));
+                continue;
+            }
+
+            // Sólo un tile de todo el ancho puede desbordar hacia el borde del monitor; los demás ya
+            // crecieron en columnas hasta caber.
+            var rect = outerEdge is { } edge && p.Span == arranged.Columns
+                ? SceneLayoutEngine.AnchorOutward(p.Window, cell, edge, notes, panel.DisplayTitle)
+                : cell;
+            targets.Add(new WindowTarget(p.Window.Handle, p.Window.Label, panel.Name, TargetKind.Visible, rect));
+        }
+
+        if (arranged.Pages.HasMore)
+        {
+            pages[panel.Name] = arranged.Pages;
+            notes.Add(
+                $"{panel.DisplayTitle}: sus ventanas ocupan {arranged.Pages.Total} filas y caben {arranged.Pages.Visible}; " +
+                $"se ven las filas {arranged.Pages.First + 1}–{arranged.Pages.First + arranged.Pages.Visible} (▲ ▼ en su tira).");
         }
     }
 }

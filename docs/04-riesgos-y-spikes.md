@@ -34,6 +34,7 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S7 — Pila | ¿Minimizar funciona bien para las ventanas ocultas de la pila? | Alternar pestañas 50 veces entre 3–4 apps. | Sin pérdidas de estado; la alternancia se siente inmediata. | R8 |
 | S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 |
 | S9 — Apuntar desde el deck | ¿Se puede apuntar con precisión en la app del foco desde el deck? | Miniatura DWM en vivo con cuadrícula y zoom en la tablet; scroll por franja lateral en Edge; lectura de controles con UI Automation en Edge, Slack, SSMS y VS Code. | El toque cae a ±1 control del objetivo con zoom; el scroll mueve la zona tocada; lectura de controles < 300 ms en apps nativas y < 1 s en Chromium. | — |
+| S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — |
 
 S1–S5 forman el hito M0. S6 y S7 se pueden posponer a M1, pero deben resolverse antes de dar por bueno el MVP.
 
@@ -263,6 +264,19 @@ Dos ventanas de Paint, una en Contexto (arriba) y otra en Notas (abajo, a la izq
 | Ctrl+Alt+Mayús+F con una en el foco | Se maximiza en el principal y desaparecen las tiras del principal; otra vez F vuelve al foco |
 | Botón «Pantalla completa» con el monitor HP | Se maximiza en el auxiliar; la tira del principal sigue |
 | Des-maximizarla desde otro proceso | Sale de pantalla completa y vuelve al foco |
+
+### Tiles adaptables (M1b, 2026-11-10)
+
+Cuatro Calculadoras en un panel «Monitoreo» de prueba en el monitor HP (1920 px a 120 DPI: 3 columnas de 640 px):
+
+| Caso | Resultado |
+| --- | --- |
+| Las cuatro en Pequeño | Tres en la primera fila; la cuarta va a la fila 2. Calculadora pide 627 px de alto, así que cabe una sola fila: la cuarta queda oculta y la tira muestra «▲ 1–1 / 2 ▼» |
+| ▼ en la tira | Se ve la fila 2 (la cuarta) y se ocultan las otras tres |
+| Clic en la pestaña de una oculta de la fila 1 | El panel vuelve a la fila 1 sin cambiar el orden |
+| «Tamaño: Grande» en el menú de la primera | Ocupa las tres columnas y las demás pasan a la fila 2 |
+
+Pendiente, sin relación con los tiles: las apps de la Store aparecen como «ApplicationFrameHost» en las pestañas, porque la etiqueta sale del proceso. Conviene usar el nombre del catálogo.
 
 ### S6 — Reconexión (2026-11-10)
 

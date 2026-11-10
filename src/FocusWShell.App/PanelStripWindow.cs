@@ -1,9 +1,10 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Layout;
 using FocusWShell.Win32;
 
 namespace FocusWShell.App;
@@ -32,6 +33,9 @@ public sealed class PanelStripWindow : Window
 
     private PanelStrip _strip;
 
+    /// <summary>▲ filas a–b de n ▼, si el panel en tiles no cabe entero (ADR 0015).</summary>
+    private readonly StackPanel _pager = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
     /// <summary>Primer clic pendiente de saber si es simple o doble.</summary>
     private (nint Handle, System.Windows.Threading.DispatcherTimer Timer)? _pendingClick;
 
@@ -49,6 +53,8 @@ public sealed class PanelStripWindow : Window
         var root = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(_title, Dock.Left);
         root.Children.Add(_title);
+        DockPanel.SetDock(_pager, Dock.Right);
+        root.Children.Add(_pager);
         root.Children.Add(new ScrollViewer
         {
             Content = _tabs,
@@ -56,6 +62,15 @@ public sealed class PanelStripWindow : Window
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
         });
         Content = root;
+
+        // La rueda del ratón sobre la tira recorre las filas.
+        MouseWheel += async (_, e) =>
+        {
+            if (_strip.Pages is { } pages)
+            {
+                await _run(new ScrollPanel(_strip.PanelId, pages.First + (e.Delta > 0 ? -1 : 1)));
+            }
+        };
         SourceInitialized += (_, _) => OwnWindows.MakeToolNoActivate(new WindowInteropHelper(this).Handle);
         Render();
     }
@@ -85,11 +100,51 @@ public sealed class PanelStripWindow : Window
     private void Render()
     {
         _title.Text = _strip.Title.ToUpperInvariant();
+        _pager.Children.Clear();
+        if (_strip.Pages is { } pages)
+        {
+            _pager.Children.Add(PagerButton("▲", "Filas de arriba", pages.First > 0, pages.First - 1));
+            _pager.Children.Add(new TextBlock
+            {
+                Text = $"{pages.First + 1}–{pages.First + pages.Visible} / {pages.Total}",
+                Foreground = DimBrush,
+                FontSize = 11,
+                Margin = new Thickness(4, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            _pager.Children.Add(PagerButton("▼", "Filas de abajo", pages.First + pages.Visible < pages.Total, pages.First + 1));
+        }
+
         _tabs.Children.Clear();
         foreach (var tab in _strip.Tabs)
         {
             _tabs.Children.Add(MakeTab(tab));
         }
+    }
+
+    private Button PagerButton(string text, string name, bool enabled, int row)
+    {
+        var button = new Button
+        {
+            Content = text,
+            Width = 26,
+            Margin = new Thickness(0, 3, 4, 3),
+            Focusable = false,
+            BorderThickness = new Thickness(0),
+            // Sin más filas en ese sentido, atenuado (el estilo de "desactivado" de WPF pinta un fondo blanco).
+            Foreground = enabled ? TextBrush : DimBrush,
+            Background = enabled ? TabBrush : Background0,
+            Cursor = enabled ? Cursors.Hand : Cursors.Arrow,
+        };
+        System.Windows.Automation.AutomationProperties.SetName(button, $"{_strip.Title}: {name}");
+        button.Click += async (_, _) =>
+        {
+            if (enabled)
+            {
+                await _run(new ScrollPanel(_strip.PanelId, row));
+            }
+        };
+        return button;
     }
 
     private Button MakeTab(StripTab tab)
@@ -116,7 +171,7 @@ public sealed class PanelStripWindow : Window
             ToolTip = tab.State switch
             {
                 TabState.Active => $"{tab.Label} · visible. Doble clic: al Centro.",
-                TabState.Hidden => $"{tab.Label} · en la pila. Clic: mostrarla. Doble clic: al Centro.",
+                TabState.Hidden => $"{tab.Label} · oculta (otra pestaña o fila). Clic: mostrarla. Doble clic: al Centro.",
                 TabState.Parked => $"{tab.Label} · estacionada. Clic: recuperarla. Doble clic: al Centro.",
                 TabState.InCenter => $"{tab.Label} · está en el Centro y volverá aquí. Clic: devolverla.",
                 TabState.Detached => $"{tab.Label} · fuera de layout. Clic: reencajarla.",
@@ -180,6 +235,17 @@ public sealed class PanelStripWindow : Window
         Item("Estacionar", new Park(tab.Handle), tab.State != TabState.Parked);
         Item("Recuperar", new Restore(tab.Handle), tab.State == TabState.Parked);
         Item("Reencajar", new Reattach(tab.Handle), tab.State == TabState.Detached);
+        if (_strip.Template == PanelTemplate.Tiles)
+        {
+            menu.Items.Add(new Separator());
+            foreach (var (size, label) in new[] { (TileSize.Small, "Pequeño (1 columna)"), (TileSize.Medium, "Mediano (2 columnas)"), (TileSize.Large, "Grande (3 columnas)") })
+            {
+                var item = new MenuItem { Header = $"Tamaño: {label}", IsCheckable = true, IsChecked = tab.Size == size };
+                item.Click += async (_, _) => await _run(new SetTileSize(tab.Handle, size));
+                menu.Items.Add(item);
+            }
+        }
+
         menu.Items.Add(new Separator());
         Item("Liberar (devolverla a su sitio original)", new Release(tab.Handle));
         button.ContextMenu = menu;

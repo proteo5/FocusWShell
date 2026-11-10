@@ -40,6 +40,8 @@ Cada panel tiene tres propiedades independientes:
 | **Mixto** | Composición de las anteriores; por ejemplo, una ventana fija arriba y pestañas debajo. | Prevista. |
 | **Deck** | El panel aloja el deck ([ADR 0013](0013-deck-superficie-de-control.md)) y no coloca ventanas. | Nueva. |
 
+Los tiles adaptables y la lista tipo Explorador se concretan en el [ADR 0015](0015-tiles-adaptables-y-lista.md) (propuesta).
+
 ### 3. Las ventanas empiezan libres
 
 - Una ventana que FocusWShell no gestiona es **libre**: el gestor no la mueve. Es el estado de partida de toda ventana.

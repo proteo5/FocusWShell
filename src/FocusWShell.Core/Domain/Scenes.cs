@@ -17,6 +17,9 @@ public enum ScenePlacement
 /// <param name="PanelId">Panel de la escena al que pertenece.</param>
 public sealed record SceneWindow(string AppKey, string Label, string TitleHint, string? PanelId, ScenePlacement Placement)
 {
+    /// <summary>Columnas que ocupa en un panel en tiles (ADR 0015).</summary>
+    public TileSize Size { get; init; } = TileSize.Small;
+
     /// <summary>Formato anterior (sin paneles): "Context" o "Work". Sólo para migrar escenas viejas.</summary>
     public string? Home { get; init; }
 
@@ -106,7 +109,10 @@ public sealed record OpenWindow(nint Handle, string AppKey, string Title);
 public sealed record SceneMatch(IReadOnlyList<(SceneWindow Entry, OpenWindow Window)> Matched, IReadOnlyList<SceneWindow> Missing);
 
 /// <summary>Una ventana tal como queda al aplicar una escena (ya con handle).</summary>
-public sealed record SceneEntry(nint Handle, string Label, string PanelId, ScenePlacement Placement);
+public sealed record SceneEntry(nint Handle, string Label, string PanelId, ScenePlacement Placement)
+{
+    public TileSize Size { get; init; } = TileSize.Small;
+}
 
 public static class SceneMatcher
 {

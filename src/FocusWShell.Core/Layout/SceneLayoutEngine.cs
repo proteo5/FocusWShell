@@ -8,7 +8,8 @@ namespace FocusWShell.Core.Layout;
 /// <list type="number">
 /// <item>Si la ventana del Centro no cabe, el Centro crece a costa de Contexto y luego de Trabajo,
 /// sin bajar a ningún panel de lo que necesitan sus ventanas.</item>
-/// <item>Un panel en tiles cuyas ventanas no caben en altura se muestra como pila.</item>
+/// <item>Un panel en tiles es una rejilla adaptable (<see cref="TileGrid"/>): lo que no cabe en alto
+/// queda en filas ocultas que se recorren desde su tira.</item>
 /// <item>Un panel cuya ventana visible no cabe en ancho crece a costa del Centro, sin bajar al Centro
 /// de <see cref="SceneInput.MinCenterFraction"/> ni del mínimo de su ventana.</item>
 /// <item>Si aun así no cabe, la ventana se ancla al borde exterior del monitor: el exceso queda fuera
@@ -155,13 +156,15 @@ public static class SceneLayoutEngine
         var targets = new List<WindowTarget>();
         var areas = new Dictionary<string, PixelRect>();
         var bands = new Dictionary<string, PixelRect>();
-        left.Place(leftCol.Left, leftCol.Right, leftEdge, gap, targets, notes, areas, bands);
+        var pages = new Dictionary<string, TilePages>();
+        var grid = new GridOptions(input.MinCellWidth, input.MinRowHeight);
+        left.Place(leftCol.Left, leftCol.Right, leftEdge, gap, grid, targets, notes, areas, bands, pages);
         if (input.Center is { } center)
         {
             targets.Add(new WindowTarget(center.Handle, center.Label, "Centro", TargetKind.Visible, FitCenter(center, centerCol, focus, notes)));
         }
 
-        right.Place(rightCol.Left, rightCol.Right, rightEdge, gap, targets, notes, areas, bands);
+        right.Place(rightCol.Left, rightCol.Right, rightEdge, gap, grid, targets, notes, areas, bands, pages);
         targets.AddRange(excluded);
 
         var templates = new Dictionary<string, PanelTemplate>();
@@ -179,6 +182,7 @@ public static class SceneLayoutEngine
         {
             Bands = bands,
             StripHeight = inset,
+            Pages = pages,
         };
     }
 
@@ -200,18 +204,8 @@ public static class SceneLayoutEngine
             return new ResolvedPanel(panel, panel.Template, [], 0);
         }
 
+        // En tiles, lo que no cabe en alto no pasa a pestañas: la rejilla pagina por filas (ADR 0015).
         var template = panel.Template;
-        if (template == PanelTemplate.Tiles && windows.Count > 1)
-        {
-            int needed = windows.Sum(w => w.MinSize?.Height ?? 0) + (gap * (windows.Count - 1));
-            if (needed > height)
-            {
-                template = PanelTemplate.Stack;
-                notes.Add(
-                    $"{panel.DisplayTitle}: sus {windows.Count} ventanas necesitan {needed} px de alto y hay {height}; " +
-                    "se muestran como pila.");
-            }
-        }
 
         // Fill sólo tiene sentido en monitores auxiliares; aquí se comporta como una pila.
         IReadOnlyList<LayoutWindow> visible = template is PanelTemplate.Stack or PanelTemplate.Fill ? [windows[0]] : windows;

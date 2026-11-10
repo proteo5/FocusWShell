@@ -49,10 +49,21 @@ public sealed record Panel(
 /// "Fuera de layout": el usuario la arrastró, la redimensionó o la maximizó en el principal. El gestor
 /// no la mueve hasta que se reencaje, se promueva o se estacione; los demás de su panel ocupan su sitio.
 /// </param>
-public sealed record ManagedWindow(nint Handle, string Label, string PanelId, Placement Placement, bool Detached = false);
+public sealed record ManagedWindow(nint Handle, string Label, string PanelId, Placement Placement, bool Detached = false)
+{
+    /// <summary>Columnas que ocupa en un panel en tiles (ADR 0015).</summary>
+    public TileSize Size { get; init; } = TileSize.Small;
+}
 
 /// <summary>Un panel con las ventanas que el layout coloca en él, en orden.</summary>
-public sealed record PanelView(Panel Panel, IReadOnlyList<nint> Windows);
+public sealed record PanelView(Panel Panel, IReadOnlyList<nint> Windows)
+{
+    /// <summary>En tiles: primera fila que se ve si no caben todas.</summary>
+    public int ScrollRow { get; init; }
+
+    /// <summary>En tiles: ventana que hay que mostrar (el panel se desplaza hasta su fila).</summary>
+    public nint? Reveal { get; init; }
+}
 
 /// <summary>Paneles de un monitor auxiliar, de izquierda a derecha y, en cada columna, de arriba abajo.</summary>
 public sealed record AuxComposition(string Display, IReadOnlyList<PanelView> Panels)
@@ -192,7 +203,16 @@ public sealed record Reattach(nint Handle) : Command;
 /// </summary>
 public sealed record SnapBack(nint Handle) : Command;
 
-/// <summary>La pone la primera de su panel: en una pila, la pestaña visible.</summary>
+/// <summary>Cambia el tamaño de tile de una ventana: 1, 2 o 3 columnas (ADR 0015).</summary>
+public sealed record SetTileSize(nint Handle, TileSize Size) : Command;
+
+/// <summary>En tiles: qué fila del panel se ve primero, si no caben todas (▲ ▼ de su tira).</summary>
+public sealed record ScrollPanel(string PanelId, int FirstRow) : Command;
+
+/// <summary>
+/// Hace visible una ventana de su panel: en pestañas, pasa a ser la primera; en tiles, el panel se
+/// desplaza hasta su fila sin cambiar el orden.
+/// </summary>
 public sealed record MakeActiveInPanel(nint Handle) : Command;
 
 /// <summary>
@@ -379,13 +399,13 @@ public sealed class Workspace
     {
         get
         {
-            PanelView? View(Panel? p) => p is null ? null : new PanelView(p, InPanel(p));
+            PanelView? View(Panel? p) => p is null ? null : ViewOf(p);
             var aux = _panels
                 .Where(p => p.Display is not null && !IsDisplayMissing(p.Display))
                 .GroupBy(p => p.Display!, StringComparer.OrdinalIgnoreCase)
                 .Select(g => new AuxComposition(
                     g.Key,
-                    g.OrderBy(p => p.Side).ThenBy(p => p.Slot).Select(p => new PanelView(p, InPanel(p))).Where(v => v.Windows.Count > 0).ToList()))
+                    g.OrderBy(p => p.Side).ThenBy(p => p.Slot).Select(ViewOf).Where(v => v.Windows.Count > 0).ToList()))
                 .Where(a => a.Panels.Count > 0)
                 .ToList();
             var left = ColumnOf(null, PanelSide.Left);
@@ -431,6 +451,8 @@ public sealed class Workspace
         Reattach c => DoReattach(c.Handle),
         SnapBack c => DoSnapBack(c.Handle),
         MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
+        SetTileSize c => DoSetTileSize(c),
+        ScrollPanel c => DoScrollPanel(c),
         ApplyScene c => DoApplyScene(c),
         SetView c => DoSetView(c.Focus),
         SetProportions c => DoSetProportions(c),
@@ -441,6 +463,15 @@ public sealed class Workspace
         null => throw new ArgumentNullException(nameof(command)),
         _ => throw new ArgumentException($"Comando desconocido: {command.GetType().Name}", nameof(command)),
     };
+
+    /// <summary>Desplazamiento de cada panel en tiles: fila pedida o ventana a mostrar.</summary>
+    private readonly Dictionary<string, (int Row, nint? Reveal)> _scroll = [];
+
+    private PanelView ViewOf(Panel p)
+    {
+        var (row, reveal) = _scroll.GetValueOrDefault(p.Id);
+        return new PanelView(p, InPanel(p)) { ScrollRow = row, Reveal = reveal };
+    }
 
     /// <summary>Ventanas que el layout coloca en este panel, en orden.</summary>
     private List<nint> InPanel(Panel panel) =>
@@ -877,6 +908,13 @@ public sealed class Workspace
         }
 
         var panel = EffectivePanel(w);
+        if (panel.Template == PanelTemplate.Tiles)
+        {
+            // En tiles no se reordena: el panel se desplaza hasta su fila.
+            _scroll[panel.Id] = (0, handle);
+            return CommandOutcome.Accept(new ApplyLayout());
+        }
+
         int first = _windows.FindIndex(x => x.Placement == Placement.InPanel && !x.Detached && EffectivePanel(x).Id == panel.Id);
         int index = _windows.IndexOf(w);
         if (first < 0 || first == index)
@@ -886,6 +924,45 @@ public sealed class Workspace
 
         _windows.RemoveAt(index);
         _windows.Insert(first, w);
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoSetTileSize(SetTileSize c)
+    {
+        var w = Find(c.Handle);
+        if (w is null)
+        {
+            return CommandOutcome.Reject("La ventana no está gestionada.");
+        }
+
+        if (!Enum.IsDefined(c.Size))
+        {
+            return CommandOutcome.Reject($"Tamaño de tile desconocido: {c.Size}.");
+        }
+
+        if (w.Size == c.Size)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        Replace(w with { Size = c.Size });
+        return w is { Placement: Placement.InPanel, Detached: false } ? CommandOutcome.Accept(new ApplyLayout()) : CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoScrollPanel(ScrollPanel c)
+    {
+        if (FindPanel(c.PanelId) is null)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
+        var row = Math.Max(0, c.FirstRow);
+        if (_scroll.GetValueOrDefault(c.PanelId) == (row, null))
+        {
+            return CommandOutcome.Accept();
+        }
+
+        _scroll[c.PanelId] = (row, null);
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
@@ -938,12 +1015,12 @@ public sealed class Workspace
             // Mostrarla desde la barra de tareas: si estaba estacionada, vuelve a su panel; si la
             // escondía la pila, pasa a ser la pestaña visible.
             ExternalChange.Shown when w.Placement == Placement.Parked => [new Restore(handle)],
-            ExternalChange.Shown when IsHiddenByLayout(handle) => [new MakeActiveInPanel(handle)],
+            ExternalChange.Shown when IsHiddenByLayout(handle) || w is { Placement: Placement.InPanel, Detached: false } => [new MakeActiveInPanel(handle)],
             ExternalChange.Shown => [],
 
             // Maximizar en un auxiliar es pedir Fill para su panel; en el principal, salir del layout.
             ExternalChange.Maximized when w.Placement == Placement.InPanel && onAux =>
-                [new MakeActiveInPanel(handle), new SetPresentation(panel.Id, PanelTemplate.Fill)],
+                [new SetPresentation(panel.Id, PanelTemplate.Fill), new MakeActiveInPanel(handle)],
             ExternalChange.Maximized => [new Detach(handle)],
 
             // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles; en otro caso,
@@ -1106,7 +1183,7 @@ public sealed class Workspace
                 ScenePlacement.Parked => Placement.Parked,
                 _ => Placement.InPanel,
             };
-            _windows.Add(new ManagedWindow(e.Handle, e.Label, e.PanelId, placement));
+            _windows.Add(new ManagedWindow(e.Handle, e.Label, e.PanelId, placement) { Size = e.Size });
         }
 
         _centerHistory.RemoveAll(h => !keep.Contains(h) || h == center);

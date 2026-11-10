@@ -123,7 +123,11 @@ public enum PanelSlot
 }
 
 /// <summary>Una ventana a colocar, con su tamaño mínimo conocido (rectángulo visible), si lo hay.</summary>
-public sealed record LayoutWindow(nint Handle, string Label, PixelSize? MinSize = null);
+public sealed record LayoutWindow(nint Handle, string Label, PixelSize? MinSize = null)
+{
+    /// <summary>Columnas que ocupa en un panel en tiles (ADR 0015).</summary>
+    public TileSize TileSize { get; init; } = TileSize.Small;
+}
 
 /// <summary>Un panel lateral y sus ventanas, en orden (la primera es la activa en modo pila).</summary>
 /// <param name="OuterEdgeShared">
@@ -149,6 +153,12 @@ public sealed record PanelInput(
     /// defecto, a partes iguales.
     /// </summary>
     public double Height { get; init; } = 1;
+
+    /// <summary>En tiles: primera fila que se ve si no caben todas (ADR 0015).</summary>
+    public int ScrollRow { get; init; }
+
+    /// <summary>En tiles: ventana que hay que mostrar; el panel se desplaza hasta su fila.</summary>
+    public nint? Reveal { get; init; }
 
     public string DisplayTitle => Title ?? Name;
 }
@@ -177,6 +187,12 @@ public sealed record SceneInput(
     double SharedEdgeMinCenterFraction = 0.3,
     int PanelTopInset = 0)
 {
+    /// <summary>Ancho mínimo de una columna de tiles, en píxeles físicos; 0 = una sola columna.</summary>
+    public int MinCellWidth { get; init; }
+
+    /// <summary>Alto mínimo de una fila de tiles, en píxeles físicos.</summary>
+    public int MinRowHeight { get; init; }
+
     /// <summary>Segundo panel de la columna izquierda (debajo o encima de <see cref="Left"/>, según su puesto).</summary>
     public PanelInput? LeftLower { get; init; }
 
@@ -228,4 +244,7 @@ public sealed record SceneLayoutResult(
 
     /// <summary>Alto de la franja de pestañas de cada banda, en píxeles físicos.</summary>
     public int StripHeight { get; init; }
+
+    /// <summary>Filas de los paneles en tiles que no caben enteros, por nombre.</summary>
+    public IReadOnlyDictionary<string, TilePages> Pages { get; init; } = new Dictionary<string, TilePages>();
 }

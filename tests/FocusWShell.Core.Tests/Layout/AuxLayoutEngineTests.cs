@@ -126,11 +126,12 @@ public class AuxLayoutEngineTests
     }
 
     [Fact]
-    public void TilesTooTallBecomeStack()
+    public void TilesTooTallPageByRows()
     {
         var r = Compute(Panel("Trabajo", PanelTemplate.Tiles, Win(1, "A", 0, 700), Win(2, "B", 0, 700)));
 
-        Assert.Equal(PanelTemplate.Stack, r.EffectiveTemplates["Trabajo"]);
+        Assert.Equal(PanelTemplate.Tiles, r.EffectiveTemplates["Trabajo"]);
         Assert.Equal(TargetKind.Minimized, Target(r, 2).Kind);
+        Assert.Equal(new TilePages(0, 1, 2), r.Pages["Trabajo"]);
     }
 }

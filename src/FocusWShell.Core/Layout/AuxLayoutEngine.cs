@@ -4,7 +4,14 @@ namespace FocusWShell.Core.Layout;
 
 /// <summary>Paneles de un monitor auxiliar, de izquierda a derecha.</summary>
 /// <param name="TopInset">Franja reservada arriba de cada panel para su tira de pestañas (no en Fill).</param>
-public sealed record AuxInput(string Display, PixelRect WorkArea, IReadOnlyList<PanelInput> Panels, int Gap = 0, int TopInset = 0);
+public sealed record AuxInput(string Display, PixelRect WorkArea, IReadOnlyList<PanelInput> Panels, int Gap = 0, int TopInset = 0)
+{
+    /// <summary>Ancho mínimo de una columna de tiles; 0 = una sola columna.</summary>
+    public int MinCellWidth { get; init; }
+
+    /// <summary>Alto mínimo de una fila de tiles.</summary>
+    public int MinRowHeight { get; init; }
+}
 
 /// <summary>Resultado del motor de un monitor auxiliar.</summary>
 /// <param name="Columns">Columna de cada panel visible, por nombre.</param>
@@ -24,6 +31,9 @@ public sealed record AuxLayoutResult(
 
     /// <summary>Alto de la franja de pestañas de cada banda.</summary>
     public int StripHeight { get; init; }
+
+    /// <summary>Filas de los paneles en tiles que no caben enteros, por nombre.</summary>
+    public IReadOnlyDictionary<string, TilePages> Pages { get; init; } = new Dictionary<string, TilePages>();
 }
 
 /// <summary>
@@ -137,11 +147,13 @@ public static class AuxLayoutEngine
         // 5. Columnas, bandas y filas.
         var columns = new Dictionary<string, PixelRect>();
         var bands = new Dictionary<string, PixelRect>();
+        var pages = new Dictionary<string, TilePages>();
+        var grid = new GridOptions(input.MinCellWidth, input.MinRowHeight);
         int left = area.Left;
         for (int i = 0; i < cols.Count; i++)
         {
             int right = i == cols.Count - 1 ? area.Right : left + widths[i];
-            cols[i].Place(left, right, outerEdge: null, gap, targets, notes, columns, bands);
+            cols[i].Place(left, right, outerEdge: null, gap, grid, targets, notes, columns, bands, pages);
             left = right + gap;
         }
 
@@ -155,6 +167,7 @@ public static class AuxLayoutEngine
         {
             Bands = bands,
             StripHeight = inset,
+            Pages = pages,
         };
     }
 }
