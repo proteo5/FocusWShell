@@ -55,7 +55,35 @@ public partial class MainWindow : Window
     {
         _showingView = true;
         ViewCombo.SelectedIndex = Array.IndexOf(Views, view);
+
+        // Presets de la vista y, si las proporciones son otras (separador arrastrado), "Personalizadas".
+        var weights = _controller.Proportions;
+        var options = ViewProportions.Presets(view).Select(p => (Label: $"{p.Name} · {p.Weights.Describe(view)}", p.Weights)).ToList();
+        int selected = options.FindIndex(o => o.Weights.SameAs(weights));
+        if (selected < 0)
+        {
+            options.Add(($"Personalizadas · {weights.Describe(view)}", weights));
+            selected = options.Count - 1;
+        }
+
+        ProportionsCombo.ItemsSource = options.Select(o => o.Label).ToList();
+        ProportionsCombo.Tag = options.Select(o => o.Weights).ToList();
+        ProportionsCombo.SelectedIndex = selected;
         _showingView = false;
+    }
+
+    private async void ProportionsCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_showingView || ProportionsCombo.SelectedIndex < 0 || ProportionsCombo.Tag is not List<ViewWeights> options)
+        {
+            return;
+        }
+
+        var weights = options[ProportionsCombo.SelectedIndex];
+        var view = _controller.View;
+        var result = await Task.Run(() => _controller.Execute(new SetProportions(view, weights)));
+        Refresh();
+        SetStatus(Describe(result));
     }
 
     /// <summary>Cambiar de vista mueve el foco de sitio sin cambiar qué ventana hay en él (ADR 0012).</summary>

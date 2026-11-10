@@ -42,7 +42,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
    - Catálogo de apps por detección, y abrir apps cerradas en un panel. **Hecho.**
    - Presentaciones nuevas, empezando por tiles adaptables (tamaños de tile y reparto automático) y la lista tipo Explorador.
    - Abrir apps cerradas.
-   - Vistas con el foco a la izquierda, al centro o a la derecha. **Hecho** con las proporciones de partida; faltan los presets y arrastrar el separador (proporciones guardadas por vista).
+   - Vistas con el foco a la izquierda, al centro o a la derecha. **Hecho**, con presets y separador arrastrado; las proporciones se guardan por vista. Falta el separador entre dos paneles apilados.
    - Pantalla completa (maximizada) en el monitor elegido.
 
    Todo se usa desde la ventana, los atajos y las tiras.

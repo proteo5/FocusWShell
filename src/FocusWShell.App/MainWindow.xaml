@@ -16,6 +16,10 @@
                     <ComboBoxItem Content="Foco al centro" />
                     <ComboBoxItem Content="Foco a la derecha" />
                 </ComboBox>
+                <TextBlock Text="Proporciones:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="ProportionsCombo" Width="260" Margin="0,0,24,0" AutomationProperties.Name="Proporciones"
+                          SelectionChanged="ProportionsCombo_SelectionChanged"
+                          ToolTip="Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ventana que da a la columna vecina: se guarda." />
                 <TextBlock Text="Escena:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="Escenas guardadas" />
                 <Button x:Name="ApplySceneButton" Content="Aplicar escena" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />

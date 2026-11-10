@@ -38,15 +38,78 @@ public enum FocusPosition
     Right,
 }
 
-/// <summary>Proporciones de partida de cada vista (ADR 0012).</summary>
+/// <summary>
+/// Pesos de las columnas del principal: la izquierda (Contexto), el foco y la derecha (Trabajo). Son
+/// relativos; no tienen que sumar 100.
+/// </summary>
+public sealed record ViewWeights(double Left, double Center, double Right)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsValid => Valid(Left) && Valid(Center) && Valid(Right);
+
+    /// <summary>En porcentajes enteros, para mostrarlos (p. ej. "18 · 55 · 27").</summary>
+    public string Describe(FocusPosition focus)
+    {
+        double total = Left + Center + Right;
+        int Pct(double w) => (int)Math.Round(100 * w / total);
+        return focus switch
+        {
+            FocusPosition.Left => $"foco {Pct(Center)} · derecha {Pct(Right)} · izquierda {Pct(Left)} %",
+            FocusPosition.Right => $"izquierda {Pct(Left)} · derecha {Pct(Right)} · foco {Pct(Center)} %",
+            _ => $"izquierda {Pct(Left)} · foco {Pct(Center)} · derecha {Pct(Right)} %",
+        };
+    }
+
+    /// <summary>Si son las mismas proporciones (a menos de medio punto porcentual).</summary>
+    public bool SameAs(ViewWeights other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        double a = Left + Center + Right, b = other.Left + other.Center + other.Right;
+        return Math.Abs((Left / a) - (other.Left / b)) < 0.005
+            && Math.Abs((Center / a) - (other.Center / b)) < 0.005
+            && Math.Abs((Right / a) - (other.Right / b)) < 0.005;
+    }
+
+    private static bool Valid(double w) => w > 0 && !double.IsNaN(w) && !double.IsInfinity(w);
+}
+
+/// <summary>Proporciones de partida y presets de cada vista (ADR 0012).</summary>
 public static class ViewProportions
 {
-    /// <summary>Pesos de la columna izquierda (Contexto), del foco y de la derecha (Trabajo).</summary>
-    public static (double Left, double Center, double Right) Default(FocusPosition focus) => focus switch
+    public const string Normal = "Normal";
+    public const string WideFocus = "Foco ancho";
+    public const string HalfAndHalf = "Mitad y mitad";
+
+    /// <summary>Las de la tabla del ADR 0012.</summary>
+    public static ViewWeights Default(FocusPosition focus) => focus switch
     {
-        FocusPosition.Center => (18, 55, 27),
-        _ => (15, 55, 30),
+        FocusPosition.Center => new(18, 55, 27),
+        _ => new(15, 55, 30),
     };
+
+    /// <summary>
+    /// Presets de la vista: el normal, uno con el foco más ancho y uno con el foco y el panel de al lado
+    /// (Trabajo) igual de grandes, para comparar dos ventanas.
+    /// </summary>
+    public static IReadOnlyList<(string Name, ViewWeights Weights)> Presets(FocusPosition focus) => focus switch
+    {
+        FocusPosition.Center =>
+        [
+            (Normal, Default(focus)),
+            (WideFocus, new(12, 70, 18)),
+            (HalfAndHalf, new(10, 45, 45)),
+        ],
+        _ =>
+        [
+            (Normal, Default(focus)),
+            (WideFocus, new(10, 70, 20)),
+            (HalfAndHalf, new(10, 45, 45)),
+        ],
+    };
+
+    /// <summary>Nombre del preset que coincide con estos pesos, o <c>null</c> si son personalizados.</summary>
+    public static string? PresetName(FocusPosition focus, ViewWeights weights) =>
+        Presets(focus).FirstOrDefault(p => p.Weights.SameAs(weights)).Name;
 }
 
 /// <summary>

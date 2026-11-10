@@ -42,6 +42,9 @@ public sealed record SavedScene(string Name, IReadOnlyList<SceneWindow> Windows)
     /// <summary>Vista del principal (ADR 0012). Las escenas anteriores son "foco al centro".</summary>
     public FocusPosition View { get; init; }
 
+    /// <summary>Proporciones de las columnas en esa vista; <c>null</c> en las escenas anteriores.</summary>
+    public ViewWeights? Weights { get; init; }
+
     /// <summary>Formato anterior. Sólo para migrar escenas viejas.</summary>
     public IReadOnlyList<ScenePanelTemplate> Templates { get; init; } = [];
 

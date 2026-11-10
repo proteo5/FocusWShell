@@ -66,6 +66,9 @@ public sealed record SceneComposition(PanelView? Left, nint? Center, PanelView? 
     /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
     public FocusPosition View { get; init; }
 
+    /// <summary>Proporciones de las columnas en esa vista.</summary>
+    public ViewWeights Weights { get; init; } = ViewProportions.Default(FocusPosition.Center);
+
     /// <summary>Segundo panel de la columna izquierda del principal (el de abajo), si lo hay.</summary>
     public PanelView? LeftLower { get; init; }
 
@@ -171,6 +174,9 @@ public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList
 {
     /// <summary>Vista de la escena; <c>null</c> deja la actual.</summary>
     public FocusPosition? View { get; init; }
+
+    /// <summary>Proporciones de la escena para su vista; <c>null</c> deja las que ya tenga esa vista.</summary>
+    public ViewWeights? Weights { get; init; }
 }
 
 /// <summary>
@@ -178,6 +184,12 @@ public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList
 /// cambia qué ventana está en el foco ni en qué panel está cada una; sólo el orden de las columnas.
 /// </summary>
 public sealed record SetView(FocusPosition Focus) : Command;
+
+/// <summary>
+/// Cambia las proporciones de las columnas en una vista (un preset o el separador arrastrado). Se
+/// recuerdan por vista. <c>null</c> vuelve a las de partida.
+/// </summary>
+public sealed record SetProportions(FocusPosition View, ViewWeights? Weights) : Command;
 
 /// <summary>Sustituye todos los paneles (al arrancar, con los guardados). Sólo sin ventanas gestionadas.</summary>
 public sealed record ReplacePanels(IReadOnlyList<Panel> Panels) : Command;
@@ -262,6 +274,14 @@ public sealed class Workspace
     /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
     public FocusPosition View { get; private set; }
 
+    private readonly Dictionary<FocusPosition, ViewWeights> _proportions = [];
+
+    /// <summary>Proporciones ajustadas por vista (las que no están, usan las de partida).</summary>
+    public IReadOnlyDictionary<FocusPosition, ViewWeights> CustomProportions => _proportions;
+
+    /// <summary>Proporciones de una vista: las ajustadas o las de partida.</summary>
+    public ViewWeights ProportionsOf(FocusPosition view) => _proportions.GetValueOrDefault(view) ?? ViewProportions.Default(view);
+
     public IReadOnlyList<ManagedWindow> Windows => _windows;
 
     public IReadOnlyList<nint> CenterHistory => _centerHistory;
@@ -326,6 +346,7 @@ public sealed class Workspace
                 View(right.FirstOrDefault()))
             {
                 View = this.View,
+                Weights = ProportionsOf(this.View),
                 LeftLower = View(left.Skip(1).FirstOrDefault()),
                 RightLower = View(right.Skip(1).FirstOrDefault()),
                 Parked = _windows.Where(w => w.Placement == Placement.Parked).Select(w => w.Handle).ToList(),
@@ -356,6 +377,7 @@ public sealed class Workspace
         MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
         ApplyScene c => DoApplyScene(c),
         SetView c => DoSetView(c.Focus),
+        SetProportions c => DoSetProportions(c),
         ReplacePanels c => DoReplacePanels(c.Panels),
         Release c => DoRelease(c.Handle),
         RestoreAll => DoRestoreAll(),
@@ -851,11 +873,43 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
+    private CommandOutcome DoSetProportions(SetProportions c)
+    {
+        if (!Enum.IsDefined(c.View))
+        {
+            return CommandOutcome.Reject($"Vista desconocida: {c.View}.");
+        }
+
+        if (c.Weights is { IsValid: false })
+        {
+            return CommandOutcome.Reject("Las proporciones tienen que ser positivas.");
+        }
+
+        var before = ProportionsOf(c.View);
+        if (c.Weights is null || c.Weights.SameAs(ViewProportions.Default(c.View)))
+        {
+            _proportions.Remove(c.View);
+        }
+        else
+        {
+            _proportions[c.View] = c.Weights;
+        }
+
+        return c.View == View && !before.SameAs(ProportionsOf(c.View))
+            ? CommandOutcome.Accept(new ApplyLayout())
+            : CommandOutcome.Accept();
+    }
+
     private CommandOutcome DoApplyScene(ApplyScene c)
     {
         if (c.View is { } view && Enum.IsDefined(view))
         {
             View = view;
+        }
+
+        if (c.Weights is { IsValid: true } weights)
+        {
+            DoSetProportions(new SetProportions(View, weights));
         }
 
         // Los paneles de la escena se suman a los del usuario. "map" traduce cada panel de la escena al

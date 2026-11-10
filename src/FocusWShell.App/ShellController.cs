@@ -49,6 +49,7 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
         (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
         (_, [SnapBack]) => $"{Label}: la moviste; vuelve a su sitio.",
+        (_, [SetProportions p, SnapBack]) => $"{Label}: moviste el separador; esta vista queda en {p.Weights!.Describe(p.View)}.",
         (_, [Promote]) => $"{Label}: la soltaste sobre el foco; pasa al foco.",
         (_, [SendTo s]) => $"{Label}: la soltaste sobre otro panel; se queda en él.",
         (_, [ReturnToPanel, SendTo]) => $"{Label}: la sacaste del foco a otro panel.",
@@ -205,7 +206,9 @@ public sealed class ShellController : IDisposable
         ExternalChangeHandled? handled = null;
         lock (_gate)
         {
-            var change = _expectations.Reconcile(WindowMover.Observe(handle));
+            var expected = _expectations.Get(handle);
+            var observed = WindowMover.Observe(handle);
+            var change = _expectations.Reconcile(observed);
             if (change == ExternalChange.None)
             {
                 return;
@@ -213,6 +216,16 @@ public sealed class ShellController : IDisposable
 
             var label = _workspace.Find(handle)?.Label ?? "?";
             var commands = _workspace.Interpret(handle, change);
+
+            // Redimensionada sólo por el borde que comparte con la columna vecina, en el principal: es
+            // mover el separador (ADR 0012). Las proporciones nuevas se guardan para esta vista.
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && expected is ExpectVisible { Rect: var before }
+                && _lastReport is { } report && _workspace.Find(handle) is { Placement: Placement.Center or Placement.InPanel } moved
+                && (moved.Placement == Placement.Center || _workspace.EffectivePanel(moved).Display is null)
+                && ColumnSeparator.Detect(before, observed.Visible, report.Layout.Principal) is { } weights)
+            {
+                commands = [new SetProportions(_workspace.View, weights), new SnapBack(handle)];
+            }
 
             // Arrastrada y soltada: sobre el foco va al foco; sobre otro panel, a ese panel; si no, vuelve.
             if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && _workspace.Find(handle) is { } dragged)
@@ -405,7 +418,7 @@ public sealed class ShellController : IDisposable
     /// <summary>Carga los paneles guardados (si los hay) en el modelo. Se llama al arrancar.</summary>
     public void LoadPanels()
     {
-        var (saved, view) = PanelFile.LoadAll();
+        var (saved, view, proportions) = PanelFile.LoadAll();
         lock (_gate)
         {
             if (saved.Count > 0)
@@ -414,12 +427,31 @@ public sealed class ShellController : IDisposable
             }
 
             _workspace.Execute(new SetView(view));
+            foreach (var (v, weights) in proportions)
+            {
+                _workspace.Execute(new SetProportions(v, weights));
+            }
+
             _savedPanels = [.. _workspace.Panels];
             _savedView = _workspace.View;
+            _savedProportions = new(_workspace.CustomProportions);
         }
     }
 
     private FocusPosition _savedView;
+    private Dictionary<FocusPosition, ViewWeights> _savedProportions = [];
+
+    /// <summary>Proporciones de la vista actual.</summary>
+    public ViewWeights Proportions
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _workspace.ProportionsOf(_workspace.View);
+            }
+        }
+    }
 
     /// <summary>Vista actual del principal (ADR 0012).</summary>
     public FocusPosition View
@@ -436,11 +468,14 @@ public sealed class ShellController : IDisposable
     /// <summary>Guarda los paneles si cambiaron (nombre, ubicación, presentación, altas o bajas).</summary>
     private void SavePanelsIfChanged()
     {
-        if (!_workspace.Panels.SequenceEqual(_savedPanels) || _workspace.View != _savedView)
+        bool proportionsChanged = _workspace.CustomProportions.Count != _savedProportions.Count
+            || _workspace.CustomProportions.Any(p => !_savedProportions.TryGetValue(p.Key, out var w) || w != p.Value);
+        if (!_workspace.Panels.SequenceEqual(_savedPanels) || _workspace.View != _savedView || proportionsChanged)
         {
             _savedPanels = [.. _workspace.Panels];
             _savedView = _workspace.View;
-            PanelFile.Save(_savedPanels, _savedView);
+            _savedProportions = new(_workspace.CustomProportions);
+            PanelFile.Save(_savedPanels, _savedView, _savedProportions);
         }
     }
 
@@ -487,7 +522,12 @@ public sealed class ShellController : IDisposable
             var panels = _workspace.Panels
                 .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template, p.Slot))
                 .ToList();
-            scene = new SavedScene(name.Trim(), windows) { Panels = panels, View = _workspace.View };
+            scene = new SavedScene(name.Trim(), windows)
+            {
+                Panels = panels,
+                View = _workspace.View,
+                Weights = _workspace.ProportionsOf(_workspace.View),
+            };
         }
 
         Scenes.Upsert(scene);
@@ -535,7 +575,7 @@ public sealed class ShellController : IDisposable
         var panels = scene.Panels
             .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot))
             .ToList();
-        var result = Execute(new ApplyScene(entries, panels) { View = scene.View });
+        var result = Execute(new ApplyScene(entries, panels) { View = scene.View, Weights = scene.Weights });
         return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
     }
 
@@ -868,7 +908,7 @@ public sealed class ShellController : IDisposable
                     a.Panels.Select(v => Assign(v)!).ToList()))
                 .ToList(),
         };
-        var (leftWeight, centerWeight, rightWeight) = ViewProportions.Default(c.View);
+        var (leftWeight, centerWeight, rightWeight) = c.Weights;
         var options = new SceneOptions
         {
             Focus = c.View,

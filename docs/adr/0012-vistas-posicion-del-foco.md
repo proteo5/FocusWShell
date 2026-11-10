@@ -59,4 +59,10 @@ Primera parte hecha: las tres vistas con sus proporciones de partida.
 - **Selector "Vista"** en la ventana principal y **Ctrl+Alt+Mayús+V** para pasar de una a otra (centro → izquierda → derecha).
 - **Motor:** el panel de en medio no desborda (la ventana que no cabe sale del layout); el del borde se ancla hacia fuera, salvo que ese borde dé a otro monitor. Ese borde se calcula según la vista. Si ni así cabe la ventana del foco en un extremo, se ancla a su borde del monitor.
 
-Pendiente: los presets ("foco ancho", "mitad y mitad"), arrastrar el separador y guardar las proporciones por vista; luego, la pantalla completa (punto 4).
+Segunda parte hecha, las proporciones:
+
+- **Presets por vista**, en el selector "Proporciones": Normal (la tabla), Foco ancho (12 · 70 · 18 al centro; 10 · 70 · 20 a los lados) y Mitad y mitad (el foco y Trabajo al 45 %, Contexto al 10 %).
+- **Separador arrastrado** (`ColumnSeparator`): si una ventana del principal, del foco o de un panel, cambia sólo el borde que comparte con la columna vecina (los demás quietos, ±2 px) y estaba alineada con su columna, los anchos resultantes pasan a ser las proporciones de la vista (`SetProportions`) y la ventana vuelve a su columna, ya con el ancho nuevo. Ninguna columna baja de 40 px al arrastrar; después, el motor aplica los mínimos aprendidos y el piso del foco, con sus notas. El borde del monitor no es un separador.
+- **Se guardan por vista** en `panels.json` y, al guardar una escena, las de su vista. Si coinciden con un preset, el selector lo muestra; si no, "Personalizadas".
+
+Pendiente: el separador entre dos paneles apilados en una columna (ADR 0011) y la pantalla completa (punto 4).

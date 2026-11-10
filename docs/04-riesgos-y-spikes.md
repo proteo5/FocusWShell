@@ -226,6 +226,20 @@ Prueba en el ultrawide (con el monitor auxiliar a la derecha), con una ventana d
 | Ctrl+Alt+Mayús+V | Pasa a la siguiente vista; el selector de la ventana lo refleja |
 | Reiniciar la app | Vuelve con la última vista (guardada en `panels.json`) |
 
+### Proporciones (M1b, 2026-11-10)
+
+Prueba en el ultrawide con una ventana de Paint en el foco y otra en Contexto (foco al centro):
+
+| Caso | Resultado |
+| --- | --- |
+| Preset «Foco ancho» | Foco 2131 px. Contexto pedía el 12 % pero se queda en 690 px, el mínimo de Paint |
+| Redimensionar la del foco 300 px por su borde derecho (desde otro proceso) | Separador: la vista queda en 20 · 44 · 36 %, Trabajo se ensancha y el selector muestra «Personalizadas» |
+| Redimensionar la de Contexto por su borde izquierdo (el del monitor) | No es un separador: vuelve a su sitio |
+| Reiniciar la app | Vuelve con las proporciones personalizadas (en `panels.json`, por vista) |
+| Volver a «Normal» | Se borran las personalizadas de esa vista |
+
+Pendiente: arrastrar el borde con el ratón de verdad (la prueba usó `SetWindowPos` desde otro proceso).
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.
