@@ -1,11 +1,11 @@
-# ADR 0013 — El deck es una superficie de control opcional, en el monitor que se elija
+﻿# ADR 0013 — El deck es una superficie de control opcional, en el monitor que se elija
 
 - **Estado:** Propuesta (pendiente del spike S8)
 - **Fecha:** 2026-11-10
 
 ## Contexto
 
-Mover el foco con atajos obliga a memorizarlos, y la ventana principal de FocusWShell tapa el trabajo. La idea es un **deck**, al estilo de un Stream Deck pero consciente del escritorio. Muestra las apps por grupos ([ADR 0011](0011-grupos-de-apps-y-catalogo.md)), las vistas ([ADR 0012](0012-vistas-y-areas-de-foco.md)) y el estado actual, y desde ahí se manejan con un toque.
+Mover el foco con atajos obliga a memorizarlos, y la ventana principal de FocusWShell tapa el trabajo. La idea es un **deck**, al estilo de un Stream Deck pero consciente del escritorio. Muestra las apps por grupos ([ADR 0011](0011-grupos-de-apps-y-catalogo.md)), las vistas ([ADR 0012](0012-vistas-posicion-del-foco.md)) y el estado actual, y desde ahí se manejan con un toque.
 
 Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([ADR 0009](0009-tablets-como-monitores-auxiliares.md)) o un monitor táctil físico conectado al PC. Para FocusWShell da igual cuál: sólo necesita un monitor y que lleguen los toques.
 
@@ -14,15 +14,15 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
 1. **Todo funciona sin el deck.** Es una vista y un control encima del modelo y de los comandos que ya existen. Si no está, o se desconecta su monitor, siguen la bandeja, los atajos y las tiras de pestañas.
 2. **Qué muestra:**
    - **Grupos de apps:** iconos en color vivo si la app está abierta y apagados si no. Tocar una cerrada la abre.
-   - **Estado actual:** qué hay en cada área de foco, en cada grupo y estacionado.
-   - **Vistas:** Foco 1, Foco 2, etc.
+   - **Estado actual:** qué hay en el foco, en cada grupo y estacionado.
+   - **Vistas:** foco al centro, a la izquierda o a la derecha.
    - **Botones fijos:** escenas, pantalla encendida y "Restaurar todas", este último con confirmación.
 3. **Gestos:**
-   - Tocar una app la lleva al foco: con un botón por área de foco, a la que se elija.
-   - Tocar otra devuelve la anterior a su grupo.
+   - Tocar una app la lleva al foco, y la anterior vuelve a su grupo.
+   - Un botón "anterior" alterna entre la app del foco y la que estaba antes (`SwapWithPrevious`).
    - Arrastrar un icono a otro grupo o monitor lo cambia de sitio.
    - Mantenerlo pulsado abre su menú, que incluye pantalla completa en un monitor elegido.
-   - Un control de navegación permite recorrer pestañas y grupos y cambiar el template o el ancho del foco.
+   - Un control de navegación permite recorrer pestañas y grupos, cambiar el template, cambiar la vista (mover el foco) o el ancho del foco.
 4. **Dónde vive, por fases:**
    1. **En una esquina del monitor principal.** Se muestra y se oculta con un clic o un atajo. Al elegir una app se oculta solo, como una paleta de comandos, así que sólo tapa el foco un instante.
    2. **En otro monitor**, con "mandar el deck a…". Ahí ocupa una zona fija; en una tablet puede compartir pantalla con un grupo compacto (Spotify, monitoreo).

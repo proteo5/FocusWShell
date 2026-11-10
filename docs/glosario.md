@@ -30,6 +30,5 @@ La documentación está en español y el código en inglés. Esta tabla fija la 
 | Restaurar todas | `RestoreAll` | Salida de emergencia: devuelve todas las ventanas a su estado original. |
 | Catálogo de apps | `AppCatalog` | Apps que FocusWShell ha visto alguna vez, con cómo reconocerlas y cómo abrirlas. Se llena solo, por detección ([ADR 0011](adr/0011-grupos-de-apps-y-catalogo.md)). |
 | Grupo | `AppGroup` | Conjunto libre de apps con un tipo (lateral, monitor, compacto o deck) que dice dónde y cómo se presentan. Contexto y Trabajo son los grupos laterales por defecto. |
-| Vista | `View` | Plantilla del escritorio completo: cuántas áreas de foco hay y qué grupos van a los lados ([ADR 0012](adr/0012-vistas-y-areas-de-foco.md)). |
-| Área de foco | `FocusArea` | Hueco del monitor principal para la ventana en la que se trabaja. Una o dos según la vista; con una, es el Centro. |
+| Vista | `View` | Plantilla del monitor principal: dónde va el foco (izquierda, centro o derecha) y la proporción de cada columna ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)). |
 | Deck | `Deck` | Superficie de control táctil y opcional: grupos de apps, vistas, estado y botones ([ADR 0013](adr/0013-deck-superficie-de-control.md)). |

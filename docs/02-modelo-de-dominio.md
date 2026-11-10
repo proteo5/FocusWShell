@@ -147,7 +147,7 @@ Cambiar de template sólo recalcula rectángulos y visibilidad. Ninguna ventana 
 Tres decisiones propuestas cambiarán este modelo en la siguiente etapa:
 
 - **Grupos de apps ([ADR 0011](adr/0011-grupos-de-apps-y-catalogo.md)).** El hogar de una ventana deja de ser `Work` o `Context` y pasa a ser un grupo libre con un tipo: lateral, monitor, compacto o deck. Los grupos se llenan desde un catálogo de apps que aprende con el uso, y las apps cerradas se pueden abrir desde él.
-- **Vistas ([ADR 0012](adr/0012-vistas-y-areas-de-foco.md)).** El Centro pasa a ser una o dos **áreas de foco**, según la vista (Foco 1 o Foco 2). El invariante 1 cambia a "como máximo una ventana por área de foco". Pantalla completa significa maximizada en el monitor elegido.
+- **Vistas ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)).** Sigue habiendo un solo foco, pero puede ir a la izquierda, al centro o a la derecha del monitor principal, con proporciones propias por vista. El invariante 1 no cambia. Pantalla completa significa maximizada en el monitor elegido.
 - **Deck ([ADR 0013](adr/0013-deck-superficie-de-control.md)).** Una vista y un control táctil sobre todo lo anterior, opcional, en una esquina del principal o en otro monitor.
 
 ## Invariantes
