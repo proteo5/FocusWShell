@@ -406,6 +406,28 @@ Tablet por Apollo/Artemis como monitor extendido («Lenovo tablet», 1280×720):
 
 Sin probar: desconectar y reconectar la tablet con el deck fijado.
 
+### Pantalla completa propia de las apps (M2, 2026-11-10)
+
+Regla (`Core.Windows.AppFullscreen`): una ventana está en pantalla completa propia si cubre su monitor entero, barra de tareas incluida (±2 px), sin estar maximizada. Una maximizada en un monitor sin barra también lo cubre, pero no cuenta. Hay dos vías:
+
+- **El vigilante** (`AppFullscreenWatcher`): mira la ventana en primer plano cada 500 ms y avisa sólo cuando cambia. Mientras dure la pantalla completa, ese monitor queda **en pausa**: sin tiras, sin listas y sin deck encima.
+- **Al reaccionar a un cambio externo:** si una ventana gestionada se movió o cambió de tamaño hasta cubrir su monitor, no se le devuelve a su sitio (`SnapBack`), sino que se suelta del layout (`Detach`). Al salir, el siguiente cambio la reencaja.
+
+Probado con Edge (F11) en el panel Trabajo y el deck abierto en el principal:
+
+| Momento | Resultado |
+| --- | --- |
+| F11 | Edge ocupa 3440×1440. El estado dice «se puso en pantalla completa». La tira de Trabajo y el deck desaparecen |
+| «Actualizar lista» durante la pantalla completa | Edge sigue gestionada |
+| F11 otra vez | Edge vuelve a su sitio en Trabajo («la moviste; vuelve a su sitio»). La tira y el deck vuelven |
+
+Encontrado aquí y ya corregido:
+
+- **Una gestionada en pantalla completa se daba por cerrada.** Al refrescar, una ventana que dejaba de ser «elegible» (en pantalla completa Edge cambia de estilo) se trataba como cerrada y se olvidaba. Ahora sólo se da por cerrada la que ya no existe.
+- **La lista no la mostraba.** Ahora una gestionada viva que no es elegible sigue en la lista, con su última foto.
+
+Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

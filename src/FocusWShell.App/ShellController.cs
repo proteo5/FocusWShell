@@ -57,6 +57,7 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Maximized, [SetPresentation, MakeActiveInPanel]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
         (ExternalChange.Unmaximized, [SetPresentation]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
+        (ExternalChange.MovedOrResized, [Detach]) => $"{Label}: se puso en pantalla completa; queda fuera de layout y vuelve a su sitio al salir.",
         (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
         (_, [SnapBack]) => $"{Label}: la moviste; vuelve a su sitio.",
         (_, [ExitFullscreen]) => $"{Label}: dejó de estar maximizada; sale de pantalla completa y vuelve al foco.",
@@ -98,15 +99,37 @@ public sealed class ShellController : IDisposable
     private int _lastPrincipalDpi = 96;
     private Dictionary<string, int> _lastAuxDpi = [];
 
-    /// <summary>Tiras de pestañas de los paneles, según el último layout aplicado.</summary>
+    /// <summary>Tiras de pestañas de los paneles, según el último layout aplicado. Ninguna en el monitor en pausa.</summary>
     public IReadOnlyList<PanelStrip> Strips()
     {
         lock (_gate)
         {
             return _lastReport is null || _workspace.Windows.Count == 0
                 ? []
-                : PanelStripBuilder.Build(_workspace, _lastReport, _lastPrincipalDpi, _lastAuxDpi);
+                : PanelStripBuilder.Build(_workspace, _lastReport, _lastPrincipalDpi, _lastAuxDpi).Where(s => !IsPaused(s.Band)).ToList();
         }
+    }
+
+    private AppFullscreenWatcher? _appFullscreen;
+
+    /// <summary>
+    /// Monitor ocupado por una app en pantalla completa propia (M2): F11, un vídeo, un juego. Mientras dure,
+    /// el gestor no pone tiras, listas ni el deck encima.
+    /// </summary>
+    public PixelRect? PausedMonitor { get; private set; }
+
+    /// <summary>Se dispara (en cualquier hilo) al empezar o terminar una pantalla completa propia de una app.</summary>
+    public event Action<PixelRect?>? PauseChanged;
+
+    /// <summary>Si un rectángulo (una tira, una lista, el deck) cae en el monitor en pausa.</summary>
+    public bool IsPaused(PixelRect rect) =>
+        PausedMonitor is { } paused && paused.Contains(rect.Left + (rect.Width / 2), rect.Top + (rect.Height / 2));
+
+    private void OnAppFullscreen(PixelRect? monitor)
+    {
+        PausedMonitor = monitor;
+        PauseChanged?.Invoke(monitor);
+        LayoutChanged?.Invoke();
     }
 
     /// <summary>
@@ -134,7 +157,7 @@ public sealed class ShellController : IDisposable
 
                 foreach (var (panelId, area) in lists)
                 {
-                    if (_workspace.FindPanel(panelId) is not { } panel)
+                    if (_workspace.FindPanel(panelId) is not { } panel || IsPaused(area))
                     {
                         continue;
                     }
@@ -273,11 +296,13 @@ public sealed class ShellController : IDisposable
             _expectations.IsWatched,
             observed => Task.Run(() => OnSettled(observed.Handle)));
         _switches ??= FocusSwitchWatcher.Start((hwnd, gesture) => Task.Run(() => OnFocusSwitch(hwnd, gesture)));
+        _appFullscreen ??= AppFullscreenWatcher.Start(OnAppFullscreen);
     }
 
     public void Dispose()
     {
         _switches?.Dispose();
+        _appFullscreen?.Dispose();
         _watcher?.Dispose();
     }
 
@@ -423,6 +448,14 @@ public sealed class ShellController : IDisposable
             if (change == ExternalChange.Closed && _snapshots.Remove(handle))
             {
                 _openApps = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+
+            // Se puso en pantalla completa ella misma (F11, un vídeo): no se le quita. Queda fuera de layout
+            // y, al salir, el siguiente cambio la devuelve a su sitio (M2).
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized
+                && AppFullscreen.Covers(observed.Visible, WindowEnumerator.MonitorBoundsOf(handle), observed.Maximized))
+            {
+                commands = [new Detach(handle)];
             }
 
             // Redimensionada sólo por el borde que da al otro panel de su columna: es mover el separador
@@ -1012,11 +1045,21 @@ public sealed class ShellController : IDisposable
 
             ObserveApps(windows);
             var alive = windows.Select(w => w.Handle).ToHashSet();
-            var closed = _workspace.Windows.Where(m => !alive.Contains(m.Handle)).Select(m => new WindowClosed(m.Handle)).ToList();
+            // Sólo se da por cerrada la ventana que ya no existe. Una gestionada puede dejar de ser "elegible"
+            // un rato sin cerrarse (p. ej. en pantalla completa propia cambia de estilo): sigue gestionada.
+            var closed = _workspace.Windows
+                .Where(m => !alive.Contains(m.Handle) && !WindowMover.Observe(m.Handle).Exists)
+                .Select(m => new WindowClosed(m.Handle))
+                .ToList();
             if (closed.Count > 0)
             {
                 RunLocked(closed);
             }
+
+            // Las gestionadas que siguen vivas pero no son elegibles ahora siguen en la lista, con su última foto.
+            windows.AddRange(_workspace.Windows
+                .Where(m => !alive.Contains(m.Handle) && _snapshots.ContainsKey(m.Handle))
+                .Select(m => _snapshots[m.Handle]));
         }
 
         return windows;

@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Windows;
 using Windows.Win32;
@@ -133,6 +133,9 @@ public static class WindowEnumerator
             hwnd, DWMWINDOWATTRIBUTE.DWMWA_EXTENDED_FRAME_BOUNDS, &rect, (uint)sizeof(RECT));
         return hr.Succeeded ? ToPixelRect(rect) : null;
     }
+
+    /// <summary>Rectángulo completo (barra de tareas incluida) del monitor de una ventana.</summary>
+    public static unsafe PixelRect MonitorBoundsOf(nint handle) => GetMonitorBounds(new HWND((void*)handle));
 
     private static PixelRect GetMonitorBounds(HWND hwnd)
     {

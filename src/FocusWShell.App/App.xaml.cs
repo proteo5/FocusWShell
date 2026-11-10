@@ -98,6 +98,7 @@ public partial class App : Application
             RefreshDeck();
         });
         _controller.ForegroundChanged += hwnd => Dispatcher.BeginInvoke(() => _lists?.OnForeground(hwnd));
+        _controller.PauseChanged += _ => Dispatcher.BeginInvoke(FollowPause);
         _controller.FocusGestureEnabled = g => g switch
         {
             SwitchGesture.AltTab => _settings.FocusOnAltTab,
@@ -339,6 +340,32 @@ public partial class App : Application
         }
         else
         {
+            PresentDeck();
+        }
+    }
+
+    /// <summary>El deck se ocultó porque una app ocupa su monitor en pantalla completa.</summary>
+    private bool _deckPaused;
+
+    /// <summary>
+    /// Pantalla completa propia de una app (M2): el deck no debe quedar encima. Se oculta si está en ese
+    /// monitor y vuelve cuando termina.
+    /// </summary>
+    private void FollowPause()
+    {
+        if (_deck is null)
+        {
+            return;
+        }
+
+        if (_deck.IsVisible && _controller.IsPaused(DeckPlace()))
+        {
+            _deck.Hide();
+            _deckPaused = true;
+        }
+        else if (_deckPaused && !_controller.IsPaused(DeckPlace()))
+        {
+            _deckPaused = false;
             PresentDeck();
         }
     }

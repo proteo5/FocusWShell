@@ -60,7 +60,7 @@ Criterio de salida: una semana de uso diario cambiando de vista y llevando apps 
 Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspensión, apps difíciles.
 
 - `EnterFullscreen` / `ExitFullscreen` por monitor. **Hecho en M1b** ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)).
-- Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor.
+- Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor. **Hecho** (F11 en Edge, ver [riesgos](04-riesgos-y-spikes.md)); falta probar un juego y una presentación.
 - Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)). **Hecho** para monitores auxiliares que se desconectan y vuelven; falta probar una tablet, la pérdida del monitor principal y la suspensión.
 - Reanudación tras suspensión.
 - Detección y presentación de ventanas no gestionables (elevadas).
