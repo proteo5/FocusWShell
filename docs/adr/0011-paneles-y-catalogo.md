@@ -1,6 +1,6 @@
 # ADR 0011 — Paneles: entidades con nombre, ubicación y presentación; ventanas libres; catálogo por detección
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada (2026-11-10)
 - **Fecha:** 2026-11-10
 
 ## Contexto

@@ -1,6 +1,6 @@
 ﻿# ADR 0012 — Vistas: un solo foco, que puede ir a la izquierda, al centro o a la derecha
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada (2026-11-10)
 - **Fecha:** 2026-11-10
 
 ## Contexto
