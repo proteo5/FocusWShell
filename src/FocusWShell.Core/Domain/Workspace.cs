@@ -135,10 +135,15 @@ public sealed record Reattach(nint Handle) : Command;
 public sealed record MakeActiveInPanel(nint Handle) : Command;
 
 /// <summary>
-/// Aplica una escena guardada ya emparejada: estos paneles y estas ventanas, en este orden.
-/// Las gestionadas que no están en la escena vuelven a su sitio original.
+/// Aplica una escena guardada ya emparejada. Sus paneles se <b>suman</b> a los del usuario: uno que ya
+/// existe conserva su nombre y su ubicación y toma la presentación de la escena; uno nuevo se añade.
+/// Una ventana cuyo panel no se puede resolver queda libre. Las gestionadas que no están en la escena
+/// vuelven a su sitio original.
 /// </summary>
 public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList<Panel> Panels) : Command;
+
+/// <summary>Sustituye todos los paneles (al arrancar, con los guardados). Sólo sin ventanas gestionadas.</summary>
+public sealed record ReplacePanels(IReadOnlyList<Panel> Panels) : Command;
 
 /// <summary>Devuelve la ventana a su estado original y deja de gestionarla.</summary>
 public sealed record Release(nint Handle) : Command;
@@ -298,6 +303,7 @@ public sealed class Workspace
         Reattach c => DoReattach(c.Handle),
         MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
         ApplyScene c => DoApplyScene(c),
+        ReplacePanels c => DoReplacePanels(c.Panels),
         Release c => DoRelease(c.Handle),
         RestoreAll => DoRestoreAll(),
         WindowClosed c => DoWindowClosed(c.Handle),
@@ -719,34 +725,71 @@ public sealed class Workspace
 
     // --- Escenas y salida ---------------------------------------------------------------------------
 
-    private CommandOutcome DoApplyScene(ApplyScene c)
+    private CommandOutcome DoReplacePanels(IReadOnlyList<Panel> panels)
     {
-        // Los paneles de la escena sustituyen a los actuales (si la escena trae paneles).
-        if (c.Panels.Count > 0)
+        if (_windows.Count > 0)
         {
-            if (!c.Panels.Any(p => p.Display is null))
+            return CommandOutcome.Reject("Los paneles sólo se sustituyen sin ventanas gestionadas.");
+        }
+
+        var valid = new List<Panel>();
+        foreach (var p in panels.DistinctBy(p => p.Id))
+        {
+            // Fill no vale en el principal; dos paneles en la misma columna, tampoco (etapa 1).
+            var panel = p.Display is null && p.Template == PanelTemplate.Fill ? p with { Template = PanelTemplate.Tiles } : p;
+            if (panel.Display is null && valid.Any(x => x.Display is null && x.Side == panel.Side))
             {
-                return CommandOutcome.Reject("La escena no tiene ningún panel en el monitor principal.");
+                continue;
             }
 
-            _panels.Clear();
-            foreach (var p in c.Panels.DistinctBy(p => p.Id))
+            valid.Add(panel);
+        }
+
+        if (!valid.Any(p => p.Display is null))
+        {
+            return CommandOutcome.Reject("Tiene que quedar al menos un panel en el monitor principal.");
+        }
+
+        _panels.Clear();
+        _panels.AddRange(valid);
+        return CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoApplyScene(ApplyScene c)
+    {
+        // Los paneles de la escena se suman a los del usuario. "map" traduce cada panel de la escena al
+        // panel real donde irán sus ventanas.
+        var map = new Dictionary<string, string>();
+        foreach (var p in c.Panels.DistinctBy(p => p.Id))
+        {
+            var wanted = p.Display is null && p.Template == PanelTemplate.Fill ? p with { Template = PanelTemplate.Tiles } : p;
+            if (FindPanel(wanted.Id) is { } existing)
             {
-                // Fill no vale en el principal; dos paneles en la misma columna, tampoco (etapa 1).
-                var panel = p.Display is null && p.Template == PanelTemplate.Fill ? p with { Template = PanelTemplate.Tiles } : p;
-                if (panel.Display is null && _panels.Any(x => x.Display is null && x.Side == panel.Side))
+                // Ya existe: conserva su nombre y su ubicación; toma la presentación de la escena si vale ahí.
+                if (existing.Template != wanted.Template && !(existing.Display is null && wanted.Template == PanelTemplate.Fill))
                 {
-                    continue;
+                    _panels[_panels.IndexOf(existing)] = existing with { Template = wanted.Template };
                 }
 
-                _panels.Add(panel);
+                map[wanted.Id] = existing.Id;
+            }
+            else if (wanted.Display is null && PrincipalPanel(wanted.Side) is { } occupant)
+            {
+                // Esa columna del principal ya tiene panel: sus ventanas van ahí.
+                map[wanted.Id] = occupant.Id;
+            }
+            else
+            {
+                _panels.Add(wanted);
+                map[wanted.Id] = wanted.Id;
             }
         }
 
-        var fallback = PrincipalPanel(PanelSide.Right) ?? _panels.First(p => p.Display is null);
+        // Una ventana cuyo panel no se resuelve queda libre (ADR 0011): no se adopta.
         var entries = c.Entries
             .DistinctBy(e => e.Handle)
-            .Select(e => FindPanel(e.PanelId) is null ? e with { PanelId = fallback.Id } : e)
+            .Select(e => map.TryGetValue(e.PanelId, out var id) ? e with { PanelId = id } : FindPanel(e.PanelId) is not null ? e : null)
+            .OfType<SceneEntry>()
             .ToList();
         var keep = entries.Select(e => e.Handle).ToHashSet();
         var effects = new List<Effect>();

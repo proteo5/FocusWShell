@@ -1,4 +1,4 @@
-# ADR 0011 — Paneles: entidades con nombre, ubicación y presentación; ventanas libres; catálogo por detección
+﻿# ADR 0011 — Paneles: entidades con nombre, ubicación y presentación; ventanas libres; catálogo por detección
 
 - **Estado:** Aceptada (2026-11-10)
 - **Fecha:** 2026-11-10
@@ -47,7 +47,15 @@ Cada panel tiene tres propiedades independientes:
 - No hay un panel "General": la lista de apps la da el catálogo (punto 4).
 - **Más adelante:** "fijar encima", una ventana libre pequeña y siempre visible (tipo picture-in-picture, para una videollamada o un temporizador), como acción opcional sobre una ventana libre.
 
-### 4. Catálogo de apps por detección suave
+### 4. Escenas y paneles
+
+- Aplicar una escena **suma** sus paneles a los del usuario; no borra ninguno.
+  - Un panel que ya existe (mismo identificador) conserva su nombre y su ubicación, y toma la presentación de la escena.
+  - Un panel nuevo se añade. Si va a una columna del principal que ya tiene panel, sus ventanas van a ese panel.
+- Una app de la escena cuyo panel no se puede resolver queda **libre**: flota sin gestión.
+- Al arrancar, los paneles guardados en `panels.json` **sustituyen** a los de por defecto (`ReplacePanels`).
+
+### 5. Catálogo de apps por detección suave
 
 - Cada vez que FocusWShell ve una ventana elegible de una app que no conocía, la añade al catálogo (`apps.json`). Por cada app guarda:
   - la clave (`AppKey`, el AUMID o el ejecutable);

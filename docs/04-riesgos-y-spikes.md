@@ -155,7 +155,11 @@ Implementa la primera parte del [ADR 0011](adr/0011-paneles-y-catalogo.md).
   - Crear y renombrar un panel leían un `TextBox` desde una tarea en segundo plano. La excepción activó la restauración de emergencia, que funcionó como estaba diseñada: devolvió todas las ventanas.
   - Al refrescar la lista, WPF escribía un valor vacío en las filas antes de desconectarlas, y se generaban asignaciones a un panel "vacío".
   - Desde ahora, los errores no controlados se registran en `%LOCALAPPDATA%\FocusWShell\errors.log`.
-- **Comportamiento a decidir:** aplicar una escena sustituye los paneles por los de la escena (y se guardan así).
+- **Decisión tomada:** aplicar una escena **suma** sus paneles a los del usuario.
+  - Un panel que ya existe conserva su nombre y su ubicación, y sólo toma la presentación de la escena.
+  - Si la escena pone un panel nuevo en una columna del principal que ya está ocupada, sus ventanas van al panel que está ahí.
+  - Una ventana cuyo panel no se puede resolver queda **libre**.
+  - Probado: con "Comunicación" y "Monitoreo" creados a mano, aplicar "Código" los conservó (5/5).
 
 ### S6 — Reconexión (2026-11-10)
 

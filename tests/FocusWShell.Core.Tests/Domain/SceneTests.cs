@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Domain;
@@ -171,13 +171,63 @@ public class SceneTests
     }
 
     [Fact]
-    public void UnknownPanelFallsBackToThePrincipal()
+    public void WindowWithoutAResolvablePanelStaysFree()
+    {
+        // Una app sin panel asignado flota libre (ADR 0011): no se adopta.
+        var ws = new Workspace();
+
+        var outcome = ws.Execute(new ApplyScene([new SceneEntry(1, "A", "no-existe", ScenePlacement.InPanel)], []));
+
+        Assert.False(ws.IsManaged(1));
+        Assert.DoesNotContain(outcome.Effects, e => e is CaptureOriginal);
+    }
+
+    [Fact]
+    public void ScenePanelsAddToTheUsersPanels()
+    {
+        var ws = new Workspace();
+        ws.Execute(new RenamePanel(Ctx, "Comunicación"));
+        ws.Execute(new CreatePanel(new Panel("mon", "Monitoreo", "HP", PanelSide.Right)));
+
+        ws.Execute(new ApplyScene(
+            [new SceneEntry(1, "Slack", Ctx, ScenePlacement.InPanel), new SceneEntry(2, "ChatGPT", "chat", ScenePlacement.InPanel)],
+            [new Panel(Ctx, "Contexto", null, PanelSide.Left, PanelTemplate.Stack), new Panel("chat", "Chat", "HP", PanelSide.Left)]));
+
+        Assert.Equal([Ctx, Wrk, "mon", "chat"], ws.Panels.Select(p => p.Id));
+        var ctx = ws.FindPanel(Ctx)!;
+        Assert.Equal("Comunicación", ctx.Name);              // conserva el nombre del usuario
+        Assert.Equal(PanelTemplate.Stack, ctx.Template);      // toma la presentación de la escena
+        Assert.Equal([2], ws.Composition.Aux.Single().Context);
+    }
+
+    [Fact]
+    public void ScenePanelOnAnOccupiedPrincipalColumnUsesThePanelThatIsThere()
     {
         var ws = new Workspace();
 
-        ws.Execute(new ApplyScene([new SceneEntry(1, "A", "no-existe", ScenePlacement.InPanel)], []));
+        ws.Execute(new ApplyScene(
+            [new SceneEntry(1, "Slack", "otro", ScenePlacement.InPanel)],
+            [new Panel("otro", "Otro", null, PanelSide.Left)]));
 
-        Assert.Equal([1], ws.Composition.Work);
+        Assert.Equal([1], ws.Composition.Context);
+        Assert.Null(ws.FindPanel("otro"));
+    }
+
+    [Fact]
+    public void ReplacePanelsLoadsTheSavedOnesAtStartup()
+    {
+        var ws = new Workspace();
+
+        var outcome = ws.Execute(new ReplacePanels(
+        [
+            new Panel(Ctx, "Comunicación", null, PanelSide.Left),
+            new Panel("mon", "Monitoreo", "HP", PanelSide.Right, PanelTemplate.Fill),
+        ]));
+
+        Assert.True(outcome.Accepted);
+        Assert.Equal([Ctx, "mon"], ws.Panels.Select(p => p.Id));
+        Assert.Equal("Comunicación", ws.FindPanel(Ctx)!.Name);
+        Assert.False(ws.Execute(new ReplacePanels([new Panel("x", "X", "HP", PanelSide.Left)])).Accepted); // sin principal
     }
 
     [Fact]

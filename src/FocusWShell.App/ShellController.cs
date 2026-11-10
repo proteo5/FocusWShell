@@ -148,8 +148,7 @@ public sealed class ShellController : IDisposable
         {
             if (saved.Count > 0)
             {
-                // ApplyScene sin ventanas sustituye los paneles; valida que quede alguno en el principal.
-                _workspace.Execute(new ApplyScene([], saved));
+                _workspace.Execute(new ReplacePanels(saved));
             }
 
             _savedPanels = [.. _workspace.Panels];
