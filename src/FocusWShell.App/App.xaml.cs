@@ -127,10 +127,10 @@ public partial class App : Application
         });
         _controller.StartWatching();
 
-        // S6: monitores que se conectan o desconectan (también tablets por wifi).
+        // S6: monitores que se conectan o desconectan (también tablets por wifi). M2: y la suspensión.
         _displays = new DisplayChangeListener(
             _controller.BeginDisplayChange,
-            () => Task.Run(() =>
+            resumed => Task.Run(() =>
             {
                 var (events, result) = _controller.EndDisplayChange();
                 Dispatcher.BeginInvoke(() =>
@@ -138,15 +138,16 @@ public partial class App : Application
                     FollowDeckMonitor();
                     if (events.Count > 0)
                     {
-                        _tray?.Notify("Monitores", string.Join(" ", events));
+                        _tray?.Notify(resumed ? "Tras la suspensión" : "Monitores", string.Join(" ", events));
                     }
 
                     if (_main?.IsVisible == true)
                     {
                         _main.Refresh();
-                        if (events.Count > 0)
+                        if (events.Count > 0 || resumed)
                         {
-                            _main.SetStatus(string.Join(Environment.NewLine, events) +
+                            var lines = resumed ? events.Prepend("Volvió de la suspensión: se revisaron ventanas y monitores.") : events;
+                            _main.SetStatus(string.Join(Environment.NewLine, lines) +
                                 (result is null ? "" : Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result)));
                         }
                     }

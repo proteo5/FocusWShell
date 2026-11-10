@@ -1259,32 +1259,37 @@ public sealed class ShellController : IDisposable
     /// </summary>
     private bool ReconcileDisplaysLocked(IReadOnlyList<DisplayInfo> displays)
     {
-        var principal = DisplayTopology.Principal(displays);
         foreach (var d in displays)
         {
             _displayNames[d.Key] = d.FriendlyName ?? d.DeviceName;
         }
 
-        var connected = displays.Where(d => d != principal).Select(d => d.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var plan = DisplayReconcile.Compute([.. _workspace.KnownDisplays], _workspace.IsDisplayMissing, displays, _principalKey);
+        _principalKey = plan.Principal ?? _principalKey;
         bool changed = false;
-        foreach (var known in _workspace.KnownDisplays)
+        foreach (var command in plan.Commands)
         {
-            bool present = connected.Contains(known);
-            bool wasMissing = _workspace.IsDisplayMissing(known);
-            Command command = present ? new DisplayAdded(known) : new DisplayRemoved(known);
             changed |= _workspace.Execute(command).Effects.Count > 0;
-            if (present && wasMissing)
+        }
+
+        foreach (var e in plan.Events)
+        {
+            _displayEvents.Add(e switch
             {
-                _displayEvents.Add($"Volvió {NameOf(known)}: sus ventanas regresan a él.");
-            }
-            else if (!present && !wasMissing)
-            {
-                _displayEvents.Add($"Se desconectó {NameOf(known)}: sus ventanas pasan a los paneles del principal hasta que vuelva.");
-            }
+                DisplayReturned r => $"Volvió {NameOf(r.Display)}: sus ventanas regresan a él.",
+                DisplayLost l => $"Se desconectó {NameOf(l.Display)}: sus ventanas pasan a los paneles del principal hasta que vuelva.",
+                PrincipalChanged { PreviousConnected: false } p =>
+                    $"Se desconectó el principal ({NameOf(p.Previous)}): {NameOf(p.Current)} hace de principal, con el Centro y todas las ventanas, hasta que vuelva.",
+                PrincipalChanged p => $"{NameOf(p.Current)} vuelve a ser el principal; {NameOf(p.Previous)} recupera sus paneles.",
+                _ => e.ToString(),
+            });
         }
 
         return changed;
     }
+
+    /// <summary>El monitor principal de la última reconciliación (M2: si cambia, se avisa).</summary>
+    private string? _principalKey;
 
     private readonly Dictionary<string, string> _displayNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _displayEvents = [];

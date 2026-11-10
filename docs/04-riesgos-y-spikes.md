@@ -428,6 +428,35 @@ Encontrado aquí y ya corregido:
 
 Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
 
+### Suspensión y pérdida del monitor principal (M2, 2026-11-10)
+
+**Suspensión.** La ventana oculta que ya escuchaba los cambios de monitores (S6) escucha también `WM_POWERBROADCAST`:
+
+- Al suspender empieza un cambio de monitores: el observador calla, como en S6.
+- Al reanudar (`PBT_APMRESUMEAUTOMATIC` o `PBT_APMRESUMESUSPEND`) espera 4 s más, porque los monitores llegan tarde y a ráfagas (y una tablet por wifi, aún más). Cada aviso de monitores reinicia la espera.
+- Después hace lo mismo que S6: refresca las ventanas, olvida las que se cerraron, reconcilia monitores y reaplica el layout. Los avisos de monitores que llegan mientras está dormido se ignoran.
+
+Probado sin suspender de verdad: se mandó el mensaje de energía a la ventana oculta, con Edge en Trabajo.
+
+| Caso | Resultado |
+| --- | --- |
+| Suspender y mover Edge a (60,60) | No se interpreta como un movimiento del usuario: Edge se queda donde la dejaron |
+| 2 s después de reanudar | Sigue esperando |
+| 7 s después de reanudar | Edge vuelve a su sitio en Trabajo. El estado dice «Volvió de la suspensión» |
+| Cerrar Edge mientras está dormido | Al reanudar se da por cerrada y sale de la lista |
+
+**Pérdida del monitor principal.** El principal es el de Windows. Si se desconecta, Windows nombra otro y ese pasa a tener el Centro. La comparación de monitores sale a `Core.Displays.DisplayReconcile`, con pruebas:
+
+- Si el nuevo principal era un auxiliar con paneles, sus paneles cuentan como desconectados y sus ventanas se juntan con las del principal.
+- Cuando vuelve el de antes, cada uno recupera lo suyo.
+- El aviso es uno solo («Se desconectó el principal… hace de principal»), en lugar de un «se desconectó» engañoso del monitor que en realidad pasó a principal.
+
+Pendiente, con el usuario:
+
+- una suspensión real con apps en paneles;
+- desconectar de verdad el monitor principal;
+- un monitor que vuelve, pero Windows no lo nombra principal otra vez: se quedaría como un auxiliar sin paneles hasta que el usuario cambie el principal en Windows.
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.
