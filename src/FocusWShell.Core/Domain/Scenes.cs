@@ -1,4 +1,4 @@
-using FocusWShell.Core.Layout;
+﻿using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Domain;
 
@@ -14,17 +14,83 @@ public enum ScenePlacement
 /// Una ventana de una escena guardada. No guarda el handle (cambia al reabrir la app), sino cómo
 /// reconocerla: la app (AUMID o ejecutable) y una pista de título.
 /// </summary>
+/// <param name="PanelId">Panel de la escena al que pertenece.</param>
+public sealed record SceneWindow(string AppKey, string Label, string TitleHint, string? PanelId, ScenePlacement Placement)
+{
+    /// <summary>Formato anterior (sin paneles): "Context" o "Work". Sólo para migrar escenas viejas.</summary>
+    public string? Home { get; init; }
+
+    /// <summary>Formato anterior: monitor auxiliar por orden. Sólo para migrar escenas viejas.</summary>
+    public int? AuxIndex { get; init; }
+}
+
+/// <summary>Un panel de una escena guardada.</summary>
 /// <param name="AuxIndex">
 /// Monitor auxiliar, contado de izquierda a derecha desde 1, o <c>null</c> para el principal. No se usa
-/// <c>\\.\DISPLAYn</c> porque cambia al reconectar.
+/// la clave del monitor porque otra persona u otro equipo tendrá otros monitores.
 /// </param>
-public sealed record SceneWindow(string AppKey, string Label, string TitleHint, Home Home, ScenePlacement Placement, int? AuxIndex);
+public sealed record ScenePanel(string Id, string Name, int? AuxIndex, PanelSide Side, PanelTemplate Template);
 
-/// <summary>Template de un panel en una escena guardada.</summary>
-public sealed record ScenePanelTemplate(int? AuxIndex, Home Home, PanelTemplate Template);
+/// <summary>Template de un panel en el formato anterior de las escenas (antes de los paneles).</summary>
+public sealed record ScenePanelTemplate(int? AuxIndex, string Home, PanelTemplate Template);
 
-/// <summary>Una actividad con nombre: qué ventanas, en qué panel y con qué templates.</summary>
-public sealed record SavedScene(string Name, IReadOnlyList<SceneWindow> Windows, IReadOnlyList<ScenePanelTemplate> Templates);
+/// <summary>Una actividad con nombre: qué paneles, qué ventanas y en qué panel va cada una.</summary>
+public sealed record SavedScene(string Name, IReadOnlyList<SceneWindow> Windows)
+{
+    public IReadOnlyList<ScenePanel> Panels { get; init; } = [];
+
+    /// <summary>Formato anterior. Sólo para migrar escenas viejas.</summary>
+    public IReadOnlyList<ScenePanelTemplate> Templates { get; init; } = [];
+
+    /// <summary>
+    /// Convierte una escena del formato anterior (Contexto/Trabajo + monitor auxiliar por orden) al de
+    /// paneles. Una escena ya convertida se devuelve tal cual.
+    /// </summary>
+    public SavedScene Upgrade()
+    {
+        if (Panels.Count > 0 || Windows.All(w => w.PanelId is not null))
+        {
+            return this;
+        }
+
+        static string IdOf(string? home, int? aux) =>
+            (home, aux) switch
+            {
+                ("Context", null) => Workspace.ContextPanel,
+                (_, null) => Workspace.WorkPanel,
+                ("Context", { } i) => $"aux{i}-contexto",
+                (_, { } i) => $"aux{i}-trabajo",
+            };
+
+        var panels = new List<ScenePanel>
+        {
+            new(Workspace.ContextPanel, "Contexto", null, PanelSide.Left, PanelTemplate.Tiles),
+            new(Workspace.WorkPanel, "Trabajo", null, PanelSide.Right, PanelTemplate.Tiles),
+        };
+        foreach (var aux in Windows.Where(w => w.AuxIndex is not null).Select(w => (w.Home, w.AuxIndex)).Distinct())
+        {
+            bool context = aux.Home == "Context";
+            panels.Add(new ScenePanel(IdOf(aux.Home, aux.AuxIndex), context ? "Contexto" : "Trabajo", aux.AuxIndex,
+                context ? PanelSide.Left : PanelSide.Right, PanelTemplate.Tiles));
+        }
+
+        foreach (var t in Templates)
+        {
+            int i = panels.FindIndex(p => p.Id == IdOf(t.Home, t.AuxIndex));
+            if (i >= 0 && (t.AuxIndex is not null || t.Template != PanelTemplate.Fill))
+            {
+                panels[i] = panels[i] with { Template = t.Template };
+            }
+        }
+
+        return this with
+        {
+            Windows = Windows.Select(w => w with { PanelId = IdOf(w.Home, w.AuxIndex), Home = null, AuxIndex = null }).ToList(),
+            Panels = panels,
+            Templates = [],
+        };
+    }
+}
 
 /// <summary>Una ventana abierta, tal como la ve el emparejador.</summary>
 public sealed record OpenWindow(nint Handle, string AppKey, string Title);
@@ -32,8 +98,8 @@ public sealed record OpenWindow(nint Handle, string AppKey, string Title);
 /// <summary>Resultado de emparejar una escena con las ventanas abiertas.</summary>
 public sealed record SceneMatch(IReadOnlyList<(SceneWindow Entry, OpenWindow Window)> Matched, IReadOnlyList<SceneWindow> Missing);
 
-/// <summary>Una ventana tal como queda al aplicar una escena (ya con handle y monitor resueltos).</summary>
-public sealed record SceneEntry(nint Handle, string Label, Home Home, ScenePlacement Placement, string? Display);
+/// <summary>Una ventana tal como queda al aplicar una escena (ya con handle).</summary>
+public sealed record SceneEntry(nint Handle, string Label, string PanelId, ScenePlacement Placement);
 
 public static class SceneMatcher
 {

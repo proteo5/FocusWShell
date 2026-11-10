@@ -39,7 +39,13 @@ public sealed record PanelInput(
     double Weight,
     PanelTemplate Template,
     IReadOnlyList<LayoutWindow> Windows,
-    bool OuterEdgeShared = false);
+    bool OuterEdgeShared = false)
+{
+    /// <summary>Nombre visible del panel, para las notas. Si no se da, el identificador (<see cref="Name"/>).</summary>
+    public string? Title { get; init; }
+
+    public string DisplayTitle => Title ?? Name;
+}
 
 /// <summary>Escena de tres columnas: panel izquierdo | Centro | panel derecho.</summary>
 /// <param name="MinCenterFraction">

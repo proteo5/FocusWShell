@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 
 namespace FocusWShell.Core.Tests.Domain;
 
@@ -13,10 +13,10 @@ public class WorkspaceTests
     private static Workspace Sample()
     {
         var ws = new Workspace();
-        ws.Execute(new Adopt(Slack, "Slack", Home.Context));
-        ws.Execute(new Adopt(Explorer, "Explorer", Home.Work));
-        ws.Execute(new Adopt(GitHub, "GitHub", Home.Work));
-        ws.Execute(new Adopt(Edge, "Edge", Home.Work));
+        ws.Execute(new Adopt(Slack, "Slack", Workspace.ContextPanel));
+        ws.Execute(new Adopt(Explorer, "Explorer", Workspace.WorkPanel));
+        ws.Execute(new Adopt(GitHub, "GitHub", Workspace.WorkPanel));
+        ws.Execute(new Adopt(Edge, "Edge", Workspace.WorkPanel));
         return ws;
     }
 
@@ -33,13 +33,13 @@ public class WorkspaceTests
     {
         var ws = new Workspace();
 
-        var outcome = ws.Execute(new Adopt(Slack, "Slack", Home.Context));
+        var outcome = ws.Execute(new Adopt(Slack, "Slack", Workspace.ContextPanel));
 
         Assert.True(outcome.Accepted);
         Assert.Collection(outcome.Effects,
             e => Assert.Equal(new CaptureOriginal(Slack), e),
             e => Assert.IsType<ApplyLayout>(e));
-        Assert.Equal(new ManagedWindow(Slack, "Slack", Home.Context, Placement.InPanel), ws.Find(Slack));
+        Assert.Equal(new ManagedWindow(Slack, "Slack", Workspace.ContextPanel, Placement.InPanel), ws.Find(Slack));
     }
 
     [Fact]
@@ -47,10 +47,10 @@ public class WorkspaceTests
     {
         var ws = Sample();
 
-        var outcome = ws.Execute(new Adopt(Slack, "Slack", Home.Work));
+        var outcome = ws.Execute(new Adopt(Slack, "Slack", Workspace.WorkPanel));
 
         Assert.False(outcome.Accepted);
-        Assert.Equal(Home.Context, ws.Find(Slack)!.Home);
+        Assert.Equal(Workspace.ContextPanel, ws.Find(Slack)!.PanelId);
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class WorkspaceTests
         Assert.Contains(outcome.Effects, e => e is ApplyLayout);
         Assert.Equal(Edge, ws.Composition.Center);
         Assert.Equal([Explorer, GitHub], ws.Composition.Work);
-        Assert.Equal(Home.Work, ws.Find(Edge)!.Home);
+        Assert.Equal(Workspace.WorkPanel, ws.Find(Edge)!.PanelId);
         AssertInvariants(ws);
     }
 
@@ -103,7 +103,7 @@ public class WorkspaceTests
         ws.Execute(new Promote(Edge));
 
         Assert.Equal([Slack], ws.Composition.Context);
-        Assert.Equal(Home.Context, ws.Find(Slack)!.Home);
+        Assert.Equal(Workspace.ContextPanel, ws.Find(Slack)!.PanelId);
     }
 
     [Fact]
@@ -181,13 +181,13 @@ public class WorkspaceTests
         var ws = Sample();
         var before = ws.Windows.Where(w => w.Handle != Explorer).ToList();
 
-        var outcome = ws.Execute(new SendTo(Explorer, Home.Context));
+        var outcome = ws.Execute(new SendTo(Explorer, Workspace.ContextPanel));
 
         Assert.True(outcome.Accepted);
         Assert.Equal([Slack, Explorer], ws.Composition.Context);
         Assert.Equal([GitHub, Edge], ws.Composition.Work);
         // Invariante 3: sólo cambia el hogar de la ventana nombrada.
-        Assert.All(before, w => Assert.Equal(w.Home, ws.Find(w.Handle)!.Home));
+        Assert.All(before, w => Assert.Equal(w.PanelId, ws.Find(w.Handle)!.PanelId));
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class WorkspaceTests
         var ws = Sample();
         ws.Execute(new Promote(Edge));
 
-        var outcome = ws.Execute(new SendTo(Edge, Home.Context));
+        var outcome = ws.Execute(new SendTo(Edge, Workspace.ContextPanel));
         Assert.DoesNotContain(outcome.Effects, e => e is ApplyLayout); // sigue en el Centro
 
         ws.Execute(new ReturnToPanel(Edge));

@@ -51,10 +51,10 @@ public static class AuxLayoutEngine
                 }
             }
 
-            var hidden = panels.Where(p => p != fill).Select(p => p.Name).ToList();
+            var hidden = panels.Where(p => p != fill).Select(p => p.DisplayTitle).ToList();
             if (hidden.Count > 0)
             {
-                notes.Add($"{main.Label} ocupa el monitor ({fill.Name} en Fill); {string.Join(" y ", hidden)} se minimiza.");
+                notes.Add($"{main.Label} ocupa el monitor ({fill.DisplayTitle} en Fill); {string.Join(" y ", hidden)} se minimiza.");
             }
 
             return new AuxLayoutResult(
@@ -88,7 +88,7 @@ public static class AuxLayoutEngine
             foreach (var w in tooWide)
             {
                 targets.Add(new WindowTarget(w.Handle, w.Label, resolved[i].Panel.Name, TargetKind.Minimized, default));
-                notes.Add($"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {resolved[i].Panel.Name} puede tener como mucho {max} en este monitor; se minimiza y queda fuera del layout.");
+                notes.Add($"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {resolved[i].Panel.DisplayTitle} puede tener como mucho {max} en este monitor; se minimiza y queda fuera del layout.");
             }
 
             var remaining = resolved[i].Panel with { Windows = resolved[i].Panel.Windows.Except(tooWide).ToList() };
@@ -124,7 +124,7 @@ public static class AuxLayoutEngine
             if (widths[i] > ideal[i])
             {
                 var widest = resolved[i].Visible.MaxBy(w => w.MinSize?.Width ?? 0)!;
-                notes.Add($"{resolved[i].Panel.Name} se amplió a {widths[i]} px porque {widest.Label} necesita {resolved[i].RequiredWidth} px de ancho.");
+                notes.Add($"{resolved[i].Panel.DisplayTitle} se amplió a {widths[i]} px porque {widest.Label} necesita {resolved[i].RequiredWidth} px de ancho.");
             }
         }
 

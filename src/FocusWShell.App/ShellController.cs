@@ -44,8 +44,8 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Minimized, [Park]) => $"{Label}: la minimizaste; queda estacionada en su panel.",
         (ExternalChange.Shown, [Restore]) => $"{Label}: la abriste desde la barra de tareas; vuelve a su panel.",
         (ExternalChange.Shown, [MakeActiveInPanel]) => $"{Label}: la abriste; pasa a ser la visible de su panel.",
-        (ExternalChange.Maximized, [MakeActiveInPanel, SetTemplate]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
-        (ExternalChange.Unmaximized, [SetTemplate]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
+        (ExternalChange.Maximized, [MakeActiveInPanel, SetPresentation]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
+        (ExternalChange.Unmaximized, [SetPresentation]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
         (_, [Detach]) => $"{Label}: la moviste tú; queda fuera de layout hasta que la reencajes.",
         _ => $"{Label}: {Change}.",
@@ -172,16 +172,13 @@ public sealed class ShellController : IDisposable
                         Placement.Parked => ScenePlacement.Parked,
                         _ => ScenePlacement.InPanel,
                     };
-                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.Home, placement, AuxIndex(w.Display));
+                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.PanelId, placement);
                 })
                 .ToList();
-            var displays = new List<string?> { null };
-            displays.AddRange(_workspace.Windows.Where(w => w.Display is not null).Select(w => w.Display).Distinct());
-            var templates = displays
-                .SelectMany(d => new[] { Home.Context, Home.Work }.Select(h => new ScenePanelTemplate(AuxIndex(d), h, _workspace.TemplateOf(d, h))))
-                .Where(t => t.AuxIndex is not null || t.Template != PanelTemplate.Fill)
+            var panels = _workspace.Panels
+                .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template))
                 .ToList();
-            scene = new SavedScene(name.Trim(), windows, templates);
+            scene = new SavedScene(name.Trim(), windows) { Panels = panels };
         }
 
         Scenes.Upsert(scene);
@@ -195,7 +192,7 @@ public sealed class ShellController : IDisposable
     /// </summary>
     public SceneResult ApplySavedScene(string name)
     {
-        var scene = Scenes.Load().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+        var scene = Scenes.Load().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))?.Upgrade();
         if (scene is null)
         {
             return new SceneResult(name, new ControllerResult([$"No existe la escena \"{name}\"."], [], null), [], []);
@@ -224,13 +221,12 @@ public sealed class ShellController : IDisposable
         }
 
         var entries = match.Matched
-            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.Home, m.Entry.Placement, DisplayOf(m.Entry.AuxIndex)))
+            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.PanelId ?? Workspace.WorkPanel, m.Entry.Placement))
             .ToList();
-        var templates = scene.Templates
-            .Where(t => t.AuxIndex is null || t.AuxIndex <= aux.Count)
-            .Select(t => (DisplayOf(t.AuxIndex), t.Home, t.Template))
+        var panels = scene.Panels
+            .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template))
             .ToList();
-        var result = Execute(new ApplyScene(entries, templates));
+        var result = Execute(new ApplyScene(entries, panels));
         return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
     }
 
@@ -545,10 +541,15 @@ public sealed class ShellController : IDisposable
             c.Center is { } center && _snapshots.TryGetValue(center, out var w) ? w : null,
             Map(c.Work))
         {
+            ContextId = c.Left?.Panel.Id ?? Workspace.ContextPanel,
+            ContextTitle = c.Left?.Panel.Name ?? "Contexto",
+            WorkId = c.Right?.Panel.Id ?? Workspace.WorkPanel,
+            WorkTitle = c.Right?.Panel.Name ?? "Trabajo",
             Parked = Map(c.Parked),
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
-                    displays.First(d => d.Key == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))
+                    displays.First(d => d.Key == a.Display),
+                    a.Panels.Select(v => new PanelAssignment(v.Panel.Id, v.Panel.Name, v.Panel.Side, v.Panel.Template, Map(v.Windows))).ToList()))
                 .ToList(),
         };
         var options = new SceneOptions
@@ -571,11 +572,21 @@ public sealed class ShellController : IDisposable
         return displays.Where(d => d != principal).ToList();
     }
 
-    public PanelTemplate TemplateOf(string? display, Home home)
+    /// <summary>Copia de los paneles, para la UI.</summary>
+    public IReadOnlyList<Panel> Panels()
     {
         lock (_gate)
         {
-            return _workspace.TemplateOf(display, home);
+            return [.. _workspace.Panels];
+        }
+    }
+
+    /// <summary>Panel donde se coloca de verdad una ventana (el suyo o, si su monitor falta, el del principal).</summary>
+    public Panel EffectivePanel(ManagedWindow window)
+    {
+        lock (_gate)
+        {
+            return _workspace.EffectivePanel(window);
         }
     }
 }

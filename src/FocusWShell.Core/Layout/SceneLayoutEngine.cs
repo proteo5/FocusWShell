@@ -145,7 +145,7 @@ public static class SceneLayoutEngine
             {
                 template = PanelTemplate.Stack;
                 notes.Add(
-                    $"{panel.Name}: sus {windows.Count} ventanas necesitan {needed} px de alto y hay {height}; " +
+                    $"{panel.DisplayTitle}: sus {windows.Count} ventanas necesitan {needed} px de alto y hay {height}; " +
                     "se muestran como pila.");
             }
         }
@@ -171,7 +171,7 @@ public static class SceneLayoutEngine
 
         centerWidth -= take;
         var widest = resolved.Visible.MaxBy(w => w.MinSize?.Width ?? 0)!;
-        notes.Add($"{panel.Name} se amplió {take} px (el Centro queda en {centerWidth} px) porque {widest.Label} necesita {needed} px de ancho.");
+        notes.Add($"{panel.DisplayTitle} se amplió {take} px (el Centro queda en {centerWidth} px) porque {widest.Label} necesita {needed} px de ancho.");
         return width + take;
     }
 
@@ -187,7 +187,7 @@ public static class SceneLayoutEngine
         for (int i = 0; i < resolved.Visible.Count; i++)
         {
             var w = resolved.Visible[i];
-            var rect = AnchorOutward(w, rows[i], panel.Side, notes, panel.Name);
+            var rect = AnchorOutward(w, rows[i], panel.Side, notes, panel.DisplayTitle);
             targets.Add(new WindowTarget(w.Handle, w.Label, panel.Name, TargetKind.Visible, rect));
         }
 

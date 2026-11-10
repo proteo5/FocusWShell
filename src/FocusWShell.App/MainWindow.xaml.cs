@@ -10,22 +10,19 @@ using FocusWShell.Win32.Scenes;
 
 namespace FocusWShell.App;
 
-/// <summary>Lista de ventanas, roles y comandos de M0. El estado real vive en el modelo del controlador.</summary>
+/// <summary>Lista de ventanas, paneles y comandos. El estado real vive en el modelo del controlador.</summary>
 public partial class MainWindow : Window
 {
     private readonly ShellController _controller;
     private readonly ObservableCollection<WindowRow> _rows = [];
 
-    /// <summary>Roles que el usuario ha cambiado y aún no ha aplicado, por handle.</summary>
-    private readonly Dictionary<nint, SceneRole> _pending = [];
+    /// <summary>Destinos que el usuario ha cambiado y aún no ha aplicado, por handle.</summary>
+    private readonly Dictionary<nint, string> _pending = [];
 
-    /// <summary>Monitores que el usuario ha cambiado y aún no ha aplicado, por handle.</summary>
-    private readonly Dictionary<nint, string> _pendingDisplay = [];
+    private bool _buildingPanels;
 
-    private bool _buildingTemplates;
-
-    /// <summary>Opciones de la columna Monitor: el principal y cada auxiliar conectado.</summary>
-    public ObservableCollection<DisplayOption> DisplayOptions { get; } = [];
+    /// <summary>Opciones de la columna Panel: libre, al foco y cada panel.</summary>
+    public ObservableCollection<AssignmentOption> AssignmentOptions { get; } = [];
 
     public MainWindow(ShellController controller)
     {
@@ -63,20 +60,36 @@ public partial class MainWindow : Window
         Activate();
     }
 
-    /// <summary>Rol que el modelo da a una ventana gestionada.</summary>
-    private static SceneRole RoleOf(ManagedWindow m) => m.Placement == Placement.Center
-        ? SceneRole.Center
-        : m.Home == Home.Context ? SceneRole.Context : SceneRole.Work;
+    /// <summary>Destino que el modelo da a una ventana gestionada.</summary>
+    private static string AssignmentOf(ManagedWindow m) =>
+        m.Placement == Placement.Center ? AssignmentOption.Focus : m.PanelId;
 
-    private static string StateOf(ManagedWindow? m) => m switch
+    private string StateOf(ManagedWindow? m, Dictionary<string, Panel> panels)
     {
-        null => "",
-        { Placement: Placement.Parked } => m.Display is null ? "Estacionada" : "Estacionada (auxiliar)",
-        { Detached: true } => "Fuera de layout",
-        { Placement: Placement.Center } => $"Centro (vuelve a {(m.Home == Home.Context ? "Contexto" : "Trabajo")}{(m.Display is null ? "" : " auxiliar")})",
-        { Home: Home.Context } => m.Display is null ? "En Contexto" : "En Contexto auxiliar",
-        _ => m.Display is null ? "En Trabajo" : "En Trabajo auxiliar",
-    };
+        if (m is null)
+        {
+            return "";
+        }
+
+        string name = panels.TryGetValue(m.PanelId, out var p) ? p.Name : m.PanelId;
+        string missing = p is not null && _controller.IsDisplayMissing(p.Display) ? " (monitor desconectado)" : "";
+        return m switch
+        {
+            { Placement: Placement.Parked } => $"Estacionada en {name}{missing}",
+            { Detached: true } => "Fuera de layout",
+            { Placement: Placement.Center } => $"Foco (vuelve a {name})",
+            _ => $"En {name}{missing}",
+        };
+    }
+
+    /// <summary>Nombre de un monitor para la UI.</summary>
+    private static string DisplayName(string? key, IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux) =>
+        key is null ? "Principal" : aux.FirstOrDefault(d => d.Key == key) is { } d ? d.FriendlyName ?? d.DeviceName.TrimStart('\\', '.') : "monitor desconectado";
+
+    private static string LocationLabel(Panel p, IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux) =>
+        p.Display is null
+            ? $"principal, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")} del foco"
+            : $"{DisplayName(p.Display, aux)}, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}";
 
     public void Refresh()
     {
@@ -85,16 +98,18 @@ public partial class MainWindow : Window
         HeaderText.Text =
             $"Principal {display.FriendlyName ?? display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
             string.Concat(aux.Select(a => $"   ·   Auxiliar {a.FriendlyName ?? a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
-            "Atajos Ctrl+Alt+Mayús: ↑ al Centro · ← anterior · ↓ Centro al panel · P pantalla encendida · Retroceso restaurar todas";
+            "Atajos Ctrl+Alt+Mayús: ↑ al foco · ← anterior · ↓ foco al panel · P pantalla encendida · Retroceso restaurar todas";
 
-        DisplayOptions.Clear();
-        DisplayOptions.Add(new DisplayOption(DisplayOption.PrincipalKey, $"Principal ({display.WorkArea.Width}×{display.WorkArea.Height})"));
-        foreach (var a in aux)
+        var panels = _controller.Panels();
+        AssignmentOptions.Clear();
+        AssignmentOptions.Add(new AssignmentOption(AssignmentOption.Free, "— libre"));
+        AssignmentOptions.Add(new AssignmentOption(AssignmentOption.Focus, "Al foco"));
+        foreach (var p in panels)
         {
-            DisplayOptions.Add(new DisplayOption(a.Key, $"{a.FriendlyName ?? a.DeviceName.TrimStart('\\', '.')} ({a.WorkArea.Width}×{a.WorkArea.Height})"));
+            AssignmentOptions.Add(new AssignmentOption(p.Id, $"{p.Name} ({LocationLabel(p, aux)})"));
         }
 
-        BuildTemplates(aux);
+        BuildPanels(panels, aux);
 
         var selected = (WindowList.SelectedItem as WindowRow)?.Snapshot.Handle;
         foreach (var row in _rows)
@@ -105,15 +120,12 @@ public partial class MainWindow : Window
         _rows.Clear();
         var windows = _controller.Refresh();
         var managed = _controller.Managed().ToDictionary(m => m.Handle);
+        var byId = panels.ToDictionary(p => p.Id);
         foreach (var w in windows)
         {
             managed.TryGetValue(w.Handle, out var m);
-            var role = _pending.TryGetValue(w.Handle, out var p) ? p : m is null ? SceneRole.None : RoleOf(m);
-            var row = new WindowRow(w, role)
-            {
-                State = StateOf(m) + (m is not null && _controller.IsDisplayMissing(m.Display) ? " (monitor desconectado)" : ""),
-                Display = _pendingDisplay.TryGetValue(w.Handle, out var pd) ? pd : DisplayOption.FromModel(m?.Display),
-            };
+            var assignment = _pending.TryGetValue(w.Handle, out var p) ? p : m is null ? AssignmentOption.Free : AssignmentOf(m);
+            var row = new WindowRow(w, assignment) { State = StateOf(m, byId) };
             row.PropertyChanged += Row_PropertyChanged;
             _rows.Add(row);
         }
@@ -123,103 +135,176 @@ public partial class MainWindow : Window
             _pending.Remove(gone);
         }
 
-        foreach (var gone in _pendingDisplay.Keys.Except(windows.Select(w => w.Handle)).ToList())
-        {
-            _pendingDisplay.Remove(gone);
-        }
-
         WindowList.SelectedItem = _rows.FirstOrDefault(r => r.Snapshot.Handle == selected);
     }
 
-    /// <summary>Un selector de template por panel: el principal admite Tiles y Pila; los auxiliares, además Fill.</summary>
-    private void BuildTemplates(IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux)
+    /// <summary>
+    /// Sección de paneles (ADR 0011): una fila por panel para renombrarlo, moverlo, cambiar su
+    /// presentación o borrarlo, y una fila para crear uno nuevo.
+    /// </summary>
+    private void BuildPanels(IReadOnlyList<Panel> panels, IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux)
     {
-        _buildingTemplates = true;
-        TemplatesPanel.Children.Clear();
-        TemplatesPanel.Children.Add(new System.Windows.Controls.TextBlock
-        {
-            Text = "Templates:",
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 8, 0),
-        });
+        _buildingPanels = true;
+        PanelsList.Children.Clear();
 
-        void Add(string? display, string label, Home home, bool allowFill)
+        // Ubicaciones posibles: el principal a cada lado del foco y cada auxiliar conectado.
+        var locations = new List<(string? Display, PanelSide Side, string Label)>
         {
-            var options = new List<(PanelTemplate Template, string Label)> { (PanelTemplate.Tiles, "Tiles"), (PanelTemplate.Stack, "Pila") };
-            if (allowFill)
+            (null, PanelSide.Left, "Principal · izquierda del foco"),
+            (null, PanelSide.Right, "Principal · derecha del foco"),
+        };
+        foreach (var a in aux)
+        {
+            string name = DisplayName(a.Key, aux);
+            locations.Add((a.Key, PanelSide.Left, $"{name} · izquierda"));
+            locations.Add((a.Key, PanelSide.Right, $"{name} · derecha"));
+        }
+
+        var presentations = new List<(PanelTemplate Template, string Label)>
+        {
+            (PanelTemplate.Tiles, "Tiles"),
+            (PanelTemplate.Stack, "Pestañas"),
+            (PanelTemplate.Fill, "Pantalla completa"),
+        };
+
+        System.Windows.Controls.ComboBox LocationCombo(string label, string? display, PanelSide side)
+        {
+            var options = locations.ToList();
+            if (display is not null && !options.Any(o => o.Display == display))
             {
-                options.Add((PanelTemplate.Fill, "Fill (maximizada)"));
+                options.Add((display, side, $"{DisplayName(display, aux)} · {(side == PanelSide.Left ? "izquierda" : "derecha")}"));
             }
 
             var combo = new System.Windows.Controls.ComboBox
             {
-                Width = 140,
-                Margin = new Thickness(0, 0, 16, 0),
+                Width = 230,
+                Margin = new Thickness(0, 0, 8, 0),
                 ItemsSource = options.Select(o => o.Label).ToList(),
-                SelectedIndex = Math.Max(0, options.FindIndex(o => o.Template == _controller.TemplateOf(display, home))),
+                SelectedIndex = Math.Max(0, options.FindIndex(o => o.Display == display && o.Side == side)),
+                Tag = options,
             };
-            System.Windows.Automation.AutomationProperties.SetName(combo, $"Template de {label}");
-            combo.SelectionChanged += async (_, _) =>
+            System.Windows.Automation.AutomationProperties.SetName(combo, label);
+            return combo;
+        }
+
+        foreach (var panel in panels)
+        {
+            var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+            var name = new System.Windows.Controls.TextBox { Text = panel.Name, Width = 160, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
+            System.Windows.Automation.AutomationProperties.SetName(name, $"Nombre del panel {panel.Name}");
+            name.LostFocus += async (_, _) =>
             {
-                if (_buildingTemplates || combo.SelectedIndex < 0)
+                if (name.Text.Trim() != panel.Name && name.Text.Trim().Length > 0)
+                {
+                    await Run(() => _controller.Execute(new RenamePanel(panel.Id, name.Text)));
+                    Refresh();
+                }
+            };
+
+            var location = LocationCombo($"Ubicación del panel {panel.Name}", panel.Display, panel.Side);
+            location.SelectionChanged += async (_, _) =>
+            {
+                if (_buildingPanels || location.Tag is not List<(string? Display, PanelSide Side, string Label)> options || location.SelectedIndex < 0)
                 {
                     return;
                 }
 
-                var template = options[combo.SelectedIndex].Template;
-                await Run(() => _controller.Execute(new SetTemplate(display, home, template)));
+                var (d, s, _) = options[location.SelectedIndex];
+                await Run(() => _controller.Execute(new MovePanel(panel.Id, d, s)));
                 Refresh();
             };
-            TemplatesPanel.Children.Add(new System.Windows.Controls.TextBlock
+
+            var presentation = new System.Windows.Controls.ComboBox
             {
-                Text = label,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 4, 0),
-            });
-            TemplatesPanel.Children.Add(combo);
+                Width = 150,
+                Margin = new Thickness(0, 0, 8, 0),
+                ItemsSource = presentations.Select(o => o.Label).ToList(),
+                SelectedIndex = Math.Max(0, presentations.FindIndex(o => o.Template == panel.Template)),
+            };
+            System.Windows.Automation.AutomationProperties.SetName(presentation, $"Presentación del panel {panel.Name}");
+            presentation.SelectionChanged += async (_, _) =>
+            {
+                if (_buildingPanels || presentation.SelectedIndex < 0)
+                {
+                    return;
+                }
+
+                var template = presentations[presentation.SelectedIndex].Template;
+                await Run(() => _controller.Execute(new SetPresentation(panel.Id, template)));
+                Refresh();
+            };
+
+            var delete = new System.Windows.Controls.Button { Content = "Borrar", Padding = new Thickness(8, 1, 8, 1) };
+            System.Windows.Automation.AutomationProperties.SetName(delete, $"Borrar el panel {panel.Name}");
+            delete.Click += async (_, _) =>
+            {
+                if (MessageBox.Show($"¿Borrar el panel «{panel.Name}»? Sus ventanas quedan libres, donde estén.", "FocusWShell",
+                        MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    await Run(() => _controller.Execute(new DeletePanel(panel.Id)));
+                    Refresh();
+                }
+            };
+
+            row.Children.Add(name);
+            row.Children.Add(location);
+            row.Children.Add(presentation);
+            row.Children.Add(delete);
+            PanelsList.Children.Add(row);
         }
 
-        Add(null, "Principal · Contexto", Home.Context, allowFill: false);
-        Add(null, "Principal · Trabajo", Home.Work, allowFill: false);
-        foreach (var a in aux)
+        // Fila para crear un panel nuevo.
+        var create = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+        var newName = new System.Windows.Controls.TextBox { Width = 160, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
+        System.Windows.Automation.AutomationProperties.SetName(newName, "Nombre del panel nuevo");
+        var newLocation = LocationCombo("Ubicación del panel nuevo", aux.Count > 0 ? aux[0].Key : null, PanelSide.Right);
+        var add = new System.Windows.Controls.Button { Content = "Crear panel", Padding = new Thickness(8, 1, 8, 1) };
+        add.Click += async (_, _) =>
         {
-            string name = a.FriendlyName ?? a.DeviceName.TrimStart('\\', '.');
-            Add(a.Key, $"{name} · Contexto", Home.Context, allowFill: true);
-            Add(a.Key, $"{name} · Trabajo", Home.Work, allowFill: true);
-        }
+            if (string.IsNullOrWhiteSpace(newName.Text) || newLocation.Tag is not List<(string? Display, PanelSide Side, string Label)> options || newLocation.SelectedIndex < 0)
+            {
+                SetStatus("Escribe un nombre y elige dónde va el panel nuevo.");
+                return;
+            }
 
-        _buildingTemplates = false;
+            var (d, s, _) = options[newLocation.SelectedIndex];
+            string id = $"panel-{Guid.NewGuid():N}"[..14];
+            await Run(() => _controller.Execute(new CreatePanel(new Panel(id, newName.Text.Trim(), d, s))));
+            Refresh();
+        };
+        create.Children.Add(newName);
+        create.Children.Add(newLocation);
+        create.Children.Add(add);
+        PanelsList.Children.Add(create);
+        _buildingPanels = false;
     }
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is WindowRow changed && e.PropertyName == nameof(WindowRow.Display))
-        {
-            _pendingDisplay[changed.Snapshot.Handle] = changed.Display;
-            return;
-        }
-
-        if (sender is not WindowRow row || e.PropertyName != nameof(WindowRow.Role))
+        if (sender is not WindowRow row || e.PropertyName != nameof(WindowRow.Assignment))
         {
             return;
         }
 
-        _pending[row.Snapshot.Handle] = row.Role;
+        _pending[row.Snapshot.Handle] = row.Assignment;
 
-        // El Centro aloja una sola ventana: la que lo tenía vuelve a su hogar.
-        if (row.Role == SceneRole.Center)
+        // El foco aloja una sola ventana: la que lo tenía vuelve a su panel.
+        if (row.Assignment == AssignmentOption.Focus)
         {
             var managed = _controller.Managed().ToDictionary(m => m.Handle);
-            foreach (var other in _rows.Where(r => r != row && r.Role == SceneRole.Center))
+            foreach (var other in _rows.Where(r => r != row && r.Assignment == AssignmentOption.Focus))
             {
-                other.Role = managed.TryGetValue(other.Snapshot.Handle, out var m)
-                    ? (m.Home == Home.Context ? SceneRole.Context : SceneRole.Work)
-                    : SceneRole.None;
+                other.Assignment = managed.TryGetValue(other.Snapshot.Handle, out var m) ? m.PanelId : AssignmentOption.Free;
             }
         }
     }
 
-    /// <summary>Traduce los roles editados a comandos: liberar, adoptar o cambiar de panel, y promover al final.</summary>
+    /// <summary>Panel por defecto para una ventana que va al foco sin tener panel: el derecho del principal.</summary>
+    private string DefaultPanel() =>
+        _controller.Panels().FirstOrDefault(p => p.Display is null && p.Side == PanelSide.Right)?.Id
+        ?? _controller.Panels().First(p => p.Display is null).Id;
+
+    /// <summary>Traduce los destinos editados a comandos: liberar, adoptar o cambiar de panel, y al foco al final.</summary>
     private List<Command> PendingCommands()
     {
         var managed = _controller.Managed().ToDictionary(m => m.Handle);
@@ -230,42 +315,29 @@ public partial class MainWindow : Window
         {
             var h = row.Snapshot.Handle;
             managed.TryGetValue(h, out var m);
-            var current = m is null ? SceneRole.None : RoleOf(m);
-            var display = DisplayOption.ToModel(row.Display);
-            if (row.Role == current)
+            var current = m is null ? AssignmentOption.Free : AssignmentOf(m);
+            if (row.Assignment == current)
             {
-                // Mismo rol: quizá cambió el monitor del panel.
-                if (m is not null && m.Display != display && row.Role != SceneRole.None)
-                {
-                    moves.Add(new SendToDisplay(h, display));
-                }
-
                 continue;
             }
 
-            switch (row.Role)
+            switch (row.Assignment)
             {
-                case SceneRole.None:
+                case AssignmentOption.Free:
                     releases.Add(new Release(h));
                     break;
-                case SceneRole.Center:
-                    // El Centro está siempre en el principal; el monitor elegido es adonde vuelve.
+                case AssignmentOption.Focus:
                     if (m is null)
                     {
-                        moves.Add(new Adopt(h, row.App, Home.Work, display));
-                    }
-                    else if (m.Display != display)
-                    {
-                        moves.Add(new SendToDisplay(h, display));
+                        moves.Add(new Adopt(h, row.App, DefaultPanel()));
                     }
 
                     promote = new Promote(h);
                     break;
                 default:
-                    var home = row.Role == SceneRole.Context ? Home.Context : Home.Work;
                     if (m is null)
                     {
-                        moves.Add(new Adopt(h, row.App, home, display));
+                        moves.Add(new Adopt(h, row.App, row.Assignment));
                     }
                     else
                     {
@@ -274,11 +346,7 @@ public partial class MainWindow : Window
                             moves.Add(new ReturnToPanel(h));
                         }
 
-                        moves.Add(new SendTo(h, home));
-                        if (m.Display != display)
-                        {
-                            moves.Add(new SendToDisplay(h, display));
-                        }
+                        moves.Add(new SendTo(h, row.Assignment));
                     }
 
                     break;
@@ -296,7 +364,6 @@ public partial class MainWindow : Window
     private void Refresh_Click(object sender, RoutedEventArgs e)
     {
         _pending.Clear();
-        _pendingDisplay.Clear();
         Refresh();
     }
 
@@ -311,7 +378,6 @@ public partial class MainWindow : Window
 
         await Run(() => _controller.Execute(commands));
         _pending.Clear();
-        _pendingDisplay.Clear();
         Refresh();
     }
 
@@ -325,7 +391,7 @@ public partial class MainWindow : Window
 
         var h = row.Snapshot.Handle;
         bool managed = _controller.Managed().Any(m => m.Handle == h);
-        Command[] commands = managed ? [new Promote(h)] : [new Adopt(h, row.App, Home.Work), new Promote(h)];
+        Command[] commands = managed ? [new Promote(h)] : [new Adopt(h, row.App, DefaultPanel()), new Promote(h)];
         _pending.Remove(h);
         await Run(() => _controller.Execute(commands));
         Refresh();
@@ -430,7 +496,6 @@ public partial class MainWindow : Window
         }
 
         _pending.Clear();
-        _pendingDisplay.Clear();
         var result = await Task.Run(() => _controller.ApplySavedScene(name));
         SetStatus(result.Summary + Environment.NewLine + Describe(result.Result));
         Refresh();

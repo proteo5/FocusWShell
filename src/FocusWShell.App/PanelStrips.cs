@@ -27,11 +27,12 @@ public enum TabState
 public sealed record StripTab(nint Handle, string Label, TabState State);
 
 /// <summary>Tira de pestañas de un panel: dónde va (franja reservada) y qué muestra.</summary>
-/// <param name="Display">Monitor auxiliar, o <c>null</c> en el principal.</param>
+/// <param name="PanelId">Panel al que pertenece (ADR 0011).</param>
+/// <param name="Title">Nombre visible del panel.</param>
 /// <param name="Band">Franja en píxeles físicos, encima de las ventanas del panel.</param>
-public sealed record PanelStrip(string? Display, Home Home, string Title, PixelRect Band, int Dpi, IReadOnlyList<StripTab> Tabs)
+public sealed record PanelStrip(string PanelId, string Title, PixelRect Band, int Dpi, IReadOnlyList<StripTab> Tabs)
 {
-    public string Key => $"{Display ?? "principal"}|{Home}";
+    public string Key => PanelId;
 }
 
 /// <summary>Calcula las tiras a partir del modelo y del último plan aplicado.</summary>
@@ -48,52 +49,43 @@ public static class PanelStripBuilder
         ArgumentNullException.ThrowIfNull(auxDpi);
         var kinds = report.Applied.ToDictionary(a => a.Target.Handle, a => a.Target.Kind);
         var strips = new List<PanelStrip>();
-        var principal = report.Layout.Principal;
-        int top = principal.CenterColumn.Top;
 
-        void Add(string? display, Home home, string title, PixelRect column, int dpi)
+        void Add(Panel? panel, PixelRect column, int top, int dpi, PanelTemplate effective)
         {
-            if (column.Top <= top || column.IsEmpty)
+            // Sin franja reservada (p. ej. Fill) no hay tira.
+            if (panel is null || column.IsEmpty || column.Top <= top || effective == PanelTemplate.Fill)
             {
-                return; // Sin franja reservada (p. ej. Fill): no hay tira.
+                return;
             }
 
-            var tabs = TabsOf(workspace, kinds, display, home);
+            var tabs = TabsOf(workspace, kinds, panel.Id);
             if (tabs.Count > 0)
             {
-                strips.Add(new PanelStrip(display, home, title, new PixelRect(column.Left, top, column.Right, column.Top), dpi, tabs));
+                strips.Add(new PanelStrip(panel.Id, panel.Name, new PixelRect(column.Left, top, column.Right, column.Top), dpi, tabs));
             }
         }
 
-        Add(null, Home.Context, "Contexto", principal.LeftColumn, principalDpi);
-        Add(null, Home.Work, "Trabajo", principal.RightColumn, principalDpi);
+        var principal = report.Layout.Principal;
+        int principalTop = principal.CenterColumn.Top;
+        var composition = workspace.Composition;
+        Add(composition.Left?.Panel, principal.LeftColumn, principalTop, principalDpi, PanelTemplate.Tiles);
+        Add(composition.Right?.Panel, principal.RightColumn, principalTop, principalDpi, PanelTemplate.Tiles);
         foreach (var aux in report.Layout.Aux)
         {
-            int auxTop = aux.WorkArea.Top;
-            foreach (var (name, column) in aux.Columns)
+            foreach (var (panelId, column) in aux.Columns)
             {
-                var home = name == "Contexto" ? Home.Context : Home.Work;
-                if (aux.EffectiveTemplates.GetValueOrDefault(name) == PanelTemplate.Fill || column.Top <= auxTop)
-                {
-                    continue;
-                }
-
-                var tabs = TabsOf(workspace, kinds, aux.Display, home);
-                if (tabs.Count > 0)
-                {
-                    strips.Add(new PanelStrip(aux.Display, home, name, new PixelRect(column.Left, auxTop, column.Right, column.Top),
-                        auxDpi.GetValueOrDefault(aux.Display, 96), tabs));
-                }
+                Add(workspace.FindPanel(panelId), column, aux.WorkArea.Top, auxDpi.GetValueOrDefault(aux.Display, 96),
+                    aux.EffectiveTemplates.GetValueOrDefault(panelId));
             }
         }
 
         return strips;
     }
 
-    /// <summary>Pestañas de un panel, en el orden del modelo (el orden del panel).</summary>
-    private static List<StripTab> TabsOf(Workspace workspace, Dictionary<nint, TargetKind> kinds, string? display, Home home) =>
+    /// <summary>Pestañas de un panel, en el orden del modelo: las ventanas que se colocan en él.</summary>
+    private static List<StripTab> TabsOf(Workspace workspace, Dictionary<nint, TargetKind> kinds, string panelId) =>
         workspace.Windows
-            .Where(w => w.Display == display && w.Home == home)
+            .Where(w => workspace.EffectivePanel(w).Id == panelId)
             .Select(w => new StripTab(w.Handle, w.Label, w switch
             {
                 { Placement: Placement.Center } => TabState.InCenter,

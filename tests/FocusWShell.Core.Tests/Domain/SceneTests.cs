@@ -5,21 +5,23 @@ namespace FocusWShell.Core.Tests.Domain;
 
 public class SceneTests
 {
-    private static SceneWindow W(string app, string title, Home home, ScenePlacement placement = ScenePlacement.InPanel, int? aux = null) =>
-        new(app, app, title, home, placement, aux);
+    private const string Ctx = Workspace.ContextPanel;
+    private const string Wrk = Workspace.WorkPanel;
+
+    private static SceneWindow W(string app, string title, string panel, ScenePlacement placement = ScenePlacement.InPanel) =>
+        new(app, app, title, panel, placement);
+
+    // --- Emparejado ---------------------------------------------------------------------------
 
     private static readonly SavedScene Code = new(
         "Código",
         [
-            W("slack.exe", "RPDev - Slack", Home.Context),
-            W("msedge.exe", "Docs", Home.Work, ScenePlacement.Center),
-            W("explorer.exe", "Home", Home.Work),
-            W("githubdesktop.exe", "GitHub Desktop", Home.Work, ScenePlacement.Parked),
-            W("chatgpt.exe", "ChatGPT", Home.Work, aux: 1),
-        ],
-        [new ScenePanelTemplate(null, Home.Work, PanelTemplate.Stack), new ScenePanelTemplate(1, Home.Work, PanelTemplate.Fill)]);
-
-    // --- Emparejado ---------------------------------------------------------------------------
+            W("slack.exe", "RPDev - Slack", Ctx),
+            W("msedge.exe", "Docs", Wrk, ScenePlacement.Center),
+            W("explorer.exe", "Home", Wrk),
+            W("githubdesktop.exe", "GitHub Desktop", Wrk, ScenePlacement.Parked),
+            W("chatgpt.exe", "ChatGPT", "aux1-trabajo"),
+        ]);
 
     [Fact]
     public void MatchesByAppAndReportsMissing()
@@ -40,12 +42,8 @@ public class SceneTests
     [Fact]
     public void WithSeveralWindowsOfTheSameAppPrefersTheTitle()
     {
-        var scene = new SavedScene("Docs", [W("msedge.exe", "Jira", Home.Context), W("msedge.exe", "Docs", Home.Work, ScenePlacement.Center)], []);
-        var open = new List<OpenWindow>
-        {
-            new(1, "msedge.exe", "Docs"),
-            new(2, "msedge.exe", "Raid - List - Jira"),
-        };
+        var scene = new SavedScene("Docs", [W("msedge.exe", "Jira", Ctx), W("msedge.exe", "Docs", Wrk, ScenePlacement.Center)]);
+        var open = new List<OpenWindow> { new(1, "msedge.exe", "Docs"), new(2, "msedge.exe", "Raid - List - Jira") };
 
         var m = SceneMatcher.Match(scene, open);
 
@@ -56,7 +54,7 @@ public class SceneTests
     [Fact]
     public void ExactTitleWinsEvenIfAVagueHintComesFirst()
     {
-        var scene = new SavedScene("x", [W("msedge.exe", "", Home.Context), W("msedge.exe", "Docs", Home.Work)], []);
+        var scene = new SavedScene("x", [W("msedge.exe", "", Ctx), W("msedge.exe", "Docs", Wrk)]);
         var open = new List<OpenWindow> { new(1, "msedge.exe", "Docs"), new(2, "msedge.exe", "Otra") };
 
         var m = SceneMatcher.Match(scene, open);
@@ -68,7 +66,7 @@ public class SceneTests
     [Fact]
     public void EachOpenWindowIsUsedOnce()
     {
-        var scene = new SavedScene("x", [W("explorer.exe", "A", Home.Work), W("explorer.exe", "B", Home.Work)], []);
+        var scene = new SavedScene("x", [W("explorer.exe", "A", Wrk), W("explorer.exe", "B", Wrk)]);
 
         var m = SceneMatcher.Match(scene, [new OpenWindow(1, "explorer.exe", "Home")]);
 
@@ -76,22 +74,57 @@ public class SceneTests
         Assert.Single(m.Missing);
     }
 
+    // --- Migración del formato anterior --------------------------------------------------------
+
+    [Fact]
+    public void OldScenesAreUpgradedToPanels()
+    {
+        // Formato anterior: hogar Contexto/Trabajo, monitor auxiliar por orden y templates sueltos.
+        var old = new SavedScene(
+            "Código",
+            [
+                new SceneWindow("slack.exe", "Slack", "x", null, ScenePlacement.InPanel) { Home = "Context" },
+                new SceneWindow("msedge.exe", "Edge", "x", null, ScenePlacement.Center) { Home = "Work" },
+                new SceneWindow("chatgpt.exe", "ChatGPT", "x", null, ScenePlacement.InPanel) { Home = "Work", AuxIndex = 1 },
+            ])
+        {
+            Templates = [new ScenePanelTemplate(null, "Work", PanelTemplate.Stack), new ScenePanelTemplate(1, "Work", PanelTemplate.Fill)],
+        };
+
+        var s = old.Upgrade();
+
+        Assert.Equal([Ctx, Wrk, "aux1-trabajo"], s.Windows.Select(w => w.PanelId));
+        Assert.All(s.Windows, w => Assert.Null(w.Home));
+        Assert.Equal(PanelTemplate.Stack, s.Panels.Single(p => p.Id == Wrk).Template);
+        var aux = s.Panels.Single(p => p.Id == "aux1-trabajo");
+        Assert.Equal(1, aux.AuxIndex);
+        Assert.Equal(PanelTemplate.Fill, aux.Template);
+        Assert.Same(s, s.Upgrade()); // ya migrada: no cambia
+    }
+
     // --- ApplyScene -----------------------------------------------------------------------------
 
-    private static ApplyScene Apply(params SceneEntry[] entries) =>
-        new(entries, [(null, Home.Work, PanelTemplate.Stack), ("aux", Home.Work, PanelTemplate.Fill)]);
+    private static readonly IReadOnlyList<Panel> ScenePanels =
+    [
+        new(Ctx, "Contexto", null, PanelSide.Left),
+        new(Wrk, "Trabajo", null, PanelSide.Right, PanelTemplate.Stack),
+        new("aux-trabajo", "Monitoreo", "aux", PanelSide.Right, PanelTemplate.Fill),
+    ];
 
     [Fact]
     public void ApplySceneBuildsTheWholeModelAtOnce()
     {
         var ws = new Workspace();
 
-        var outcome = ws.Execute(Apply(
-            new SceneEntry(1, "Slack", Home.Context, ScenePlacement.InPanel, null),
-            new SceneEntry(2, "Edge", Home.Work, ScenePlacement.Center, null),
-            new SceneEntry(3, "Explorer", Home.Work, ScenePlacement.InPanel, null),
-            new SceneEntry(4, "GitHub", Home.Work, ScenePlacement.Parked, null),
-            new SceneEntry(5, "ChatGPT", Home.Work, ScenePlacement.InPanel, "aux")));
+        var outcome = ws.Execute(new ApplyScene(
+            [
+                new SceneEntry(1, "Slack", Ctx, ScenePlacement.InPanel),
+                new SceneEntry(2, "Edge", Wrk, ScenePlacement.Center),
+                new SceneEntry(3, "Explorer", Wrk, ScenePlacement.InPanel),
+                new SceneEntry(4, "GitHub", Wrk, ScenePlacement.Parked),
+                new SceneEntry(5, "ChatGPT", "aux-trabajo", ScenePlacement.InPanel),
+            ],
+            ScenePanels));
 
         var c = ws.Composition;
         Assert.Equal([1], c.Context);
@@ -100,7 +133,7 @@ public class SceneTests
         Assert.Equal([4], c.Parked);
         Assert.Equal([5], c.Aux.Single().Work);
         Assert.Equal(PanelTemplate.Stack, c.WorkTemplate);
-        Assert.Equal(PanelTemplate.Fill, c.Aux.Single().WorkTemplate);
+        Assert.Equal("Monitoreo", c.Aux.Single().Panels.Single().Panel.Name);
         Assert.Equal(5, outcome.Effects.OfType<CaptureOriginal>().Count());
         Assert.Contains(new Activate(2), outcome.Effects);
     }
@@ -109,13 +142,11 @@ public class SceneTests
     public void SwitchingScenesReleasesWindowsThatAreNotInTheNewOne()
     {
         var ws = new Workspace();
-        ws.Execute(Apply(
-            new SceneEntry(1, "Slack", Home.Context, ScenePlacement.InPanel, null),
-            new SceneEntry(2, "Edge", Home.Work, ScenePlacement.Center, null)));
+        ws.Execute(new ApplyScene([new SceneEntry(1, "Slack", Ctx, ScenePlacement.InPanel), new SceneEntry(2, "Edge", Wrk, ScenePlacement.Center)], ScenePanels));
 
         var outcome = ws.Execute(new ApplyScene(
-            [new SceneEntry(2, "Edge", Home.Context, ScenePlacement.InPanel, null), new SceneEntry(3, "Explorer", Home.Work, ScenePlacement.Center, null)],
-            []));
+            [new SceneEntry(2, "Edge", Ctx, ScenePlacement.InPanel), new SceneEntry(3, "Explorer", Wrk, ScenePlacement.Center)],
+            Workspace.DefaultPanels()));
 
         Assert.Contains(new RestoreOriginal(1), outcome.Effects);
         Assert.DoesNotContain(new CaptureOriginal(2), outcome.Effects); // ya estaba en el diario
@@ -123,7 +154,7 @@ public class SceneTests
         Assert.False(ws.IsManaged(1));
         Assert.Equal(3, ws.Composition.Center);
         Assert.Equal([2], ws.Composition.Context);
-        Assert.Equal(PanelTemplate.Tiles, ws.Composition.WorkTemplate); // los templates también cambian
+        Assert.Equal(PanelTemplate.Tiles, ws.Composition.WorkTemplate); // los paneles también cambian
         Assert.Equal([2], ws.CenterHistory); // "Volver a la anterior" lleva a Edge
     }
 
@@ -132,9 +163,21 @@ public class SceneTests
     {
         var ws = new Workspace();
 
-        ws.Execute(new ApplyScene([new SceneEntry(1, "A", Home.Work, ScenePlacement.InPanel, null)], [(null, Home.Work, PanelTemplate.Fill)]));
+        ws.Execute(new ApplyScene(
+            [new SceneEntry(1, "A", Wrk, ScenePlacement.InPanel)],
+            [new Panel(Ctx, "Contexto", null, PanelSide.Left), new Panel(Wrk, "Trabajo", null, PanelSide.Right, PanelTemplate.Fill)]));
 
         Assert.Equal(PanelTemplate.Tiles, ws.Composition.WorkTemplate);
+    }
+
+    [Fact]
+    public void UnknownPanelFallsBackToThePrincipal()
+    {
+        var ws = new Workspace();
+
+        ws.Execute(new ApplyScene([new SceneEntry(1, "A", "no-existe", ScenePlacement.InPanel)], []));
+
+        Assert.Equal([1], ws.Composition.Work);
     }
 
     [Fact]
@@ -142,9 +185,9 @@ public class SceneTests
     {
         var ws = new Workspace();
 
-        ws.Execute(Apply(
-            new SceneEntry(1, "A", Home.Work, ScenePlacement.Center, null),
-            new SceneEntry(2, "B", Home.Work, ScenePlacement.Center, null)));
+        ws.Execute(new ApplyScene(
+            [new SceneEntry(1, "A", Wrk, ScenePlacement.Center), new SceneEntry(2, "B", Wrk, ScenePlacement.Center)],
+            []));
 
         Assert.Equal(1, ws.Composition.Center);
         Assert.Equal([2], ws.Composition.Work);

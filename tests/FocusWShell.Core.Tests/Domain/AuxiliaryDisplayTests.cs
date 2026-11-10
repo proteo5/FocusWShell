@@ -7,6 +7,8 @@ namespace FocusWShell.Core.Tests.Domain;
 public class AuxiliaryDisplayTests
 {
     private const string Aux = @"\\.\DISPLAY2";
+    private const string AuxContext = "aux-contexto";
+    private const string AuxWork = "aux-trabajo";
     private const nint Slack = 1;
     private const nint Edge = 2;
     private const nint Grafana = 3;
@@ -16,10 +18,12 @@ public class AuxiliaryDisplayTests
     private static Workspace Sample()
     {
         var ws = new Workspace();
-        ws.Execute(new Adopt(Slack, "Slack", Home.Context));
-        ws.Execute(new Adopt(Edge, "Edge", Home.Work));
-        ws.Execute(new Adopt(Grafana, "Grafana", Home.Work, Aux));
-        ws.Execute(new Adopt(Logs, "Logs", Home.Work, Aux));
+        ws.Execute(new CreatePanel(new Panel(AuxContext, "Contexto aux", Aux, PanelSide.Left)));
+        ws.Execute(new CreatePanel(new Panel(AuxWork, "Trabajo aux", Aux, PanelSide.Right)));
+        ws.Execute(new Adopt(Slack, "Slack", Workspace.ContextPanel));
+        ws.Execute(new Adopt(Edge, "Edge", Workspace.WorkPanel));
+        ws.Execute(new Adopt(Grafana, "Grafana", AuxWork));
+        ws.Execute(new Adopt(Logs, "Logs", AuxWork));
         return ws;
     }
 
@@ -50,24 +54,24 @@ public class AuxiliaryDisplayTests
     }
 
     [Fact]
-    public void SendToDisplayMovesThePanelNotTheHome()
+    public void SendToAnAuxiliaryPanel()
     {
         var ws = Sample();
 
-        ws.Execute(new SendToDisplay(Slack, Aux));
+        ws.Execute(new SendTo(Slack, AuxContext));
 
         Assert.Empty(ws.Composition.Context);
         Assert.Equal([Slack], ws.Composition.Aux.Single().Context);
-        Assert.Equal(Home.Context, ws.Find(Slack)!.Home);
+        Assert.Equal(AuxContext, ws.Find(Slack)!.PanelId);
     }
 
     [Fact]
-    public void SendToDisplayOnCenterChangesWhereItReturns()
+    public void SendToOnCenterChangesWhereItReturns()
     {
         var ws = Sample();
         ws.Execute(new Promote(Edge));
 
-        var outcome = ws.Execute(new SendToDisplay(Edge, Aux));
+        var outcome = ws.Execute(new SendTo(Edge, AuxWork));
         Assert.DoesNotContain(outcome.Effects, e => e is ApplyLayout);
 
         ws.Execute(new ReturnToPanel(Edge));
@@ -79,18 +83,18 @@ public class AuxiliaryDisplayTests
     {
         var ws = Sample();
 
-        Assert.False(ws.Execute(new SetTemplate(null, Home.Work, PanelTemplate.Fill)).Accepted);
-        Assert.True(ws.Execute(new SetTemplate(Aux, Home.Work, PanelTemplate.Fill)).Accepted);
+        Assert.False(ws.Execute(new SetPresentation(Workspace.WorkPanel, PanelTemplate.Fill)).Accepted);
+        Assert.True(ws.Execute(new SetPresentation(AuxWork, PanelTemplate.Fill)).Accepted);
         Assert.Equal(PanelTemplate.Fill, ws.Composition.Aux.Single().WorkTemplate);
         Assert.Equal(PanelTemplate.Tiles, ws.Composition.WorkTemplate);
     }
 
     [Fact]
-    public void SetTemplateOnPrincipalAllowsStack()
+    public void PrincipalPanelAllowsStack()
     {
         var ws = Sample();
 
-        var outcome = ws.Execute(new SetTemplate(null, Home.Work, PanelTemplate.Stack));
+        var outcome = ws.Execute(new SetPresentation(Workspace.WorkPanel, PanelTemplate.Stack));
 
         Assert.Contains(outcome.Effects, e => e is ApplyLayout);
         Assert.Equal(PanelTemplate.Stack, ws.Composition.WorkTemplate);
@@ -115,11 +119,11 @@ public class AuxiliaryDisplayTests
     {
         // S6: desconectar y reconectar no pierde nada.
         var ws = Sample();
-        ws.Execute(new SetTemplate(Aux, Home.Work, PanelTemplate.Fill));
+        ws.Execute(new SetPresentation(AuxWork, PanelTemplate.Fill));
 
         ws.Execute(new DisplayRemoved(Aux));
         Assert.Equal([Edge, Grafana, Logs], ws.Composition.Work);
-        Assert.Equal(Aux, ws.Find(Grafana)!.Display);
+        Assert.Equal(Aux, ws.FindPanel(ws.Find(Grafana)!.PanelId)!.Display);
         Assert.True(ws.IsDisplayMissing(Aux));
 
         var outcome = ws.Execute(new DisplayAdded(Aux));
@@ -148,7 +152,7 @@ public class AuxiliaryDisplayTests
         var ws = Sample();
         ws.Execute(new DisplayRemoved(Aux));
 
-        ws.Execute(new SendToDisplay(Slack, Aux));
+        ws.Execute(new SendTo(Slack, AuxContext));
         Assert.Equal([Slack], ws.Composition.Context);
 
         ws.Execute(new DisplayAdded(Aux));

@@ -19,13 +19,27 @@ public enum MoveMode
     Sequential,
 }
 
-/// <summary>Paneles de un monitor auxiliar (ADR 0008).</summary>
-public sealed record AuxAssignment(
-    DisplayInfo Display,
-    IReadOnlyList<WindowSnapshot> Context,
-    IReadOnlyList<WindowSnapshot> Work,
-    PanelTemplate ContextTemplate = PanelTemplate.Tiles,
-    PanelTemplate WorkTemplate = PanelTemplate.Tiles);
+/// <summary>Un panel con sus ventanas, en orden (ADR 0011).</summary>
+/// <param name="Id">Identificador del panel: las regiones del plan usan este valor.</param>
+/// <param name="Title">Nombre visible, para las notas.</param>
+public sealed record PanelAssignment(string Id, string Title, PanelSide Side, PanelTemplate Template, IReadOnlyList<WindowSnapshot> Windows);
+
+/// <summary>Paneles de un monitor auxiliar, de izquierda a derecha (ADR 0008).</summary>
+public sealed record AuxAssignment(DisplayInfo Display, IReadOnlyList<PanelAssignment> Panels)
+{
+    /// <summary>Atajo para el probe: un panel "Contexto" a la izquierda y uno "Trabajo" a la derecha.</summary>
+    public static AuxAssignment FromSides(
+        DisplayInfo display,
+        IReadOnlyList<WindowSnapshot> context,
+        IReadOnlyList<WindowSnapshot> work,
+        PanelTemplate contextTemplate = PanelTemplate.Tiles,
+        PanelTemplate workTemplate = PanelTemplate.Tiles) =>
+        new(display,
+        [
+            new PanelAssignment("Contexto", "Contexto", PanelSide.Left, contextTemplate, context),
+            new PanelAssignment("Trabajo", "Trabajo", PanelSide.Right, workTemplate, work),
+        ]);
+}
 
 /// <summary>Qué ventana va en cada rol: Contexto | Centro | Trabajo en el principal y, opcionalmente, paneles en auxiliares.</summary>
 public sealed record SceneAssignment(
@@ -38,9 +52,19 @@ public sealed record SceneAssignment(
     /// <summary>Ventanas estacionadas: se dejan minimizadas.</summary>
     public IReadOnlyList<WindowSnapshot> Parked { get; init; } = [];
 
+    /// <summary>Identificador y nombre visible del panel izquierdo del principal.</summary>
+    public string ContextId { get; init; } = "Contexto";
+
+    public string ContextTitle { get; init; } = "Contexto";
+
+    /// <summary>Identificador y nombre visible del panel derecho del principal.</summary>
+    public string WorkId { get; init; } = "Trabajo";
+
+    public string WorkTitle { get; init; } = "Trabajo";
+
     public IEnumerable<WindowSnapshot> All =>
         Context.Concat(Center is null ? [] : [Center]).Concat(Work)
-            .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)))
+            .Concat(Aux.SelectMany(a => a.Panels.SelectMany(p => p.Windows)))
             .Concat(Parked);
 }
 
@@ -136,7 +160,7 @@ public sealed class SceneApplier
 
         foreach (var aux in assignment.Aux)
         {
-            foreach (var w in aux.Context.Concat(aux.Work))
+            foreach (var w in aux.Panels.SelectMany(p => p.Windows))
             {
                 _dpiByHandle[w.Handle] = aux.Display.Dpi;
             }
@@ -157,12 +181,12 @@ public sealed class SceneApplier
         int dpi = _display.Dpi;
         var principal = SceneLayoutEngine.Compute(new SceneInput(
             _display.WorkArea,
-            new PanelInput("Contexto", PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
-                _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left),
+            new PanelInput(_assignment.ContextId, PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
+                _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left) { Title = _assignment.ContextTitle },
             _options.CenterWeight,
             _assignment.Center is null ? null : ToLayout(_assignment.Center, dpi),
-            new PanelInput("Trabajo", PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
-                _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right),
+            new PanelInput(_assignment.WorkId, PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
+                _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right) { Title = _assignment.WorkTitle },
             _options.Gap,
             PanelTopInset: Scale(_options.PanelTopInset, dpi)));
 
@@ -170,10 +194,10 @@ public sealed class SceneApplier
             .Select(a => AuxLayoutEngine.Compute(new AuxInput(
                 a.Display.Key,
                 a.Display.WorkArea,
-                [
-                    new PanelInput("Contexto", PanelSide.Left, 1, a.ContextTemplate, a.Context.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
-                    new PanelInput("Trabajo", PanelSide.Right, 1, a.WorkTemplate, a.Work.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
-                ],
+                a.Panels
+                    .OrderBy(p => p.Side)
+                    .Select(p => new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title })
+                    .ToList(),
                 _options.Gap,
                 Scale(_options.PanelTopInset, a.Display.Dpi))))
             .ToList();
