@@ -312,6 +312,20 @@ Encontrado al probar:
 - **La lista no veía cerrada una app recién cerrada**, porque la foto de ventanas abiertas era la anterior al cierre. Corregido: al detectar el cierre, la ventana sale de la foto.
 - **Un clic de prueba caía fuera de su tarjeta.** El fallo estaba en el script de prueba, no en la app: se declaraba sólo «system-aware» y Windows reescalaba sus coordenadas en el monitor de 120 DPI. Las pruebas con ratón en monitores de otro DPI deben declararse per-monitor (`SetProcessDpiAwarenessContext(-4)`).
 
+### Lista como lanzador y ventanas activadas detrás (M1b, 2026-11-10)
+
+Panel de prueba «Monitoreo» en lista, en el monitor HP:
+
+| Caso | Resultado |
+| --- | --- |
+| Sin ninguna ventana, al arrancar la app | La lista se ve, con su nombre y un texto que explica cómo llenarla |
+| Abrir la Calculadora en «Monitoreo» desde el catálogo | Aparece en la lista con su miniatura en vivo |
+| Activarla por programa (sin gesto) | Se pone encima de la lista y se ve entera |
+| Activar después otra ventana | La lista vuelve a quedar encima, con la miniatura de la Calculadora |
+| Cerrar la Calculadora | La lista sigue, con la Calculadora apagada: tocarla la abre en el panel |
+
+Encontrado aquí, fallo previo: **el diario de recuperación no olvidaba nada**. El efecto `ForgetOriginal` (borrar un panel deja sus ventanas libres) no se ejecutaba, y una ventana gestionada que se cerraba seguía en el diario. Tras un cierre no limpio, la app habría ofrecido "restaurar" ventanas que ya no existen o que debían quedarse donde estaban. Corregido: `ForgetOriginal` quita la entrada del diario y `WindowClosed` lo emite. Comprobado: con la Calculadora abierta en Trabajo figura en el diario y, al cerrarla, el diario queda vacío.
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

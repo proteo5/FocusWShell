@@ -313,4 +313,15 @@ public class ParkAndExternalChangeTests
     {
         Assert.Empty(Sample().Interpret(99, ExternalChange.Minimized));
     }
+
+    [Fact]
+    public void AClosedWindowLeavesNothingToRestore()
+    {
+        var ws = Sample();
+
+        var outcome = ws.Execute(new WindowClosed(Edge));
+
+        Assert.Contains(new ForgetOriginal(Edge), outcome.Effects);
+        Assert.False(ws.IsManaged(Edge));
+    }
 }

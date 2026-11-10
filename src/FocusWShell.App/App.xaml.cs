@@ -91,6 +91,7 @@ public partial class App : Application
             _lists?.Refresh();
         });
         _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => _lists?.Refresh());
+        _controller.ForegroundChanged += hwnd => Dispatcher.BeginInvoke(() => _lists?.OnForeground(hwnd));
         _controller.FocusGestureEnabled = g => g switch
         {
             SwitchGesture.AltTab => _settings.FocusOnAltTab,
@@ -175,6 +176,7 @@ public partial class App : Application
         }
 
         ShowMain();
+        Task.Run(_controller.ShowLists);
     }
 
     /// <summary>Arranque tras un cierre no limpio (ADR 0005): por defecto, restaurar.</summary>

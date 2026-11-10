@@ -411,7 +411,7 @@ public sealed class Workspace
                 .GroupBy(p => p.Display!, StringComparer.OrdinalIgnoreCase)
                 .Select(g => new AuxComposition(
                     g.Key,
-                    g.OrderBy(p => p.Side).ThenBy(p => p.Slot).Select(ViewOf).Where(v => v.Windows.Count > 0).ToList()))
+                    g.OrderBy(p => p.Side).ThenBy(p => p.Slot).Select(ViewOf).Where(v => v.Windows.Count > 0 || v.Panel.Template == PanelTemplate.List).ToList()))
                 .Where(a => a.Panels.Count > 0)
                 .ToList();
             var left = ColumnOf(null, PanelSide.Left);
@@ -1252,9 +1252,9 @@ public sealed class Workspace
             return CommandOutcome.Accept();
         }
 
-        // Si era la del Centro, el Centro queda vacío: no se promueve otra.
+        // Si era la del Centro, el Centro queda vacío: no se promueve otra. Ya no hay nada que restaurar.
         Forget(handle);
-        return CommandOutcome.Accept(new ApplyLayout());
+        return CommandOutcome.Accept(new ForgetOriginal(handle), new ApplyLayout());
     }
 
     private void Forget(nint handle)

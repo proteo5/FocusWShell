@@ -21,3 +21,4 @@ La confianza en el gestor depende de que siempre se pueda volver al estado anter
 - Hay una escritura a disco por comando. El archivo es pequeño (decenas de ventanas), así que el coste es despreciable.
 - Para reencontrar ventanas después de reiniciar el gestor se necesita una identidad más rica que el `hwnd` (proceso + hora de inicio). Ver [03 — Arquitectura](../03-arquitectura.md#identidad-de-ventanas).
 - Tras un reinicio de Windows el diario no tiene ventanas que restaurar; se descarta y se marca limpio.
+- Una entrada sale del diario cuando su ventana vuelve a su sitio (`RestoreOriginal`), cuando queda libre donde está (`ForgetOriginal`, p. ej. al borrar su panel) o cuando se cierra (`WindowClosed` emite `ForgetOriginal`). Hasta el 2026-11-10 las dos últimas no la quitaban.
