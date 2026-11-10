@@ -157,7 +157,7 @@ public static class SceneLayoutEngine
         var areas = new Dictionary<string, PixelRect>();
         var bands = new Dictionary<string, PixelRect>();
         var pages = new Dictionary<string, TilePages>();
-        var grid = new GridOptions(input.MinCellWidth, input.MinRowHeight);
+        var grid = new GridOptions(input.MinCellWidth, input.MinRowHeight) { Lists = [] };
         left.Place(leftCol.Left, leftCol.Right, leftEdge, gap, grid, targets, notes, areas, bands, pages);
         if (input.Center is { } center)
         {
@@ -183,6 +183,7 @@ public static class SceneLayoutEngine
             Bands = bands,
             StripHeight = inset,
             Pages = pages,
+            Lists = grid.Lists,
         };
     }
 
@@ -206,6 +207,12 @@ public static class SceneLayoutEngine
 
         // En tiles, lo que no cabe en alto no pasa a pestañas: la rejilla pagina por filas (ADR 0015).
         var template = panel.Template;
+
+        // En lista, las ventanas van detrás de la lista: no piden ancho (la que no quepa se minimiza).
+        if (template == PanelTemplate.List)
+        {
+            return new ResolvedPanel(panel, template, windows, 0);
+        }
 
         // Fill sólo tiene sentido en monitores auxiliares; aquí se comporta como una pila.
         IReadOnlyList<LayoutWindow> visible = template is PanelTemplate.Stack or PanelTemplate.Fill ? [windows[0]] : windows;

@@ -3,7 +3,11 @@
 namespace FocusWShell.Core.Layout;
 
 /// <summary>Medidas de la rejilla de tiles, en píxeles físicos del monitor.</summary>
-internal sealed record GridOptions(int MinCellWidth, int MinRowHeight);
+internal sealed record GridOptions(int MinCellWidth, int MinRowHeight)
+{
+    /// <summary>Se rellena con el área de cada panel en lista.</summary>
+    public Dictionary<string, PixelRect> Lists { get; init; } = [];
+}
 
 /// <summary>
 /// Una columna de paneles (ADR 0011): uno, o dos uno encima del otro. Los paneles sin ventanas no ocupan
@@ -149,6 +153,16 @@ internal sealed class PanelColumn
         {
             var resolved = band.Resolved;
             var panel = resolved.Panel;
+            if (resolved.Template == PanelTemplate.List && resolved.Visible.Count > 0)
+            {
+                var listArea = new PixelRect(left, band.Top + _inset, right, band.Bottom);
+                areas[panel.Name] = listArea;
+                bands[panel.Name] = new PixelRect(left, band.Top, right, band.Bottom);
+                grid.Lists[panel.Name] = listArea;
+                PlaceBehindList(panel, resolved.Visible, listArea, targets, notes);
+                continue;
+            }
+
             if (resolved.Template == PanelTemplate.Tiles && resolved.Visible.Count > 0)
             {
                 var windowArea = new PixelRect(left, band.Top + _inset, right, band.Bottom);
@@ -214,6 +228,24 @@ internal sealed class PanelColumn
             notes.Add(
                 $"{panel.DisplayTitle}: sus ventanas ocupan {arranged.Pages.Total} filas y caben {arranged.Pages.Visible}; " +
                 $"se ven las filas {arranged.Pages.First + 1}–{arranged.Pages.First + arranged.Pages.Visible} (▲ ▼ en su tira).");
+        }
+    }
+
+    /// <summary>
+    /// Lista tipo Explorador (ADR 0015, opción B): cada ventana ocupa el área de la lista, detrás de ella,
+    /// para que su miniatura siga en vivo. La que no cabe se minimiza: si no, asomaría fuera de la lista.
+    /// </summary>
+    private static void PlaceBehindList(PanelInput panel, IReadOnlyList<LayoutWindow> windows, PixelRect area, List<WindowTarget> targets, List<string> notes)
+    {
+        foreach (var w in windows)
+        {
+            bool fits = (w.MinSize?.Width ?? 0) <= area.Width && (w.MinSize?.Height ?? 0) <= area.Height;
+            if (!fits)
+            {
+                notes.Add($"{w.Label} no cabe detrás de la lista de {panel.DisplayTitle}; se minimiza y su miniatura se ve con su última imagen.");
+            }
+
+            targets.Add(new WindowTarget(w.Handle, w.Label, panel.Name, fits ? TargetKind.Visible : TargetKind.Minimized, fits ? area : default));
         }
     }
 }

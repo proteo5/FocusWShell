@@ -67,6 +67,7 @@ Los tiles adaptables y la lista tipo Explorador se concretan en el [ADR 0015](00
 - No guarda títulos de ventanas. No se escanea lo instalado.
 - Desde el catálogo se puede abrir una app cerrada. Su ventana, al aparecer, se asigna al panel elegido.
 - **Al aplicar una escena se abren las apps que faltan** (casilla "Abrir las que falten", activada por defecto). La escena se aplica en el momento con lo que está abierto; las que faltan se abren en segundo plano y cada ventana nueva va a su panel, o al foco o estacionada si así estaba en la escena. Se espera hasta 30 s. Si su panel no se resuelve, la ventana queda libre.
+- El **nombre** de una app empaquetada (de la Store) es el que le da Windows por su AUMID; el de las demás, la descripción de su ejecutable. Si el usuario la renombra, ese nombre manda y el gestor no lo vuelve a cambiar. La lista de ventanas y las pestañas usan este nombre.
 - En la ventana principal, cada app del catálogo muestra su **icono** (sacado del ejecutable, sin guardarlo), su nombre se puede **editar** y se puede **ocultar** (sigue registrada, así que no vuelve a aparecer como nueva; "Ver ocultas" las muestra).
 - Asignar sola cada ventana nueva de una app a "su" panel es una **regla opcional** para más adelante (M4). Por defecto nada se mueve sin una acción del usuario (CA7).
 

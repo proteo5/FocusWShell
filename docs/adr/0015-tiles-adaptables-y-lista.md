@@ -1,6 +1,6 @@
 ﻿# ADR 0015 — Presentaciones: tiles adaptables y lista tipo Explorador
 
-- **Estado:** Aceptada (2026-11-10); la opción B de la lista, pendiente del spike S10
+- **Estado:** Aceptada (2026-11-10); la opción B de la lista, confirmada por el spike S10
 - **Fecha:** 2026-11-10
 
 ## Contexto
@@ -94,7 +94,7 @@ Cambian la propuesta en estos puntos; lo demás queda como está arriba.
 2. **Densidad automática.** Las filas no se eligen: se calculan con el alto disponible y los mínimos de las apps. Lo que no cabe pasa a filas de más abajo (▲ ▼).
 3. **Clic en la lista: la lleva al foco** (`Promote`). No hay "mostrar en el panel".
 4. **Las apps cerradas salen siempre en la lista**, apagadas; tocarlas las abre.
-5. **Opción B** (ventanas detrás de la lista, miniaturas en vivo), **a verificar con S10** antes de darla por buena.
+5. **Opción B** (ventanas detrás de la lista, miniaturas en vivo). **S10 la confirma:** las miniaturas de ventanas tapadas por una ventana propia siguen en vivo, también en Chromium, y 20 a la vez apenas cuestan. Las minimizadas se ven con su última imagen. Ver [04 — Riesgos y spikes](../04-riesgos-y-spikes.md#s10--miniaturas-2026-11-10).
 
 Detalles de implementación que siguen de esto:
 
@@ -108,6 +108,18 @@ Detalles de implementación que siguen de esto:
 - **Modelo:** `ManagedWindow.Size` y `SetTileSize`; `ScrollPanel(panel, fila)`. `MakeActiveInPanel` en tiles no reordena: guarda la ventana a mostrar y el motor empieza por su fila. Mostrar desde la barra de tareas una ventana de una fila oculta hace lo mismo. El tamaño se guarda en las escenas.
 - **Tiras:** ▲ «a–b / n» ▼ a la derecha, la rueda del ratón para recorrer las filas, y "Tamaño: Pequeño / Mediano / Grande" en el menú contextual de cada pestaña.
 - **Cambio de comportamiento:** un panel en tiles que no cabe en alto ya no pasa a pestañas; se ven las filas que caben.
+
+## Implementación de la lista (2026-11-10)
+
+- **Motor:** la presentación `List` coloca cada ventana del panel en el área de la lista (bajo su tira), detrás de ella. La que no cabe se minimiza, para que no asome fuera de la lista. La lista no ensancha su columna. El resultado trae `Lists` (el área de cada panel en lista).
+- **Modelo:** `Panel.ListLayout` (Iconos grandes, Lista, Detalles) y `SetListLayout`, que no mueve ventanas. Se guarda en `panels.json`.
+- **Ventana de la lista** (`ListPanelWindow`, una por panel en lista, gestionada por `ListManager`): sin foco y fuera de la barra de tareas, como las tiras. Tiene los tres modos en botones arriba a la derecha.
+  - En Iconos grandes, cada tarjeta lleva la miniatura en vivo de su ventana (`DwmThumbnail`), encajada sin deformarla. Se oculta la que sale de la zona visible del scroll.
+  - Las apps cerradas (en el catálogo, con este panel como último) salen con su icono apagado. Tocar una abierta la lleva al foco; tocar una cerrada la abre en este panel.
+- **Se oculta** en el monitor de la pantalla completa. Se actualiza con cada layout y cada cambio del catálogo. Una ventana cerrada pasa a "cerrada" enseguida.
+- **Pendiente:**
+  - un panel en lista sin ninguna ventana abierta no ocupa sitio, así que su lista no se ve (sólo con apps cerradas, todavía no hace de lanzador);
+  - si se desactivan los gestos y se activa una ventana que está detrás de la lista, queda tapada por la lista.
 
 ## Consecuencias
 

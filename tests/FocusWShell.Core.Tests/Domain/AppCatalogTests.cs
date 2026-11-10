@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 
 namespace FocusWShell.Core.Tests.Domain;
 
@@ -79,5 +79,22 @@ public class AppCatalogTests
         c.Observe("a", "edge", null, null, T0);
 
         Assert.Equal(["edge", "Zoom"], c.Apps.Select(a => a.Name));
+    }
+
+    [Fact]
+    public void AnAutomaticNameCanBeImprovedButNotOneTheUserChose()
+    {
+        const string Calc = "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App";
+        var c = new AppCatalog();
+        c.Observe(Calc, "Application Frame Host", null, Calc, T0);
+        c.Observe("slack.exe", "Slack", null, null, T0);
+        c.Rename("slack.exe", "Chat del trabajo");
+
+        Assert.True(c.ImproveName(Calc, "Application Frame Host", "Calculator"));
+        Assert.Equal("Calculator", c.Find(Calc)!.Name);
+        Assert.False(c.Find(Calc)!.Renamed);
+        Assert.False(c.ImproveName(Calc, "Application Frame Host", "Otra")); // ya no es el nombre viejo
+        Assert.True(c.Find("slack.exe")!.Renamed);
+        Assert.False(c.ImproveName("slack.exe", "Chat del trabajo", "Slack"));
     }
 }

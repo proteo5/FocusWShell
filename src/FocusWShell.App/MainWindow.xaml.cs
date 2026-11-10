@@ -228,7 +228,7 @@ public partial class MainWindow : Window
         {
             managed.TryGetValue(w.Handle, out var m);
             var assignment = _pending.TryGetValue(w.Handle, out var p) ? p : m is null ? AssignmentOption.Free : AssignmentOf(m);
-            var row = new WindowRow(w, assignment) { State = StateOf(m, byId) };
+            var row = new WindowRow(w, assignment, _controller.AppName(w)) { State = StateOf(m, byId) };
             row.PropertyChanged += Row_PropertyChanged;
             _rows.Add(row);
         }
@@ -282,6 +282,7 @@ public partial class MainWindow : Window
             (PanelTemplate.Tiles, "Tiles"),
             (PanelTemplate.Stack, "Pestañas"),
             (PanelTemplate.Fill, "Pantalla completa"),
+            (PanelTemplate.List, "Lista (tipo Explorador)"),
         };
 
         System.Windows.Controls.ComboBox LocationCombo(string label, string? display, PanelSide side, PanelSlot slot)

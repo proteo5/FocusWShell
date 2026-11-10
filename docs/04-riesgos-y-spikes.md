@@ -34,7 +34,7 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S7 — Pila | ¿Minimizar funciona bien para las ventanas ocultas de la pila? | Alternar pestañas 50 veces entre 3–4 apps. | Sin pérdidas de estado; la alternancia se siente inmediata. | R8 |
 | S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 |
 | S9 — Apuntar desde el deck | ¿Se puede apuntar con precisión en la app del foco desde el deck? | Miniatura DWM en vivo con cuadrícula y zoom en la tablet; scroll por franja lateral en Edge; lectura de controles con UI Automation en Edge, Slack, SSMS y VS Code. | El toque cae a ±1 control del objetivo con zoom; el scroll mueve la zona tocada; lectura de controles < 300 ms en apps nativas y < 1 s en Chromium. | — |
-| S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — |
+| S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — · **Hecho** (opción B confirmada) |
 
 S1–S5 forman el hito M0. S6 y S7 se pueden posponer a M1, pero deben resolverse antes de dar por bueno el MVP.
 
@@ -276,7 +276,41 @@ Cuatro Calculadoras en un panel «Monitoreo» de prueba en el monitor HP (1920 p
 | Clic en la pestaña de una oculta de la fila 1 | El panel vuelve a la fila 1 sin cambiar el orden |
 | «Tamaño: Grande» en el menú de la primera | Ocupa las tres columnas y las demás pasan a la fila 2 |
 
-Pendiente, sin relación con los tiles: las apps de la Store aparecen como «ApplicationFrameHost» en las pestañas, porque la etiqueta sale del proceso. Conviene usar el nombre del catálogo.
+Encontrado aquí y ya corregido: las apps de la Store aparecían como «ApplicationFrameHost» en las pestañas y en la lista, porque la etiqueta salía del proceso, y como «Application Frame Host» en el catálogo. Ahora el nombre de una app empaquetada se pide al shell por su AUMID (`shell:AppsFolder`) y la lista y las etiquetas nuevas usan el nombre del catálogo. Los nombres automáticos ya guardados se corrigen solos al volver a ver la app, salvo los que el usuario renombró (`Renamed`). Comprobado con la Calculadora: «Calculator» en la lista, en la pestaña y en `apps.json`.
+
+### S10 — Miniaturas (2026-11-10)
+
+Herramienta: `tools/FocusWShell.ThumbSpike`. Fuentes: una ventana propia animada (WinForms) y una ventana de Edge con un reloj que cambia en cada fotograma. Cada miniatura DWM se capturó dos veces, con 900 ms de diferencia.
+
+| Fuente | Visible | Tapada por una ventana propia opaca | Tapada por una semitransparente | Minimizada |
+| --- | --- | --- | --- | --- |
+| Propia (WinForms) | En vivo | En vivo | En vivo | Congelada (última imagen) |
+| Edge (Chromium) | En vivo | En vivo | En vivo | Congelada (última imagen) |
+
+- **Chromium sigue pintando tapado** por una ventana nuestra, al menos en los 3 s medidos. Se temía que su detección de oclusión lo parara; no lo hizo.
+- **Minimizada no queda vacía:** DWM conserva la última imagen, pero no se actualiza.
+- **`PrintWindow` (`PW_RENDERFULLCONTENT`):**
+  - ventanas visibles o tapadas: imagen completa en 6–28 ms (la propia, el reloj de Edge, Chrome con Jira y Edge con GitHub);
+  - ventanas minimizadas: sólo una barrita de 160×28, así que no sirve.
+- **Coste:** con 20 miniaturas a la vez de 4 ventanas que cambian sin parar (el peor caso), `dwm` pasa de 0,26 % a 0,51 % de la CPU total (16 núcleos; contadores de rendimiento, 12 muestras por fase). El proceso anfitrión, 0,1 %.
+
+**Conclusión:** la opción B del [ADR 0015](adr/0015-tiles-adaptables-y-lista.md) (las ventanas detrás de la lista, sin minimizar) da miniaturas en vivo con un coste despreciable. Las miniaturas de ventanas minimizadas (estacionadas, o en pestañas en otros paneles) se muestran congeladas, que basta para reconocerlas. Queda por confirmar en uso real que Chromium no deja de pintar tras más tiempo tapado.
+
+### Lista tipo Explorador (M1b, 2026-11-10)
+
+Panel de prueba «Monitoreo» en lista, en el monitor HP, con dos Paint y una Calculadora:
+
+| Caso | Resultado |
+| --- | --- |
+| Iconos grandes | Tres tarjetas con miniatura en vivo de las ventanas que hay detrás, y los nombres del catálogo («Calculator», «Paint») |
+| Clic en la tarjeta de Calculator | Pasa al foco; en la lista queda con «↑» |
+| Detalles y Lista | Nombre, título y estado; o icono y nombre en columnas. El modo se guarda en `panels.json` |
+| Cerrar la Calculadora | Sale enseguida como cerrada, con su icono apagado |
+| Tocar la Calculadora cerrada | Se abre y entra en «Monitoreo» |
+
+Encontrado al probar:
+- **La lista no veía cerrada una app recién cerrada**, porque la foto de ventanas abiertas era la anterior al cierre. Corregido: al detectar el cierre, la ventana sale de la foto.
+- **Un clic de prueba caía fuera de su tarjeta.** El fallo estaba en el script de prueba, no en la app: se declaraba sólo «system-aware» y Windows reescalaba sus coordenadas en el monitor de 120 DPI. Las pruebas con ratón en monitores de otro DPI deben declararse per-monitor (`SetProcessDpiAwarenessContext(-4)`).
 
 ### S6 — Reconexión (2026-11-10)
 
