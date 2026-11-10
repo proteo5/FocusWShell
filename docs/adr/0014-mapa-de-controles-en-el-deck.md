@@ -1,33 +1,34 @@
-# ADR 0014 — Mapa de controles de la app del foco en el deck
+# ADR 0014 — Apuntar en la app del foco desde el deck
 
-- **Estado:** Propuesta (idea registrada; pendiente del deck y del spike S9)
+- **Estado:** Propuesta (idea en exploración; pendiente del deck y del spike S9)
 - **Fecha:** 2026-11-10
 
 ## Contexto
 
-Con el deck ([ADR 0013](0013-deck-superficie-de-control.md)) la mano está en la tablet o en el monitor táctil, y volver al ratón para llegar a una caja de texto o a un checkbox de la app del foco cuesta movimientos. La idea es mostrar en el deck un **esqueleto** de la app del foco (al estilo de un *skeleton screen*): sólo las formas de sus controles, sin el contenido. Un toque sobre una forma actúa sobre ese control.
+Con el deck ([ADR 0013](0013-deck-superficie-de-control.md)) la mano está en la tablet o en el monitor táctil. Volver al ratón para llegar a una caja de texto, un checkbox o una barra de scroll de la app del foco cuesta movimientos. La idea es mostrar en el deck la app del foco y apuntar en ella con un toque.
 
-## Decisión (propuesta)
+## Decisión (propuesta): por capas, de lo universal a lo específico
 
-1. **Fuente:** UI Automation sobre la ventana del foco. Da los controles interactivos (`Edit`, `CheckBox`, `Button`, `ComboBox`, `Hyperlink`, `ListItem`…) con su rectángulo y su nombre. Sólo se leen los que están a la vista.
-2. **Acción al tocar:** se usan los patrones de UI Automation en lugar de mover el ratón:
-   - a una caja de texto se le da el foco del teclado (`SetFocus`);
-   - un checkbox se marca o desmarca (`Toggle`);
-   - un botón se pulsa (`Invoke`);
-   - un combo se abre (`ExpandCollapse`).
+| Capa | Para qué apps | Qué ofrece |
+| --- | --- | --- |
+| **1. Imagen en vivo + cuadrícula** (base) | Todas | Una miniatura DWM en vivo de la ventana del foco (`DwmRegisterThumbnail`): la dibuja Windows, sin capturas ni coste propio. Un toque lleva el cursor al punto equivalente de la app. Una cuadrícula permite **acercar** una zona; la miniatura admite un rectángulo de origen, así que el zoom sale gratis. |
+| **2. Sólo cuadrícula** | Apps donde la imagen no aporta o sale en negro (contenido protegido) | Un rectángulo proporcional a la ventana con su cuadrícula y el mismo acercamiento. |
+| **3. Controles detectados** (mejora opcional) | Apps nativas; Chromium/Electron con más coste | UI Automation resalta cajas de texto, checkboxes y botones sobre la imagen. Tocar uno actúa directamente, sin mover el ratón: `SetFocus`, `Toggle`, `Invoke`, `ExpandCollapse`. |
+| — | Apps elevadas | No se ofrece la opción (no se pueden leer ni controlar, R5). |
 
-   Mover el cursor al control queda como modo opcional.
-3. **Presentación:**
-   - un **mapa** a escala con las zonas táctiles agrandadas;
-   - una **lista por tipo** ("campos de texto", "casillas", "botones"), para cuando el mapa queda demasiado pequeño.
-4. **Privacidad:** se muestran formas y etiquetas, nunca valores. Los campos de contraseña (`IsPassword`) se omiten. Nada se guarda en disco.
+- **Tocar no es hacer clic.** Un toque mueve el cursor; hacer clic es un gesto aparte (doble toque o un botón "clic"), para que no haya pulsaciones accidentales.
+- **Scroll:**
+  - Una franja lateral del deck, como un touchpad: deslizar envía la rueda del ratón **en el último punto tocado de la app**. Funciona en los navegadores, que es donde más cuesta.
+  - Deslizar sobre la propia imagen hace lo mismo, en ese punto.
+  - Con la capa 3, además se puede saltar a un porcentaje del documento (`ScrollPattern`).
+- **Privacidad:** la capa 3 muestra formas y etiquetas, nunca valores, y omite los campos de contraseña (`IsPassword`). Nada se guarda en disco.
 
 ## Consecuencias
 
-- Funciona bien con apps nativas (Win32, WinForms, WPF, WinUI).
-- Con Chromium y Electron funciona, pero su árbol es muy grande y se construye bajo demanda, con coste de rendimiento.
-- No funciona con apps dibujadas en lienzo ni con juegos.
-- Las apps elevadas no se pueden leer, por la misma razón que no se pueden mover (R5).
-- Hay que limitar y guardar en caché la lectura del árbol y actualizarla con los avisos de cambio de la app.
-- Precedente: *Hunt and Peck* (Windows, código abierto) etiqueta con UI Automation todo lo que se puede pulsar en la ventana activa.
-- **Spike S9:** medir cuánto tarda leer los controles visibles de las apps reales del usuario (Edge, Slack, SSMS, VS Code) y si los toques llegan al control correcto.
+- La capa 1 es simple y casi universal. Funciona con el deck como ventana, también en una tablet con Apollo, porque la miniatura se compone en ese monitor y viaja en el streaming. En un deck web (fase 3 del ADR 0013) habría que capturar y enviar vídeo: es mucho más pesado y no forma parte de esta propuesta.
+- Mover el cursor y hacer clic es entrada sintética (`SendInput`). Va bien con la app del foco, que ya está en primer plano. Si se usa a la vez que el ratón real, el cursor salta, así que debe poder desactivarse.
+- Precedente de la capa 3: *Hunt and Peck* (Windows, código abierto) etiqueta con UI Automation todo lo que se puede pulsar en la ventana activa.
+- **Spike S9:**
+  - Precisión del toque con la miniatura y el zoom en la tablet.
+  - Scroll en Edge.
+  - Tiempo de lectura de controles con UI Automation en las apps reales (Edge, Slack, SSMS, VS Code).
