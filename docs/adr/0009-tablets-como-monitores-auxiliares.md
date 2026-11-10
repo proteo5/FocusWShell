@@ -1,4 +1,4 @@
-# ADR 0009 — Las tablets y otros equipos que extienden el escritorio son monitores auxiliares; FocusWShell no incluye drivers ni clientes propios
+﻿# ADR 0009 — Las tablets y otros equipos que extienden el escritorio son monitores auxiliares; FocusWShell no incluye drivers ni clientes propios
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-11-09
@@ -17,6 +17,7 @@ En Windows, todas estas soluciones instalan un **driver de pantalla indirecto** 
    | Opción | Licencia | Notas |
    | --- | --- | --- |
    | [Sunshine](https://github.com/LizardByte/Sunshine) (servidor en el PC) + [Moonlight](https://moonlight-stream.org/) (cliente en la tablet) | Código abierto (GPL-3.0) | Pensado para streaming de baja latencia; clientes para Android, iPadOS, Windows, macOS y Linux, con soporte táctil. Para usarlo como monitor extendido necesita un monitor virtual (driver de pantalla virtual o dummy plug). |
+   | [Apollo](https://github.com/ClassicOldSong/Apollo) (servidor en el PC, fork de Sunshine) + Artemis (cliente) | Código abierto (GPL-3.0) | **Incluye su propio monitor virtual** (SudoVDA), así que no hace falta otro driver ni un dummy plug. Lo crea al empezar la conexión con la resolución y la frecuencia de la tablet y lo quita al terminar. Cada cliente recibe una identidad de monitor fija, que Windows recuerda. El monitor virtual sólo funciona con Windows como servidor. Artemis, el cliente que propone, de momento sólo existe para Android. Recomienda quitar otras soluciones de monitor virtual para evitar conflictos. |
    | spacedesk | Gratuito, cerrado | Crea el monitor virtual por sí mismo; cliente para Android, iOS y Windows. |
    | Duet Display, SuperDisplay, Splashtop Wired XDisplay | Comerciales | Monitor extendido con táctil; algunos con lápiz. |
 
@@ -26,6 +27,8 @@ En Windows, todas estas soluciones instalan un **driver de pantalla indirecto** 
    - **Identidad.** Cada solución puede presentar el monitor con una ruta de dispositivo distinta o cambiarla al reinstalarse. La identidad estable del monitor se valida también con estos drivers.
    - **Táctil.** Las tiras de pestañas y los controles del gestor en un monitor con digitalizador necesitan objetivos de al menos 40 px lógicos y gestos simples: tocar una pestaña para cambiar de ventana, tocar un botón para promoverla.
    - **Latencia.** El contenido llega comprimido y con retraso. El gestor no debe depender de animaciones en esos monitores.
+
+**Por qué Apollo encaja bien con FocusWShell:** la identidad fija por cliente coincide con la identidad estable de monitores de S6 (`monitorDevicePath`). Al reconectar la tablet, el monitor vuelve con la misma clave y FocusWShell le devuelve sus paneles y templates. Como el monitor virtual se crea y se destruye con cada conexión, es justo el escenario de R11, que S6 debe validar con una tablet real.
 
 ## Consecuencias
 
