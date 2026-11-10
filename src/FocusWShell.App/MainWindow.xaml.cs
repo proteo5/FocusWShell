@@ -100,6 +100,12 @@ public partial class MainWindow : Window
             string.Concat(aux.Select(a => $"   ·   Auxiliar {a.FriendlyName ?? a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
             "Atajos Ctrl+Alt+Mayús: ↑ al foco · ← anterior · ↓ foco al panel · P pantalla encendida · Retroceso restaurar todas";
 
+        // Primero se desconectan las filas: al vaciar las opciones, WPF les escribe un valor vacío.
+        foreach (var row in _rows)
+        {
+            row.PropertyChanged -= Row_PropertyChanged;
+        }
+
         var panels = _controller.Panels();
         AssignmentOptions.Clear();
         AssignmentOptions.Add(new AssignmentOption(AssignmentOption.Free, "— libre"));
@@ -112,11 +118,6 @@ public partial class MainWindow : Window
         BuildPanels(panels, aux);
 
         var selected = (WindowList.SelectedItem as WindowRow)?.Snapshot.Handle;
-        foreach (var row in _rows)
-        {
-            row.PropertyChanged -= Row_PropertyChanged;
-        }
-
         _rows.Clear();
         var windows = _controller.Refresh();
         var managed = _controller.Managed().ToDictionary(m => m.Handle);
@@ -196,7 +197,9 @@ public partial class MainWindow : Window
             {
                 if (name.Text.Trim() != panel.Name && name.Text.Trim().Length > 0)
                 {
-                    await Run(() => _controller.Execute(new RenamePanel(panel.Id, name.Text)));
+                    // Los controles sólo se leen en el hilo de la UI: el valor se toma antes de la tarea.
+                    var newText = name.Text;
+                    await Run(() => _controller.Execute(new RenamePanel(panel.Id, newText)));
                     Refresh();
                 }
             };
@@ -269,7 +272,8 @@ public partial class MainWindow : Window
 
             var (d, s, _) = options[newLocation.SelectedIndex];
             string id = $"panel-{Guid.NewGuid():N}"[..14];
-            await Run(() => _controller.Execute(new CreatePanel(new Panel(id, newName.Text.Trim(), d, s))));
+            var panelName = newName.Text.Trim();
+            await Run(() => _controller.Execute(new CreatePanel(new Panel(id, panelName, d, s))));
             Refresh();
         };
         create.Children.Add(newName);
@@ -281,7 +285,7 @@ public partial class MainWindow : Window
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is not WindowRow row || e.PropertyName != nameof(WindowRow.Assignment))
+        if (sender is not WindowRow row || e.PropertyName != nameof(WindowRow.Assignment) || row.Assignment is null)
         {
             return;
         }
@@ -316,7 +320,7 @@ public partial class MainWindow : Window
             var h = row.Snapshot.Handle;
             managed.TryGetValue(h, out var m);
             var current = m is null ? AssignmentOption.Free : AssignmentOf(m);
-            if (row.Assignment == current)
+            if (row.Assignment is null || row.Assignment == current)
             {
                 continue;
             }
@@ -566,13 +570,13 @@ public partial class MainWindow : Window
         var layout = report.Layout.Principal;
         sb.AppendLine(
             CultureInfo.CurrentCulture,
-            $"Principal: Contexto {layout.LeftColumn.Width} px · Centro {layout.CenterColumn.Width} px · Trabajo {layout.RightColumn.Width} px");
+            $"Principal: izquierda {layout.LeftColumn.Width} px · foco {layout.CenterColumn.Width} px · derecha {layout.RightColumn.Width} px");
         var names = FocusWShell.Win32.DisplayEnumerator.Enumerate().ToDictionary(d => d.Key, d => d.FriendlyName ?? d.DeviceName);
         foreach (var aux in report.Layout.Aux)
         {
             sb.AppendLine(
                 CultureInfo.CurrentCulture,
-                $"{names.GetValueOrDefault(aux.Display, aux.Display)}: {string.Join(" · ", aux.Columns.Select(c => $"{c.Key} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})"))}");
+                $"{names.GetValueOrDefault(aux.Display, aux.Display)}: {string.Join(" · ", aux.Columns.Select(c => $"{aux.Titles.GetValueOrDefault(c.Key, c.Key)} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})"))}");
         }
 
         foreach (var note in report.Layout.Notes)

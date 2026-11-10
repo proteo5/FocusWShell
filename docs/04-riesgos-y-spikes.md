@@ -132,6 +132,31 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
+### Paneles como entidades (M1b, 2026-11-10)
+
+Implementa la primera parte del [ADR 0011](adr/0011-paneles-y-catalogo.md).
+
+- **Modelo:**
+  - `Panel` (id, nombre, monitor, lado, presentación) con `CreatePanel`, `RenamePanel`, `MovePanel`, `SetPresentation` y `DeletePanel`. Borrar un panel deja sus ventanas libres, sin moverlas.
+  - Cada ventana apunta a su panel; desaparecen `Home`, `SendToDisplay` y `SetTemplate`.
+  - En el principal, de momento, un panel por columna.
+  - 158 pruebas.
+- **Persistencia:**
+  - `panels.json` guarda los paneles cada vez que cambian y se carga al arrancar.
+  - Las escenas guardan sus paneles; las del formato anterior se migran solas al cargarlas (`SavedScene.Upgrade`).
+- **App:**
+  - La columna Panel ("libre", "Al foco" o un panel) sustituye a Rol y Monitor.
+  - Una sección Paneles permite renombrar, mover, cambiar la presentación, borrar y crear paneles.
+- **Prueba de principio a fin con UI Automation:**
+  - Se creó "Monitoreo" en el HP, se asignaron ventanas y se renombró Contexto como "Comunicación". Las tiras muestran el nombre nuevo al momento.
+  - Tras reiniciar la app, los paneles seguían ahí.
+  - La escena antigua "Código" se migró y se aplicó: 5/5 exactas.
+- **Fallos encontrados y corregidos:**
+  - Crear y renombrar un panel leían un `TextBox` desde una tarea en segundo plano. La excepción activó la restauración de emergencia, que funcionó como estaba diseñada: devolvió todas las ventanas.
+  - Al refrescar la lista, WPF escribía un valor vacío en las filas antes de desconectarlas, y se generaban asignaciones a un panel "vacío".
+  - Desde ahora, los errores no controlados se registran en `%LOCALAPPDATA%\FocusWShell\errors.log`.
+- **Comportamiento a decidir:** aplicar una escena sustituye los paneles por los de la escena (y se guardan así).
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

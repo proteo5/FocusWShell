@@ -14,7 +14,11 @@ public sealed record AuxLayoutResult(
     IReadOnlyDictionary<string, PixelRect> Columns,
     IReadOnlyDictionary<string, PanelTemplate> EffectiveTemplates,
     IReadOnlyList<WindowTarget> Targets,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes)
+{
+    /// <summary>Nombre visible de cada panel, por identificador.</summary>
+    public IReadOnlyDictionary<string, string> Titles { get; init; } = new Dictionary<string, string>();
+}
 
 /// <summary>
 /// Layout de un monitor auxiliar (ADR 0008): sin Centro, sólo paneles en columnas.
@@ -30,6 +34,12 @@ public sealed record AuxLayoutResult(
 public static class AuxLayoutEngine
 {
     public static AuxLayoutResult Compute(AuxInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        return ComputeCore(input) with { Titles = input.Panels.ToDictionary(p => p.Name, p => p.DisplayTitle) };
+    }
+
+    private static AuxLayoutResult ComputeCore(AuxInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
         var notes = new List<string>();

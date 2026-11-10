@@ -142,7 +142,9 @@ Cambiar de template sólo recalcula rectángulos y visibilidad. Ninguna ventana 
   - **Nada se desborda**: la ventana que no cabe se minimiza con una nota.
   - Con `Fill`, la primera ventana del panel se maximiza y todo lo demás de ese monitor se minimiza. Si dos paneles están en `Fill`, gana el primero.
 
-## Hacia paneles, vistas y deck (propuesta)
+## Hacia paneles, vistas y deck
+
+Estado: los **paneles como entidades** ya están implementados (`Panel`, `CreatePanel`, `RenamePanel`, `MovePanel`, `SetPresentation`, `DeletePanel`, `panels.json`). El resto sigue siendo propuesta.
 
 Tres decisiones propuestas cambiarán este modelo en la siguiente etapa:
 

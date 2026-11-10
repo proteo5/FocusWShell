@@ -38,7 +38,7 @@ Criterio de salida: CA3, CA4 y CA7. Spike S7 resuelto.
 Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcional. Ver [ADR 0011](adr/0011-paneles-y-catalogo.md), [0012](adr/0012-vistas-posicion-del-foco.md) y [0013](adr/0013-deck-superficie-de-control.md). Se hace en este orden:
 
 1. **Sin deck:**
-   - Paneles como entidades (crear, renombrar, mover, borrar), hasta dos por columna; Contexto y Trabajo pasan a ser los paneles por defecto. Ventanas libres por defecto.
+   - Paneles como entidades (crear, renombrar, mover, borrar), hasta dos por columna; Contexto y Trabajo pasan a ser los paneles por defecto. Ventanas libres por defecto. **Hecho**, de momento con un panel por columna en el principal.
    - Catálogo de apps por detección.
    - Presentaciones nuevas, empezando por tiles adaptables (tamaños de tile y reparto automático) y la lista tipo Explorador.
    - Abrir apps cerradas.

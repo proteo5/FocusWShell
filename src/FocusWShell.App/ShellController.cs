@@ -135,6 +135,37 @@ public sealed class ShellController : IDisposable
 
     public SceneStore Scenes { get; } = new(SceneStore.DefaultPath);
 
+    public PanelStore PanelFile { get; } = new(PanelStore.DefaultPath);
+
+    /// <summary>Lo último que se guardó en panels.json, para escribir sólo cuando cambia.</summary>
+    private List<Panel> _savedPanels = [];
+
+    /// <summary>Carga los paneles guardados (si los hay) en el modelo. Se llama al arrancar.</summary>
+    public void LoadPanels()
+    {
+        var saved = PanelFile.Load();
+        lock (_gate)
+        {
+            if (saved.Count > 0)
+            {
+                // ApplyScene sin ventanas sustituye los paneles; valida que quede alguno en el principal.
+                _workspace.Execute(new ApplyScene([], saved));
+            }
+
+            _savedPanels = [.. _workspace.Panels];
+        }
+    }
+
+    /// <summary>Guarda los paneles si cambiaron (nombre, ubicación, presentación, altas o bajas).</summary>
+    private void SavePanelsIfChanged()
+    {
+        if (!_workspace.Panels.SequenceEqual(_savedPanels))
+        {
+            _savedPanels = [.. _workspace.Panels];
+            PanelFile.Save(_savedPanels);
+        }
+    }
+
     /// <summary>Monitores auxiliares de izquierda a derecha: el 1 es el primero. Así se guardan en las escenas.</summary>
     private static List<DisplayInfo> OrderedAux() =>
         [.. AuxiliaryDisplays().OrderBy(d => d.Bounds.Left).ThenBy(d => d.Bounds.Top)];
@@ -325,6 +356,7 @@ public sealed class ShellController : IDisposable
         using var own = _watcher?.OwnChange();
         var result = RunEffectsLocked(commands, forceLayout);
         SyncExpectations(result.Applied);
+        SavePanelsIfChanged();
         if (result.Applied is { Error: null } applied)
         {
             _lastReport = applied;

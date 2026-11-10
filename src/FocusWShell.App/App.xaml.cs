@@ -40,10 +40,15 @@ public partial class App : Application
         }
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
-        AppDomain.CurrentDomain.UnhandledException += (_, _) => TryRestoreAll();
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            LogError(args.ExceptionObject as Exception);
+            TryRestoreAll();
+        };
 
         OfferRecovery();
 
+        _controller.LoadPanels();
         _main = new MainWindow(_controller);
 
         // S4: lo que haga el usuario con las ventanas gestionadas se traduce en comandos.
@@ -262,8 +267,25 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Deja constancia del error en <c>%LOCALAPPDATA%\FocusWShell\errors.log</c> (nunca falla).</summary>
+    private static void LogError(Exception? exception)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FocusWShell", "errors.log");
+            System.IO.File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+#pragma warning disable CA1031 // Registrar un error nunca debe provocar otro.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+        }
+    }
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        LogError(e.Exception);
         TryRestoreAll();
         MessageBox.Show(
             $"Error inesperado. Las ventanas se han devuelto a su sitio.\n\n{e.Exception.Message}",
