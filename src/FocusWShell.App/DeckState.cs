@@ -14,6 +14,9 @@ public sealed record DeckPanel(string Id, string Name, string Where, IReadOnlyLi
 {
     /// <summary>Monitor del panel (<c>null</c>: el principal).</summary>
     public string? Display { get; init; }
+
+    /// <summary>Su presentación.</summary>
+    public PanelTemplate Template { get; init; }
 }
 
 /// <summary>
@@ -29,4 +32,8 @@ public sealed record DeckState(
     IReadOnlyList<DeckPanel> Panels,
     IReadOnlyList<DeckApp> Free,
     IReadOnlyList<string> Scenes,
-    IReadOnlyList<(string? Display, string Name)> Displays);
+    IReadOnlyList<(string? Display, string Name)> Displays)
+{
+    /// <summary>Proporciones de la vista actual (para los presets de ancho del foco).</summary>
+    public ViewWeights Weights { get; init; } = ViewProportions.Default(FocusPosition.Center);
+}

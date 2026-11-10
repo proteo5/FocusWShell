@@ -215,7 +215,7 @@ public sealed class ShellController : IDisposable
                 apps.AddRange(_catalog.Apps
                     .Where(a => a.LastPanelId == p.Id && !a.Hidden && !openKeys.Contains(a.AppKey))
                     .Select(a => new DeckApp(a.Name, a.AppKey, null, ListItemState.Closed, "", p.Id, a)));
-                return new DeckPanel(p.Id, p.Name, Where(p), apps) { Display = p.Display };
+                return new DeckPanel(p.Id, p.Name, Where(p), apps) { Display = p.Display, Template = p.Template };
             }).ToList();
 
             var free = _snapshots.Values
@@ -229,7 +229,10 @@ public sealed class ShellController : IDisposable
             bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h));
             var displays = new List<(string?, string)> { (null, "Principal") };
             displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
-            return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays);
+            return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays)
+            {
+                Weights = _workspace.ProportionsOf(_workspace.View),
+            };
         }
     }
 
@@ -1343,7 +1346,10 @@ public sealed class ShellController : IDisposable
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
                     WithoutDeck(displays.First(d => d.Key == a.Display)),
-                    a.Panels.Select(v => Assign(v)!).ToList()))
+                    a.Panels.Select(v => Assign(v)!).ToList())
+                {
+                    NoMaximize = DeckDock is { } dock && string.Equals(dock.Display, a.Display, StringComparison.OrdinalIgnoreCase),
+                })
                 .ToList(),
         };
         var (leftWeight, centerWeight, rightWeight) = c.Weights;

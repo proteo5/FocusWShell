@@ -399,6 +399,11 @@ Tablet por Apollo/Artemis como monitor extendido («Lenovo tablet», 1280×720):
 | Tocar una Paint libre en el deck fijado | Pasa a Trabajo y al foco; el deck sigue a la vista en la tablet |
 | Panel «Tableta» en la tablet, con una Calculadora; 📌 → «mitad izquierda» | El deck queda a la izquierda; el panel, con su tira, a la derecha, sin taparse. «Entero» sale como no disponible («tiene paneles») |
 
+| Arrastrar con el ratón una Paint de Trabajo a Contexto, y una Paint libre a Trabajo | Se mueve la primera; la segunda queda asignada a Trabajo |
+| Botón de presentación de Trabajo → «Pestañas», luego ▶ | Trabajo pasa a pestañas; ▶ pone la Calculadora como pestaña visible |
+| Preset «Foco ancho» | La vista queda en 12 · 70 · 18 % |
+| Panel «Tableta» en la tablet, en Pantalla completa; deck fijado en la mitad izquierda; arrastrar la Calculadora a Tableta | La Calculadora ocupa la mitad derecha sin maximizarse, con su tira «TABLETA \| Calculator» |
+
 Sin probar: desconectar y reconectar la tablet con el deck fijado.
 
 ### S6 — Reconexión (2026-11-10)

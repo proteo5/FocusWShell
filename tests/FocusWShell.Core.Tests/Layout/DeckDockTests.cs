@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Layout;
@@ -26,5 +26,23 @@ public class DeckDockTests
 
         Assert.Equal(Tablet, deck);
         Assert.Null(panels);
+    }
+
+    [Fact]
+    public void BesideTheDeckAFillPanelTakesTheRestWithItsTabsInsteadOfMaximizing()
+    {
+        var (_, rest) = DeckDock.Split(Tablet, DeckZone.LeftHalf);
+        var r = AuxLayoutEngine.Compute(new AuxInput("tablet", rest!.Value,
+        [
+            new PanelInput("musica", PanelSide.Left, 1, PanelTemplate.Fill, [new LayoutWindow(1, "Spotify"), new LayoutWindow(2, "Podcasts")]),
+        ], TopInset: 35) { NoMaximize = true });
+
+        var spotify = r.Targets.Single(t => t.Handle == 1);
+        Assert.Equal(TargetKind.Visible, spotify.Kind);
+        Assert.Equal(new PixelRect(2794, 1440 + 35, 3434, 2112), spotify.Rect);
+        Assert.Equal(TargetKind.Minimized, r.Targets.Single(t => t.Handle == 2).Kind);
+        Assert.Equal(PanelTemplate.Stack, r.EffectiveTemplates["musica"]); // con tira de pestañas
+        Assert.Equal(35, r.StripHeight);
+        Assert.Equal(rest.Value, r.Bands["musica"]);
     }
 }

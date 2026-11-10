@@ -50,10 +50,11 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
   - Clic derecho, o pulsación larga en táctil, abre su menú: al foco, pantalla completa en un monitor, estacionar o recuperar, mover a otro panel, liberar.
 - **Se oculta solo** al elegir una app o una escena. También con su ✕, con **Ctrl+Alt+Mayús+D** (configurable), con «Mostrar u ocultar el deck» en la bandeja o con el botón «Deck» de la ventana principal.
 - **«API de deck»:** `ShellController.DeckState()` reúne el estado en un solo sitio; los comandos son los de siempre.
-- **Pendiente:**
-  - arrastrar iconos entre paneles;
-  - el control de navegación (pestañas, paneles, template, ancho del foco);
-  - el [ADR 0014](0014-mapa-de-controles-en-el-deck.md).
+- **Arrastrar:** soltar una app sobre otro panel la mueve (`SendTo`); soltar una ventana libre la asigna (`Adopt`). La zona se ilumina al pasar por encima. Moverla menos de 12 px cuenta como un toque.
+- **Navegación:**
+  - en la cabecera de cada panel, ◀ ▶ recorren sus pestañas (en pestañas o pantalla completa) y un botón muestra la presentación y pasa a la siguiente (Tiles, Pestañas, Lista y, en un auxiliar, Pantalla completa);
+  - bajo «Vista», los presets de ancho del foco, con el actual resaltado.
+- **Pendiente:** el [ADR 0014](0014-mapa-de-controles-en-el-deck.md).
 
 ## Implementación de la fase 4 (2026-11-10)
 
@@ -65,4 +66,4 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
 - **Desconexión:** si su monitor se desconecta, el deck se oculta; si vuelve, reaparece allí.
 - **Pendiente:**
   - comprobar la desconexión con la tablet de verdad;
-  - un panel de pantalla completa con pestañas junto al deck (la idea de Spotify en la tablet).
+- **Pantalla completa junto al deck:** en el monitor donde está fijado el deck, un panel en «Pantalla completa» no se maximiza. Ocupa el área que deja el deck, bajo su tira de pestañas (`AuxInput.NoMaximize`). Es la idea de Spotify en la tablet.

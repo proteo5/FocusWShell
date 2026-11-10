@@ -144,14 +144,29 @@ public sealed class DeckWindow : Window
 
         _root.Children.Add(views);
 
-        // Paneles con sus apps.
+        // Ancho del foco: los presets de la vista; el actual, resaltado.
+        var widths = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+        foreach (var (name, weights) in ViewProportions.Presets(state.View))
+        {
+            var b = WideButton(name, true, () => Run(false, new SetProportions(state.View, weights)));
+            if (weights.SameAs(state.Weights))
+            {
+                b.Background = ActiveBrush;
+            }
+
+            widths.Children.Add(b);
+        }
+
+        _root.Children.Add(widths);
+
+        // Paneles con sus apps. Cada uno es una zona donde soltar una app arrastrada.
         foreach (var panel in state.Panels)
         {
-            _root.Children.Add(Label($"{panel.Name.ToUpperInvariant()} · {panel.Where}"));
-            var apps = new WrapPanel { Margin = new Thickness(0, 2, 0, 10) };
+            _root.Children.Add(PanelHeader(panel));
+            var apps = new WrapPanel();
             if (panel.Apps.Count == 0)
             {
-                apps.Children.Add(new TextBlock { Text = "sin apps", Foreground = DimBrush, Margin = new Thickness(4) });
+                apps.Children.Add(new TextBlock { Text = "sin apps (suelta aquí una app)", Foreground = DimBrush, Margin = new Thickness(4) });
             }
 
             foreach (var app in panel.Apps)
@@ -159,7 +174,7 @@ public sealed class DeckWindow : Window
                 apps.Children.Add(AppTile(app));
             }
 
-            _root.Children.Add(apps);
+            _root.Children.Add(DropZone(apps, panel));
         }
 
         // Ventanas libres.
@@ -279,9 +294,157 @@ public sealed class DeckWindow : Window
             ToolTip = string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"Deck: {app.Name} ({app.State})");
-        tile.Click += async (_, _) => await Choose(app);
+        tile.Click += async (_, _) =>
+        {
+            if (_dragged)
+            {
+                _dragged = false; // fue un arrastre, no un toque
+                return;
+            }
+
+            await Choose(app);
+        };
+        StartDragFrom(tile, app);
         tile.ContextMenu = MenuFor(app);
         return tile;
+    }
+
+    private static readonly Brush DropBrush = Frozen(Color.FromRgb(0x1F, 0x3A, 0x5F));
+    private const string DragFormat = "FocusWShell.DeckApp";
+    private Point? _dragStart;
+    private bool _dragged;
+
+    /// <summary>
+    /// Arrastrar una app (ADR 0013): basta con moverla unos píxeles con el ratón o el dedo; si no, es un
+    /// toque normal.
+    /// </summary>
+    private void StartDragFrom(Button tile, DeckApp app)
+    {
+        if (app.Handle is null)
+        {
+            return; // una app cerrada no se arrastra: se abre en su panel
+        }
+
+        tile.PreviewMouseLeftButtonDown += (_, e) => _dragStart = e.GetPosition(this);
+        tile.PreviewMouseLeftButtonUp += (_, _) => _dragStart = null;
+        tile.PreviewMouseMove += (_, e) =>
+        {
+            if (_dragStart is not { } start || e.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            var delta = e.GetPosition(this) - start;
+            if (Math.Abs(delta.X) < 12 && Math.Abs(delta.Y) < 12)
+            {
+                return;
+            }
+
+            _dragStart = null;
+            _dragged = true;
+            DragDrop.DoDragDrop(tile, new DataObject(DragFormat, app), DragDropEffects.Move);
+        };
+    }
+
+    /// <summary>Un panel como zona donde soltar: se ilumina al pasar por encima.</summary>
+    private Border DropZone(UIElement content, DeckPanel panel)
+    {
+        var zone = new Border
+        {
+            Child = content,
+            Background = Brushes.Transparent,
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(2),
+            Margin = new Thickness(0, 2, 0, 10),
+            AllowDrop = true,
+        };
+        bool Accepts(DragEventArgs e) => e.Data.GetData(DragFormat) is DeckApp app && app.PanelId != panel.Id;
+        zone.DragEnter += (_, e) =>
+        {
+            e.Effects = Accepts(e) ? DragDropEffects.Move : DragDropEffects.None;
+            if (Accepts(e))
+            {
+                zone.Background = DropBrush;
+            }
+        };
+        zone.DragOver += (_, e) =>
+        {
+            e.Effects = Accepts(e) ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        };
+        zone.DragLeave += (_, _) => zone.Background = Brushes.Transparent;
+        zone.Drop += async (_, e) =>
+        {
+            zone.Background = Brushes.Transparent;
+            _dragged = false;
+            if (e.Data.GetData(DragFormat) is DeckApp app && app.PanelId != panel.Id && app.Handle is { } h)
+            {
+                await Run(false, app.PanelId is null ? new Adopt(h, app.Name, panel.Id) : new SendTo(h, panel.Id));
+            }
+        };
+        return zone;
+    }
+
+    /// <summary>
+    /// Cabecera de un panel con su control de navegación: ◀ ▶ recorren sus pestañas (en pestañas o
+    /// pantalla completa) y el botón de la presentación pasa a la siguiente.
+    /// </summary>
+    private DockPanel PanelHeader(DeckPanel panel)
+    {
+        var header = new DockPanel { Margin = new Thickness(0, 4, 0, 0), LastChildFill = true };
+        var tabs = panel.Apps.Where(a => a.State == ListItemState.InPanel && a.Handle is not null).ToList();
+        bool cycles = panel.Template is PanelTemplate.Stack or PanelTemplate.Fill && tabs.Count > 1;
+        var controls = new StackPanel { Orientation = Orientation.Horizontal };
+        if (cycles)
+        {
+            // En pestañas, la visible es la primera: ▶ pone la segunda; ◀, la última.
+            controls.Children.Add(NavButton("◀", $"Pestaña anterior de {panel.Name}", () => Run(false, new MakeActiveInPanel(tabs[^1].Handle!.Value))));
+            controls.Children.Add(NavButton("▶", $"Pestaña siguiente de {panel.Name}", () => Run(false, new MakeActiveInPanel(tabs[1].Handle!.Value))));
+        }
+
+        var order = panel.Display is null
+            ? new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List }
+            : new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List, PanelTemplate.Fill };
+        var next = order[(Array.IndexOf(order, panel.Template) + 1) % order.Length];
+        var template = NavButton(TemplateName(panel.Template), $"Presentación de {panel.Name}: pasar a {TemplateName(next)}", () => Run(false, new SetPresentation(panel.Id, next)));
+        template.Width = double.NaN;
+        template.Padding = new Thickness(10, 0, 10, 0);
+        template.ToolTip = $"Pasar a {TemplateName(next)}";
+        controls.Children.Add(template);
+        DockPanel.SetDock(controls, Dock.Right);
+        header.Children.Add(controls);
+        var title = Label($"{panel.Name.ToUpperInvariant()} · {panel.Where}");
+        title.VerticalAlignment = VerticalAlignment.Center;
+        header.Children.Add(title);
+        return header;
+    }
+
+    private static string TemplateName(PanelTemplate template) => template switch
+    {
+        PanelTemplate.Stack => "Pestañas",
+        PanelTemplate.Fill => "Pantalla completa",
+        PanelTemplate.List => "Lista",
+        _ => "Tiles",
+    };
+
+    private static Button NavButton(string text, string name, Func<Task> click)
+    {
+        var b = new Button
+        {
+            Content = text,
+            Width = 40,
+            Height = 36,
+            Margin = new Thickness(4, 0, 0, 0),
+            Focusable = false,
+            BorderThickness = new Thickness(0),
+            Foreground = TextBrush,
+            Background = CardBrush,
+            Cursor = Cursors.Hand,
+            FontSize = 11,
+        };
+        System.Windows.Automation.AutomationProperties.SetName(b, $"Deck: {name}");
+        b.Click += async (_, _) => await click();
+        return b;
     }
 
     private async Task Choose(DeckApp app)
