@@ -21,7 +21,14 @@ public enum Placement
 /// derecha y, si ese monitor falta, a qué lado del principal van sus ventanas.
 /// </param>
 /// <param name="Template">Presentación del panel.</param>
-public sealed record Panel(string Id, string Name, string? Display, PanelSide Side, PanelTemplate Template = PanelTemplate.Tiles);
+/// <param name="Slot">Arriba o abajo en su columna: como máximo dos paneles por columna.</param>
+public sealed record Panel(
+    string Id, string Name, string? Display, PanelSide Side, PanelTemplate Template = PanelTemplate.Tiles, PanelSlot Slot = PanelSlot.Upper)
+{
+    /// <summary>Si ocupa la misma columna que <paramref name="other"/> (mismo monitor y mismo lado).</summary>
+    public bool SharesColumnWith(Panel other) =>
+        other is not null && Side == other.Side && string.Equals(Display, other.Display, StringComparison.OrdinalIgnoreCase);
+}
 
 /// <summary>
 /// Una ventana gestionada. El orden dentro de su panel es su posición en <see cref="Workspace.Windows"/>;
@@ -37,7 +44,7 @@ public sealed record ManagedWindow(nint Handle, string Label, string PanelId, Pl
 /// <summary>Un panel con las ventanas que el layout coloca en él, en orden.</summary>
 public sealed record PanelView(Panel Panel, IReadOnlyList<nint> Windows);
 
-/// <summary>Paneles de un monitor auxiliar, de izquierda a derecha.</summary>
+/// <summary>Paneles de un monitor auxiliar, de izquierda a derecha y, en cada columna, de arriba abajo.</summary>
 public sealed record AuxComposition(string Display, IReadOnlyList<PanelView> Panels)
 {
     /// <summary>Ventanas del primer panel de la izquierda (atajo para las pruebas y la UI).</summary>
@@ -56,6 +63,12 @@ public sealed record AuxComposition(string Display, IReadOnlyList<PanelView> Pan
 /// <param name="Right">Panel a la derecha del foco en el principal (por defecto, Trabajo).</param>
 public sealed record SceneComposition(PanelView? Left, nint? Center, PanelView? Right)
 {
+    /// <summary>Segundo panel de la columna izquierda del principal (el de abajo), si lo hay.</summary>
+    public PanelView? LeftLower { get; init; }
+
+    /// <summary>Segundo panel de la columna derecha del principal.</summary>
+    public PanelView? RightLower { get; init; }
+
     public IReadOnlyList<nint> Context => Left?.Windows ?? [];
 
     public IReadOnlyList<nint> Work => Right?.Windows ?? [];
@@ -71,8 +84,13 @@ public sealed record SceneComposition(PanelView? Left, nint? Center, PanelView? 
     public IReadOnlyList<nint> Parked { get; init; } = [];
 
     /// <summary>Ventanas que el layout coloca (sin las estacionadas ni las que están fuera de layout).</summary>
-    public IEnumerable<nint> All => Context.Concat(Center is { } c ? [c] : []).Concat(Work)
+    public IEnumerable<nint> All => Context.Concat(LeftLower?.Windows ?? []).Concat(Center is { } c ? [c] : []).Concat(Work)
+        .Concat(RightLower?.Windows ?? [])
         .Concat(Aux.SelectMany(a => a.Panels.SelectMany(p => p.Windows)));
+
+    /// <summary>Los paneles del principal con su vista, de izquierda a derecha y de arriba abajo.</summary>
+    public IEnumerable<PanelView> PrincipalPanels =>
+        new[] { Left, LeftLower, Right, RightLower }.OfType<PanelView>();
 }
 
 #pragma warning disable CA1716 // Nombres del modelo de dominio (02-modelo-de-dominio.md).
@@ -101,8 +119,8 @@ public sealed record CreatePanel(Panel Panel) : Command;
 /// <summary>Cambia el nombre de un panel. No mueve nada.</summary>
 public sealed record RenamePanel(string PanelId, string Name) : Command;
 
-/// <summary>Lleva un panel a otro monitor o al otro lado del foco, con sus ventanas.</summary>
-public sealed record MovePanel(string PanelId, string? Display, PanelSide Side) : Command;
+/// <summary>Lleva un panel a otro monitor, al otro lado del foco o al otro puesto de su columna, con sus ventanas.</summary>
+public sealed record MovePanel(string PanelId, string? Display, PanelSide Side, PanelSlot Slot = PanelSlot.Upper) : Command;
 
 /// <summary>Cambia la presentación de un panel. <c>Fill</c> sólo vale en monitores auxiliares.</summary>
 public sealed record SetPresentation(string PanelId, PanelTemplate Template) : Command;
@@ -263,7 +281,13 @@ public sealed class Workspace
         return PrincipalPanel(own.Side) ?? _panels.First(p => p.Display is null);
     }
 
-    private Panel? PrincipalPanel(PanelSide side) => _panels.FirstOrDefault(p => p.Display is null && p.Side == side);
+    /// <summary>El primer panel (el de arriba) de esa columna del principal.</summary>
+    private Panel? PrincipalPanel(PanelSide side) => ColumnOf(null, side).FirstOrDefault();
+
+    /// <summary>Paneles de una columna, de arriba abajo.</summary>
+    private List<Panel> ColumnOf(string? display, PanelSide side) =>
+        _panels.Where(p => p.Side == side && string.Equals(p.Display, display, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.Slot).ToList();
 
     public SceneComposition Composition
     {
@@ -275,14 +299,18 @@ public sealed class Workspace
                 .GroupBy(p => p.Display!, StringComparer.OrdinalIgnoreCase)
                 .Select(g => new AuxComposition(
                     g.Key,
-                    g.OrderBy(p => p.Side).Select(p => new PanelView(p, InPanel(p))).Where(v => v.Windows.Count > 0).ToList()))
+                    g.OrderBy(p => p.Side).ThenBy(p => p.Slot).Select(p => new PanelView(p, InPanel(p))).Where(v => v.Windows.Count > 0).ToList()))
                 .Where(a => a.Panels.Count > 0)
                 .ToList();
+            var left = ColumnOf(null, PanelSide.Left);
+            var right = ColumnOf(null, PanelSide.Right);
             return new SceneComposition(
-                View(PrincipalPanel(PanelSide.Left)),
+                View(left.FirstOrDefault()),
                 Center is { Detached: false } center ? center.Handle : null,
-                View(PrincipalPanel(PanelSide.Right)))
+                View(right.FirstOrDefault()))
             {
+                LeftLower = View(left.Skip(1).FirstOrDefault()),
+                RightLower = View(right.Skip(1).FirstOrDefault()),
                 Parked = _windows.Where(w => w.Placement == Placement.Parked).Select(w => w.Handle).ToList(),
                 Aux = aux,
             };
@@ -434,21 +462,28 @@ public sealed class Workspace
 
     // --- Paneles ------------------------------------------------------------------------------------
 
-    private string? ValidateLocation(string? display, PanelSide side, PanelTemplate template, string? exceptId)
+    private string? ValidateLocation(string? display, PanelSide side, PanelSlot slot, PanelTemplate template, string? exceptId)
     {
         if (display is null && template == PanelTemplate.Fill)
         {
             return "Fill sólo vale en monitores auxiliares: en el principal manda el Centro.";
         }
 
-        // Etapa 1: un panel por columna en el principal (dos por columna llega con las vistas, ADR 0012).
-        if (display is null && _panels.Any(p => p.Id != exceptId && p.Display is null && p.Side == side))
+        // Como máximo dos paneles por columna, uno arriba y otro abajo (ADR 0011).
+        if (ColumnOf(display, side).FirstOrDefault(p => p.Id != exceptId && p.Slot == slot) is { } occupant)
         {
-            return $"Ya hay un panel a la {(side == PanelSide.Left ? "izquierda" : "derecha")} del foco.";
+            return $"«{occupant.Name}» ya ocupa ese puesto ({SlotName(slot)}, {SideName(display, side)}).";
         }
 
         return null;
     }
+
+    private static string SlotName(PanelSlot slot) => slot == PanelSlot.Upper ? "arriba" : "abajo";
+
+    private static string SideName(string? display, PanelSide side) =>
+        display is null
+            ? $"a la {(side == PanelSide.Left ? "izquierda" : "derecha")} del foco"
+            : $"a la {(side == PanelSide.Left ? "izquierda" : "derecha")} de su monitor";
 
     private CommandOutcome DoCreatePanel(Panel panel)
     {
@@ -463,7 +498,7 @@ public sealed class Workspace
             return CommandOutcome.Reject($"Ya existe un panel «{panel.Id}».");
         }
 
-        if (ValidateLocation(panel.Display, panel.Side, panel.Template, null) is { } problem)
+        if (ValidateLocation(panel.Display, panel.Side, panel.Slot, panel.Template, null) is { } problem)
         {
             return CommandOutcome.Reject(problem);
         }
@@ -495,17 +530,17 @@ public sealed class Workspace
             return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
         }
 
-        if (panel.Display == c.Display && panel.Side == c.Side)
+        if (panel.Display == c.Display && panel.Side == c.Side && panel.Slot == c.Slot)
         {
             return CommandOutcome.Accept();
         }
 
-        if (ValidateLocation(c.Display, c.Side, panel.Template, panel.Id) is { } problem)
+        if (ValidateLocation(c.Display, c.Side, c.Slot, panel.Template, panel.Id) is { } problem)
         {
             return CommandOutcome.Reject(problem);
         }
 
-        _panels[_panels.IndexOf(panel)] = panel with { Display = c.Display, Side = c.Side };
+        _panels[_panels.IndexOf(panel)] = panel with { Display = c.Display, Side = c.Side, Slot = c.Slot };
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
@@ -762,9 +797,9 @@ public sealed class Workspace
         var valid = new List<Panel>();
         foreach (var p in panels.DistinctBy(p => p.Id))
         {
-            // Fill no vale en el principal; dos paneles en la misma columna, tampoco (etapa 1).
+            // Fill no vale en el principal; dos paneles en el mismo puesto de una columna, tampoco.
             var panel = p.Display is null && p.Template == PanelTemplate.Fill ? p with { Template = PanelTemplate.Tiles } : p;
-            if (panel.Display is null && valid.Any(x => x.Display is null && x.Side == panel.Side))
+            if (valid.Any(x => x.SharesColumnWith(panel) && x.Slot == panel.Slot))
             {
                 continue;
             }
@@ -800,9 +835,9 @@ public sealed class Workspace
 
                 map[wanted.Id] = existing.Id;
             }
-            else if (wanted.Display is null && PrincipalPanel(wanted.Side) is { } occupant)
+            else if (ColumnOf(wanted.Display, wanted.Side).FirstOrDefault(p => p.Slot == wanted.Slot) is { } occupant)
             {
-                // Esa columna del principal ya tiene panel: sus ventanas van ahí.
+                // Ese puesto ya tiene panel: sus ventanas van ahí.
                 map[wanted.Id] = occupant.Id;
             }
             else

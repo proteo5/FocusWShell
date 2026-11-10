@@ -166,6 +166,9 @@ public partial class MainWindow : Window
         WindowList.SelectedItem = _rows.FirstOrDefault(r => r.Snapshot.Handle == selected);
     }
 
+    /// <summary>Un puesto donde puede ir un panel: monitor, lado y arriba/abajo.</summary>
+    private sealed record Location(string? Display, PanelSide Side, PanelSlot Slot, string Label);
+
     /// <summary>
     /// Sección de paneles (ADR 0011): una fila por panel para renombrarlo, moverlo, cambiar su
     /// presentación o borrarlo, y una fila para crear uno nuevo.
@@ -175,17 +178,28 @@ public partial class MainWindow : Window
         _buildingPanels = true;
         PanelsList.Children.Clear();
 
-        // Ubicaciones posibles: el principal a cada lado del foco y cada auxiliar conectado.
-        var locations = new List<(string? Display, PanelSide Side, string Label)>
+        // Ubicaciones posibles: en el principal y en cada auxiliar conectado, cada columna con dos puestos
+        // (arriba y abajo, ADR 0011). Se indica qué panel ocupa cada uno.
+        string Occupant(string? display, PanelSide side, PanelSlot slot) =>
+            panels.FirstOrDefault(p => p.Side == side && p.Slot == slot && string.Equals(p.Display, display, StringComparison.OrdinalIgnoreCase)) is { } o
+                ? $" ({o.Name})"
+                : "";
+        string Spot(string where, string? display, PanelSide side, PanelSlot slot) =>
+            $"{where} · {(slot == PanelSlot.Upper ? "arriba" : "abajo")}{Occupant(display, side, slot)}";
+        var locations = new List<Location>();
+        void AddColumn(string? display, PanelSide side, string where)
         {
-            (null, PanelSide.Left, "Principal · izquierda del foco"),
-            (null, PanelSide.Right, "Principal · derecha del foco"),
-        };
+            locations.Add(new(display, side, PanelSlot.Upper, Spot(where, display, side, PanelSlot.Upper)));
+            locations.Add(new(display, side, PanelSlot.Lower, Spot(where, display, side, PanelSlot.Lower)));
+        }
+
+        AddColumn(null, PanelSide.Left, "Principal · izquierda del foco");
+        AddColumn(null, PanelSide.Right, "Principal · derecha del foco");
         foreach (var a in aux)
         {
             string name = DisplayName(a.Key, aux);
-            locations.Add((a.Key, PanelSide.Left, $"{name} · izquierda"));
-            locations.Add((a.Key, PanelSide.Right, $"{name} · derecha"));
+            AddColumn(a.Key, PanelSide.Left, $"{name} · izquierda");
+            AddColumn(a.Key, PanelSide.Right, $"{name} · derecha");
         }
 
         var presentations = new List<(PanelTemplate Template, string Label)>
@@ -195,20 +209,21 @@ public partial class MainWindow : Window
             (PanelTemplate.Fill, "Pantalla completa"),
         };
 
-        System.Windows.Controls.ComboBox LocationCombo(string label, string? display, PanelSide side)
+        System.Windows.Controls.ComboBox LocationCombo(string label, string? display, PanelSide side, PanelSlot slot)
         {
             var options = locations.ToList();
             if (display is not null && !options.Any(o => o.Display == display))
             {
-                options.Add((display, side, $"{DisplayName(display, aux)} · {(side == PanelSide.Left ? "izquierda" : "derecha")}"));
+                // Un monitor que ahora no está conectado: se muestra su sitio para no perderlo.
+                options.Add(new(display, side, slot, Spot($"{DisplayName(display, aux)} · {(side == PanelSide.Left ? "izquierda" : "derecha")}", display, side, slot)));
             }
 
             var combo = new System.Windows.Controls.ComboBox
             {
-                Width = 230,
+                Width = 330,
                 Margin = new Thickness(0, 0, 8, 0),
                 ItemsSource = options.Select(o => o.Label).ToList(),
-                SelectedIndex = Math.Max(0, options.FindIndex(o => o.Display == display && o.Side == side)),
+                SelectedIndex = Math.Max(0, options.FindIndex(o => o.Display == display && o.Side == side && o.Slot == slot)),
                 Tag = options,
             };
             System.Windows.Automation.AutomationProperties.SetName(combo, label);
@@ -231,16 +246,16 @@ public partial class MainWindow : Window
                 }
             };
 
-            var location = LocationCombo($"Ubicación del panel {panel.Name}", panel.Display, panel.Side);
+            var location = LocationCombo($"Ubicación del panel {panel.Name}", panel.Display, panel.Side, panel.Slot);
             location.SelectionChanged += async (_, _) =>
             {
-                if (_buildingPanels || location.Tag is not List<(string? Display, PanelSide Side, string Label)> options || location.SelectedIndex < 0)
+                if (_buildingPanels || location.Tag is not List<Location> options || location.SelectedIndex < 0)
                 {
                     return;
                 }
 
-                var (d, s, _) = options[location.SelectedIndex];
-                await Run(() => _controller.Execute(new MovePanel(panel.Id, d, s)));
+                var (d, s, slot, _) = options[location.SelectedIndex];
+                await Run(() => _controller.Execute(new MovePanel(panel.Id, d, s, slot)));
                 Refresh();
             };
 
@@ -287,20 +302,23 @@ public partial class MainWindow : Window
         var create = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
         var newName = new System.Windows.Controls.TextBox { Width = 160, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
         System.Windows.Automation.AutomationProperties.SetName(newName, "Nombre del panel nuevo");
-        var newLocation = LocationCombo("Ubicación del panel nuevo", aux.Count > 0 ? aux[0].Key : null, PanelSide.Right);
+        // Para el panel nuevo se propone el primer puesto libre: de un auxiliar si hay, si no del principal.
+        var free = locations.Where(o => Occupant(o.Display, o.Side, o.Slot).Length == 0).ToList();
+        var suggested = free.FirstOrDefault(o => o.Display is not null) ?? free.FirstOrDefault() ?? locations[0];
+        var newLocation = LocationCombo("Ubicación del panel nuevo", suggested.Display, suggested.Side, suggested.Slot);
         var add = new System.Windows.Controls.Button { Content = "Crear panel", Padding = new Thickness(8, 1, 8, 1) };
         add.Click += async (_, _) =>
         {
-            if (string.IsNullOrWhiteSpace(newName.Text) || newLocation.Tag is not List<(string? Display, PanelSide Side, string Label)> options || newLocation.SelectedIndex < 0)
+            if (string.IsNullOrWhiteSpace(newName.Text) || newLocation.Tag is not List<Location> options || newLocation.SelectedIndex < 0)
             {
                 SetStatus("Escribe un nombre y elige dónde va el panel nuevo.");
                 return;
             }
 
-            var (d, s, _) = options[newLocation.SelectedIndex];
+            var (d, s, slot, _) = options[newLocation.SelectedIndex];
             string id = $"panel-{Guid.NewGuid():N}"[..14];
             var panelName = newName.Text.Trim();
-            await Run(() => _controller.Execute(new CreatePanel(new Panel(id, panelName, d, s))));
+            await Run(() => _controller.Execute(new CreatePanel(new Panel(id, panelName, d, s, PanelTemplate.Tiles, slot))));
             Refresh();
         };
         create.Children.Add(newName);

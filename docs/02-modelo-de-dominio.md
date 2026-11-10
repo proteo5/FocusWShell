@@ -188,7 +188,7 @@ Al soltar una ventana arrastrada, el controlador mira dónde quedó su centro se
 
 Redimensionar por el borde que comparte con la columna vecina moverá el separador cuando lleguen las proporciones ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)); por ahora también vuelve a su sitio. Las ventanas libres no se tocan.
 
-Los gestos de Windows que eligen una ventana de un panel (Alt+Tab, vista de tareas, barra de tareas y, si se activa, el clic) la llevan al foco con `Promote` ([ADR 0003, enmienda](adr/0003-rol-independiente-del-foco.md#enmienda-2026-11-09-los-gestos-de-cambio-de-ventana-cuentan-como-comando)).
+Los gestos de Windows que eligen una ventana de un panel (Alt+Tab, vista de tareas, barra de tareas y, si se activa, el clic) la llevan al foco con `Promote` ([ADR 0003, enmienda](adr/0003-rol-independiente-del-foco.md#enmienda-2026-11-10-los-gestos-de-cambio-de-ventana-cuentan-como-comando)).
 
 Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), pero el gestor no la mueve hasta que se **reencaje** (`Reattach`), se des-maximice, se promueva o se estacione. Sólo maximizar en el principal la deja fuera de layout.
 
@@ -240,6 +240,18 @@ En este orden:
 6. Si la ventana del Centro sigue sin caber después del paso 2, se centra sobre su columna. Es el único caso en que una ventana invade un panel, y nunca al revés.
 
 Cada ajuste genera una nota en lenguaje natural, por ejemplo: "Contexto se amplió 54 px (el Centro queda en 1830 px) porque Slack necesita 670 px de ancho". Esa nota alimentará la microbarra y cumple el principio de que toda acción automática se explique.
+
+### Dos paneles en una columna
+
+Cada panel tiene un **puesto** en su columna (`Slot`: arriba o abajo), y en cada columna (monitor y lado) cabe un panel por puesto: como máximo dos ([ADR 0011](adr/0011-paneles-y-catalogo.md)). Crear o mover un panel a un puesto ocupado se rechaza diciendo quién lo ocupa. Al aplicar una escena, un panel nuevo cuyo puesto ya está ocupado manda sus ventanas al que lo ocupa.
+
+En el layout (`PanelColumn`, común al principal y a los auxiliares):
+
+- Un panel sin ventanas no ocupa sitio: el otro se queda con la columna entera, sea cual sea su puesto.
+- Con dos, se reparten el alto a partes iguales (las proporciones llegan con [ADR 0012](adr/0012-vistas-posicion-del-foco.md)). Cada uno tiene su **banda**, con su tira de pestañas arriba.
+- Ninguno invade al otro: una ventana más alta que su banda sale del layout (se minimiza) con una nota. En tiles, si no caben, el panel pasa a pila, como siempre.
+- La columna es tan ancha como pide la ventana visible más ancha de sus dos paneles.
+- Soltar una ventana arrastrada sobre la banda de un panel la manda a ese panel.
 
 ### Bordes compartidos con otro monitor
 

@@ -25,6 +25,16 @@ public enum PanelSide
     Right,
 }
 
+/// <summary>
+/// Puesto de un panel dentro de su columna (ADR 0011): como máximo dos paneles por columna, uno
+/// encima del otro. Un panel solo en su columna la ocupa entera, sea cual sea su puesto.
+/// </summary>
+public enum PanelSlot
+{
+    Upper,
+    Lower,
+}
+
 /// <summary>Una ventana a colocar, con su tamaño mínimo conocido (rectángulo visible), si lo hay.</summary>
 public sealed record LayoutWindow(nint Handle, string Label, PixelSize? MinSize = null);
 
@@ -43,6 +53,9 @@ public sealed record PanelInput(
 {
     /// <summary>Nombre visible del panel, para las notas. Si no se da, el identificador (<see cref="Name"/>).</summary>
     public string? Title { get; init; }
+
+    /// <summary>Arriba o abajo en su columna, si la comparte con otro panel.</summary>
+    public PanelSlot Slot { get; init; }
 
     public string DisplayTitle => Title ?? Name;
 }
@@ -69,7 +82,14 @@ public sealed record SceneInput(
     int Gap = 0,
     double MinCenterFraction = 0.5,
     double SharedEdgeMinCenterFraction = 0.3,
-    int PanelTopInset = 0);
+    int PanelTopInset = 0)
+{
+    /// <summary>Segundo panel de la columna izquierda (debajo o encima de <see cref="Left"/>, según su puesto).</summary>
+    public PanelInput? LeftLower { get; init; }
+
+    /// <summary>Segundo panel de la columna derecha.</summary>
+    public PanelInput? RightLower { get; init; }
+}
 
 public enum TargetKind
 {
@@ -95,4 +115,14 @@ public sealed record SceneLayoutResult(
     PixelRect RightColumn,
     IReadOnlyDictionary<string, PanelTemplate> EffectiveTemplates,
     IReadOnlyList<WindowTarget> Targets,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes)
+{
+    /// <summary>
+    /// Rectángulo de cada panel con ventanas, por nombre, incluida su franja de pestañas arriba. Con dos
+    /// paneles en una columna, cada uno tiene su banda.
+    /// </summary>
+    public IReadOnlyDictionary<string, PixelRect> Bands { get; init; } = new Dictionary<string, PixelRect>();
+
+    /// <summary>Alto de la franja de pestañas de cada banda, en píxeles físicos.</summary>
+    public int StripHeight { get; init; }
+}

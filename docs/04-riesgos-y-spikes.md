@@ -176,6 +176,45 @@ Implementa la primera parte del [ADR 0011](adr/0011-paneles-y-catalogo.md).
   - Una ventana cuyo panel no se puede resolver queda **libre**.
   - Probado: con "Comunicación" y "Monitoreo" creados a mano, aplicar "Código" los conservó (5/5).
 
+### Gestos de cambio de ventana (M1b, 2026-11-10)
+
+Medido en Windows 11 con `EVENT_SYSTEM_FOREGROUND`, registrando la clase de cada ventana que toma el primer plano y el estado de Alt y Win:
+
+- **Windows 11 no emite `EVENT_SYSTEM_SWITCHSTART/END`** con Alt+Tab. El selector es una ventana `XamlExplorerHostIslandWindow`, la misma que la vista de tareas. Se distinguen por la tecla pulsada cuando aparece: Alt en Alt+Tab, Win en Win+Tab (o ninguna, si se abrió con el botón de la barra).
+- Entre una ventana y otra aparecen ventanas de paso `ForegroundStaging`: se ignoran.
+- Tras elegir, el selector vuelve a tomar el primer plano unos milisegundos (un eco). Sin descartarlo, la siguiente activación por programa parecía venir de la vista de tareas y movía la ventana: un fallo de CA7 que encontró la prueba. Se descarta el selector si aparece menos de 400 ms después de un gesto.
+- La barra de tareas es `Shell_TrayWnd` (o `Shell_SecondaryTrayWnd`); su gesto sólo cuenta si la ventana se activa en menos de 2 s.
+- Volver a la ventana que ya estaba (Esc en el selector) no cuenta como gesto.
+
+Prueba con dos ventanas de Paint, una en Contexto y otra en Trabajo, desde otro proceso:
+
+| Caso | Resultado |
+| --- | --- |
+| Activarlas por programa (`SetForegroundWindow`), incluso justo después de un Alt+Tab | Nada se mueve |
+| Alt+Tab real (teclas inyectadas) a la del panel | Pasa al foco: «elegida con Alt+Tab» |
+| Win+Tab, flecha y Enter | Pasa al foco: «elegida en la vista de tareas» |
+| Alt+Tab con su casilla desactivada | Nada se mueve; el ajuste se guarda en `settings.json` |
+| Clic en la ventana del panel (clic desactivado) | Queda activa en su panel; nada se mueve |
+| Soltarla sobre la columna del foco | Pasa al foco |
+| Soltarla sobre la columna de otro panel | Cambia de panel |
+| Sacar la del foco y soltarla sobre otro panel | Vuelve del foco y cambia de panel |
+| Moverla dentro de su propio panel | Vuelve a su sitio |
+
+Pendiente: el clic real en un botón de la barra de tareas (no se simuló) y arrastres con el ratón de verdad.
+
+### Dos paneles por columna (M1b, 2026-11-10)
+
+Prueba con dos ventanas de Paint en el ultrawide, desde la interfaz y desde otro proceso:
+
+| Caso | Resultado |
+| --- | --- |
+| Crear «Notas» en «Principal · izquierda del foco · abajo» | Se crea; `panels.json` guarda `"Slot": "Lower"` |
+| Una ventana en Contexto y otra en Notas | Cada una ocupa media columna (675 px de alto), con su tira encima: «CONTEXTO» arriba y «NOTAS» a media altura |
+| Soltar la de Notas sobre la banda de Contexto | Cambia a Contexto; las dos se reparten la columna como tiles |
+| Soltarla en la mitad de abajo cuando Notas ya no tiene ventanas | Vuelve a su sitio: un panel vacío no ocupa sitio, la banda de Contexto es la columna entera |
+| Mover Notas a «derecha del foco · abajo» | Su ventana pasa a la columna derecha; como Trabajo está vacío, la ocupa entera |
+| Arrancar con un `panels.json` anterior (sin `Slot`) | Carga bien: todos los paneles quedan arriba |
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.
@@ -321,29 +360,3 @@ Implementa el [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md) con el mo
   - El juicio visual con grabación de pantalla. Queda para que el usuario lo confirme con `--cycles`.
   - Una app que impone un mínimo nuevo en modo asíncrono: su espera de 150 ms está implementada pero no se ha probado con una app real.
 - **Decisión:** el aplicador usa movimiento **asíncrono en paralelo con verificación**. `DeferWindowPos` queda descartado como mecanismo principal: no aporta nada con ventanas de otros procesos. S3 aprobado en tiempos; falta la confirmación visual.
-
-## Gestos de cambio de ventana (2026-11-09)
-
-Medido en Windows 11 con `EVENT_SYSTEM_FOREGROUND`, registrando la clase de cada ventana que toma el primer plano y el estado de Alt y Win:
-
-- **Windows 11 no emite `EVENT_SYSTEM_SWITCHSTART/END`** con Alt+Tab. El selector es una ventana `XamlExplorerHostIslandWindow`, la misma que la vista de tareas. Se distinguen por la tecla pulsada cuando aparece: Alt en Alt+Tab, Win en Win+Tab (o ninguna, si se abrió con el botón de la barra).
-- Entre una ventana y otra aparecen ventanas de paso `ForegroundStaging`: se ignoran.
-- Tras elegir, el selector vuelve a tomar el primer plano unos milisegundos (un eco). Sin descartarlo, la siguiente activación por programa parecía venir de la vista de tareas y movía la ventana: un fallo de CA7 que encontró la prueba. Se descarta el selector si aparece menos de 400 ms después de un gesto.
-- La barra de tareas es `Shell_TrayWnd` (o `Shell_SecondaryTrayWnd`); su gesto sólo cuenta si la ventana se activa en menos de 2 s.
-- Volver a la ventana que ya estaba (Esc en el selector) no cuenta como gesto.
-
-Prueba con dos ventanas de Paint, una en Contexto y otra en Trabajo, desde otro proceso:
-
-| Caso | Resultado |
-| --- | --- |
-| Activarlas por programa (`SetForegroundWindow`), incluso justo después de un Alt+Tab | Nada se mueve |
-| Alt+Tab real (teclas inyectadas) a la del panel | Pasa al foco: «elegida con Alt+Tab» |
-| Win+Tab, flecha y Enter | Pasa al foco: «elegida en la vista de tareas» |
-| Alt+Tab con su casilla desactivada | Nada se mueve; el ajuste se guarda en `settings.json` |
-| Clic en la ventana del panel (clic desactivado) | Queda activa en su panel; nada se mueve |
-| Soltarla sobre la columna del foco | Pasa al foco |
-| Soltarla sobre la columna de otro panel | Cambia de panel |
-| Sacar la del foco y soltarla sobre otro panel | Vuelve del foco y cambia de panel |
-| Moverla dentro de su propio panel | Vuelve a su sitio |
-
-Pendiente: el clic real en un botón de la barra de tareas (no se simuló) y arrastres con el ratón de verdad.

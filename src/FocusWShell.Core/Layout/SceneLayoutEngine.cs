@@ -13,6 +13,8 @@ namespace FocusWShell.Core.Layout;
 /// de <see cref="SceneInput.MinCenterFraction"/> ni del mínimo de su ventana.</item>
 /// <item>Si aun así no cabe, la ventana se ancla al borde exterior del monitor: el exceso queda fuera
 /// de pantalla y nunca encima del Centro.</item>
+/// <item>Una columna puede tener dos paneles, uno encima del otro: se reparten el alto y ninguno invade
+/// al otro (la ventana que no cabe en su banda sale del layout).</item>
 /// <item>Si ese borde exterior limita con otro monitor (<see cref="PanelInput.OuterEdgeShared"/>), el Centro
 /// puede bajar hasta el mínimo de su ventana (piso <see cref="SceneInput.SharedEdgeMinCenterFraction"/>);
 /// la ventana que ni así cabe sale del layout (se minimiza) en vez de invadir el otro monitor.</item>
@@ -26,14 +28,15 @@ public static class SceneLayoutEngine
         var notes = new List<string>();
         var area = input.WorkArea;
         int gap = input.Gap;
+        var excluded = new List<WindowTarget>();
 
         // Los paneles empiezan bajo su tira de pestañas; el Centro ocupa toda la altura.
         int inset = Math.Clamp(input.PanelTopInset, 0, area.Height / 2);
-        int panelHeight = area.Height - inset;
 
-        // 1. Template efectivo de cada panel según la altura disponible.
-        var left = Resolve(input.Left, panelHeight, gap, notes);
-        var right = Resolve(input.Right, panelHeight, gap, notes);
+        // 1. Paneles de cada columna (hasta dos, uno encima del otro) y su template efectivo según el
+        //    alto que les toca.
+        var left = PanelColumn.Build(Column(input.Left, input.LeftLower), area.Top, area.Bottom, inset, gap, notes, excluded);
+        var right = PanelColumn.Build(Column(input.Right, input.RightLower), area.Top, area.Bottom, inset, gap, notes, excluded);
 
         // 2. Anchos ideales según los pesos.
         var ideal = Splitter.Columns(area, [input.Left.Weight, input.CenterWeight, input.Right.Weight], gap);
@@ -64,24 +67,23 @@ public static class SceneLayoutEngine
         //    el otro panel).
         int leftFloor = input.Left.OuterEdgeShared ? sharedFloor : centerFloor;
         int rightFloor = input.Right.OuterEdgeShared ? sharedFloor : centerFloor;
-        var excluded = new List<WindowTarget>();
         if (input.Left.OuterEdgeShared)
         {
             int maxLeft = wl + Math.Max(0, wc - leftFloor - Math.Max(0, needR - wr));
-            left = ExcludeTooWide(left.Panel, maxLeft, panelHeight, gap, excluded, notes);
+            left.ExcludeTooWide(maxLeft, excluded, notes, SharedEdgeNote);
             needL = left.RequiredWidth;
         }
 
         if (input.Right.OuterEdgeShared)
         {
             int maxRight = wr + Math.Max(0, wc - rightFloor - Math.Max(0, needL - wl));
-            right = ExcludeTooWide(right.Panel, maxRight, panelHeight, gap, excluded, notes);
+            right.ExcludeTooWide(maxRight, excluded, notes, SharedEdgeNote);
             needR = right.RequiredWidth;
         }
 
-        // 5. Cada panel crece a costa del Centro, sin bajarlo de su piso.
-        wl = Grow(input.Left, left, wl, needL, ref wc, leftFloor, notes);
-        wr = Grow(input.Right, right, wr, needR, ref wc, rightFloor, notes);
+        // 5. Cada columna crece a costa del Centro, sin bajarlo de su piso.
+        wl = Grow(left, wl, needL, ref wc, leftFloor, notes);
+        wr = Grow(right, wr, needR, ref wc, rightFloor, notes);
 
         // 6. Columnas definitivas (contiguas, con separación).
         var leftCol = new PixelRect(area.Left, area.Top + inset, area.Left + wl, area.Bottom);
@@ -90,44 +92,44 @@ public static class SceneLayoutEngine
 
         // 7. Destinos.
         var targets = new List<WindowTarget>();
-        PlacePanel(left.Panel, left, leftCol, gap, targets, notes);
+        var areas = new Dictionary<string, PixelRect>();
+        var bands = new Dictionary<string, PixelRect>();
+        left.Place(leftCol.Left, leftCol.Right, anchorOutward: true, gap, targets, notes, areas, bands);
         if (input.Center is { } center)
         {
             targets.Add(new WindowTarget(center.Handle, center.Label, "Centro", TargetKind.Visible, FitCenter(center, centerCol, notes)));
         }
 
-        PlacePanel(right.Panel, right, rightCol, gap, targets, notes);
+        right.Place(rightCol.Left, rightCol.Right, anchorOutward: true, gap, targets, notes, areas, bands);
         targets.AddRange(excluded);
 
-        return new SceneLayoutResult(
-            leftCol,
-            centerCol,
-            rightCol,
-            new Dictionary<string, PanelTemplate> { [input.Left.Name] = left.Template, [input.Right.Name] = right.Template },
-            targets,
-            notes);
+        var templates = new Dictionary<string, PanelTemplate>();
+        foreach (var p in Column(input.Left, input.LeftLower).Concat(Column(input.Right, input.RightLower)))
+        {
+            templates[p.Name] = p.Template;
+        }
+
+        foreach (var (name, template) in left.Templates.Concat(right.Templates))
+        {
+            templates[name] = template;
+        }
+
+        return new SceneLayoutResult(leftCol, centerCol, rightCol, templates, targets, notes)
+        {
+            Bands = bands,
+            StripHeight = inset,
+        };
     }
+
+    private static IReadOnlyList<PanelInput> Column(PanelInput first, PanelInput? second) =>
+        second is null ? [first] : [first, second];
+
+    private static string SharedEdgeNote(LayoutWindow w, PanelInput panel, int maxWidth) =>
+        $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.Name} puede tener como mucho {maxWidth} " +
+        "sin invadir el Centro ni el otro monitor; se minimiza y queda fuera del layout.";
 
     /// <param name="Panel">El panel con las ventanas que siguen en el layout.</param>
     internal sealed record ResolvedPanel(PanelInput Panel, PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
-
-    /// <summary>Saca del panel las ventanas más anchas que <paramref name="maxWidth"/> y vuelve a resolverlo.</summary>
-    private static ResolvedPanel ExcludeTooWide(
-        PanelInput panel, int maxWidth, int height, int gap, List<WindowTarget> excluded, List<string> notes)
-    {
-        var tooWide = panel.Windows.Where(w => (w.MinSize?.Width ?? 0) > maxWidth).ToList();
-        foreach (var w in tooWide)
-        {
-            excluded.Add(new WindowTarget(w.Handle, w.Label, panel.Name, TargetKind.Minimized, default));
-            notes.Add(
-                $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.Name} puede tener como mucho {maxWidth} " +
-                "sin invadir el Centro ni el otro monitor; se minimiza y queda fuera del layout.");
-        }
-
-        // Al volver a resolver no se repiten las notas de template que ya se dieron.
-        var remaining = panel with { Windows = panel.Windows.Except(tooWide).ToList() };
-        return Resolve(remaining, height, gap, tooWide.Count > 0 ? notes : []);
-    }
 
     internal static ResolvedPanel Resolve(PanelInput panel, int height, int gap, List<string> notes)
     {
@@ -155,10 +157,9 @@ public static class SceneLayoutEngine
         return new ResolvedPanel(panel, template, visible, visible.Max(w => w.MinSize?.Width ?? 0));
     }
 
-    private static int Grow(
-        PanelInput panel, ResolvedPanel resolved, int width, int needed, ref int centerWidth, int centerFloor, List<string> notes)
+    private static int Grow(PanelColumn column, int width, int needed, ref int centerWidth, int centerFloor, List<string> notes)
     {
-        if (width >= needed)
+        if (width >= needed || column.Widest is not { } resolved)
         {
             return width;
         }
@@ -171,34 +172,12 @@ public static class SceneLayoutEngine
 
         centerWidth -= take;
         var widest = resolved.Visible.MaxBy(w => w.MinSize?.Width ?? 0)!;
-        notes.Add($"{panel.DisplayTitle} se amplió {take} px (el Centro queda en {centerWidth} px) porque {widest.Label} necesita {needed} px de ancho.");
+        notes.Add($"{resolved.Panel.DisplayTitle} se amplió {take} px (el Centro queda en {centerWidth} px) porque {widest.Label} necesita {needed} px de ancho.");
         return width + take;
     }
 
-    private static void PlacePanel(
-        PanelInput panel, ResolvedPanel resolved, PixelRect column, int gap, List<WindowTarget> targets, List<string> notes)
-    {
-        if (resolved.Visible.Count == 0)
-        {
-            return;
-        }
-
-        var rows = DistributeRows(column, resolved.Visible.Select(w => w.MinSize?.Height ?? 0).ToList(), gap);
-        for (int i = 0; i < resolved.Visible.Count; i++)
-        {
-            var w = resolved.Visible[i];
-            var rect = AnchorOutward(w, rows[i], panel.Side, notes, panel.DisplayTitle);
-            targets.Add(new WindowTarget(w.Handle, w.Label, panel.Name, TargetKind.Visible, rect));
-        }
-
-        foreach (var hidden in panel.Windows.Skip(resolved.Visible.Count))
-        {
-            targets.Add(new WindowTarget(hidden.Handle, hidden.Label, panel.Name, TargetKind.Minimized, default));
-        }
-    }
-
     /// <summary>Si la ventana es más grande que su celda, el exceso va hacia el borde exterior (y hacia abajo).</summary>
-    private static PixelRect AnchorOutward(LayoutWindow w, PixelRect cell, PanelSide side, List<string> notes, string panelName)
+    internal static PixelRect AnchorOutward(LayoutWindow w, PixelRect cell, PanelSide side, List<string> notes, string panelName)
     {
         int width = Math.Max(cell.Width, w.MinSize?.Width ?? 0);
         int height = Math.Max(cell.Height, w.MinSize?.Height ?? 0);

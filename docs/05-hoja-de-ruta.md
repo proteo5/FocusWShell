@@ -38,7 +38,7 @@ Criterio de salida: CA3, CA4 y CA7. Spike S7 resuelto.
 Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcional. Ver [ADR 0011](adr/0011-paneles-y-catalogo.md), [0012](adr/0012-vistas-posicion-del-foco.md) y [0013](adr/0013-deck-superficie-de-control.md). Se hace en este orden:
 
 1. **Sin deck:**
-   - Paneles como entidades (crear, renombrar, mover, borrar), hasta dos por columna; Contexto y Trabajo pasan a ser los paneles por defecto. Ventanas libres por defecto. **Hecho**, de momento con un panel por columna en el principal.
+   - Paneles como entidades (crear, renombrar, mover, borrar), hasta dos por columna; Contexto y Trabajo pasan a ser los paneles por defecto. Ventanas libres por defecto. **Hecho**, con dos paneles por columna (arriba y abajo) en el principal y en los auxiliares; de momento se reparten el alto a partes iguales.
    - Catálogo de apps por detección, y abrir apps cerradas en un panel. **Hecho.**
    - Presentaciones nuevas, empezando por tiles adaptables (tamaños de tile y reparto automático) y la lista tipo Explorador.
    - Abrir apps cerradas.
@@ -79,7 +79,7 @@ Objetivo: que el estado del escritorio se entienda de un vistazo. Sólo si la va
 
 - Sugerencias de asignación por app al aplicar una escena ("Outlook suele ir a Contexto, ¿aplicar?").
 - Reglas automáticas con modo de prueba, explicación de cada acción y deshacer.
-- ~~Propuesta: "Alt+Tab lleva al foco"~~. **Adelantado a M1b** y ampliado: Alt+Tab, la vista de tareas y la barra de tareas llevan al foco (activados); el clic en la ventana, desactivado. Soltar una ventana arrastrada sobre el foco o sobre otro panel la lleva allí; si no, vuelve a su sitio. Ver [ADR 0003, enmienda](adr/0003-rol-independiente-del-foco.md#enmienda-2026-11-09-los-gestos-de-cambio-de-ventana-cuentan-como-comando).
+- ~~Propuesta: "Alt+Tab lleva al foco"~~. **Adelantado a M1b** y ampliado: Alt+Tab, la vista de tareas y la barra de tareas llevan al foco (activados); el clic en la ventana, desactivado. Soltar una ventana arrastrada sobre el foco o sobre otro panel la lleva allí; si no, vuelve a su sitio. Ver [ADR 0003, enmienda](adr/0003-rol-independiente-del-foco.md#enmienda-2026-11-10-los-gestos-de-cambio-de-ventana-cuentan-como-comando).
 
 ## Más adelante (sin compromiso)
 

@@ -167,12 +167,22 @@ public sealed class ShellController : IDisposable
         int x = observed.Visible.Left + (observed.Visible.Width / 2);
         int y = observed.Visible.Top + (observed.Visible.Height / 2);
         var principal = _lastReport.Layout.Principal;
-        var composition = _workspace.Composition;
         if (principal.CenterColumn.Contains(x, y))
         {
             return (true, null);
         }
 
+        // Cada panel con ventanas tiene su banda; con dos en una columna, cada uno la suya.
+        foreach (var (panelId, band) in principal.Bands.Concat(_lastReport.Layout.Aux.SelectMany(a => a.Bands)))
+        {
+            if (band.Contains(x, y))
+            {
+                return (false, panelId);
+            }
+        }
+
+        // Una columna del principal sin ventanas no tiene banda: soltarla ahí la lleva a su panel de arriba.
+        var composition = _workspace.Composition;
         if (principal.LeftColumn.Contains(x, y) && composition.Left is { } left)
         {
             return (false, left.Panel.Id);
@@ -181,17 +191,6 @@ public sealed class ShellController : IDisposable
         if (principal.RightColumn.Contains(x, y) && composition.Right is { } right)
         {
             return (false, right.Panel.Id);
-        }
-
-        foreach (var aux in _lastReport.Layout.Aux)
-        {
-            foreach (var (panelId, column) in aux.Columns)
-            {
-                if (column.Contains(x, y))
-                {
-                    return (false, panelId);
-                }
-            }
         }
 
         return (false, null);
@@ -469,7 +468,7 @@ public sealed class ShellController : IDisposable
                 })
                 .ToList();
             var panels = _workspace.Panels
-                .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template))
+                .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template, p.Slot))
                 .ToList();
             scene = new SavedScene(name.Trim(), windows) { Panels = panels };
         }
@@ -517,7 +516,7 @@ public sealed class ShellController : IDisposable
             .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.PanelId ?? Workspace.WorkPanel, m.Entry.Placement))
             .ToList();
         var panels = scene.Panels
-            .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template))
+            .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot))
             .ToList();
         var result = Execute(new ApplyScene(entries, panels));
         return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
@@ -831,6 +830,8 @@ public sealed class ShellController : IDisposable
         var c = _workspace.Composition;
         List<WindowSnapshot> Map(IEnumerable<nint> handles) =>
             handles.Where(_snapshots.ContainsKey).Select(h => _snapshots[h]).ToList();
+        PanelAssignment? Assign(PanelView? v) =>
+            v is null ? null : new PanelAssignment(v.Panel.Id, v.Panel.Name, v.Panel.Side, v.Panel.Template, Map(v.Windows)) { Slot = v.Panel.Slot };
 
         var assignment = new SceneAssignment(
             Map(c.Context),
@@ -841,11 +842,13 @@ public sealed class ShellController : IDisposable
             ContextTitle = c.Left?.Panel.Name ?? "Contexto",
             WorkId = c.Right?.Panel.Id ?? Workspace.WorkPanel,
             WorkTitle = c.Right?.Panel.Name ?? "Trabajo",
+            ContextLower = Assign(c.LeftLower),
+            WorkLower = Assign(c.RightLower),
             Parked = Map(c.Parked),
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
                     displays.First(d => d.Key == a.Display),
-                    a.Panels.Select(v => new PanelAssignment(v.Panel.Id, v.Panel.Name, v.Panel.Side, v.Panel.Template, Map(v.Windows))).ToList()))
+                    a.Panels.Select(v => Assign(v)!).ToList()))
                 .ToList(),
         };
         var options = new SceneOptions

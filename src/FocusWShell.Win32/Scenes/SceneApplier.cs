@@ -22,7 +22,11 @@ public enum MoveMode
 /// <summary>Un panel con sus ventanas, en orden (ADR 0011).</summary>
 /// <param name="Id">Identificador del panel: las regiones del plan usan este valor.</param>
 /// <param name="Title">Nombre visible, para las notas.</param>
-public sealed record PanelAssignment(string Id, string Title, PanelSide Side, PanelTemplate Template, IReadOnlyList<WindowSnapshot> Windows);
+public sealed record PanelAssignment(string Id, string Title, PanelSide Side, PanelTemplate Template, IReadOnlyList<WindowSnapshot> Windows)
+{
+    /// <summary>Arriba o abajo en su columna.</summary>
+    public PanelSlot Slot { get; init; }
+}
 
 /// <summary>Paneles de un monitor auxiliar, de izquierda a derecha (ADR 0008).</summary>
 public sealed record AuxAssignment(DisplayInfo Display, IReadOnlyList<PanelAssignment> Panels)
@@ -62,8 +66,18 @@ public sealed record SceneAssignment(
 
     public string WorkTitle { get; init; } = "Trabajo";
 
+    /// <summary>Segundo panel de la columna izquierda del principal, si lo hay.</summary>
+    public PanelAssignment? ContextLower { get; init; }
+
+    /// <summary>Segundo panel de la columna derecha del principal.</summary>
+    public PanelAssignment? WorkLower { get; init; }
+
+    /// <summary>Ventanas del principal (sin las estacionadas).</summary>
+    public IEnumerable<WindowSnapshot> OnPrincipal =>
+        Context.Concat(ContextLower?.Windows ?? []).Concat(Center is null ? [] : [Center]).Concat(Work).Concat(WorkLower?.Windows ?? []);
+
     public IEnumerable<WindowSnapshot> All =>
-        Context.Concat(Center is null ? [] : [Center]).Concat(Work)
+        OnPrincipal
             .Concat(Aux.SelectMany(a => a.Panels.SelectMany(p => p.Windows)))
             .Concat(Parked);
 }
@@ -153,7 +167,7 @@ public sealed class SceneApplier
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _minSizes = minSizes ?? throw new ArgumentNullException(nameof(minSizes));
         _byHandle = assignment.All.ToDictionary(w => w.Handle);
-        foreach (var w in assignment.Context.Concat(assignment.Work).Concat(assignment.Center is null ? [] : [assignment.Center]))
+        foreach (var w in assignment.OnPrincipal)
         {
             _dpiByHandle[w.Handle] = display.Dpi;
         }
@@ -188,7 +202,20 @@ public sealed class SceneApplier
             new PanelInput(_assignment.WorkId, PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
                 _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right) { Title = _assignment.WorkTitle },
             _options.Gap,
-            PanelTopInset: Scale(_options.PanelTopInset, dpi)));
+            PanelTopInset: Scale(_options.PanelTopInset, dpi))
+        {
+            LeftLower = Lower(_assignment.ContextLower, PanelSide.Left, _options.ContextWeight, shared.Left),
+            RightLower = Lower(_assignment.WorkLower, PanelSide.Right, _options.WorkWeight, shared.Right),
+        });
+
+        PanelInput? Lower(PanelAssignment? p, PanelSide side, double weight, bool sharedEdge) =>
+            p is null
+                ? null
+                : new PanelInput(p.Id, side, weight, p.Template, p.Windows.Select(w => ToLayout(w, dpi)).ToList(), sharedEdge)
+                {
+                    Title = p.Title,
+                    Slot = p.Slot,
+                };
 
         var aux = _assignment.Aux
             .Select(a => AuxLayoutEngine.Compute(new AuxInput(
@@ -196,7 +223,8 @@ public sealed class SceneApplier
                 a.Display.WorkArea,
                 a.Panels
                     .OrderBy(p => p.Side)
-                    .Select(p => new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title })
+                    .ThenBy(p => p.Slot)
+                    .Select(p => new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title, Slot = p.Slot })
                     .ToList(),
                 _options.Gap,
                 Scale(_options.PanelTopInset, a.Display.Dpi))))

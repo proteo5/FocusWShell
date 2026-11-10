@@ -14,8 +14,9 @@ public class AuxLayoutEngineTests
     private static PanelInput Panel(string name, PanelTemplate template, params LayoutWindow[] windows) =>
         new(name, PanelSide.Left, 1, template, windows);
 
+    /// <summary>El primer panel va a la izquierda y el resto a la derecha: cada uno en su columna.</summary>
     private static AuxLayoutResult Compute(params PanelInput[] panels) =>
-        AuxLayoutEngine.Compute(new AuxInput("aux", Area, panels));
+        AuxLayoutEngine.Compute(new AuxInput("aux", Area, [.. panels.Select((p, i) => p with { Side = i == 0 ? PanelSide.Left : PanelSide.Right })]));
 
     private static WindowTarget Target(AuxLayoutResult r, int id) => r.Targets.Single(t => t.Handle == id);
 

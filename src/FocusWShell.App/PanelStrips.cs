@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 using FocusWShell.Win32.Scenes;
@@ -50,10 +50,11 @@ public static class PanelStripBuilder
         var kinds = report.Applied.ToDictionary(a => a.Target.Handle, a => a.Target.Kind);
         var strips = new List<PanelStrip>();
 
-        void Add(Panel? panel, PixelRect column, int top, int dpi, PanelTemplate effective)
+        // Cada panel con ventanas tiene su banda; la tira ocupa la franja de arriba de la banda.
+        void Add(string panelId, PixelRect band, int stripHeight, int dpi, PanelTemplate effective)
         {
             // Sin franja reservada (p. ej. Fill) no hay tira.
-            if (panel is null || column.IsEmpty || column.Top <= top || effective == PanelTemplate.Fill)
+            if (workspace.FindPanel(panelId) is not { } panel || band.IsEmpty || stripHeight <= 0 || effective == PanelTemplate.Fill)
             {
                 return;
             }
@@ -61,21 +62,21 @@ public static class PanelStripBuilder
             var tabs = TabsOf(workspace, kinds, panel.Id);
             if (tabs.Count > 0)
             {
-                strips.Add(new PanelStrip(panel.Id, panel.Name, new PixelRect(column.Left, top, column.Right, column.Top), dpi, tabs));
+                strips.Add(new PanelStrip(panel.Id, panel.Name, band with { Bottom = band.Top + stripHeight }, dpi, tabs));
             }
         }
 
         var principal = report.Layout.Principal;
-        int principalTop = principal.CenterColumn.Top;
-        var composition = workspace.Composition;
-        Add(composition.Left?.Panel, principal.LeftColumn, principalTop, principalDpi, PanelTemplate.Tiles);
-        Add(composition.Right?.Panel, principal.RightColumn, principalTop, principalDpi, PanelTemplate.Tiles);
+        foreach (var (panelId, band) in principal.Bands)
+        {
+            Add(panelId, band, principal.StripHeight, principalDpi, PanelTemplate.Tiles);
+        }
+
         foreach (var aux in report.Layout.Aux)
         {
-            foreach (var (panelId, column) in aux.Columns)
+            foreach (var (panelId, band) in aux.Bands)
             {
-                Add(workspace.FindPanel(panelId), column, aux.WorkArea.Top, auxDpi.GetValueOrDefault(aux.Display, 96),
-                    aux.EffectiveTemplates.GetValueOrDefault(panelId));
+                Add(panelId, band, aux.StripHeight, auxDpi.GetValueOrDefault(aux.Display, 96), aux.EffectiveTemplates.GetValueOrDefault(panelId));
             }
         }
 

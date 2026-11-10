@@ -29,7 +29,7 @@ public sealed record SceneWindow(string AppKey, string Label, string TitleHint, 
 /// Monitor auxiliar, contado de izquierda a derecha desde 1, o <c>null</c> para el principal. No se usa
 /// la clave del monitor porque otra persona u otro equipo tendrá otros monitores.
 /// </param>
-public sealed record ScenePanel(string Id, string Name, int? AuxIndex, PanelSide Side, PanelTemplate Template);
+public sealed record ScenePanel(string Id, string Name, int? AuxIndex, PanelSide Side, PanelTemplate Template, PanelSlot Slot = PanelSlot.Upper);
 
 /// <summary>Template de un panel en el formato anterior de las escenas (antes de los paneles).</summary>
 public sealed record ScenePanelTemplate(int? AuxIndex, string Home, PanelTemplate Template);
