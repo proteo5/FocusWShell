@@ -50,7 +50,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 
    **Estado (2026-11-10):** fase sin deck completa.
 2. **Deck en una esquina del monitor principal**, que se muestra y se oculta con un clic o un atajo, y se oculta solo al elegir.
-3. **Spike S8:** que el toque desde una tablet (Apollo/Artemis) y desde un monitor táctil físico no robe el foco (R12).
+3. **Spike S8:** que el toque desde una tablet (Apollo/Artemis) y desde un monitor táctil físico no robe el foco (R12). **Hecho:** con toques inyectados, con ratón y con la tablet por Apollo/Artemis (como monitor extendido), el deck no roba el foco y responde al momento.
 4. **"Mandar el deck a…"** otro monitor, con paneles de pantalla completa con pestañas para tablets.
 
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.

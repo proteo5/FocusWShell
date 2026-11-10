@@ -1,6 +1,6 @@
 ﻿# ADR 0013 — El deck es una superficie de control opcional, en el monitor que se elija
 
-- **Estado:** Propuesta (pendiente del spike S8)
+- **Estado:** Propuesta; S8 hecho (2026-11-10): tocar una ventana WPF sin foco, también desde la tablet por Artemis, no le quita el foco a la app del Centro
 - **Fecha:** 2026-11-10
 
 ## Contexto
