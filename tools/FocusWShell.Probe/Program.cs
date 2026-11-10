@@ -150,6 +150,7 @@ static int Monitors()
         Console.WriteLine(
             $"{d.DeviceName,-14} {(d.IsPrimary ? "principal" : string.Empty),-9} monitor {d.Bounds,-24} " +
             $"trabajo {d.WorkArea,-24} {d.Dpi} DPI ({d.Scale:P0})");
+        Console.WriteLine($"{"",-14} {d.FriendlyName ?? "(sin nombre)"} · id estable: {d.StableId ?? "(no disponible)"}");
     }
 
     return 0;

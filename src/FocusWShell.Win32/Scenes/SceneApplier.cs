@@ -168,7 +168,7 @@ public sealed class SceneApplier
 
         var aux = _assignment.Aux
             .Select(a => AuxLayoutEngine.Compute(new AuxInput(
-                a.Display.DeviceName,
+                a.Display.Key,
                 a.Display.WorkArea,
                 [
                     new PanelInput("Contexto", PanelSide.Left, 1, a.ContextTemplate, a.Context.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),

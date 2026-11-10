@@ -1,4 +1,4 @@
-using FocusWShell.Core.Displays;
+﻿using FocusWShell.Core.Displays;
 using FocusWShell.Core.Geometry;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -23,6 +23,8 @@ public static class DisplayEnumerator
             },
             default);
 
+        // Identidad estable (S6): se cruza por el nombre GDI.
+        var identities = DisplayIdentity.Query().ToDictionary(i => i.GdiName, StringComparer.OrdinalIgnoreCase);
         var result = new List<DisplayInfo>(monitors.Count);
         foreach (var monitor in monitors)
         {
@@ -40,13 +42,19 @@ public static class DisplayEnumerator
             }
 
             const uint MONITORINFOF_PRIMARY = 1;
+            string gdi = info.szDevice.ToString();
+            identities.TryGetValue(gdi, out var identity);
             result.Add(new DisplayInfo(
                 (nint)monitor.Value,
-                info.szDevice.ToString(),
+                gdi,
                 ToPixelRect(info.monitorInfo.rcMonitor),
                 ToPixelRect(info.monitorInfo.rcWork),
                 (info.monitorInfo.dwFlags & MONITORINFOF_PRIMARY) != 0,
-                (int)dpi));
+                (int)dpi)
+            {
+                StableId = string.IsNullOrEmpty(identity?.DevicePath) ? null : identity.DevicePath,
+                FriendlyName = string.IsNullOrEmpty(identity?.FriendlyName) ? null : identity.FriendlyName,
+            });
         }
 
         return result;

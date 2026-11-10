@@ -129,6 +129,29 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
+### S6 — Reconexión (2026-11-10)
+
+- **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.
+  - En este equipo: `SPT8928…UID256` (Sceptre O35) y `HPN3545…UID280` (HP 24fw).
+  - El modelo y las escenas usan `DisplayInfo.Key`: la ruta del dispositivo o, si no hay, el nombre GDI.
+- **Modelo:**
+  - `DisplayRemoved` ya no reescribe el monitor de las ventanas: lo marca como ausente. Mientras falta, sus ventanas se colocan en los paneles de su mismo hogar en el principal.
+  - `DisplayAdded` las devuelve a su monitor, con sus templates.
+  - Una ventana enviada a un monitor ausente espera en el principal.
+- **Detección:**
+  - Una ventana oculta de nivel superior recibe `WM_DISPLAYCHANGE` y `WM_SETTINGCHANGE` (`SPI_SETWORKAREA`); una ventana sólo de mensajes no recibe estos avisos.
+  - **Al primer aviso, el observador de S4 calla.** Windows mueve ventanas por su cuenta durante el cambio, y sin este silencio se tomarían por movimientos del usuario y quedarían fuera de layout.
+  - Tras 1,5 s sin avisos, se reconcilian los monitores, se reaplica el layout y se avisa en la bandeja.
+- **Prueba real:** desconexión y reconexión con `DisplaySwitch.exe /internal` y `/extend`, dos ciclos.
+  - **Al desconectar el HP:** "Se desconectó HP 24fw…". Sus ventanas pasaron al panel de Trabajo del principal, sin tocar el Centro y sin quedar fuera de layout. 4/4 y 5/5 exactas.
+  - **Al reconectarlo:** "Volvió HP 24fw…". Sus ventanas regresaron a él con su template (Pila en un ciclo y Tiles en el otro, como estaban).
+- **No medido:**
+  - Desconectar el cable físicamente, que puede generar más ráfagas de avisos.
+  - Una tablet por wifi (R11).
+  - Que desaparezca el monitor principal.
+  - Suspender y reanudar el equipo.
+- **Decisión:** S6 aprobado para monitores que se apagan y vuelven. Riesgo R7 mitigado; R11 queda pendiente de probar con una tablet.
+
 ### Escenas guardadas (2026-11-09)
 
 - **Prueba:** desde la interfaz se guardaron dos escenas.

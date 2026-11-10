@@ -39,7 +39,7 @@ Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspens
 
 - `EnterFullscreen` / `ExitFullscreen` por monitor.
 - Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor.
-- Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)).
+- Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)). **Hecho** para monitores auxiliares que se desconectan y vuelven; falta probar una tablet, la pérdida del monitor principal y la suspensión.
 - Reanudación tras suspensión.
 - Detección y presentación de ventanas no gestionables (elevadas).
 - Lista de exclusión editable.
