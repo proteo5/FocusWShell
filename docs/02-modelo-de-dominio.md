@@ -40,6 +40,22 @@ Scene ────────────────────┘           
 
 Si no hay layout para la huella actual, se deriva uno por defecto (ver [Cambios de monitores](#cambios-de-monitores)).
 
+#### Implementación (M1)
+
+- **Qué guarda `SavedScene`:** por cada ventana, la app (`AppKey`: el AUMID, o el ejecutable), una pista de título, su hogar, si estaba en el Centro, en un panel o estacionada, y el monitor. Guarda también los templates de cada panel. Aún no guarda geometría propia: los pesos de las columnas son los de siempre.
+- **Monitores:** los auxiliares se guardan por orden de izquierda a derecha (`AuxIndex` 1, 2…), no por `\\.\DISPLAYn`. Si al aplicar falta ese auxiliar, sus ventanas van a los paneles del principal y se avisa. Los "layouts por huella" quedan para cuando haya geometría por escena.
+- **Emparejado (`SceneMatcher`):** cada ventana de la escena se empareja con una abierta de la misma app. Si hay varias, se prefiere:
+  1. el mismo título;
+  2. un título que contenga la pista, o al revés;
+  3. la primera en orden Z.
+
+  Las de título exacto se emparejan primero, para que una pista vaga no se lleve la ventana de otra. Las que no están abiertas se informan; todavía no se lanzan.
+- **`ApplyScene`** monta el modelo de una vez:
+  - las ventanas de la escena, en su orden, con sus templates;
+  - captura en el diario las nuevas;
+  - devuelve a su sitio original las que no son de la escena;
+  - la ventana anterior del Centro queda como "anterior" para `SwapWithPrevious`.
+
 ### Monitor principal y monitores auxiliares
 
 Ver [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md).

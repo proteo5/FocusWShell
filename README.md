@@ -35,6 +35,9 @@ dotnet run --project src/FocusWShell.App
   - **Clic:** la muestra, la recupera si está estacionada (`⏸`) o la devuelve si está en el Centro (`↑`).
   - **Doble clic:** la lleva al Centro.
   - **Clic derecho:** el resto de acciones.
+- **Escenas:**
+  - **Guardar:** escribe un nombre y pulsa "Guardar escena actual". Se guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates.
+  - **Aplicar:** desde la ventana, desde el submenú de la bandeja o con `Ctrl+Alt+Mayús+1…9`. Las ventanas que no son de la escena vuelven a su sitio original.
 - Cerrarla no detiene el gestor: sigue en el área de notificación. Desde su menú, **Salir** devuelve todas las ventanas a su sitio.
 - Atajos globales con `Ctrl+Alt+Mayús`:
 

@@ -101,6 +101,12 @@ public sealed record Reattach(nint Handle) : Command;
 /// <summary>La pone la primera de su panel: en una pila, la pestaña visible.</summary>
 public sealed record MakeActiveInPanel(nint Handle) : Command;
 
+/// <summary>
+/// Aplica una escena guardada ya emparejada: estas ventanas, en este orden y con estos templates.
+/// Las gestionadas que no están en la escena vuelven a su sitio original.
+/// </summary>
+public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList<(string? Display, Home Home, PanelTemplate Template)> Templates) : Command;
+
 /// <summary>Devuelve la ventana a su estado original y deja de gestionarla.</summary>
 public sealed record Release(nint Handle) : Command;
 
@@ -203,6 +209,7 @@ public sealed class Workspace
         Detach c => DoDetach(c.Handle),
         Reattach c => DoReattach(c.Handle),
         MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
+        ApplyScene c => DoApplyScene(c),
         Release c => DoRelease(c.Handle),
         RestoreAll => DoRestoreAll(),
         WindowClosed c => DoWindowClosed(c.Handle),
@@ -516,6 +523,61 @@ public sealed class Workspace
             ExternalChange.MovedOrResized => [new Detach(handle)],
             _ => [],
         };
+    }
+
+    private CommandOutcome DoApplyScene(ApplyScene c)
+    {
+        var entries = c.Entries.DistinctBy(e => e.Handle).ToList();
+        var keep = entries.Select(e => e.Handle).ToHashSet();
+        var effects = new List<Effect>();
+
+        // Las que salen de la escena vuelven a su sitio; las nuevas se capturan antes de moverlas.
+        foreach (var gone in _windows.Where(w => !keep.Contains(w.Handle)).ToList())
+        {
+            effects.Add(new RestoreOriginal(gone.Handle));
+        }
+
+        foreach (var e in entries.Where(e => !IsManaged(e.Handle)))
+        {
+            effects.Add(new CaptureOriginal(e.Handle));
+        }
+
+        var previousCenter = Center?.Handle;
+        var center = entries.FirstOrDefault(e => e.Placement == ScenePlacement.Center)?.Handle;
+        _windows.Clear();
+        foreach (var e in entries)
+        {
+            var placement = e.Placement switch
+            {
+                ScenePlacement.Center when e.Handle == center => Placement.Center,
+                ScenePlacement.Parked => Placement.Parked,
+                _ => Placement.InPanel,
+            };
+            _windows.Add(new ManagedWindow(e.Handle, e.Label, e.Home, placement, e.Display));
+        }
+
+        _centerHistory.RemoveAll(h => !keep.Contains(h) || h == center);
+        if (previousCenter is { } prev && prev != center && keep.Contains(prev))
+        {
+            _centerHistory.Insert(0, prev);
+        }
+
+        _templates.Clear();
+        foreach (var (display, home, template) in c.Templates)
+        {
+            if (display is not null || template != PanelTemplate.Fill)
+            {
+                _templates[(display, home)] = template;
+            }
+        }
+
+        effects.Add(new ApplyLayout());
+        if (center is { } h)
+        {
+            effects.Add(new Activate(h));
+        }
+
+        return CommandOutcome.Accept([.. effects]);
     }
 
     private CommandOutcome DoRelease(nint handle)

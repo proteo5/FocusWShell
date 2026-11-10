@@ -33,6 +33,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = this;
         WindowList.ItemsSource = _rows;
+        LoadScenes();
+        _controller.ScenesChanged += () => Dispatcher.BeginInvoke(LoadScenes);
         Refresh();
     }
 
@@ -404,6 +406,66 @@ public partial class MainWindow : Window
     }
 
     public void SetStatus(string text) => StatusText.Text = text;
+
+    private void LoadScenes()
+    {
+        var selected = SceneCombo.SelectedItem as string;
+        var names = _controller.SceneNames();
+        SceneCombo.ItemsSource = names.Select((n, i) => i < 9 ? $"{i + 1}. {n}" : n).ToList();
+        SceneCombo.Tag = names;
+        SceneCombo.SelectedIndex = selected is null ? (names.Count > 0 ? 0 : -1) : Math.Max(0, SceneCombo.Items.IndexOf(selected));
+    }
+
+    private string? SelectedScene() =>
+        SceneCombo.Tag is IReadOnlyList<string> names && SceneCombo.SelectedIndex >= 0 && SceneCombo.SelectedIndex < names.Count
+            ? names[SceneCombo.SelectedIndex]
+            : null;
+
+    private async void ApplyScene_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedScene() is not { } name)
+        {
+            SetStatus("No hay escenas guardadas. Coloca las ventanas, escribe un nombre y pulsa \"Guardar escena actual\".");
+            return;
+        }
+
+        _pending.Clear();
+        _pendingDisplay.Clear();
+        var result = await Task.Run(() => _controller.ApplySavedScene(name));
+        SetStatus(result.Summary + Environment.NewLine + Describe(result.Result));
+        Refresh();
+    }
+
+    private void SaveScene_Click(object sender, RoutedEventArgs e)
+    {
+        var name = string.IsNullOrWhiteSpace(SceneName.Text) ? SelectedScene() : SceneName.Text.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            SetStatus("Escribe un nombre para la escena.");
+            return;
+        }
+
+        var scene = _controller.SaveScene(name);
+        SceneName.Text = "";
+        SetStatus($"Escena «{scene.Name}» guardada: {scene.Windows.Count} ventanas, {scene.Templates.Count} templates.");
+        LoadScenes();
+        SceneCombo.SelectedIndex = Math.Max(0, (SceneCombo.Tag as IReadOnlyList<string>)?.ToList().FindIndex(n => n == scene.Name) ?? 0);
+    }
+
+    private void DeleteScene_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedScene() is not { } name)
+        {
+            return;
+        }
+
+        if (MessageBox.Show($"¿Borrar la escena «{name}»? Las ventanas no se mueven.", "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question)
+            == MessageBoxResult.Yes)
+        {
+            _controller.DeleteScene(name);
+            SetStatus($"Escena «{name}» borrada.");
+        }
+    }
 
     public static string Describe(ControllerResult result)
     {

@@ -7,6 +7,15 @@
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
             <TextBlock x:Name="HeaderText" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Escena:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="Escenas guardadas" />
+                <Button x:Name="ApplySceneButton" Content="Aplicar escena" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />
+                <Button x:Name="DeleteSceneButton" Content="Borrar" Padding="10,2" Margin="6,0,24,0" Click="DeleteScene_Click" />
+                <TextBox x:Name="SceneName" Width="200" VerticalContentAlignment="Center" AutomationProperties.Name="Nombre de la escena" />
+                <Button x:Name="SaveSceneButton" Content="Guardar escena actual" Padding="10,2" Margin="6,0,0,0" Click="SaveScene_Click"
+                        ToolTip="Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza." />
+            </StackPanel>
             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="DimGray"
                        Text="Cambia el rol y el monitor de las ventanas y pulsa Aplicar roles. El Centro está siempre en el monitor principal; los demás monitores alojan paneles auxiliares (Fill maximiza la primera ventana del panel). Las que dejas sin rol vuelven a su sitio original." />
         </StackPanel>

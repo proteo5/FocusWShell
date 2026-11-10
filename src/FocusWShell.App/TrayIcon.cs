@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using FocusWShell.Win32;
 using Forms = System.Windows.Forms;
 
@@ -11,6 +11,7 @@ public sealed class TrayIcon : IDisposable
     private readonly Icon _normal;
     private readonly Icon _awake;
     private readonly Forms.ToolStripMenuItem _keepAwakeItem;
+    private readonly Forms.ToolStripMenuItem _scenesItem = new("Escenas");
 
     public TrayIcon(Action open, Action toggleKeepAwake, Action restoreAll, Action exit)
     {
@@ -18,6 +19,7 @@ public sealed class TrayIcon : IDisposable
         _awake = DrawIcon(Color.FromArgb(235, 160, 30));
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Abrir FocusWShell", null, (_, _) => open());
+        menu.Items.Add(_scenesItem);
         _keepAwakeItem = new Forms.ToolStripMenuItem("Mantener la pantalla encendida (Ctrl+Alt+Mayús+P)", null, (_, _) => toggleKeepAwake());
         menu.Items.Add(_keepAwakeItem);
         menu.Items.Add("Restaurar todas (Ctrl+Alt+Mayús+Retroceso)", null, (_, _) => restoreAll());
@@ -32,6 +34,25 @@ public sealed class TrayIcon : IDisposable
             Visible = true,
         };
         _icon.DoubleClick += (_, _) => open();
+    }
+
+    /// <summary>Rehace el submenú de escenas: las nueve primeras con su atajo.</summary>
+    public void ShowScenes(IReadOnlyList<string> names, Action<string> apply)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        _scenesItem.DropDownItems.Clear();
+        if (names.Count == 0)
+        {
+            _scenesItem.DropDownItems.Add(new Forms.ToolStripMenuItem("(ninguna guardada)") { Enabled = false });
+            return;
+        }
+
+        for (int i = 0; i < names.Count; i++)
+        {
+            string name = names[i];
+            string text = i < 9 ? $"{name}\t(Ctrl+Alt+Mayús+{i + 1})" : name;
+            _scenesItem.DropDownItems.Add(text, null, (_, _) => apply(name));
+        }
     }
 
     /// <summary>Refleja en el menú y en el icono si la pantalla se mantiene encendida.</summary>

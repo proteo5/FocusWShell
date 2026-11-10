@@ -15,6 +15,27 @@ public sealed record ControllerResult(
     IReadOnlyList<RestoreReport> Restores,
     SceneApplyReport? Applied);
 
+/// <summary>Resultado de aplicar una escena guardada.</summary>
+/// <param name="Missing">Apps de la escena que no están abiertas.</param>
+/// <param name="Notes">Ajustes (p. ej. un monitor auxiliar que no está conectado).</param>
+public sealed record SceneResult(string Name, ControllerResult Result, IReadOnlyList<SceneWindow> Missing, IReadOnlyList<string> Notes)
+{
+    public string Summary
+    {
+        get
+        {
+            var lines = new List<string> { $"Escena «{Name}» aplicada." };
+            if (Missing.Count > 0)
+            {
+                lines.Add($"No están abiertas: {string.Join(", ", Missing.Select(m => m.Label))}.");
+            }
+
+            lines.AddRange(Notes);
+            return string.Join(Environment.NewLine, lines);
+        }
+    }
+}
+
 /// <summary>Un cambio que hizo el usuario (u otra app) y lo que el gestor hizo con él.</summary>
 public sealed record ExternalChangeHandled(string Label, ExternalChange Change, IReadOnlyList<Command> Commands, ControllerResult Result)
 {
@@ -111,6 +132,107 @@ public sealed class ShellController : IDisposable
     public RecoveryJournal Journal { get; } = new(RecoveryJournal.DefaultPath);
 
     public MinSizeStore MinSizes { get; } = new(MinSizeStore.DefaultPath);
+
+    public SceneStore Scenes { get; } = new(SceneStore.DefaultPath);
+
+    /// <summary>Monitores auxiliares de izquierda a derecha: el 1 es el primero. Así se guardan en las escenas.</summary>
+    private static List<DisplayInfo> OrderedAux() =>
+        [.. AuxiliaryDisplays().OrderBy(d => d.Bounds.Left).ThenBy(d => d.Bounds.Top)];
+
+    /// <summary>Se dispara al guardar o borrar una escena.</summary>
+    public event Action? ScenesChanged;
+
+    public IReadOnlyList<string> SceneNames() => Scenes.Load().Select(s => s.Name).ToList();
+
+    public void DeleteScene(string name)
+    {
+        Scenes.Delete(name);
+        ScenesChanged?.Invoke();
+    }
+
+    /// <summary>Guarda (o reemplaza) la escena actual con ese nombre.</summary>
+    public SavedScene SaveScene(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Refresh();
+        var aux = OrderedAux();
+        int? AuxIndex(string? display) => display is null ? null : aux.FindIndex(d => d.DeviceName == display) is int i and >= 0 ? i + 1 : null;
+
+        SavedScene scene;
+        lock (_gate)
+        {
+            var windows = _workspace.Windows
+                .Where(w => _snapshots.ContainsKey(w.Handle))
+                .Select(w =>
+                {
+                    var snapshot = _snapshots[w.Handle];
+                    var placement = w.Placement switch
+                    {
+                        Placement.Center => ScenePlacement.Center,
+                        Placement.Parked => ScenePlacement.Parked,
+                        _ => ScenePlacement.InPanel,
+                    };
+                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.Home, placement, AuxIndex(w.Display));
+                })
+                .ToList();
+            var displays = new List<string?> { null };
+            displays.AddRange(_workspace.Windows.Where(w => w.Display is not null).Select(w => w.Display).Distinct());
+            var templates = displays
+                .SelectMany(d => new[] { Home.Context, Home.Work }.Select(h => new ScenePanelTemplate(AuxIndex(d), h, _workspace.TemplateOf(d, h))))
+                .Where(t => t.AuxIndex is not null || t.Template != PanelTemplate.Fill)
+                .ToList();
+            scene = new SavedScene(name.Trim(), windows, templates);
+        }
+
+        Scenes.Upsert(scene);
+        ScenesChanged?.Invoke();
+        return scene;
+    }
+
+    /// <summary>
+    /// Aplica una escena guardada: empareja sus ventanas con las abiertas y la monta de una vez.
+    /// Las ventanas gestionadas que no son de la escena vuelven a su sitio original.
+    /// </summary>
+    public SceneResult ApplySavedScene(string name)
+    {
+        var scene = Scenes.Load().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (scene is null)
+        {
+            return new SceneResult(name, new ControllerResult([$"No existe la escena \"{name}\"."], [], null), [], []);
+        }
+
+        var open = Refresh()
+            .Select(w => new OpenWindow(w.Handle, MinSizeCatalog.KeyFor(w), w.Title))
+            .ToList();
+        var match = SceneMatcher.Match(scene, open);
+        var aux = OrderedAux();
+        var notes = new List<string>();
+        string? DisplayOf(int? index)
+        {
+            if (index is null)
+            {
+                return null;
+            }
+
+            if (index.Value <= aux.Count)
+            {
+                return aux[index.Value - 1].DeviceName;
+            }
+
+            notes.Add($"El monitor auxiliar {index} no está conectado: sus paneles van al principal.");
+            return null;
+        }
+
+        var entries = match.Matched
+            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.Home, m.Entry.Placement, DisplayOf(m.Entry.AuxIndex)))
+            .ToList();
+        var templates = scene.Templates
+            .Where(t => t.AuxIndex is null || t.AuxIndex <= aux.Count)
+            .Select(t => (DisplayOf(t.AuxIndex), t.Home, t.Template))
+            .ToList();
+        var result = Execute(new ApplyScene(entries, templates));
+        return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
+    }
 
     /// <summary>Monitor del Centro: el principal de Windows (ADR 0008).</summary>
     public static DisplayInfo TargetDisplay() =>

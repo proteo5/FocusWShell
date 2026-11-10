@@ -26,7 +26,7 @@ Objetivo: el modelo completo de roles con las dos presentaciones básicas.
 - Overlay de panel con tira de pestañas y lista de estacionadas. **Hecho** (primera versión, sin miniaturas ni arrastrar entre paneles).
 - Comandos `Park`, `Restore`, `SendTo`, `SetTemplate`, `ReturnToPanel`. **Hecho**, más `Detach`/`Reattach` (fuera de layout) y `MakeActiveInPanel`.
 - Detección de eventos del usuario (minimizar, maximizar, arrastrar) y sus interpretaciones (S4). **Hecho** en la app.
-- Escenas con nombre, guardar y aplicar; layouts por huella de monitores.
+- Escenas con nombre, guardar y aplicar; layouts por huella de monitores. **Hecho** sin geometría propia por escena: guardar, aplicar, borrar, atajos `Ctrl+Alt+Mayús+1…9` y submenú en la bandeja.
 - Paneles en monitores auxiliares, con template `Fill` ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md)). **Hecho** (sin S6).
 - Mantener la pantalla encendida ([ADR 0010](adr/0010-mantener-pantalla-encendida.md)). **Hecho.**
 - Atajos configurables.

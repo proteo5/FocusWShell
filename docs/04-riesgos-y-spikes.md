@@ -129,6 +129,21 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
+### Escenas guardadas (2026-11-09)
+
+- **Prueba:** desde la interfaz se guardaron dos escenas.
+  - **"Código":** cinco ventanas, una de ellas en el monitor auxiliar, y Trabajo en pila.
+  - **"Lectura":** Explorer en el Centro y Edge en Contexto.
+- **Cambiar con atajos:**
+  - `Ctrl+Alt+Mayús+1` montó "Código" entera: 5/5 exactas.
+  - `Ctrl+Alt+Mayús+2` pasó a "Lectura": las tres ventanas que no son de esa escena volvieron a su sitio original.
+- **Persistencia:** con la app cerrada y vuelta a abrir, "Código" se aplicó desde el selector: 5/5.
+- **Privacidad:** `scenes.json` guarda el título de cada ventana como pista para reconocerla, por ejemplo el nombre de un chat o de una página. Es un archivo local en `%LOCALAPPDATA%`, fuera del repositorio, pero conviene saberlo.
+- **Pendiente:**
+  - Lanzar las apps que faltan.
+  - Geometría por escena (pesos de columnas) y layouts por huella de monitores.
+  - Opción de estacionar en lugar de liberar las ventanas que no son de la escena.
+
 ### Tiras de pestañas (2026-11-09)
 
 - **Posición:** Contexto 670×28 y Trabajo 962×28 en el principal; 1920×35 en el auxiliar al 125 %. Las ventanas de los paneles empiezan justo debajo y el Centro sigue ocupando toda la altura.

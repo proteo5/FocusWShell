@@ -68,6 +68,8 @@ public partial class App : Application
         _settings = AppSettings.Load();
         _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
+        RefreshTrayScenes();
+        _controller.ScenesChanged += () => Dispatcher.BeginInvoke(RefreshTrayScenes);
         _hotkeys = GlobalHotkeys.Start(
         [
             new("Restaurar todas", GlobalHotkeys.VkBack, "Ctrl+Alt+Mayús+Retroceso", OnEmergencyHotkey),
@@ -76,6 +78,8 @@ public partial class App : Application
                 () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious()))),
             new("Centro al panel", GlobalHotkeys.VkDown, "Ctrl+Alt+Mayús+↓", () => OnCommandHotkey("Centro al panel", _controller.ReturnCenter)),
             new("Pantalla encendida", GlobalHotkeys.VkP, "Ctrl+Alt+Mayús+P", () => Dispatcher.BeginInvoke(ToggleKeepAwake)),
+            .. Enumerable.Range(1, 9).Select(n => new HotkeyBinding(
+                $"Escena {n}", (uint)(0x30 + n), $"Ctrl+Alt+Mayús+{n}", () => ApplySceneByIndex(n - 1))),
         ]);
         if (_hotkeys.Failed.Count > 0)
         {
@@ -115,6 +119,34 @@ public partial class App : Application
     }
 
     private void ShowMain() => _main?.ShowAndActivate();
+
+    private void RefreshTrayScenes() => _tray?.ShowScenes(_controller.SceneNames(), name => Task.Run(() => ApplyScene(name)));
+
+    /// <summary>Atajo Ctrl+Alt+Mayús+N: llega en el hilo de atajos.</summary>
+    private void ApplySceneByIndex(int index)
+    {
+        var names = _controller.SceneNames();
+        if (index < names.Count)
+        {
+            ApplyScene(names[index]);
+        }
+    }
+
+    private void ApplyScene(string name)
+    {
+        var result = _controller.ApplySavedScene(name);
+        Dispatcher.BeginInvoke(() =>
+        {
+            _tray?.Notify($"Escena «{result.Name}»", result.Missing.Count == 0 && result.Notes.Count == 0
+                ? "Aplicada."
+                : string.Join(" ", result.Summary.Split(Environment.NewLine).Skip(1)));
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(result.Summary + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result.Result));
+            }
+        });
+    }
 
     private void ToggleKeepAwake() => SetKeepAwake(!_keepAwake.IsActive, announce: true);
 
