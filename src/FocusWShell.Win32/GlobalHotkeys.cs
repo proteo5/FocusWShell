@@ -21,6 +21,7 @@ public sealed class GlobalHotkeys : IDisposable
     public const uint VkUp = 0x26;
     public const uint VkDown = 0x28;
     public const uint VkP = 0x50;
+    public const uint VkV = 0x56;
 
     private const int FirstId = 0xF0C0;
     private readonly Thread _thread;

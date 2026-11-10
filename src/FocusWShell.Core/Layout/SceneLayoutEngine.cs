@@ -38,9 +38,32 @@ public static class SceneLayoutEngine
         var left = PanelColumn.Build(Column(input.Left, input.LeftLower), area.Top, area.Bottom, inset, gap, notes, excluded);
         var right = PanelColumn.Build(Column(input.Right, input.RightLower), area.Top, area.Bottom, inset, gap, notes, excluded);
 
-        // 2. Anchos ideales según los pesos.
-        var ideal = Splitter.Columns(area, [input.Left.Weight, input.CenterWeight, input.Right.Weight], gap);
-        int wl = ideal[0].Width, wc = ideal[1].Width, wr = ideal[2].Width;
+        // 2. Anchos ideales según los pesos, en el orden de la vista.
+        var focus = input.Focus;
+        int wl, wc, wr;
+        switch (focus)
+        {
+            case FocusPosition.Left:
+            {
+                var ideal = Splitter.Columns(area, [input.CenterWeight, input.Right.Weight, input.Left.Weight], gap);
+                (wc, wr, wl) = (ideal[0].Width, ideal[1].Width, ideal[2].Width);
+                break;
+            }
+
+            case FocusPosition.Right:
+            {
+                var ideal = Splitter.Columns(area, [input.Left.Weight, input.Right.Weight, input.CenterWeight], gap);
+                (wl, wr, wc) = (ideal[0].Width, ideal[1].Width, ideal[2].Width);
+                break;
+            }
+
+            default:
+            {
+                var ideal = Splitter.Columns(area, [input.Left.Weight, input.CenterWeight, input.Right.Weight], gap);
+                (wl, wc, wr) = (ideal[0].Width, ideal[1].Width, ideal[2].Width);
+                break;
+            }
+        }
 
         int needL = left.RequiredWidth;
         int needR = right.RequiredWidth;
@@ -85,22 +108,60 @@ public static class SceneLayoutEngine
         wl = Grow(left, wl, needL, ref wc, leftFloor, notes);
         wr = Grow(right, wr, needR, ref wc, rightFloor, notes);
 
-        // 6. Columnas definitivas (contiguas, con separación).
-        var leftCol = new PixelRect(area.Left, area.Top + inset, area.Left + wl, area.Bottom);
-        var centerCol = new PixelRect(leftCol.Right + gap, area.Top, leftCol.Right + gap + wc, area.Bottom);
-        var rightCol = new PixelRect(centerCol.Right + gap, area.Top + inset, area.Right, area.Bottom);
+        // 6. Con el foco en un extremo, el panel de la derecha (Trabajo) queda entre el foco y el otro
+        //    panel: no puede desbordar hacia ningún lado, así que la ventana que no cabe sale del layout.
+        if (focus != FocusPosition.Center)
+        {
+            right.ExcludeTooWide(wr, excluded, notes, (w, panel, limit) =>
+                $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.DisplayTitle} tiene {limit} entre el foco y el otro panel; " +
+                "se minimiza y queda fuera del layout.");
+        }
 
-        // 7. Destinos.
+        // 7. Columnas definitivas (contiguas, con separación), en el orden de la vista. La última se queda
+        //    con lo que sobre por redondeo.
+        int x0 = area.Left;
+        PixelRect Next(int width, int top, bool last)
+        {
+            var rect = new PixelRect(x0, top, last ? area.Right : x0 + width, area.Bottom);
+            x0 = rect.Right + gap;
+            return rect;
+        }
+
+        PixelRect leftCol, centerCol, rightCol;
+        PanelSide? leftEdge, rightEdge;
+        switch (focus)
+        {
+            case FocusPosition.Left:
+                centerCol = Next(wc, area.Top, false);
+                rightCol = Next(wr, area.Top + inset, false);
+                leftCol = Next(wl, area.Top + inset, true);
+                (leftEdge, rightEdge) = (PanelSide.Right, null);
+                break;
+            case FocusPosition.Right:
+                leftCol = Next(wl, area.Top + inset, false);
+                rightCol = Next(wr, area.Top + inset, false);
+                centerCol = Next(wc, area.Top, true);
+                (leftEdge, rightEdge) = (PanelSide.Left, null);
+                break;
+            default:
+                leftCol = Next(wl, area.Top + inset, false);
+                centerCol = Next(wc, area.Top, false);
+                rightCol = Next(wr, area.Top + inset, true);
+                (leftEdge, rightEdge) = (PanelSide.Left, PanelSide.Right);
+                break;
+        }
+
+        // 8. Destinos.
         var targets = new List<WindowTarget>();
         var areas = new Dictionary<string, PixelRect>();
         var bands = new Dictionary<string, PixelRect>();
-        left.Place(leftCol.Left, leftCol.Right, anchorOutward: true, gap, targets, notes, areas, bands);
+        left.Place(leftCol.Left, leftCol.Right, leftEdge, gap, targets, notes, areas, bands);
         if (input.Center is { } center)
         {
-            targets.Add(new WindowTarget(center.Handle, center.Label, "Centro", TargetKind.Visible, FitCenter(center, centerCol, notes)));
+            targets.Add(new WindowTarget(center.Handle, center.Label, "Centro", TargetKind.Visible, FitCenter(center, centerCol, focus, notes)));
         }
 
-        right.Place(rightCol.Left, rightCol.Right, anchorOutward: true, gap, targets, notes, areas, bands);
+        right.Place(rightCol.Left, rightCol.Right, rightEdge, gap, targets, notes, areas, bands);
         targets.AddRange(excluded);
 
         var templates = new Dictionary<string, PanelTemplate>();
@@ -197,7 +258,7 @@ public static class SceneLayoutEngine
         return PixelRect.FromSize(left, cell.Top, width, height);
     }
 
-    private static PixelRect FitCenter(LayoutWindow center, PixelRect column, List<string> notes)
+    private static PixelRect FitCenter(LayoutWindow center, PixelRect column, FocusPosition focus, List<string> notes)
     {
         int minWidth = center.MinSize?.Width ?? 0;
         int minHeight = center.MinSize?.Height ?? 0;
@@ -206,11 +267,20 @@ public static class SceneLayoutEngine
             return column;
         }
 
-        // Caso extremo: ni quitando a los paneles cabe. Se centra; invade por igual ambos paneles.
+        // Caso extremo: ni quitando a los paneles cabe. En medio, se centra e invade por igual ambos
+        // paneles; en un extremo, se ancla a su borde del monitor e invade el panel de al lado.
         int width = Math.Max(column.Width, minWidth);
         int height = Math.Max(column.Height, minHeight);
-        notes.Add($"{center.Label} no cabe en el Centro ({width}x{height} contra {column.Width}x{column.Height}); se centra sobre los paneles.");
-        return PixelRect.FromSize(column.Left - ((width - column.Width) / 2), column.Top, width, height);
+        int left = focus switch
+        {
+            FocusPosition.Left => column.Left,
+            FocusPosition.Right => column.Right - width,
+            _ => column.Left - ((width - column.Width) / 2),
+        };
+        notes.Add(focus == FocusPosition.Center
+            ? $"{center.Label} no cabe en el Centro ({width}x{height} contra {column.Width}x{column.Height}); se centra sobre los paneles."
+            : $"{center.Label} no cabe en el foco ({width}x{height} contra {column.Width}x{column.Height}); se ancla al borde del monitor y tapa parte del panel de al lado.");
+        return PixelRect.FromSize(left, column.Top, width, height);
     }
 
     /// <summary>

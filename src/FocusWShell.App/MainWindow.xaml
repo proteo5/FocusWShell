@@ -8,6 +8,14 @@
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
             <TextBlock x:Name="HeaderText" FontWeight="SemiBold" TextWrapping="Wrap" />
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Vista:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="ViewCombo" Width="170" Margin="0,0,24,0" AutomationProperties.Name="Vista"
+                          SelectionChanged="ViewCombo_SelectionChanged"
+                          ToolTip="Dónde va el foco en el monitor principal (Ctrl+Alt+Mayús+V cambia de vista)">
+                    <ComboBoxItem Content="Foco a la izquierda" />
+                    <ComboBoxItem Content="Foco al centro" />
+                    <ComboBoxItem Content="Foco a la derecha" />
+                </ComboBox>
                 <TextBlock Text="Escena:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="Escenas guardadas" />
                 <Button x:Name="ApplySceneButton" Content="Aplicar escena" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />

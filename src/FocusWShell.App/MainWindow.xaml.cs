@@ -46,6 +46,32 @@ public partial class MainWindow : Window
         Refresh();
     }
 
+    private bool _showingView;
+
+    /// <summary>Orden de las opciones de <c>ViewCombo</c>.</summary>
+    private static readonly FocusPosition[] Views = [FocusPosition.Left, FocusPosition.Center, FocusPosition.Right];
+
+    private void ShowView(FocusPosition view)
+    {
+        _showingView = true;
+        ViewCombo.SelectedIndex = Array.IndexOf(Views, view);
+        _showingView = false;
+    }
+
+    /// <summary>Cambiar de vista mueve el foco de sitio sin cambiar qué ventana hay en él (ADR 0012).</summary>
+    private async void ViewCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_showingView || ViewCombo.SelectedIndex < 0 || _controller is null)
+        {
+            return;
+        }
+
+        var view = Views[ViewCombo.SelectedIndex];
+        var result = await Task.Run(() => _controller.Execute(new SetView(view)));
+        Refresh();
+        SetStatus(Describe(result));
+    }
+
     /// <summary>Qué gestos de Windows llevan al foco (ADR 0003, enmienda). Se guarda al momento.</summary>
     private void Gesture_Changed(object sender, RoutedEventArgs e)
     {
@@ -124,7 +150,8 @@ public partial class MainWindow : Window
         HeaderText.Text =
             $"Principal {display.FriendlyName ?? display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
             string.Concat(aux.Select(a => $"   ·   Auxiliar {a.FriendlyName ?? a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
-            "Atajos Ctrl+Alt+Mayús: ↑ al foco · ← anterior · ↓ foco al panel · P pantalla encendida · Retroceso restaurar todas";
+            "Atajos Ctrl+Alt+Mayús: ↑ al foco · ← anterior · ↓ foco al panel · V vista · P pantalla encendida · Retroceso restaurar todas";
+        ShowView(_controller.View);
 
         // Primero se desconectan las filas: al vaciar las opciones, WPF les escribe un valor vacío.
         foreach (var row in _rows)
@@ -690,10 +717,12 @@ public partial class MainWindow : Window
             return sb.ToString();
         }
 
+        // Columnas del principal en el orden en que se ven.
         var layout = report.Layout.Principal;
-        sb.AppendLine(
-            CultureInfo.CurrentCulture,
-            $"Principal: izquierda {layout.LeftColumn.Width} px · foco {layout.CenterColumn.Width} px · derecha {layout.RightColumn.Width} px");
+        var columns = new[] { ("izquierda", layout.LeftColumn), ("foco", layout.CenterColumn), ("derecha", layout.RightColumn) }
+            .OrderBy(c => c.Item2.Left)
+            .Select(c => $"{c.Item1} {c.Item2.Width} px");
+        sb.AppendLine(CultureInfo.CurrentCulture, $"Principal: {string.Join(" · ", columns)}");
         var names = FocusWShell.Win32.DisplayEnumerator.Enumerate().ToDictionary(d => d.Key, d => d.FriendlyName ?? d.DeviceName);
         foreach (var aux in report.Layout.Aux)
         {

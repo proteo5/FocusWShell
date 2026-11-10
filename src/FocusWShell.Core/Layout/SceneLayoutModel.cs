@@ -26,6 +26,30 @@ public enum PanelSide
 }
 
 /// <summary>
+/// Vista del monitor principal (ADR 0012): dónde va el foco. Las columnas de paneles van, de izquierda a
+/// derecha: al centro, izquierda · foco · derecha; a la izquierda, foco · derecha · izquierda; a la
+/// derecha, izquierda · derecha · foco. El panel del lado izquierdo (Contexto) queda siempre en un borde
+/// del monitor y el del lado derecho (Trabajo), junto al foco.
+/// </summary>
+public enum FocusPosition
+{
+    Center,
+    Left,
+    Right,
+}
+
+/// <summary>Proporciones de partida de cada vista (ADR 0012).</summary>
+public static class ViewProportions
+{
+    /// <summary>Pesos de la columna izquierda (Contexto), del foco y de la derecha (Trabajo).</summary>
+    public static (double Left, double Center, double Right) Default(FocusPosition focus) => focus switch
+    {
+        FocusPosition.Center => (18, 55, 27),
+        _ => (15, 55, 30),
+    };
+}
+
+/// <summary>
 /// Puesto de un panel dentro de su columna (ADR 0011): como máximo dos paneles por columna, uno
 /// encima del otro. Un panel solo en su columna la ocupa entera, sea cual sea su puesto.
 /// </summary>
@@ -89,6 +113,13 @@ public sealed record SceneInput(
 
     /// <summary>Segundo panel de la columna derecha.</summary>
     public PanelInput? RightLower { get; init; }
+
+    /// <summary>
+    /// Dónde va el foco. <see cref="Left"/> y <see cref="Right"/> siguen siendo las columnas de cada lado;
+    /// la vista sólo cambia su orden en pantalla. <see cref="PanelInput.OuterEdgeShared"/> se refiere al
+    /// borde del monitor que la columna toca en esta vista.
+    /// </summary>
+    public FocusPosition Focus { get; init; }
 }
 
 public enum TargetKind
@@ -106,7 +137,10 @@ public enum TargetKind
 /// <summary>Destino de una ventana: rectángulo visible o minimizada.</summary>
 public sealed record WindowTarget(nint Handle, string Label, string Region, TargetKind Kind, PixelRect Rect);
 
-/// <summary>Resultado del motor: columnas efectivas, destinos y explicación de cada ajuste.</summary>
+/// <summary>
+/// Resultado del motor: columnas efectivas (por lado, no por posición en pantalla), destinos y explicación
+/// de cada ajuste.
+/// </summary>
 /// <param name="EffectiveTemplates">Template aplicado por panel (puede diferir del pedido).</param>
 /// <param name="Notes">Una frase por cada decisión que no es la geometría "ideal" (principio de explicabilidad).</param>
 public sealed record SceneLayoutResult(

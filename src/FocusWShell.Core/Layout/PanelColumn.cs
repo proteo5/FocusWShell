@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Layout;
 
@@ -105,13 +105,16 @@ internal sealed class PanelColumn
     /// <summary>
     /// Coloca las ventanas de cada panel en su banda, entre <paramref name="left"/> y <paramref name="right"/>.
     /// </summary>
-    /// <param name="anchorOutward">En el principal, una ventana más ancha que su celda se ancla al borde exterior.</param>
+    /// <param name="outerEdge">
+    /// Borde del monitor que toca la columna, si toca alguno: una ventana más ancha que su celda se ancla a
+    /// él. <c>null</c> (auxiliares, panel de en medio): ninguna desborda.
+    /// </param>
     /// <param name="areas">Área de ventanas de cada panel (bajo su franja), por nombre.</param>
     /// <param name="bands">Banda de cada panel, incluida su franja, por nombre.</param>
     public void Place(
         int left,
         int right,
-        bool anchorOutward,
+        PanelSide? outerEdge,
         int gap,
         List<WindowTarget> targets,
         List<string> notes,
@@ -131,7 +134,7 @@ internal sealed class PanelColumn
                 for (int i = 0; i < resolved.Visible.Count; i++)
                 {
                     var w = resolved.Visible[i];
-                    var rect = anchorOutward ? SceneLayoutEngine.AnchorOutward(w, rows[i], panel.Side, notes, panel.DisplayTitle) : rows[i];
+                    var rect = outerEdge is { } edge ? SceneLayoutEngine.AnchorOutward(w, rows[i], edge, notes, panel.DisplayTitle) : rows[i];
                     targets.Add(new WindowTarget(w.Handle, w.Label, panel.Name, TargetKind.Visible, rect));
                 }
             }

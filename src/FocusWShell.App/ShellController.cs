@@ -405,7 +405,7 @@ public sealed class ShellController : IDisposable
     /// <summary>Carga los paneles guardados (si los hay) en el modelo. Se llama al arrancar.</summary>
     public void LoadPanels()
     {
-        var saved = PanelFile.Load();
+        var (saved, view) = PanelFile.LoadAll();
         lock (_gate)
         {
             if (saved.Count > 0)
@@ -413,17 +413,34 @@ public sealed class ShellController : IDisposable
                 _workspace.Execute(new ReplacePanels(saved));
             }
 
+            _workspace.Execute(new SetView(view));
             _savedPanels = [.. _workspace.Panels];
+            _savedView = _workspace.View;
+        }
+    }
+
+    private FocusPosition _savedView;
+
+    /// <summary>Vista actual del principal (ADR 0012).</summary>
+    public FocusPosition View
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _workspace.View;
+            }
         }
     }
 
     /// <summary>Guarda los paneles si cambiaron (nombre, ubicación, presentación, altas o bajas).</summary>
     private void SavePanelsIfChanged()
     {
-        if (!_workspace.Panels.SequenceEqual(_savedPanels))
+        if (!_workspace.Panels.SequenceEqual(_savedPanels) || _workspace.View != _savedView)
         {
             _savedPanels = [.. _workspace.Panels];
-            PanelFile.Save(_savedPanels);
+            _savedView = _workspace.View;
+            PanelFile.Save(_savedPanels, _savedView);
         }
     }
 
@@ -470,7 +487,7 @@ public sealed class ShellController : IDisposable
             var panels = _workspace.Panels
                 .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template, p.Slot))
                 .ToList();
-            scene = new SavedScene(name.Trim(), windows) { Panels = panels };
+            scene = new SavedScene(name.Trim(), windows) { Panels = panels, View = _workspace.View };
         }
 
         Scenes.Upsert(scene);
@@ -518,7 +535,7 @@ public sealed class ShellController : IDisposable
         var panels = scene.Panels
             .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot))
             .ToList();
-        var result = Execute(new ApplyScene(entries, panels));
+        var result = Execute(new ApplyScene(entries, panels) { View = scene.View });
         return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
     }
 
@@ -851,8 +868,13 @@ public sealed class ShellController : IDisposable
                     a.Panels.Select(v => Assign(v)!).ToList()))
                 .ToList(),
         };
+        var (leftWeight, centerWeight, rightWeight) = ViewProportions.Default(c.View);
         var options = new SceneOptions
         {
+            Focus = c.View,
+            ContextWeight = leftWeight,
+            CenterWeight = centerWeight,
+            WorkWeight = rightWeight,
             ContextTemplate = c.ContextTemplate,
             WorkTemplate = c.WorkTemplate,
             PanelTopInset = StripHeight,

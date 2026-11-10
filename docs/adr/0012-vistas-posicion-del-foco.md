@@ -49,3 +49,14 @@ Se valoró permitir **dos áreas de foco**: IDE y navegador, ambos como foco. Se
 - El deck no necesita destinos por área: tocar una app siempre la lleva al foco.
 - Cambiar de vista mueve el foco de sitio sin cambiar qué ventana hay en él.
 - El intérprete de cambios externos (`Workspace.Interpret`) gana un caso: "se redimensionó sólo por el borde con su vecina" se convierte en "mover el separador" y no en `Detach`. Hay que distinguirlo con una tolerancia de ±1 px en los demás bordes.
+
+## Implementación (2026-11-10)
+
+Primera parte hecha: las tres vistas con sus proporciones de partida.
+
+- **Columnas por lado, orden por vista.** Cada panel sigue teniendo su lado (`Side`); la vista sólo decide el orden en pantalla. El panel del lado izquierdo (Contexto) queda siempre en un borde del monitor y el del derecho (Trabajo), junto al foco: foco a la izquierda = foco · Trabajo · Contexto; a la derecha = Contexto · Trabajo · foco. Así cada columna conserva sus paneles (hasta dos) al cambiar de vista.
+- **`SetView(foco)`** cambia la vista sin tocar qué ventana está en el foco ni en qué panel está cada una. La vista se guarda en `panels.json` y en las escenas (las anteriores son "foco al centro").
+- **Selector "Vista"** en la ventana principal y **Ctrl+Alt+Mayús+V** para pasar de una a otra (centro → izquierda → derecha).
+- **Motor:** el panel de en medio no desborda (la ventana que no cabe sale del layout); el del borde se ancla hacia fuera, salvo que ese borde dé a otro monitor. Ese borde se calcula según la vista. Si ni así cabe la ventana del foco en un extremo, se ancla a su borde del monitor.
+
+Pendiente: los presets ("foco ancho", "mitad y mitad"), arrastrar el separador y guardar las proporciones por vista; luego, la pantalla completa (punto 4).

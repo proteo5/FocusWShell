@@ -90,6 +90,10 @@ public sealed record SceneOptions
     public int Gap { get; init; }
     public PanelTemplate ContextTemplate { get; init; } = PanelTemplate.Tiles;
     public PanelTemplate WorkTemplate { get; init; } = PanelTemplate.Tiles;
+
+    /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
+    public FocusPosition Focus { get; init; }
+
     public MoveMode Mode { get; init; } = MoveMode.Async;
 
     /// <summary>Franja para la tira de pestañas arriba de cada panel, en píxeles lógicos (96 DPI). 0 = sin tiras.</summary>
@@ -190,8 +194,16 @@ public sealed class SceneApplier
         LayoutWindow ToLayout(WindowSnapshot w, int dpi) =>
             new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), dpi));
 
-        // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera.
-        var shared = DisplayTopology.SharedEdges(_display, DisplayEnumerator.Enumerate());
+        // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera. Qué borde toca cada
+        // columna depende de la vista: con el foco a un lado, la izquierda (Contexto) va al otro borde y la
+        // derecha (Trabajo) queda en medio, sin borde.
+        var edges = DisplayTopology.SharedEdges(_display, DisplayEnumerator.Enumerate());
+        var shared = _options.Focus switch
+        {
+            FocusPosition.Left => (Left: edges.Right, Right: false),
+            FocusPosition.Right => (Left: edges.Left, Right: false),
+            _ => (edges.Left, edges.Right),
+        };
         int dpi = _display.Dpi;
         var principal = SceneLayoutEngine.Compute(new SceneInput(
             _display.WorkArea,
@@ -204,6 +216,7 @@ public sealed class SceneApplier
             _options.Gap,
             PanelTopInset: Scale(_options.PanelTopInset, dpi))
         {
+            Focus = _options.Focus,
             LeftLower = Lower(_assignment.ContextLower, PanelSide.Left, _options.ContextWeight, shared.Left),
             RightLower = Lower(_assignment.WorkLower, PanelSide.Right, _options.WorkWeight, shared.Right),
         });

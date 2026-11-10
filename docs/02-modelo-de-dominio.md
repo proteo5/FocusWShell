@@ -241,6 +241,18 @@ En este orden:
 
 Cada ajuste genera una nota en lenguaje natural, por ejemplo: "Contexto se amplió 54 px (el Centro queda en 1830 px) porque Slack necesita 670 px de ancho". Esa nota alimentará la microbarra y cumple el principio de que toda acción automática se explique.
 
+### Vistas ([ADR 0012](adr/0012-vistas-posicion-del-foco.md))
+
+`Workspace.View` dice dónde va el foco en el principal: a la izquierda, al centro o a la derecha. `SetView` la cambia y sólo provoca `ApplyLayout`: el foco cambia de sitio con la misma ventana dentro. Las escenas la guardan; `ApplyScene` la aplica si la trae.
+
+| Vista | Columnas, de izquierda a derecha | Proporciones de partida |
+| --- | --- | --- |
+| Foco al centro | izquierda (Contexto) · foco · derecha (Trabajo) | 18 · 55 · 27 |
+| Foco a la izquierda | foco · derecha · izquierda | 55 · 30 · 15 |
+| Foco a la derecha | izquierda · derecha · foco | 15 · 30 · 55 |
+
+Con el foco en un extremo, la columna derecha queda en medio y no puede desbordar: su ventana demasiado ancha sale del layout. La izquierda toca un borde del monitor y desborda hacia fuera, salvo que ese borde dé a otro monitor.
+
 ### Dos paneles en una columna
 
 Cada panel tiene un **puesto** en su columna (`Slot`: arriba o abajo), y en cada columna (monitor y lado) cabe un panel por puesto: como máximo dos ([ADR 0011](adr/0011-paneles-y-catalogo.md)). Crear o mover un panel a un puesto ocupado se rechaza diciendo quién lo ocupa. Al aplicar una escena, un panel nuevo cuyo puesto ya está ocupado manda sus ventanas al que lo ocupa.

@@ -141,7 +141,7 @@ public static class AuxLayoutEngine
         for (int i = 0; i < cols.Count; i++)
         {
             int right = i == cols.Count - 1 ? area.Right : left + widths[i];
-            cols[i].Place(left, right, anchorOutward: false, gap, targets, notes, columns, bands);
+            cols[i].Place(left, right, outerEdge: null, gap, targets, notes, columns, bands);
             left = right + gap;
         }
 

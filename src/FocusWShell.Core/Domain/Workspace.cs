@@ -63,6 +63,9 @@ public sealed record AuxComposition(string Display, IReadOnlyList<PanelView> Pan
 /// <param name="Right">Panel a la derecha del foco en el principal (por defecto, Trabajo).</param>
 public sealed record SceneComposition(PanelView? Left, nint? Center, PanelView? Right)
 {
+    /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
+    public FocusPosition View { get; init; }
+
     /// <summary>Segundo panel de la columna izquierda del principal (el de abajo), si lo hay.</summary>
     public PanelView? LeftLower { get; init; }
 
@@ -164,7 +167,17 @@ public sealed record MakeActiveInPanel(nint Handle) : Command;
 /// Una ventana cuyo panel no se puede resolver queda libre. Las gestionadas que no están en la escena
 /// vuelven a su sitio original.
 /// </summary>
-public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList<Panel> Panels) : Command;
+public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList<Panel> Panels) : Command
+{
+    /// <summary>Vista de la escena; <c>null</c> deja la actual.</summary>
+    public FocusPosition? View { get; init; }
+}
+
+/// <summary>
+/// Cambia la vista del principal: el foco va a la izquierda, al centro o a la derecha (ADR 0012). No
+/// cambia qué ventana está en el foco ni en qué panel está cada una; sólo el orden de las columnas.
+/// </summary>
+public sealed record SetView(FocusPosition Focus) : Command;
 
 /// <summary>Sustituye todos los paneles (al arrancar, con los guardados). Sólo sin ventanas gestionadas.</summary>
 public sealed record ReplacePanels(IReadOnlyList<Panel> Panels) : Command;
@@ -246,6 +259,9 @@ public sealed class Workspace
 
     public IReadOnlyList<Panel> Panels => _panels;
 
+    /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
+    public FocusPosition View { get; private set; }
+
     public IReadOnlyList<ManagedWindow> Windows => _windows;
 
     public IReadOnlyList<nint> CenterHistory => _centerHistory;
@@ -309,6 +325,7 @@ public sealed class Workspace
                 Center is { Detached: false } center ? center.Handle : null,
                 View(right.FirstOrDefault()))
             {
+                View = this.View,
                 LeftLower = View(left.Skip(1).FirstOrDefault()),
                 RightLower = View(right.Skip(1).FirstOrDefault()),
                 Parked = _windows.Where(w => w.Placement == Placement.Parked).Select(w => w.Handle).ToList(),
@@ -338,6 +355,7 @@ public sealed class Workspace
         SnapBack c => DoSnapBack(c.Handle),
         MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
         ApplyScene c => DoApplyScene(c),
+        SetView c => DoSetView(c.Focus),
         ReplacePanels c => DoReplacePanels(c.Panels),
         Release c => DoRelease(c.Handle),
         RestoreAll => DoRestoreAll(),
@@ -817,8 +835,29 @@ public sealed class Workspace
         return CommandOutcome.Accept();
     }
 
+    private CommandOutcome DoSetView(FocusPosition focus)
+    {
+        if (!Enum.IsDefined(focus))
+        {
+            return CommandOutcome.Reject($"Vista desconocida: {focus}.");
+        }
+
+        if (View == focus)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        View = focus;
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
     private CommandOutcome DoApplyScene(ApplyScene c)
     {
+        if (c.View is { } view && Enum.IsDefined(view))
+        {
+            View = view;
+        }
+
         // Los paneles de la escena se suman a los del usuario. "map" traduce cada panel de la escena al
         // panel real donde irán sus ventanas.
         var map = new Dictionary<string, string>();

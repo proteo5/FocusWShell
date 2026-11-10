@@ -215,6 +215,17 @@ Prueba con dos ventanas de Paint en el ultrawide, desde la interfaz y desde otro
 | Mover Notas a «derecha del foco · abajo» | Su ventana pasa a la columna derecha; como Trabajo está vacío, la ocupa entera |
 | Arrancar con un `panels.json` anterior (sin `Slot`) | Carga bien: todos los paneles quedan arriba |
 
+### Vistas (M1b, 2026-11-10)
+
+Prueba en el ultrawide (con el monitor auxiliar a la derecha), con una ventana de Paint en Contexto y otra en el foco:
+
+| Caso | Resultado |
+| --- | --- |
+| Foco a la izquierda | Foco 0–1718 px, Trabajo (vacío) en medio y Contexto pegado al borde derecho. Como ese borde da al auxiliar, el foco cede más (piso compartido) para que Contexto quepa sin invadir el otro monitor |
+| Foco a la derecha | Contexto al borde izquierdo, Trabajo en medio y el foco a la derecha |
+| Ctrl+Alt+Mayús+V | Pasa a la siguiente vista; el selector de la ventana lo refleja |
+| Reiniciar la app | Vuelve con la última vista (guardada en `panels.json`) |
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

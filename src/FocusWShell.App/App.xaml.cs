@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Threading;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Layout;
 using FocusWShell.Win32;
 using Forms = System.Windows.Forms;
 
@@ -126,6 +127,13 @@ public partial class App : Application
                 () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious()))),
             new("Centro al panel", GlobalHotkeys.VkDown, "Ctrl+Alt+Mayús+↓", () => OnCommandHotkey("Centro al panel", _controller.ReturnCenter)),
             new("Pantalla encendida", GlobalHotkeys.VkP, "Ctrl+Alt+Mayús+P", () => Dispatcher.BeginInvoke(ToggleKeepAwake)),
+            new("Cambiar de vista", GlobalHotkeys.VkV, "Ctrl+Alt+Mayús+V", () => OnCommandHotkey("Cambiar de vista", () =>
+                _controller.Execute(new SetView(_controller.View switch
+                {
+                    FocusPosition.Center => FocusPosition.Left,
+                    FocusPosition.Left => FocusPosition.Right,
+                    _ => FocusPosition.Center,
+                })))),
             .. Enumerable.Range(1, 9).Select(n => new HotkeyBinding(
                 $"Escena {n}", (uint)(0x30 + n), $"Ctrl+Alt+Mayús+{n}", () => ApplySceneByIndex(n - 1))),
         ]);
