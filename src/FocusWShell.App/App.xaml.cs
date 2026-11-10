@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Threading;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Layout;
 using FocusWShell.Win32;
 using Forms = System.Windows.Forms;
 
@@ -40,11 +41,18 @@ public partial class App : Application
         }
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
-        AppDomain.CurrentDomain.UnhandledException += (_, _) => TryRestoreAll();
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            LogError(args.ExceptionObject as Exception);
+            TryRestoreAll();
+        };
 
         OfferRecovery();
 
-        _main = new MainWindow(_controller);
+        _controller.LoadPanels();
+        _controller.LoadCatalog();
+        _settings = AppSettings.Load();
+        _main = new MainWindow(_controller, _settings);
 
         // S4: lo que haga el usuario con las ventanas gestionadas se traduce en comandos.
         _controller.ExternalChangeHandled += handled => Dispatcher.BeginInvoke(() =>
@@ -65,6 +73,32 @@ public partial class App : Application
             }
         }));
         _controller.LayoutChanged += () => Dispatcher.BeginInvoke(() => _strips?.Refresh());
+        _controller.FocusGestureEnabled = g => g switch
+        {
+            SwitchGesture.AltTab => _settings.FocusOnAltTab,
+            SwitchGesture.TaskView => _settings.FocusOnTaskView,
+            SwitchGesture.Taskbar => _settings.FocusOnTaskbar,
+            SwitchGesture.Click => _settings.FocusOnClick,
+            _ => false,
+        };
+        _controller.FocusGestureHandled += (message, result) => Dispatcher.BeginInvoke(() =>
+        {
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(message + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result));
+            }
+        });
+        _controller.OpenMissingApps = () => _settings.OpenMissingApps;
+        _controller.SceneAppsOpened += (message, result) => Dispatcher.BeginInvoke(() =>
+        {
+            _tray?.Notify("Escena", message);
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(message + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result));
+            }
+        });
         _controller.StartWatching();
 
         // S6: monitores que se conectan o desconectan (también tablets por wifi).
@@ -91,7 +125,6 @@ public partial class App : Application
                     }
                 });
             }));
-        _settings = AppSettings.Load();
         _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore);
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
         RefreshTrayScenes();
@@ -104,6 +137,14 @@ public partial class App : Application
                 () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious()))),
             new("Centro al panel", GlobalHotkeys.VkDown, "Ctrl+Alt+Mayús+↓", () => OnCommandHotkey("Centro al panel", _controller.ReturnCenter)),
             new("Pantalla encendida", GlobalHotkeys.VkP, "Ctrl+Alt+Mayús+P", () => Dispatcher.BeginInvoke(ToggleKeepAwake)),
+            new("Pantalla completa", GlobalHotkeys.VkF, "Ctrl+Alt+Mayús+F", () => OnCommandHotkey("Pantalla completa", () => _controller.ToggleFullscreen())),
+            new("Cambiar de vista", GlobalHotkeys.VkV, "Ctrl+Alt+Mayús+V", () => OnCommandHotkey("Cambiar de vista", () =>
+                _controller.Execute(new SetView(_controller.View switch
+                {
+                    FocusPosition.Center => FocusPosition.Left,
+                    FocusPosition.Left => FocusPosition.Right,
+                    _ => FocusPosition.Center,
+                })))),
             .. Enumerable.Range(1, 9).Select(n => new HotkeyBinding(
                 $"Escena {n}", (uint)(0x30 + n), $"Ctrl+Alt+Mayús+{n}", () => ApplySceneByIndex(n - 1))),
         ]);
@@ -262,8 +303,25 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Deja constancia del error en <c>%LOCALAPPDATA%\FocusWShell\errors.log</c> (nunca falla).</summary>
+    private static void LogError(Exception? exception)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FocusWShell", "errors.log");
+            System.IO.File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+#pragma warning disable CA1031 // Registrar un error nunca debe provocar otro.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+        }
+    }
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        LogError(e.Exception);
         TryRestoreAll();
         MessageBox.Show(
             $"Error inesperado. Las ventanas se han devuelto a su sitio.\n\n{e.Exception.Message}",

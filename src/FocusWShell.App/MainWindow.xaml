@@ -8,21 +8,47 @@
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
             <TextBlock x:Name="HeaderText" FontWeight="SemiBold" TextWrapping="Wrap" />
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Vista:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="ViewCombo" Width="170" Margin="0,0,24,0" AutomationProperties.Name="Vista"
+                          SelectionChanged="ViewCombo_SelectionChanged"
+                          ToolTip="Dónde va el foco en el monitor principal (Ctrl+Alt+Mayús+V cambia de vista)">
+                    <ComboBoxItem Content="Foco a la izquierda" />
+                    <ComboBoxItem Content="Foco al centro" />
+                    <ComboBoxItem Content="Foco a la derecha" />
+                </ComboBox>
+                <TextBlock Text="Proporciones:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="ProportionsCombo" Width="260" Margin="0,0,24,0" AutomationProperties.Name="Proporciones"
+                          SelectionChanged="ProportionsCombo_SelectionChanged"
+                          ToolTip="Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ventana que da a la columna vecina: se guarda." />
                 <TextBlock Text="Escena:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="Escenas guardadas" />
                 <Button x:Name="ApplySceneButton" Content="Aplicar escena" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />
                 <Button x:Name="DeleteSceneButton" Content="Borrar" Padding="10,2" Margin="6,0,24,0" Click="DeleteScene_Click" />
+                <CheckBox x:Name="OpenMissingBox" Content="Abrir las que falten" VerticalAlignment="Center" Margin="0,0,24,0"
+                          Checked="OpenMissing_Changed" Unchecked="OpenMissing_Changed"
+                          ToolTip="Al aplicar una escena, abre las apps que no estén abiertas (si el catálogo sabe cómo) y pone su ventana en su panel." />
                 <TextBox x:Name="SceneName" Width="200" VerticalContentAlignment="Center" AutomationProperties.Name="Nombre de la escena" />
                 <Button x:Name="SaveSceneButton" Content="Guardar escena actual" Padding="10,2" Margin="6,0,0,0" Click="SaveScene_Click"
                         ToolTip="Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza." />
             </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Llevar al foco la ventana de un panel que elijas con:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <CheckBox x:Name="GestureAltTab" Content="Alt+Tab" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureTaskView" Content="Vista de tareas (Win+Tab)" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureTaskbar" Content="Barra de tareas" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureClick" Content="Clic en la ventana" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed"
+                          ToolTip="Desactivado por defecto: con él, cada clic en un panel movería ventanas bajo el cursor." />
+            </StackPanel>
             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="DimGray"
-                       Text="Cambia el rol y el monitor de las ventanas y pulsa Aplicar roles. El Centro está siempre en el monitor principal; los demás monitores alojan paneles auxiliares (Fill maximiza la primera ventana del panel). Las que dejas sin rol vuelven a su sitio original." />
+                       Text="Elige el panel de cada ventana (o déjala libre) y pulsa Aplicar. El foco está siempre en el monitor principal. En la sección Paneles puedes renombrarlos, moverlos a otro monitor, cambiar su presentación, borrarlos o crear nuevos; borrar un panel deja sus ventanas libres, donde estén." />
         </StackPanel>
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
             <Button x:Name="PromoteButton" DockPanel.Dock="Left" Content="Al Centro" Padding="12,4" Margin="0,0,8,0" Click="Promote_Click"
                     ToolTip="Lleva la ventana seleccionada al Centro (Ctrl+Alt+Mayús+↑ con la ventana activa)" />
+            <Button x:Name="FullscreenButton" DockPanel.Dock="Left" Content="Pantalla completa" Padding="12,4" Margin="0,0,4,0" Click="Fullscreen_Click"
+                    ToolTip="Maximiza la ventana seleccionada en el monitor elegido; si ya lo está, vuelve al foco (Ctrl+Alt+Mayús+F con la del foco)" />
+            <ComboBox x:Name="FullscreenTarget" DockPanel.Dock="Left" Width="130" Margin="0,0,8,0" AutomationProperties.Name="Monitor de pantalla completa" />
             <Button x:Name="SwapButton" DockPanel.Dock="Left" Content="Volver a la anterior" Padding="12,4" Margin="0,0,8,0" Click="Swap_Click"
                     ToolTip="Devuelve al Centro la ventana que estaba antes (Ctrl+Alt+Mayús+←)" />
             <Button x:Name="ReturnButton" DockPanel.Dock="Left" Content="Centro al panel" Padding="12,4" Margin="0,0,8,0" Click="Return_Click"
@@ -32,10 +58,10 @@
             <Button x:Name="UnparkButton" DockPanel.Dock="Left" Content="Recuperar" Padding="12,4" Margin="0,0,8,0" Click="Unpark_Click"
                     ToolTip="Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pasa si la abres desde la barra de tareas." />
             <Button x:Name="ReattachButton" DockPanel.Dock="Left" Content="Reencajar" Padding="12,4" Margin="0,0,8,0" Click="Reattach_Click"
-                    ToolTip="Devuelve al layout una ventana que moviste o maximizaste tú" />
+                    ToolTip="Devuelve al layout una ventana que maximizaste tú" />
             <Button x:Name="ReleaseButton" DockPanel.Dock="Left" Content="Liberar" Padding="12,4" Margin="0,0,8,0" Click="Release_Click"
                     ToolTip="Devuelve la ventana seleccionada a su sitio original y deja de gestionarla" />
-            <Button x:Name="ApplyButton" DockPanel.Dock="Right" Content="Aplicar roles" Padding="12,4" IsDefault="True" Click="Apply_Click" />
+            <Button x:Name="ApplyButton" DockPanel.Dock="Right" Content="Aplicar" Padding="12,4" IsDefault="True" Click="Apply_Click" />
             <Button x:Name="RestoreButton" DockPanel.Dock="Right" Content="Restaurar todas" Padding="12,4" Margin="0,0,8,0" Click="Restore_Click" />
             <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="Actualizar lista" Padding="12,4" Margin="0,0,8,0" Click="Refresh_Click" />
         </DockPanel>
@@ -44,38 +70,41 @@
                  IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                  FontFamily="Consolas" FontSize="12" />
 
-        <WrapPanel x:Name="TemplatesPanel" DockPanel.Dock="Bottom" Margin="0,8,0,0" />
+        <GroupBox DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="6">
+            <GroupBox.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Apps conocidas (se añaden solas al verlas abiertas)" VerticalAlignment="Center" />
+                    <CheckBox x:Name="ShowHiddenApps" Content="Ver ocultas" Margin="16,0,0,0" VerticalAlignment="Center"
+                              Checked="ShowHiddenApps_Changed" Unchecked="ShowHiddenApps_Changed" />
+                </StackPanel>
+            </GroupBox.Header>
+            <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="CatalogList" />
+            </ScrollViewer>
+        </GroupBox>
+
+        <GroupBox DockPanel.Dock="Bottom" Header="Paneles" Margin="0,8,0,0" Padding="6">
+            <StackPanel x:Name="PanelsList" />
+        </GroupBox>
 
         <ListView x:Name="WindowList" SelectionMode="Single">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Rol" Width="120">
+                    <GridViewColumn Header="Panel" Width="300">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <ComboBox Width="100"
-                                          AutomationProperties.Name="{Binding App, StringFormat=Rol de {0}}"
-                                          ItemsSource="{x:Static local:WindowRow.Roles}"
-                                          DisplayMemberPath="Label"
-                                          SelectedValuePath="Role"
-                                          SelectedValue="{Binding Role, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Monitor" Width="170">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <ComboBox Width="150"
-                                          AutomationProperties.Name="{Binding App, StringFormat=Monitor de {0}}"
-                                          ItemsSource="{Binding DataContext.DisplayOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                <ComboBox Width="280"
+                                          AutomationProperties.Name="{Binding App, StringFormat=Panel de {0}}"
+                                          ItemsSource="{Binding DataContext.AssignmentOptions, RelativeSource={RelativeSource AncestorType=Window}}"
                                           DisplayMemberPath="Label"
                                           SelectedValuePath="Key"
-                                          SelectedValue="{Binding Display, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                          SelectedValue="{Binding Assignment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="Estado" Width="150" DisplayMemberBinding="{Binding State}" />
+                    <GridViewColumn Header="Estado" Width="220" DisplayMemberBinding="{Binding State}" />
                     <GridViewColumn Header="App" Width="150" DisplayMemberBinding="{Binding App}" />
-                    <GridViewColumn Header="Título" Width="380" DisplayMemberBinding="{Binding Title}" />
+                    <GridViewColumn Header="Título" Width="360" DisplayMemberBinding="{Binding Title}" />
                 </GridView>
             </ListView.View>
         </ListView>

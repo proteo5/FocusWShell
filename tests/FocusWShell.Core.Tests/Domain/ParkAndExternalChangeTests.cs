@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Domain;
@@ -7,6 +7,8 @@ namespace FocusWShell.Core.Tests.Domain;
 public class ParkAndExternalChangeTests
 {
     private const string Aux = @"\\.\DISPLAY2";
+    private const string AuxContext = "aux-contexto";
+    private const string AuxWork = "aux-trabajo";
     private const nint Slack = 1;
     private const nint Edge = 2;
     private const nint Explorer = 3;
@@ -18,12 +20,14 @@ public class ParkAndExternalChangeTests
     private static Workspace Sample()
     {
         var ws = new Workspace();
-        ws.Execute(new Adopt(Slack, "Slack", Home.Context));
-        ws.Execute(new Adopt(Explorer, "Explorer", Home.Work));
-        ws.Execute(new Adopt(GitHub, "GitHub", Home.Work));
-        ws.Execute(new Adopt(Edge, "Edge", Home.Work));
-        ws.Execute(new Adopt(Grafana, "Grafana", Home.Work, Aux));
-        ws.Execute(new Adopt(Logs, "Logs", Home.Work, Aux));
+        ws.Execute(new CreatePanel(new Panel(AuxContext, "Contexto aux", Aux, PanelSide.Left)));
+        ws.Execute(new CreatePanel(new Panel(AuxWork, "Trabajo aux", Aux, PanelSide.Right)));
+        ws.Execute(new Adopt(Slack, "Slack", Workspace.ContextPanel));
+        ws.Execute(new Adopt(Explorer, "Explorer", Workspace.WorkPanel));
+        ws.Execute(new Adopt(GitHub, "GitHub", Workspace.WorkPanel));
+        ws.Execute(new Adopt(Edge, "Edge", Workspace.WorkPanel));
+        ws.Execute(new Adopt(Grafana, "Grafana", AuxWork));
+        ws.Execute(new Adopt(Logs, "Logs", AuxWork));
         return ws;
     }
 
@@ -45,7 +49,7 @@ public class ParkAndExternalChangeTests
         Assert.Contains(outcome.Effects, e => e is ApplyLayout);
         Assert.Equal([Explorer, Edge], ws.Composition.Work);
         Assert.Equal([GitHub], ws.Composition.Parked);
-        Assert.Equal(Home.Work, ws.Find(GitHub)!.Home);
+        Assert.Equal(Workspace.WorkPanel, ws.Find(GitHub)!.PanelId);
     }
 
     [Fact]
@@ -120,13 +124,48 @@ public class ParkAndExternalChangeTests
     }
 
     [Fact]
-    public void MakeActiveInPanelPutsItFirst()
+    public void MakeActiveInPanelPutsItFirstInTabs()
     {
         var ws = Sample();
+        ws.Execute(new SetPresentation(Workspace.WorkPanel, PanelTemplate.Stack));
 
         ws.Execute(new MakeActiveInPanel(Edge));
 
         Assert.Equal([Edge, Explorer, GitHub], ws.Composition.Work);
+    }
+
+    [Fact]
+    public void MakeActiveInPanelInTilesScrollsToItWithoutReordering()
+    {
+        var ws = Sample();
+
+        var outcome = ws.Execute(new MakeActiveInPanel(Edge));
+
+        Assert.Contains(outcome.Effects, e => e is ApplyLayout);
+        Assert.Equal([Explorer, GitHub, Edge], ws.Composition.Work);
+        Assert.Equal(Edge, ws.Composition.Right!.Reveal);
+
+        ws.Execute(new ScrollPanel(Workspace.WorkPanel, 2));
+        Assert.Equal(2, ws.Composition.Right!.ScrollRow);
+        Assert.Null(ws.Composition.Right.Reveal);
+    }
+
+    [Fact]
+    public void ShowingAWindowHiddenByTheRowsRevealsIt()
+    {
+        var ws = Sample();
+
+        Assert.Equal([new MakeActiveInPanel(GitHub)], ws.Interpret(GitHub, ExternalChange.Shown));
+    }
+
+    [Fact]
+    public void TileSizeIsPerWindow()
+    {
+        var ws = Sample();
+
+        Assert.Contains(ws.Execute(new SetTileSize(Edge, TileSize.Large)).Effects, e => e is ApplyLayout);
+        Assert.Equal(TileSize.Large, ws.Find(Edge)!.Size);
+        Assert.Empty(ws.Execute(new SetTileSize(Edge, TileSize.Large)).Effects);
     }
 
     [Fact]
@@ -135,7 +174,7 @@ public class ParkAndExternalChangeTests
         var ws = Sample();
         Assert.False(ws.IsHiddenByLayout(GitHub));
 
-        ws.Execute(new SetTemplate(null, Home.Work, PanelTemplate.Stack));
+        ws.Execute(new SetPresentation(Workspace.WorkPanel, PanelTemplate.Stack));
 
         Assert.False(ws.IsHiddenByLayout(Explorer));
         Assert.True(ws.IsHiddenByLayout(GitHub));
@@ -168,7 +207,7 @@ public class ParkAndExternalChangeTests
     public void UserShowsHiddenStackWindowMakesItTheVisibleTab()
     {
         var ws = Sample();
-        ws.Execute(new SetTemplate(null, Home.Work, PanelTemplate.Stack));
+        ws.Execute(new SetPresentation(Workspace.WorkPanel, PanelTemplate.Stack));
 
         Run(ws, ws.Interpret(Edge, ExternalChange.Shown));
 
@@ -192,7 +231,7 @@ public class ParkAndExternalChangeTests
     public void UnmaximizeFillWindowReturnsPanelToTiles()
     {
         var ws = Sample();
-        ws.Execute(new SetTemplate(Aux, Home.Work, PanelTemplate.Fill));
+        ws.Execute(new SetPresentation(AuxWork, PanelTemplate.Fill));
 
         Run(ws, ws.Interpret(Grafana, ExternalChange.Unmaximized));
 
@@ -211,15 +250,39 @@ public class ParkAndExternalChangeTests
     }
 
     [Fact]
-    public void DragDetachesAndRepeatedDragsDoNothingMore()
+    public void DraggingAPanelWindowSnapsItBack()
     {
         var ws = Sample();
 
-        Run(ws, ws.Interpret(Slack, ExternalChange.MovedOrResized));
-        var again = ws.Interpret(Slack, ExternalChange.MovedOrResized).Select(ws.Execute).ToList();
+        var commands = ws.Interpret(Slack, ExternalChange.MovedOrResized);
+        var outcome = ws.Execute(Assert.Single(commands));
 
-        Assert.True(ws.Find(Slack)!.Detached);
-        Assert.All(again, o => Assert.Empty(o.Effects));
+        Assert.Equal(new SnapBack(Slack), commands[0]);
+        Assert.Contains(outcome.Effects, e => e is ApplyLayout); // el layout la devuelve a su sitio
+        Assert.False(ws.Find(Slack)!.Detached);
+        Assert.Equal([Slack], ws.Composition.Context);
+    }
+
+    [Fact]
+    public void UnmaximizingADetachedWindowBringsItBackToItsPanel()
+    {
+        var ws = Sample();
+        Run(ws, ws.Interpret(Explorer, ExternalChange.Maximized));
+        Assert.True(ws.Find(Explorer)!.Detached);
+
+        Run(ws, ws.Interpret(Explorer, ExternalChange.Unmaximized));
+
+        Assert.False(ws.Find(Explorer)!.Detached);
+        Assert.Equal([Explorer, GitHub, Edge], ws.Composition.Work);
+    }
+
+    [Fact]
+    public void SnapBackOfAParkedWindowDoesNothing()
+    {
+        var ws = Sample();
+        ws.Execute(new Park(GitHub));
+
+        Assert.Empty(ws.Execute(new SnapBack(GitHub)).Effects);
     }
 
     [Fact]

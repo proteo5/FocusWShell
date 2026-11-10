@@ -252,7 +252,7 @@ static (SceneApplier Applier, SceneAssignment Assignment, SceneOptions Options, 
         {
             Aux =
             [
-                new AuxAssignment(
+                AuxAssignment.FromSides(
                     displays[auxNumber - 1],
                     ListOption(args, "--aux-context").Select(Find).ToList(),
                     ListOption(args, "--aux-work").Select(Find).ToList(),

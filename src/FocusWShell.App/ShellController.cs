@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using FocusWShell.Core.Displays;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 using FocusWShell.Core.Windows;
 using FocusWShell.Win32;
@@ -20,14 +21,23 @@ public sealed record ControllerResult(
 /// <param name="Notes">Ajustes (p. ej. un monitor auxiliar que no está conectado).</param>
 public sealed record SceneResult(string Name, ControllerResult Result, IReadOnlyList<SceneWindow> Missing, IReadOnlyList<string> Notes)
 {
+    /// <summary>Apps que faltaban y se están abriendo; al terminar llega <c>SceneAppsOpened</c>.</summary>
+    public IReadOnlyList<string> Opening { get; init; } = [];
+
     public string Summary
     {
         get
         {
             var lines = new List<string> { $"Escena «{Name}» aplicada." };
-            if (Missing.Count > 0)
+            if (Opening.Count > 0)
             {
-                lines.Add($"No están abiertas: {string.Join(", ", Missing.Select(m => m.Label))}.");
+                lines.Add($"Abriendo las que faltaban: {string.Join(", ", Opening)}…");
+            }
+
+            var notOpening = Missing.Where(m => !Opening.Contains(m.Label)).ToList();
+            if (notOpening.Count > 0)
+            {
+                lines.Add($"No están abiertas: {string.Join(", ", notOpening.Select(m => m.Label))}.");
             }
 
             lines.AddRange(Notes);
@@ -44,10 +54,17 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Minimized, [Park]) => $"{Label}: la minimizaste; queda estacionada en su panel.",
         (ExternalChange.Shown, [Restore]) => $"{Label}: la abriste desde la barra de tareas; vuelve a su panel.",
         (ExternalChange.Shown, [MakeActiveInPanel]) => $"{Label}: la abriste; pasa a ser la visible de su panel.",
-        (ExternalChange.Maximized, [MakeActiveInPanel, SetTemplate]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
-        (ExternalChange.Unmaximized, [SetTemplate]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
+        (ExternalChange.Maximized, [SetPresentation, MakeActiveInPanel]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
+        (ExternalChange.Unmaximized, [SetPresentation]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
-        (_, [Detach]) => $"{Label}: la moviste tú; queda fuera de layout hasta que la reencajes.",
+        (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
+        (_, [SnapBack]) => $"{Label}: la moviste; vuelve a su sitio.",
+        (_, [ExitFullscreen]) => $"{Label}: dejó de estar maximizada; sale de pantalla completa y vuelve al foco.",
+        (_, [SplitColumn s, SnapBack]) => $"{Label}: moviste el separador entre los dos paneles de su columna; quedan {Math.Round(100 * s.UpperHeight / (s.UpperHeight + s.LowerHeight))} % arriba y {Math.Round(100 * s.LowerHeight / (s.UpperHeight + s.LowerHeight))} % abajo.",
+        (_, [SetProportions p, SnapBack]) => $"{Label}: moviste el separador; esta vista queda en {p.Weights!.Describe(p.View)}.",
+        (_, [Promote]) => $"{Label}: la soltaste sobre el foco; pasa al foco.",
+        (_, [SendTo s]) => $"{Label}: la soltaste sobre otro panel; se queda en él.",
+        (_, [ReturnToPanel, SendTo]) => $"{Label}: la sacaste del foco a otro panel.",
         _ => $"{Label}: {Change}.",
     };
 }
@@ -98,9 +115,126 @@ public sealed class ShellController : IDisposable
         _watcher ??= WindowEventWatcher.Start(
             _expectations.IsWatched,
             observed => Task.Run(() => OnSettled(observed.Handle)));
+        _switches ??= FocusSwitchWatcher.Start((hwnd, gesture) => Task.Run(() => OnFocusSwitch(hwnd, gesture)));
     }
 
-    public void Dispose() => _watcher?.Dispose();
+    public void Dispose()
+    {
+        _switches?.Dispose();
+        _watcher?.Dispose();
+    }
+
+    private FocusSwitchWatcher? _switches;
+
+    /// <summary>Qué gestos de cambio de ventana llevan al foco (se leen de la configuración).</summary>
+    public Func<SwitchGesture, bool> FocusGestureEnabled { get; set; } = g => g is SwitchGesture.AltTab or SwitchGesture.TaskView or SwitchGesture.Taskbar;
+
+    /// <summary>Se dispara cuando un gesto de Windows llevó una ventana al foco.</summary>
+    public event Action<string, ControllerResult>? FocusGestureHandled;
+
+    /// <summary>
+    /// Una ventana llegó al primer plano por un gesto del usuario. Si el gesto está activado y la ventana
+    /// es de un panel, va al foco (ADR 0003, enmienda). Los cambios que no vienen de un gesto
+    /// (una app que se activa sola, un diálogo) nunca mueven nada (CA7).
+    /// </summary>
+    private void OnFocusSwitch(nint hwnd, SwitchGesture gesture)
+    {
+        if (gesture == SwitchGesture.Other || !FocusGestureEnabled(gesture))
+        {
+            return;
+        }
+
+        string message;
+        ControllerResult result;
+        lock (_gate)
+        {
+            if (_workspace.Find(hwnd) is not { Placement: Placement.InPanel or Placement.Parked, Detached: false } w)
+            {
+                return;
+            }
+
+            result = RunLocked([new Promote(hwnd)]);
+            message = gesture switch
+            {
+                SwitchGesture.AltTab => $"{w.Label}: elegida con Alt+Tab; pasa al foco.",
+                SwitchGesture.TaskView => $"{w.Label}: elegida en la vista de tareas; pasa al foco.",
+                SwitchGesture.Taskbar => $"{w.Label}: elegida en la barra de tareas; pasa al foco.",
+                _ => $"{w.Label}: clic; pasa al foco.",
+            };
+        }
+
+        FocusGestureHandled?.Invoke(message, result);
+    }
+
+    /// <summary>
+    /// Si el cambio de tamaño de una ventana de un panel apilado es mover el separador con el otro panel
+    /// de su columna, el comando que guarda el reparto nuevo.
+    /// </summary>
+    private SplitColumn? StackSplit(ManagedWindow w, PixelRect before, PixelRect after, SceneApplyReport report)
+    {
+        var panel = _workspace.EffectivePanel(w);
+        var other = _workspace.Panels.FirstOrDefault(p => p.Id != panel.Id && p.SharesColumnWith(panel));
+        if (other is null)
+        {
+            return null;
+        }
+
+        var (bands, strip) = panel.Display is { } display && report.Layout.Aux.FirstOrDefault(a => string.Equals(a.Display, display, StringComparison.OrdinalIgnoreCase)) is { } aux
+            ? (aux.Bands, aux.StripHeight)
+            : (report.Layout.Principal.Bands, report.Layout.Principal.StripHeight);
+        if (!bands.TryGetValue(panel.Id, out var own) || !bands.TryGetValue(other.Id, out var theirs))
+        {
+            return null; // el otro panel está vacío: no hay separador
+        }
+
+        var (upperPanel, upperBand, lowerPanel, lowerBand) = own.Top < theirs.Top ? (panel, own, other, theirs) : (other, theirs, panel, own);
+        return StackSeparator.Detect(before, after, upperBand, lowerBand, strip) is { } heights
+            ? new SplitColumn(upperPanel.Id, heights.Upper, lowerPanel.Id, heights.Lower)
+            : null;
+    }
+
+    /// <summary>
+    /// Dónde se soltó una ventana arrastrada, según el último layout: en la columna del foco, en la de
+    /// otro panel o en ninguna.
+    /// </summary>
+    private (bool Focus, string? PanelId) DropTarget(ObservedWindow observed)
+    {
+        if (_lastReport is null || observed.Minimized)
+        {
+            return (false, null);
+        }
+
+        int x = observed.Visible.Left + (observed.Visible.Width / 2);
+        int y = observed.Visible.Top + (observed.Visible.Height / 2);
+        var principal = _lastReport.Layout.Principal;
+        if (principal.CenterColumn.Contains(x, y))
+        {
+            return (true, null);
+        }
+
+        // Cada panel con ventanas tiene su banda; con dos en una columna, cada uno la suya.
+        foreach (var (panelId, band) in principal.Bands.Concat(_lastReport.Layout.Aux.SelectMany(a => a.Bands)))
+        {
+            if (band.Contains(x, y))
+            {
+                return (false, panelId);
+            }
+        }
+
+        // Una columna del principal sin ventanas no tiene banda: soltarla ahí la lleva a su panel de arriba.
+        var composition = _workspace.Composition;
+        if (principal.LeftColumn.Contains(x, y) && composition.Left is { } left)
+        {
+            return (false, left.Panel.Id);
+        }
+
+        if (principal.RightColumn.Contains(x, y) && composition.Right is { } right)
+        {
+            return (false, right.Panel.Id);
+        }
+
+        return (false, null);
+    }
 
     /// <summary>
     /// Una ventana vigilada se calmó. Dentro del lock se vuelve a leer su estado: si entretanto el
@@ -111,7 +245,9 @@ public sealed class ShellController : IDisposable
         ExternalChangeHandled? handled = null;
         lock (_gate)
         {
-            var change = _expectations.Reconcile(WindowMover.Observe(handle));
+            var expected = _expectations.Get(handle);
+            var observed = WindowMover.Observe(handle);
+            var change = _expectations.Reconcile(observed);
             if (change == ExternalChange.None)
             {
                 return;
@@ -119,6 +255,41 @@ public sealed class ShellController : IDisposable
 
             var label = _workspace.Find(handle)?.Label ?? "?";
             var commands = _workspace.Interpret(handle, change);
+
+            // Redimensionada sólo por el borde que da al otro panel de su columna: es mover el separador
+            // entre los dos paneles apilados (ADR 0011). El reparto se guarda en los paneles.
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && expected is ExpectVisible { Rect: var stackBefore }
+                && _lastReport is { } stackReport && _workspace.Find(handle) is { Placement: Placement.InPanel } stacked
+                && StackSplit(stacked, stackBefore, observed.Visible, stackReport) is { } split)
+            {
+                commands = [split, new SnapBack(handle)];
+            }
+
+            // Redimensionada sólo por el borde que comparte con la columna vecina, en el principal: es
+            // mover el separador (ADR 0012). Las proporciones nuevas se guardan para esta vista.
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && expected is ExpectVisible { Rect: var before }
+                && _lastReport is { } report && _workspace.Find(handle) is { Placement: Placement.Center or Placement.InPanel } moved
+                && (moved.Placement == Placement.Center || _workspace.EffectivePanel(moved).Display is null)
+                && ColumnSeparator.Detect(before, observed.Visible, report.Layout.Principal) is { } weights)
+            {
+                commands = [new SetProportions(_workspace.View, weights), new SnapBack(handle)];
+            }
+
+            // Arrastrada y soltada: sobre el foco va al foco; sobre otro panel, a ese panel; si no, vuelve.
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && _workspace.Find(handle) is { Placement: not Placement.Fullscreen } dragged)
+            {
+                var (focus, panelId) = DropTarget(WindowMover.Observe(handle));
+                if (focus && dragged.Placement != Placement.Center)
+                {
+                    commands = [new Promote(handle)];
+                }
+                else if (panelId is not null && panelId != _workspace.EffectivePanel(dragged).Id)
+                {
+                    commands = dragged.Placement == Placement.Center
+                        ? [new ReturnToPanel(handle), new SendTo(handle, panelId)]
+                        : [new SendTo(handle, panelId)];
+                }
+            }
             var result = commands.Count > 0 ? RunLocked(commands) : new ControllerResult([], [], null);
             handled = new ExternalChangeHandled(label, change, commands, result);
         }
@@ -134,6 +305,271 @@ public sealed class ShellController : IDisposable
     public MinSizeStore MinSizes { get; } = new(MinSizeStore.DefaultPath);
 
     public SceneStore Scenes { get; } = new(SceneStore.DefaultPath);
+
+    public PanelStore PanelFile { get; } = new(PanelStore.DefaultPath);
+
+    // --- Catálogo de apps (ADR 0011) ---------------------------------------------------------------
+
+    public AppCatalogStore CatalogFile { get; } = new(AppCatalogStore.DefaultPath);
+
+    private AppCatalog _catalog = new();
+
+    /// <summary>Apps con alguna ventana abierta en el último refresco.</summary>
+    private HashSet<string> _openApps = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Se dispara cuando el catálogo cambia (app nueva, panel recordado, olvidada).</summary>
+    public event Action? CatalogChanged;
+
+    public void LoadCatalog()
+    {
+        var loaded = CatalogFile.Load();
+        lock (_gate)
+        {
+            _catalog = loaded;
+        }
+    }
+
+    /// <summary>Las apps del catálogo (sin las ocultas, salvo que se pidan) y si están abiertas.</summary>
+    public IReadOnlyList<(CatalogApp App, bool Open)> CatalogApps(bool includeHidden = false)
+    {
+        lock (_gate)
+        {
+            return [.. _catalog.Apps.Where(a => includeHidden || !a.Hidden).Select(a => (a, _openApps.Contains(a.AppKey)))];
+        }
+    }
+
+    /// <summary>Cambia el nombre con el que se muestra una app (y con el que se gestionan sus ventanas nuevas).</summary>
+    public void RenameApp(string appKey, string name)
+    {
+        lock (_gate)
+        {
+            if (!_catalog.Rename(appKey, name))
+            {
+                return;
+            }
+
+            CatalogFile.Save(_catalog);
+        }
+
+        CatalogChanged?.Invoke();
+    }
+
+    /// <summary>Oculta una app del catálogo (sigue registrada: no vuelve a aparecer como nueva) o la muestra.</summary>
+    public void SetAppHidden(string appKey, bool hidden)
+    {
+        lock (_gate)
+        {
+            if (!_catalog.SetHidden(appKey, hidden))
+            {
+                return;
+            }
+
+            CatalogFile.Save(_catalog);
+        }
+
+        CatalogChanged?.Invoke();
+    }
+
+    public void ForgetApp(string appKey)
+    {
+        lock (_gate)
+        {
+            if (_catalog.Forget(appKey))
+            {
+                CatalogFile.Save(_catalog);
+            }
+        }
+
+        CatalogChanged?.Invoke();
+    }
+
+    /// <summary>Registra las apps que se ven. Sólo escribe el archivo si hay algo nuevo.</summary>
+    private void ObserveApps(IReadOnlyList<WindowSnapshot> windows)
+    {
+        bool changed = false;
+        var open = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var w in windows)
+        {
+            var key = MinSizeCatalog.KeyFor(w);
+            open.Add(key);
+            var known = _catalog.Find(key);
+            string name = known?.Name
+                ?? AppLauncher.FriendlyName(w.ProcessPath)
+                ?? Path.GetFileNameWithoutExtension(w.ProcessName);
+            changed |= _catalog.Observe(key, name, w.ProcessPath, w.AppUserModelId, DateTimeOffset.Now);
+
+            // Corrige nombres genéricos guardados con el criterio anterior ("Electron", "Notepad.exe").
+            if (known is not null && (known.Name.Equals("Electron", StringComparison.OrdinalIgnoreCase)
+                || known.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                && AppLauncher.FriendlyName(w.ProcessPath) is { } better && better != known.Name)
+            {
+                changed |= _catalog.Rename(key, better);
+            }
+        }
+
+        bool openChanged = !open.SetEquals(_openApps);
+        _openApps = open;
+        if (changed)
+        {
+            CatalogFile.Save(_catalog);
+        }
+
+        if (changed || openChanged)
+        {
+            CatalogChanged?.Invoke();
+        }
+    }
+
+    /// <summary>Recuerda el panel de cada app gestionada, para sugerirlo al abrirla otra vez.</summary>
+    private void RememberAppPanels()
+    {
+        bool changed = false;
+        foreach (var w in _workspace.Windows)
+        {
+            if (_snapshots.TryGetValue(w.Handle, out var snapshot))
+            {
+                changed |= _catalog.RememberPanel(MinSizeCatalog.KeyFor(snapshot), w.PanelId);
+            }
+        }
+
+        if (changed)
+        {
+            CatalogFile.Save(_catalog);
+            CatalogChanged?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Abre una app del catálogo y asigna su ventana al panel. Espera hasta 20 s a que aparezca;
+    /// prefiere una ventana nueva y, pasados unos segundos, acepta una que ya estuviera abierta y libre.
+    /// Devuelve un mensaje para el usuario.
+    /// </summary>
+    public string OpenApp(string appKey, string panelId)
+    {
+        CatalogApp? app;
+        HashSet<nint> before;
+        string panelName;
+        lock (_gate)
+        {
+            app = _catalog.Find(appKey);
+            before = [.. _snapshots.Keys];
+            panelName = _workspace.FindPanel(panelId)?.Name ?? panelId;
+        }
+
+        if (app is null)
+        {
+            return "Esa app ya no está en el catálogo.";
+        }
+
+        if (AppLauncher.Launch(app) is { } error)
+        {
+            return error;
+        }
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while (clock.Elapsed < TimeSpan.FromSeconds(20))
+        {
+            Thread.Sleep(400);
+            var windows = Refresh();
+            lock (_gate)
+            {
+                var free = windows.Where(w => !_workspace.IsManaged(w.Handle)
+                    && string.Equals(MinSizeCatalog.KeyFor(w), appKey, StringComparison.OrdinalIgnoreCase)).ToList();
+                var pick = free.FirstOrDefault(w => !before.Contains(w.Handle))
+                    ?? (clock.Elapsed > TimeSpan.FromSeconds(3) ? free.FirstOrDefault() : null);
+                if (pick is null)
+                {
+                    continue;
+                }
+
+                var result = RunLocked([new Adopt(pick.Handle, app.Name, panelId)]);
+                return result.Rejections.Count == 0
+                    ? $"{app.Name} abierta en {panelName}."
+                    : string.Join(" ", result.Rejections);
+            }
+        }
+
+        return $"{app.Name} se abrió, pero no apareció ninguna ventana suya en 20 s; queda libre.";
+    }
+
+    /// <summary>Lo último que se guardó en panels.json, para escribir sólo cuando cambia.</summary>
+    private List<Panel> _savedPanels = [];
+
+    /// <summary>Carga los paneles guardados (si los hay) en el modelo. Se llama al arrancar.</summary>
+    public void LoadPanels()
+    {
+        var (saved, view, proportions) = PanelFile.LoadAll();
+        lock (_gate)
+        {
+            if (saved.Count > 0)
+            {
+                _workspace.Execute(new ReplacePanels(saved));
+            }
+
+            _workspace.Execute(new SetView(view));
+            foreach (var (v, weights) in proportions)
+            {
+                _workspace.Execute(new SetProportions(v, weights));
+            }
+
+            _savedPanels = [.. _workspace.Panels];
+            _savedView = _workspace.View;
+            _savedProportions = new(_workspace.CustomProportions);
+        }
+    }
+
+    private FocusPosition _savedView;
+    private Dictionary<FocusPosition, ViewWeights> _savedProportions = [];
+
+    /// <summary>Proporciones de la vista actual.</summary>
+    public ViewWeights Proportions
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _workspace.ProportionsOf(_workspace.View);
+            }
+        }
+    }
+
+    /// <summary>Monitor de la pantalla completa (<c>null</c>: el principal o ninguna).</summary>
+    public string? FullscreenDisplay
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _workspace.Composition.Fullscreen?.Display;
+            }
+        }
+    }
+
+    /// <summary>Vista actual del principal (ADR 0012).</summary>
+    public FocusPosition View
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _workspace.View;
+            }
+        }
+    }
+
+    /// <summary>Guarda los paneles si cambiaron (nombre, ubicación, presentación, altas o bajas).</summary>
+    private void SavePanelsIfChanged()
+    {
+        bool proportionsChanged = _workspace.CustomProportions.Count != _savedProportions.Count
+            || _workspace.CustomProportions.Any(p => !_savedProportions.TryGetValue(p.Key, out var w) || w != p.Value);
+        if (!_workspace.Panels.SequenceEqual(_savedPanels) || _workspace.View != _savedView || proportionsChanged)
+        {
+            _savedPanels = [.. _workspace.Panels];
+            _savedView = _workspace.View;
+            _savedProportions = new(_workspace.CustomProportions);
+            PanelFile.Save(_savedPanels, _savedView, _savedProportions);
+        }
+    }
 
     /// <summary>Monitores auxiliares de izquierda a derecha: el 1 es el primero. Así se guardan en las escenas.</summary>
     private static List<DisplayInfo> OrderedAux() =>
@@ -172,16 +608,18 @@ public sealed class ShellController : IDisposable
                         Placement.Parked => ScenePlacement.Parked,
                         _ => ScenePlacement.InPanel,
                     };
-                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.Home, placement, AuxIndex(w.Display));
+                    return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.PanelId, placement) { Size = w.Size };
                 })
                 .ToList();
-            var displays = new List<string?> { null };
-            displays.AddRange(_workspace.Windows.Where(w => w.Display is not null).Select(w => w.Display).Distinct());
-            var templates = displays
-                .SelectMany(d => new[] { Home.Context, Home.Work }.Select(h => new ScenePanelTemplate(AuxIndex(d), h, _workspace.TemplateOf(d, h))))
-                .Where(t => t.AuxIndex is not null || t.Template != PanelTemplate.Fill)
+            var panels = _workspace.Panels
+                .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template, p.Slot, p.Height))
                 .ToList();
-            scene = new SavedScene(name.Trim(), windows, templates);
+            scene = new SavedScene(name.Trim(), windows)
+            {
+                Panels = panels,
+                View = _workspace.View,
+                Weights = _workspace.ProportionsOf(_workspace.View),
+            };
         }
 
         Scenes.Upsert(scene);
@@ -195,7 +633,7 @@ public sealed class ShellController : IDisposable
     /// </summary>
     public SceneResult ApplySavedScene(string name)
     {
-        var scene = Scenes.Load().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+        var scene = Scenes.Load().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))?.Upgrade();
         if (scene is null)
         {
             return new SceneResult(name, new ControllerResult([$"No existe la escena \"{name}\"."], [], null), [], []);
@@ -224,14 +662,121 @@ public sealed class ShellController : IDisposable
         }
 
         var entries = match.Matched
-            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.Home, m.Entry.Placement, DisplayOf(m.Entry.AuxIndex)))
+            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.PanelId ?? Workspace.WorkPanel, m.Entry.Placement) { Size = m.Entry.Size })
             .ToList();
-        var templates = scene.Templates
-            .Where(t => t.AuxIndex is null || t.AuxIndex <= aux.Count)
-            .Select(t => (DisplayOf(t.AuxIndex), t.Home, t.Template))
+        var panels = scene.Panels
+            .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot, p.Height))
             .ToList();
-        var result = Execute(new ApplyScene(entries, templates));
-        return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
+        var result = Execute(new ApplyScene(entries, panels) { View = scene.View, Weights = scene.Weights });
+
+        // Las apps que faltan y se saben abrir se abren en segundo plano; cada ventana va a su panel.
+        var opening = new List<(SceneWindow Entry, CatalogApp App, string? PanelId)>();
+        if (OpenMissingApps() && match.Missing.Count > 0)
+        {
+            lock (_gate)
+            {
+                foreach (var entry in match.Missing.DistinctBy(m => m.AppKey, StringComparer.OrdinalIgnoreCase))
+                {
+                    if (_catalog.Find(entry.AppKey) is { CanLaunch: true } app)
+                    {
+                        var scenePanel = panels.FirstOrDefault(p => p.Id == (entry.PanelId ?? Workspace.WorkPanel));
+                        var panelId = scenePanel is null
+                            ? _workspace.FindPanel(entry.PanelId ?? Workspace.WorkPanel)?.Id
+                            : _workspace.ResolveScenePanel(scenePanel)?.Id;
+                        opening.Add((entry, app, panelId));
+                    }
+                }
+            }
+        }
+
+        if (opening.Count > 0)
+        {
+            Task.Run(() => OpenSceneApps(scene.Name, opening));
+        }
+
+        return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList())
+        {
+            Opening = opening.Select(o => o.Entry.Label).ToList(),
+        };
+    }
+
+    /// <summary>Si al aplicar una escena se abren las apps que faltan (configuración).</summary>
+    public Func<bool> OpenMissingApps { get; set; } = () => true;
+
+    /// <summary>Al terminar de abrir las apps que faltaban en una escena: el resumen para el usuario.</summary>
+    public event Action<string, ControllerResult>? SceneAppsOpened;
+
+    /// <summary>
+    /// Abre cada app y espera (hasta 30 s en total) a que aparezca una ventana suya nueva. La pone en su
+    /// panel y, si en la escena estaba en el foco o estacionada, ahí. Si su panel no se resuelve, queda libre.
+    /// </summary>
+    private void OpenSceneApps(string sceneName, List<(SceneWindow Entry, CatalogApp App, string? PanelId)> opening)
+    {
+        HashSet<nint> before;
+        lock (_gate)
+        {
+            before = [.. _snapshots.Keys];
+        }
+
+        var lines = new List<string>();
+        var commands = new List<Command>();
+        var pending = new List<(SceneWindow Entry, CatalogApp App, string? PanelId)>();
+        foreach (var o in opening)
+        {
+            if (AppLauncher.Launch(o.App) is { } error)
+            {
+                lines.Add(error);
+            }
+            else
+            {
+                pending.Add(o);
+            }
+        }
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var results = new List<ControllerResult>();
+        while (pending.Count > 0 && clock.Elapsed < TimeSpan.FromSeconds(30))
+        {
+            Thread.Sleep(500);
+            var windows = Refresh();
+            lock (_gate)
+            {
+                foreach (var o in pending.ToList())
+                {
+                    var window = windows.FirstOrDefault(w => !before.Contains(w.Handle) && !_workspace.IsManaged(w.Handle)
+                        && string.Equals(MinSizeCatalog.KeyFor(w), o.Entry.AppKey, StringComparison.OrdinalIgnoreCase));
+                    if (window is null)
+                    {
+                        continue;
+                    }
+
+                    pending.Remove(o);
+                    if (o.PanelId is null)
+                    {
+                        lines.Add($"{o.Entry.Label} se abrió; su panel no existe, así que queda libre.");
+                        continue;
+                    }
+
+                    List<Command> place = [new Adopt(window.Handle, o.Entry.Label, o.PanelId), new SetTileSize(window.Handle, o.Entry.Size)];
+                    if (o.Entry.Placement == ScenePlacement.Center)
+                    {
+                        place.Add(new Promote(window.Handle));
+                    }
+                    else if (o.Entry.Placement == ScenePlacement.Parked)
+                    {
+                        place.Add(new Park(window.Handle));
+                    }
+
+                    results.Add(RunLocked(place));
+                    lines.Add($"{o.Entry.Label} se abrió y está en {(o.Entry.Placement == ScenePlacement.Center ? "el foco" : _workspace.FindPanel(o.PanelId)?.Name ?? o.PanelId)}.");
+                }
+            }
+        }
+
+        lines.AddRange(pending.Select(o => $"{o.Entry.Label} se abrió, pero no apareció ninguna ventana suya en 30 s; queda libre."));
+        var last = results.LastOrDefault() ?? new ControllerResult([], [], null);
+        var summary = new ControllerResult([.. results.SelectMany(r => r.Rejections)], [.. results.SelectMany(r => r.Restores)], last.Applied);
+        SceneAppsOpened?.Invoke($"Escena «{sceneName}»: " + string.Join(" ", lines), summary);
     }
 
     /// <summary>Monitor del Centro: el principal de Windows (ADR 0008).</summary>
@@ -274,6 +819,7 @@ public sealed class ShellController : IDisposable
                 _snapshots[w.Handle] = w;
             }
 
+            ObserveApps(windows);
             var alive = windows.Select(w => w.Handle).ToHashSet();
             var closed = _workspace.Windows.Where(m => !alive.Contains(m.Handle)).Select(m => new WindowClosed(m.Handle)).ToList();
             if (closed.Count > 0)
@@ -312,11 +858,29 @@ public sealed class ShellController : IDisposable
     }
 
     /// <summary>Devuelve el Centro a su panel (atajo).</summary>
+    /// <summary>
+    /// Pantalla completa de la ventana del foco en el principal, o salir si ya lo está (atajo F).
+    /// </summary>
+    public ControllerResult ToggleFullscreen(string? display = null)
+    {
+        lock (_gate)
+        {
+            if (_workspace.Focused is not { } focused)
+            {
+                return new ControllerResult(["No hay ninguna ventana en el foco."], [], null);
+            }
+
+            return focused.Placement == Placement.Fullscreen && display is null
+                ? RunLocked([new ExitFullscreen(focused.Handle)])
+                : RunLocked([new EnterFullscreen(focused.Handle, display)]);
+        }
+    }
+
     public ControllerResult ReturnCenter()
     {
         lock (_gate)
         {
-            return _workspace.Center is { } c
+            return _workspace.Focused is { } c
                 ? RunLocked([new ReturnToPanel(c.Handle)])
                 : new ControllerResult(["El Centro está vacío."], [], null);
         }
@@ -329,6 +893,8 @@ public sealed class ShellController : IDisposable
         using var own = _watcher?.OwnChange();
         var result = RunEffectsLocked(commands, forceLayout);
         SyncExpectations(result.Applied);
+        SavePanelsIfChanged();
+        RememberAppPanels();
         if (result.Applied is { Error: null } applied)
         {
             _lastReport = applied;
@@ -539,20 +1105,43 @@ public sealed class ShellController : IDisposable
         var c = _workspace.Composition;
         List<WindowSnapshot> Map(IEnumerable<nint> handles) =>
             handles.Where(_snapshots.ContainsKey).Select(h => _snapshots[h]).ToList();
+        PanelAssignment? Assign(PanelView? v) =>
+            v is null ? null : new PanelAssignment(v.Panel.Id, v.Panel.Name, v.Panel.Side, v.Panel.Template, Map(v.Windows)) { Slot = v.Panel.Slot, Height = v.Panel.Height };
 
         var assignment = new SceneAssignment(
             Map(c.Context),
             c.Center is { } center && _snapshots.TryGetValue(center, out var w) ? w : null,
             Map(c.Work))
         {
+            ContextId = c.Left?.Panel.Id ?? Workspace.ContextPanel,
+            ContextTitle = c.Left?.Panel.Name ?? "Contexto",
+            WorkId = c.Right?.Panel.Id ?? Workspace.WorkPanel,
+            WorkTitle = c.Right?.Panel.Name ?? "Trabajo",
+            ContextHeight = c.Left?.Panel.Height ?? 1,
+            WorkHeight = c.Right?.Panel.Height ?? 1,
+            ContextLower = Assign(c.LeftLower),
+            WorkLower = Assign(c.RightLower),
             Parked = Map(c.Parked),
+            TileSizes = _workspace.Windows.ToDictionary(w => w.Handle, w => w.Size),
+            Scroll = new[] { c.Left, c.LeftLower, c.Right, c.RightLower }.OfType<PanelView>().Concat(c.Aux.SelectMany(a => a.Panels))
+                .Where(v => v.ScrollRow > 0 || v.Reveal is not null)
+                .ToDictionary(v => v.Panel.Id, v => (v.ScrollRow, v.Reveal)),
+            Fullscreen = c.Fullscreen is { } full && _snapshots.TryGetValue(full.Handle, out var fullWindow)
+                ? (fullWindow, full.Display is { } fd && displays.FirstOrDefault(d => d.Key == fd) is { } fullDisplay ? fullDisplay : principal)
+                : null,
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
-                    displays.First(d => d.Key == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))
+                    displays.First(d => d.Key == a.Display),
+                    a.Panels.Select(v => Assign(v)!).ToList()))
                 .ToList(),
         };
+        var (leftWeight, centerWeight, rightWeight) = c.Weights;
         var options = new SceneOptions
         {
+            Focus = c.View,
+            ContextWeight = leftWeight,
+            CenterWeight = centerWeight,
+            WorkWeight = rightWeight,
             ContextTemplate = c.ContextTemplate,
             WorkTemplate = c.WorkTemplate,
             PanelTopInset = StripHeight,
@@ -571,11 +1160,21 @@ public sealed class ShellController : IDisposable
         return displays.Where(d => d != principal).ToList();
     }
 
-    public PanelTemplate TemplateOf(string? display, Home home)
+    /// <summary>Copia de los paneles, para la UI.</summary>
+    public IReadOnlyList<Panel> Panels()
     {
         lock (_gate)
         {
-            return _workspace.TemplateOf(display, home);
+            return [.. _workspace.Panels];
+        }
+    }
+
+    /// <summary>Panel donde se coloca de verdad una ventana (el suyo o, si su monitor falta, el del principal).</summary>
+    public Panel EffectivePanel(ManagedWindow window)
+    {
+        lock (_gate)
+        {
+            return _workspace.EffectivePanel(window);
         }
     }
 }

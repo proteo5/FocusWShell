@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 using FocusWShell.Win32.Scenes;
@@ -24,14 +24,25 @@ public enum TabState
     Detached,
 }
 
-public sealed record StripTab(nint Handle, string Label, TabState State);
+public sealed record StripTab(nint Handle, string Label, TabState State)
+{
+    /// <summary>Tamaño de tile de la ventana (ADR 0015).</summary>
+    public TileSize Size { get; init; } = TileSize.Small;
+}
 
 /// <summary>Tira de pestañas de un panel: dónde va (franja reservada) y qué muestra.</summary>
-/// <param name="Display">Monitor auxiliar, o <c>null</c> en el principal.</param>
+/// <param name="PanelId">Panel al que pertenece (ADR 0011).</param>
+/// <param name="Title">Nombre visible del panel.</param>
 /// <param name="Band">Franja en píxeles físicos, encima de las ventanas del panel.</param>
-public sealed record PanelStrip(string? Display, Home Home, string Title, PixelRect Band, int Dpi, IReadOnlyList<StripTab> Tabs)
+public sealed record PanelStrip(string PanelId, string Title, PixelRect Band, int Dpi, IReadOnlyList<StripTab> Tabs)
 {
-    public string Key => $"{Display ?? "principal"}|{Home}";
+    /// <summary>Filas del panel en tiles si no caben todas (▲ ▼).</summary>
+    public TilePages? Pages { get; init; }
+
+    /// <summary>Presentación efectiva del panel: el tamaño de tile sólo tiene sentido en tiles.</summary>
+    public PanelTemplate Template { get; init; } = PanelTemplate.Tiles;
+
+    public string Key => PanelId;
 }
 
 /// <summary>Calcula las tiras a partir del modelo y del último plan aplicado.</summary>
@@ -48,58 +59,57 @@ public static class PanelStripBuilder
         ArgumentNullException.ThrowIfNull(auxDpi);
         var kinds = report.Applied.ToDictionary(a => a.Target.Handle, a => a.Target.Kind);
         var strips = new List<PanelStrip>();
-        var principal = report.Layout.Principal;
-        int top = principal.CenterColumn.Top;
 
-        void Add(string? display, Home home, string title, PixelRect column, int dpi)
+        // Cada panel con ventanas tiene su banda; la tira ocupa la franja de arriba de la banda.
+        void Add(string panelId, PixelRect band, int stripHeight, int dpi, PanelTemplate effective, TilePages? pages)
         {
-            if (column.Top <= top || column.IsEmpty)
+            // Sin franja reservada (p. ej. Fill) no hay tira.
+            if (workspace.FindPanel(panelId) is not { } panel || band.IsEmpty || stripHeight <= 0 || effective == PanelTemplate.Fill)
             {
-                return; // Sin franja reservada (p. ej. Fill): no hay tira.
+                return;
             }
 
-            var tabs = TabsOf(workspace, kinds, display, home);
+            var tabs = TabsOf(workspace, kinds, panel.Id);
             if (tabs.Count > 0)
             {
-                strips.Add(new PanelStrip(display, home, title, new PixelRect(column.Left, top, column.Right, column.Top), dpi, tabs));
+                strips.Add(new PanelStrip(panel.Id, panel.Name, band with { Bottom = band.Top + stripHeight }, dpi, tabs)
+                {
+                    Pages = pages,
+                    Template = effective,
+                });
             }
         }
 
-        Add(null, Home.Context, "Contexto", principal.LeftColumn, principalDpi);
-        Add(null, Home.Work, "Trabajo", principal.RightColumn, principalDpi);
-        foreach (var aux in report.Layout.Aux)
+        // En el monitor de la pantalla completa no se muestran tiras: la ventana lo ocupa entero.
+        var fullscreen = workspace.Composition.Fullscreen;
+        var principal = report.Layout.Principal;
+        IEnumerable<KeyValuePair<string, PixelRect>> principalBands = fullscreen is { Display: null } ? [] : principal.Bands;
+        foreach (var (panelId, band) in principalBands)
         {
-            int auxTop = aux.WorkArea.Top;
-            foreach (var (name, column) in aux.Columns)
-            {
-                var home = name == "Contexto" ? Home.Context : Home.Work;
-                if (aux.EffectiveTemplates.GetValueOrDefault(name) == PanelTemplate.Fill || column.Top <= auxTop)
-                {
-                    continue;
-                }
+            Add(panelId, band, principal.StripHeight, principalDpi, principal.EffectiveTemplates.GetValueOrDefault(panelId), principal.Pages.GetValueOrDefault(panelId));
+        }
 
-                var tabs = TabsOf(workspace, kinds, aux.Display, home);
-                if (tabs.Count > 0)
-                {
-                    strips.Add(new PanelStrip(aux.Display, home, name, new PixelRect(column.Left, auxTop, column.Right, column.Top),
-                        auxDpi.GetValueOrDefault(aux.Display, 96), tabs));
-                }
+        foreach (var aux in report.Layout.Aux.Where(a => fullscreen?.Display is not { } d || !string.Equals(d, a.Display, StringComparison.OrdinalIgnoreCase)))
+        {
+            foreach (var (panelId, band) in aux.Bands)
+            {
+                Add(panelId, band, aux.StripHeight, auxDpi.GetValueOrDefault(aux.Display, 96), aux.EffectiveTemplates.GetValueOrDefault(panelId), aux.Pages.GetValueOrDefault(panelId));
             }
         }
 
         return strips;
     }
 
-    /// <summary>Pestañas de un panel, en el orden del modelo (el orden del panel).</summary>
-    private static List<StripTab> TabsOf(Workspace workspace, Dictionary<nint, TargetKind> kinds, string? display, Home home) =>
+    /// <summary>Pestañas de un panel, en el orden del modelo: las ventanas que se colocan en él.</summary>
+    private static List<StripTab> TabsOf(Workspace workspace, Dictionary<nint, TargetKind> kinds, string panelId) =>
         workspace.Windows
-            .Where(w => w.Display == display && w.Home == home)
+            .Where(w => workspace.EffectivePanel(w).Id == panelId)
             .Select(w => new StripTab(w.Handle, w.Label, w switch
             {
-                { Placement: Placement.Center } => TabState.InCenter,
+                { Placement: Placement.Center or Placement.Fullscreen } => TabState.InCenter,
                 { Placement: Placement.Parked } => TabState.Parked,
                 { Detached: true } => TabState.Detached,
                 _ => kinds.GetValueOrDefault(w.Handle) == TargetKind.Minimized ? TabState.Hidden : TabState.Active,
-            }))
+            }) { Size = w.Size })
             .ToList();
 }

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 
 namespace FocusWShell.App;
@@ -17,6 +17,21 @@ public sealed class AppSettings
 
     /// <summary>Mantener la pantalla encendida (ADR 0010). Se recuerda entre sesiones.</summary>
     public bool KeepDisplayOn { get; set; }
+
+    /// <summary>Alt+Tab a una ventana de un panel la lleva al foco (ADR 0003, enmienda).</summary>
+    public bool FocusOnAltTab { get; set; } = true;
+
+    /// <summary>Elegirla en la vista de tareas (Win+Tab) la lleva al foco.</summary>
+    public bool FocusOnTaskView { get; set; } = true;
+
+    /// <summary>Su botón en la barra de tareas la lleva al foco.</summary>
+    public bool FocusOnTaskbar { get; set; } = true;
+
+    /// <summary>Al aplicar una escena, abrir las apps que falten y ponerlas en su panel (ADR 0011).</summary>
+    public bool OpenMissingApps { get; set; } = true;
+
+    /// <summary>Un clic en la propia ventana la lleva al foco. Desactivado: las ventanas saltarían a cada clic.</summary>
+    public bool FocusOnClick { get; set; }
 
     public static AppSettings Load()
     {

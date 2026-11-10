@@ -4,7 +4,14 @@ namespace FocusWShell.Core.Layout;
 
 /// <summary>Paneles de un monitor auxiliar, de izquierda a derecha.</summary>
 /// <param name="TopInset">Franja reservada arriba de cada panel para su tira de pestañas (no en Fill).</param>
-public sealed record AuxInput(string Display, PixelRect WorkArea, IReadOnlyList<PanelInput> Panels, int Gap = 0, int TopInset = 0);
+public sealed record AuxInput(string Display, PixelRect WorkArea, IReadOnlyList<PanelInput> Panels, int Gap = 0, int TopInset = 0)
+{
+    /// <summary>Ancho mínimo de una columna de tiles; 0 = una sola columna.</summary>
+    public int MinCellWidth { get; init; }
+
+    /// <summary>Alto mínimo de una fila de tiles.</summary>
+    public int MinRowHeight { get; init; }
+}
 
 /// <summary>Resultado del motor de un monitor auxiliar.</summary>
 /// <param name="Columns">Columna de cada panel visible, por nombre.</param>
@@ -14,7 +21,20 @@ public sealed record AuxLayoutResult(
     IReadOnlyDictionary<string, PixelRect> Columns,
     IReadOnlyDictionary<string, PanelTemplate> EffectiveTemplates,
     IReadOnlyList<WindowTarget> Targets,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes)
+{
+    /// <summary>Nombre visible de cada panel, por identificador.</summary>
+    public IReadOnlyDictionary<string, string> Titles { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>Banda de cada panel con ventanas, incluida su franja de pestañas (no en Fill).</summary>
+    public IReadOnlyDictionary<string, PixelRect> Bands { get; init; } = new Dictionary<string, PixelRect>();
+
+    /// <summary>Alto de la franja de pestañas de cada banda.</summary>
+    public int StripHeight { get; init; }
+
+    /// <summary>Filas de los paneles en tiles que no caben enteros, por nombre.</summary>
+    public IReadOnlyDictionary<string, TilePages> Pages { get; init; } = new Dictionary<string, TilePages>();
+}
 
 /// <summary>
 /// Layout de un monitor auxiliar (ADR 0008): sin Centro, sólo paneles en columnas.
@@ -22,7 +42,8 @@ public sealed record AuxLayoutResult(
 /// <item>Los paneles vacíos no ocupan sitio.</item>
 /// <item>Si un panel está en <see cref="PanelTemplate.Fill"/>, su primera ventana se maximiza y todo lo
 /// demás de ese monitor se minimiza. Si hay varios en Fill, gana el primero.</item>
-/// <item>Si no, las columnas se reparten por peso; una columna que no llega al mínimo de su ventana
+/// <item>Si no, cada lado es una columna, con hasta dos paneles uno encima del otro que se reparten el
+/// alto (ninguno invade al otro). Las columnas se reparten por peso; una columna que no llega al mínimo de su ventana
 /// más ancha toma de las otras sin bajarlas del suyo.</item>
 /// <item>En un auxiliar nada se desborda: la ventana que no cabe ni así sale del layout (se minimiza).</item>
 /// </list>
@@ -30,6 +51,12 @@ public sealed record AuxLayoutResult(
 public static class AuxLayoutEngine
 {
     public static AuxLayoutResult Compute(AuxInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        return ComputeCore(input) with { Titles = input.Panels.ToDictionary(p => p.Name, p => p.DisplayTitle) };
+    }
+
+    private static AuxLayoutResult ComputeCore(AuxInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
         var notes = new List<string>();
@@ -51,10 +78,10 @@ public static class AuxLayoutEngine
                 }
             }
 
-            var hidden = panels.Where(p => p != fill).Select(p => p.Name).ToList();
+            var hidden = panels.Where(p => p != fill).Select(p => p.DisplayTitle).ToList();
             if (hidden.Count > 0)
             {
-                notes.Add($"{main.Label} ocupa el monitor ({fill.Name} en Fill); {string.Join(" y ", hidden)} se minimiza.");
+                notes.Add($"{main.Label} ocupa el monitor ({fill.DisplayTitle} en Fill); {string.Join(" y ", hidden)} se minimiza.");
             }
 
             return new AuxLayoutResult(
@@ -66,88 +93,67 @@ public static class AuxLayoutEngine
                 notes);
         }
 
-        // Bajo la franja de la tira de pestañas (Fill no la tiene: la ventana ocupa el monitor).
+        // 2. Columnas por lado (de izquierda a derecha); en cada una, hasta dos paneles apilados con su
+        //    template efectivo según el alto que les toca (tiles que no caben pasan a pila).
         int inset = Math.Clamp(input.TopInset, 0, area.Height / 2);
-        var panelArea = area with { Top = area.Top + inset };
+        var cols = panels
+            .GroupBy(p => p.Side)
+            .Select(g => PanelColumn.Build([.. g], area.Top, area.Bottom, inset, gap, notes, targets))
+            .ToList();
 
-        // 2. Template efectivo (tiles que no caben en alto pasan a pila).
-        var resolved = panels.Select(p => SceneLayoutEngine.Resolve(p, panelArea.Height, gap, notes)).ToList();
-
-        // 3. Ventanas que no caben ni dejando a los demás paneles en su mínimo.
-        int available = area.Width - (gap * Math.Max(0, resolved.Count - 1));
-        for (int i = 0; i < resolved.Count; i++)
+        // 3. Ventanas que no caben ni dejando a las demás columnas en su mínimo.
+        int available = area.Width - (gap * Math.Max(0, cols.Count - 1));
+        for (int i = 0; i < cols.Count; i++)
         {
-            int othersNeed = resolved.Where((_, k) => k != i).Sum(r => r.RequiredWidth);
+            int othersNeed = cols.Where((_, k) => k != i).Sum(c => c.RequiredWidth);
             int max = available - othersNeed;
-            var tooWide = resolved[i].Panel.Windows.Where(w => (w.MinSize?.Width ?? 0) > max).ToList();
-            if (tooWide.Count == 0)
-            {
-                continue;
-            }
-
-            foreach (var w in tooWide)
-            {
-                targets.Add(new WindowTarget(w.Handle, w.Label, resolved[i].Panel.Name, TargetKind.Minimized, default));
-                notes.Add($"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {resolved[i].Panel.Name} puede tener como mucho {max} en este monitor; se minimiza y queda fuera del layout.");
-            }
-
-            var remaining = resolved[i].Panel with { Windows = resolved[i].Panel.Windows.Except(tooWide).ToList() };
-            resolved[i] = SceneLayoutEngine.Resolve(remaining, panelArea.Height, gap, []);
+            cols[i].ExcludeTooWide(max, targets, notes, (w, panel, limit) =>
+                $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.DisplayTitle} puede tener como mucho {limit} en este monitor; se minimiza y queda fuera del layout.");
         }
 
-        resolved = resolved.Where(r => r.Visible.Count > 0).ToList();
-        if (resolved.Count == 0)
+        cols = cols.Where(c => c.HasVisible).ToList();
+        if (cols.Count == 0)
         {
             return new AuxLayoutResult(input.Display, area, new Dictionary<string, PixelRect>(), new Dictionary<string, PanelTemplate>(), targets, notes);
         }
 
         // 4. Anchos: por peso y luego, a quien no llega a su mínimo, se le da a costa de los demás.
-        var widths = Splitter.Columns(area, resolved.Select(r => r.Panel.Weight).ToList(), gap).Select(c => c.Width).ToArray();
+        var widths = Splitter.Columns(area, cols.Select(c => c.Weight).ToList(), gap).Select(c => c.Width).ToArray();
         var ideal = widths.ToArray();
-        for (int i = 0; i < resolved.Count; i++)
+        for (int i = 0; i < cols.Count; i++)
         {
-            int missing = resolved[i].RequiredWidth - widths[i];
-            for (int k = 0; k < resolved.Count && missing > 0; k++)
+            int missing = cols[i].RequiredWidth - widths[i];
+            for (int k = 0; k < cols.Count && missing > 0; k++)
             {
                 if (k == i)
                 {
                     continue;
                 }
 
-                int spare = Math.Max(0, widths[k] - resolved[k].RequiredWidth);
+                int spare = Math.Max(0, widths[k] - cols[k].RequiredWidth);
                 int take = Math.Min(spare, missing);
                 widths[k] -= take;
                 widths[i] += take;
                 missing -= take;
             }
 
-            if (widths[i] > ideal[i])
+            if (widths[i] > ideal[i] && cols[i].Widest is { } widestPanel)
             {
-                var widest = resolved[i].Visible.MaxBy(w => w.MinSize?.Width ?? 0)!;
-                notes.Add($"{resolved[i].Panel.Name} se amplió a {widths[i]} px porque {widest.Label} necesita {resolved[i].RequiredWidth} px de ancho.");
+                var widest = widestPanel.Visible.MaxBy(w => w.MinSize?.Width ?? 0)!;
+                notes.Add($"{widestPanel.Panel.DisplayTitle} se amplió a {widths[i]} px porque {widest.Label} necesita {cols[i].RequiredWidth} px de ancho.");
             }
         }
 
-        // 5. Columnas y filas.
+        // 5. Columnas, bandas y filas.
         var columns = new Dictionary<string, PixelRect>();
+        var bands = new Dictionary<string, PixelRect>();
+        var pages = new Dictionary<string, TilePages>();
+        var grid = new GridOptions(input.MinCellWidth, input.MinRowHeight);
         int left = area.Left;
-        for (int i = 0; i < resolved.Count; i++)
+        for (int i = 0; i < cols.Count; i++)
         {
-            int right = i == resolved.Count - 1 ? area.Right : left + widths[i];
-            var column = new PixelRect(left, panelArea.Top, right, area.Bottom);
-            columns[resolved[i].Panel.Name] = column;
-            var rows = SceneLayoutEngine.DistributeRows(column, resolved[i].Visible.Select(w => w.MinSize?.Height ?? 0).ToList(), gap);
-            for (int r = 0; r < resolved[i].Visible.Count; r++)
-            {
-                var w = resolved[i].Visible[r];
-                targets.Add(new WindowTarget(w.Handle, w.Label, resolved[i].Panel.Name, TargetKind.Visible, rows[r]));
-            }
-
-            foreach (var hidden in resolved[i].Panel.Windows.Skip(resolved[i].Visible.Count))
-            {
-                targets.Add(new WindowTarget(hidden.Handle, hidden.Label, resolved[i].Panel.Name, TargetKind.Minimized, default));
-            }
-
+            int right = i == cols.Count - 1 ? area.Right : left + widths[i];
+            cols[i].Place(left, right, outerEdge: null, gap, grid, targets, notes, columns, bands, pages);
             left = right + gap;
         }
 
@@ -155,8 +161,13 @@ public static class AuxLayoutEngine
             input.Display,
             area,
             columns,
-            resolved.ToDictionary(r => r.Panel.Name, r => r.Template),
+            cols.SelectMany(c => c.Templates).ToDictionary(t => t.Key, t => t.Value),
             targets,
-            notes);
+            notes)
+        {
+            Bands = bands,
+            StripHeight = inset,
+            Pages = pages,
+        };
     }
 }

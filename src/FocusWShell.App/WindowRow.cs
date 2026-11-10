@@ -5,38 +5,19 @@ using FocusWShell.Core.Windows;
 
 namespace FocusWShell.App;
 
-public enum SceneRole
+/// <summary>Una opción de la columna Panel: libre, al foco o un panel concreto.</summary>
+public sealed record AssignmentOption(string Key, string Label)
 {
-    None,
-    Context,
-    Center,
-    Work,
+    /// <summary>Ventana libre: FocusWShell no la gestiona (ADR 0011).</summary>
+    public const string Free = "";
+
+    /// <summary>En el foco (el Centro del monitor principal).</summary>
+    public const string Focus = "@foco";
 }
 
-public sealed record RoleOption(SceneRole Role, string Label);
-
-/// <summary>Monitor de un panel en la UI. La clave del principal es la cadena vacía.</summary>
-public sealed record DisplayOption(string Key, string Label)
+/// <summary>Una ventana en la lista de la ventana principal, con lo que el usuario quiere hacer con ella.</summary>
+public sealed class WindowRow(WindowSnapshot snapshot, string assignment) : INotifyPropertyChanged
 {
-    public const string PrincipalKey = "";
-
-    /// <summary>Clave del modelo: <c>null</c> para el principal.</summary>
-    public static string? ToModel(string key) => key == PrincipalKey ? null : key;
-
-    public static string FromModel(string? display) => display ?? PrincipalKey;
-}
-
-/// <summary>Una ventana en la lista de la ventana principal, con el rol que le asigna el usuario.</summary>
-public sealed class WindowRow(WindowSnapshot snapshot, SceneRole role) : INotifyPropertyChanged
-{
-    public static IReadOnlyList<RoleOption> Roles { get; } =
-    [
-        new(SceneRole.None, "—"),
-        new(SceneRole.Context, "Contexto"),
-        new(SceneRole.Center, "Centro"),
-        new(SceneRole.Work, "Trabajo"),
-    ];
-
     public WindowSnapshot Snapshot { get; } = snapshot;
 
     public string App => Path.GetFileNameWithoutExtension(Snapshot.ProcessName);
@@ -46,30 +27,15 @@ public sealed class WindowRow(WindowSnapshot snapshot, SceneRole role) : INotify
     /// <summary>Lo que el gestor hace ahora con la ventana, según el modelo.</summary>
     public string State { get; init; } = "";
 
-    /// <summary>Monitor del panel (<see cref="DisplayOption.Key"/>).</summary>
-    public string Display
+    /// <summary>Destino elegido: <see cref="AssignmentOption.Free"/>, <see cref="AssignmentOption.Focus"/> o el id de un panel.</summary>
+    public string Assignment
     {
-        get => _display;
+        get => assignment;
         set
         {
-            if (_display != value)
+            if (assignment != value)
             {
-                _display = value;
-                OnPropertyChanged();
-            }
-        }
-    }
-
-    private string _display = DisplayOption.PrincipalKey;
-
-    public SceneRole Role
-    {
-        get => role;
-        set
-        {
-            if (role != value)
-            {
-                role = value;
+                assignment = value;
                 OnPropertyChanged();
             }
         }

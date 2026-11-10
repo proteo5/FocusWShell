@@ -14,8 +14,9 @@ public class AuxLayoutEngineTests
     private static PanelInput Panel(string name, PanelTemplate template, params LayoutWindow[] windows) =>
         new(name, PanelSide.Left, 1, template, windows);
 
+    /// <summary>El primer panel va a la izquierda y el resto a la derecha: cada uno en su columna.</summary>
     private static AuxLayoutResult Compute(params PanelInput[] panels) =>
-        AuxLayoutEngine.Compute(new AuxInput("aux", Area, panels));
+        AuxLayoutEngine.Compute(new AuxInput("aux", Area, [.. panels.Select((p, i) => p with { Side = i == 0 ? PanelSide.Left : PanelSide.Right })]));
 
     private static WindowTarget Target(AuxLayoutResult r, int id) => r.Targets.Single(t => t.Handle == id);
 
@@ -125,11 +126,12 @@ public class AuxLayoutEngineTests
     }
 
     [Fact]
-    public void TilesTooTallBecomeStack()
+    public void TilesTooTallPageByRows()
     {
         var r = Compute(Panel("Trabajo", PanelTemplate.Tiles, Win(1, "A", 0, 700), Win(2, "B", 0, 700)));
 
-        Assert.Equal(PanelTemplate.Stack, r.EffectiveTemplates["Trabajo"]);
+        Assert.Equal(PanelTemplate.Tiles, r.EffectiveTemplates["Trabajo"]);
         Assert.Equal(TargetKind.Minimized, Target(r, 2).Kind);
+        Assert.Equal(new TilePages(0, 1, 2), r.Pages["Trabajo"]);
     }
 }

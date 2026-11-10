@@ -142,11 +142,13 @@ Cambiar de template sólo recalcula rectángulos y visibilidad. Ninguna ventana 
   - **Nada se desborda**: la ventana que no cabe se minimiza con una nota.
   - Con `Fill`, la primera ventana del panel se maximiza y todo lo demás de ese monitor se minimiza. Si dos paneles están en `Fill`, gana el primero.
 
-## Hacia grupos, vistas y deck (propuesta)
+## Hacia paneles, vistas y deck
+
+Estado: los **paneles como entidades** ya están implementados (`Panel`, `CreatePanel`, `RenamePanel`, `MovePanel`, `SetPresentation`, `DeletePanel`, `panels.json`). El resto sigue siendo propuesta.
 
 Tres decisiones propuestas cambiarán este modelo en la siguiente etapa:
 
-- **Grupos de apps ([ADR 0011](adr/0011-grupos-de-apps-y-catalogo.md)).** El hogar de una ventana deja de ser `Work` o `Context` y pasa a ser un grupo libre con un tipo: lateral, monitor, compacto o deck. Los grupos se llenan desde un catálogo de apps que aprende con el uso, y las apps cerradas se pueden abrir desde él.
+- **Paneles ([ADR 0011](adr/0011-paneles-y-catalogo.md)).** El hogar de una ventana deja de ser `Work` o `Context` y pasa a ser un **panel**: una entidad con nombre, ubicación y presentación, que se crea, renombra, mueve y borra. Hay hasta dos paneles por columna. Las ventanas empiezan **libres** y se asignan cuando el usuario quiere. Un catálogo de apps se llena por detección y permite abrir las cerradas.
 - **Vistas ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)).** Sigue habiendo un solo foco, pero puede ir a la izquierda, al centro o a la derecha del monitor principal, con proporciones propias por vista. El invariante 1 no cambia. Pantalla completa significa maximizada en el monitor elegido.
 - **Deck ([ADR 0013](adr/0013-deck-superficie-de-control.md)).** Una vista y un control táctil sobre todo lo anterior, opcional, en una esquina del principal o en otro monitor.
 
@@ -163,7 +165,7 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 
 ## Eventos externos y cómo los interpreta el núcleo
 
-`Workspace.Interpret` traduce cada cambio externo detectado (S4, [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)) en comandos. Nunca genera `Promote` ni `SwapWithPrevious` (CA7, verificado en las pruebas). En la app ya está activo:
+`Workspace.Interpret` traduce cada cambio externo detectado (S4, [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.md)) en comandos. Nunca genera `Promote` ni `SwapWithPrevious` (CA7, verificado en las pruebas): llevar al foco lo deciden el controlador, cuando sabe que hubo un gesto del usuario, o el lugar donde se soltó una ventana. En la app ya está activo:
 
 | Cambio detectado | Comandos |
 | --- | --- |
@@ -173,9 +175,22 @@ El núcleo debe garantizarlos después de cada comando; las pruebas unitarias lo
 | La maximizaste en un auxiliar | `MakeActiveInPanel` + `SetTemplate(…, Fill)` |
 | La maximizaste en el principal | `Detach` (fuera de layout) |
 | La des-maximizaste estando su panel en `Fill` | `SetTemplate(…, Tiles)` |
-| La arrastraste o redimensionaste | `Detach`; los demás de su panel ocupan su sitio |
+| La des-maximizaste en el principal | `SnapBack`: vuelve a su sitio |
+| La arrastraste o redimensionaste | `SnapBack`: vuelve a su sitio. El controlador lo cambia según dónde la soltaste (abajo) |
 
-Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), pero el gestor no la mueve hasta que se **reencaje** (`Reattach`), se promueva o se estacione.
+Al soltar una ventana arrastrada, el controlador mira dónde quedó su centro según el último layout:
+
+| La soltaste sobre… | Comandos |
+| --- | --- |
+| La columna del foco | `Promote` |
+| La columna o el monitor de otro panel | `SendTo(panel)`; si estaba en el foco, antes `ReturnToPanel` |
+| Su propio panel o ningún panel | `SnapBack` |
+
+Redimensionar por el borde que comparte con la columna vecina moverá el separador cuando lleguen las proporciones ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)); por ahora también vuelve a su sitio. Las ventanas libres no se tocan.
+
+Los gestos de Windows que eligen una ventana de un panel (Alt+Tab, vista de tareas, barra de tareas y, si se activa, el clic) la llevan al foco con `Promote` ([ADR 0003, enmienda](adr/0003-rol-independiente-del-foco.md#enmienda-2026-11-10-los-gestos-de-cambio-de-ventana-cuentan-como-comando)).
+
+Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), pero el gestor no la mueve hasta que se **reencaje** (`Reattach`), se des-maximice, se promueva o se estacione. Sólo maximizar en el principal la deja fuera de layout.
 
 | Evento | Interpretación |
 | --- | --- |
@@ -183,8 +198,9 @@ Una ventana fuera de layout (`Detached`) sigue gestionada (está en el diario), 
 | El usuario la minimiza con el botón de Windows | Se interpreta como `Park`. |
 | El usuario la restaura desde la barra de tareas | Si estaba `Parked`, se interpreta como `Restore`. |
 | El usuario la maximiza con el botón de Windows | Se respeta: la ventana pasa a estar "fuera de layout" hasta que la desmaximice o el usuario aplique la escena otra vez. El gestor no pelea con el usuario. |
-| El usuario la arrastra o redimensiona | Igual que maximizar: queda fuera de layout. Un comando "reencajar" la devuelve a su rectángulo. |
-| Recibe foco o notificación | Nada. Como mucho, se actualiza un indicador en la microbarra. |
+| El usuario la arrastra o redimensiona | Vuelve a su sitio al soltarla, salvo que la suelte sobre el foco o sobre otro panel (tabla de arriba). |
+| El usuario la elige con Alt+Tab, la vista de tareas o la barra de tareas | Pasa al foco (cada gesto se puede desactivar). |
+| Recibe foco o notificación sin un gesto del usuario | Nada. Como mucho, se actualiza un indicador en la microbarra. |
 | Aparece una ventana nueva elegible | En el MVP no se adopta sola; se ofrece en la lista "sin gestionar". |
 
 ## Cambios de monitores
@@ -224,6 +240,39 @@ En este orden:
 6. Si la ventana del Centro sigue sin caber después del paso 2, se centra sobre su columna. Es el único caso en que una ventana invade un panel, y nunca al revés.
 
 Cada ajuste genera una nota en lenguaje natural, por ejemplo: "Contexto se amplió 54 px (el Centro queda en 1830 px) porque Slack necesita 670 px de ancho". Esa nota alimentará la microbarra y cumple el principio de que toda acción automática se explique.
+
+### Vistas ([ADR 0012](adr/0012-vistas-posicion-del-foco.md))
+
+`Workspace.View` dice dónde va el foco en el principal: a la izquierda, al centro o a la derecha. `SetView` la cambia y sólo provoca `ApplyLayout`: el foco cambia de sitio con la misma ventana dentro. Las escenas la guardan; `ApplyScene` la aplica si la trae.
+
+| Vista | Columnas, de izquierda a derecha | Proporciones de partida |
+| --- | --- | --- |
+| Foco al centro | izquierda (Contexto) · foco · derecha (Trabajo) | 18 · 55 · 27 |
+| Foco a la izquierda | foco · derecha · izquierda | 55 · 30 · 15 |
+| Foco a la derecha | izquierda · derecha · foco | 15 · 30 · 55 |
+
+Con el foco en un extremo, la columna derecha queda en medio y no puede desbordar: su ventana demasiado ancha sale del layout. La izquierda toca un borde del monitor y desborda hacia fuera, salvo que ese borde dé a otro monitor.
+
+**Pantalla completa.** `Placement.Fullscreen` es el foco maximizado en un monitor: ocupa el lugar del Centro (como mucho una ventana tiene la atención, en el Centro o en pantalla completa; `Workspace.Focused`). `EnterFullscreen`, `ExitFullscreen`; `Promote`, `ReturnToPanel`, `Park` y `SwapWithPrevious` la tratan como al Centro. Des-maximizarla es `ExitFullscreen`.
+
+**Proporciones.** Cada vista tiene las suyas (`ViewWeights`: izquierda, foco, derecha); las que no se han tocado son las de partida. `SetProportions(vista, pesos)` las cambia (un preset o el separador arrastrado) y sólo mueve algo si es la vista actual; con `null` vuelven a las de partida. Redimensionar una ventana del principal sólo por el borde que comparte con la columna vecina es mover el separador: el controlador lo detecta con `ColumnSeparator` y manda `SetProportions` + `SnapBack` en lugar de sólo `SnapBack`.
+
+### Tiles adaptables ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))
+
+En un panel en tiles, cada ventana tiene un tamaño (`Size`: Pequeño, Mediano o Grande = 1, 2 o 3 columnas) y el panel una fila de partida. `SetTileSize` cambia el tamaño y `ScrollPanel` la fila. `MakeActiveInPanel` depende de la presentación: en pestañas pone la ventana la primera; en tiles no reordena, sólo pide que se vea su fila. El motor (`TileGrid`) decide columnas, huecos y qué filas caben.
+
+### Dos paneles en una columna
+
+Cada panel tiene un **puesto** en su columna (`Slot`: arriba o abajo), y en cada columna (monitor y lado) cabe un panel por puesto: como máximo dos ([ADR 0011](adr/0011-paneles-y-catalogo.md)). Crear o mover un panel a un puesto ocupado se rechaza diciendo quién lo ocupa. Al aplicar una escena, un panel nuevo cuyo puesto ya está ocupado manda sus ventanas al que lo ocupa.
+
+En el layout (`PanelColumn`, común al principal y a los auxiliares):
+
+- Un panel sin ventanas no ocupa sitio: el otro se queda con la columna entera, sea cual sea su puesto.
+- Con dos, se reparten el alto según su `Height` (a partes iguales por defecto); arrastrar el borde entre los dos lo cambia (`SplitColumn`). Cada uno tiene su **banda**, con su tira de pestañas arriba.
+- Si el reparto deja a una banda sin el alto que pide su ventana, se lleva al límite con una nota (cuando caben las dos).
+- Ninguno invade al otro: una ventana más alta que su banda sale del layout (se minimiza) con una nota. En tiles, si no caben, el panel pasa a pila, como siempre.
+- La columna es tan ancha como pide la ventana visible más ancha de sus dos paneles.
+- Soltar una ventana arrastrada sobre la banda de un panel la manda a ese panel.
 
 ### Bordes compartidos con otro monitor
 

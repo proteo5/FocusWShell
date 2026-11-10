@@ -19,13 +19,34 @@ public enum MoveMode
     Sequential,
 }
 
-/// <summary>Paneles de un monitor auxiliar (ADR 0008).</summary>
-public sealed record AuxAssignment(
-    DisplayInfo Display,
-    IReadOnlyList<WindowSnapshot> Context,
-    IReadOnlyList<WindowSnapshot> Work,
-    PanelTemplate ContextTemplate = PanelTemplate.Tiles,
-    PanelTemplate WorkTemplate = PanelTemplate.Tiles);
+/// <summary>Un panel con sus ventanas, en orden (ADR 0011).</summary>
+/// <param name="Id">Identificador del panel: las regiones del plan usan este valor.</param>
+/// <param name="Title">Nombre visible, para las notas.</param>
+public sealed record PanelAssignment(string Id, string Title, PanelSide Side, PanelTemplate Template, IReadOnlyList<WindowSnapshot> Windows)
+{
+    /// <summary>Arriba o abajo en su columna.</summary>
+    public PanelSlot Slot { get; init; }
+
+    /// <summary>Su parte del alto de la columna si la comparte.</summary>
+    public double Height { get; init; } = 1;
+}
+
+/// <summary>Paneles de un monitor auxiliar, de izquierda a derecha (ADR 0008).</summary>
+public sealed record AuxAssignment(DisplayInfo Display, IReadOnlyList<PanelAssignment> Panels)
+{
+    /// <summary>Atajo para el probe: un panel "Contexto" a la izquierda y uno "Trabajo" a la derecha.</summary>
+    public static AuxAssignment FromSides(
+        DisplayInfo display,
+        IReadOnlyList<WindowSnapshot> context,
+        IReadOnlyList<WindowSnapshot> work,
+        PanelTemplate contextTemplate = PanelTemplate.Tiles,
+        PanelTemplate workTemplate = PanelTemplate.Tiles) =>
+        new(display,
+        [
+            new PanelAssignment("Contexto", "Contexto", PanelSide.Left, contextTemplate, context),
+            new PanelAssignment("Trabajo", "Trabajo", PanelSide.Right, workTemplate, work),
+        ]);
+}
 
 /// <summary>Qué ventana va en cada rol: Contexto | Centro | Trabajo en el principal y, opcionalmente, paneles en auxiliares.</summary>
 public sealed record SceneAssignment(
@@ -38,10 +59,45 @@ public sealed record SceneAssignment(
     /// <summary>Ventanas estacionadas: se dejan minimizadas.</summary>
     public IReadOnlyList<WindowSnapshot> Parked { get; init; } = [];
 
+    /// <summary>Identificador y nombre visible del panel izquierdo del principal.</summary>
+    public string ContextId { get; init; } = "Contexto";
+
+    public string ContextTitle { get; init; } = "Contexto";
+
+    /// <summary>Identificador y nombre visible del panel derecho del principal.</summary>
+    public string WorkId { get; init; } = "Trabajo";
+
+    public string WorkTitle { get; init; } = "Trabajo";
+
+    /// <summary>Tamaño de tile de cada ventana (ADR 0015); las que no están, Pequeño.</summary>
+    public IReadOnlyDictionary<nint, TileSize> TileSizes { get; init; } = new Dictionary<nint, TileSize>();
+
+    /// <summary>Desplazamiento de cada panel en tiles: fila pedida y ventana a mostrar.</summary>
+    public IReadOnlyDictionary<string, (int Row, nint? Reveal)> Scroll { get; init; } = new Dictionary<string, (int, nint?)>();
+
+    /// <summary>La ventana del foco en pantalla completa y su monitor, si la hay (ADR 0012).</summary>
+    public (WindowSnapshot Window, DisplayInfo Display)? Fullscreen { get; init; }
+
+    /// <summary>Parte del alto de cada panel de arriba del principal, si comparte columna.</summary>
+    public double ContextHeight { get; init; } = 1;
+
+    public double WorkHeight { get; init; } = 1;
+
+    /// <summary>Segundo panel de la columna izquierda del principal, si lo hay.</summary>
+    public PanelAssignment? ContextLower { get; init; }
+
+    /// <summary>Segundo panel de la columna derecha del principal.</summary>
+    public PanelAssignment? WorkLower { get; init; }
+
+    /// <summary>Ventanas del principal (sin las estacionadas).</summary>
+    public IEnumerable<WindowSnapshot> OnPrincipal =>
+        Context.Concat(ContextLower?.Windows ?? []).Concat(Center is null ? [] : [Center]).Concat(Work).Concat(WorkLower?.Windows ?? []);
+
     public IEnumerable<WindowSnapshot> All =>
-        Context.Concat(Center is null ? [] : [Center]).Concat(Work)
-            .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)))
-            .Concat(Parked);
+        OnPrincipal
+            .Concat(Aux.SelectMany(a => a.Panels.SelectMany(p => p.Windows)))
+            .Concat(Parked)
+            .Concat(Fullscreen is { } f ? [f.Window] : []);
 }
 
 public sealed record SceneOptions
@@ -52,7 +108,17 @@ public sealed record SceneOptions
     public int Gap { get; init; }
     public PanelTemplate ContextTemplate { get; init; } = PanelTemplate.Tiles;
     public PanelTemplate WorkTemplate { get; init; } = PanelTemplate.Tiles;
+
+    /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
+    public FocusPosition Focus { get; init; }
+
     public MoveMode Mode { get; init; } = MoveMode.Async;
+
+    /// <summary>Ancho mínimo de una columna de tiles, en píxeles lógicos (ADR 0015). 0 = una sola columna.</summary>
+    public int MinCellWidth { get; init; } = 480;
+
+    /// <summary>Alto mínimo de una fila de tiles, en píxeles lógicos.</summary>
+    public int MinRowHeight { get; init; } = 160;
 
     /// <summary>Franja para la tira de pestañas arriba de cada panel, en píxeles lógicos (96 DPI). 0 = sin tiras.</summary>
     public int PanelTopInset { get; init; }
@@ -69,7 +135,10 @@ public sealed record ScenePlan(SceneLayoutResult Principal, IReadOnlyList<AuxLay
     /// <summary>Ventanas estacionadas (minimizadas).</summary>
     public IReadOnlyList<WindowTarget> Parked { get; init; } = [];
 
-    public IReadOnlyList<WindowTarget> Targets => [.. Principal.Targets, .. Aux.SelectMany(a => a.Targets), .. Parked];
+    /// <summary>La ventana en pantalla completa: maximizada en su monitor.</summary>
+    public IReadOnlyList<WindowTarget> Fullscreen { get; init; } = [];
+
+    public IReadOnlyList<WindowTarget> Targets => [.. Principal.Targets, .. Aux.SelectMany(a => a.Targets), .. Parked, .. Fullscreen];
 
     public IReadOnlyList<string> Notes => [.. Principal.Notes, .. Aux.SelectMany(a => a.Notes)];
 }
@@ -129,17 +198,22 @@ public sealed class SceneApplier
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _minSizes = minSizes ?? throw new ArgumentNullException(nameof(minSizes));
         _byHandle = assignment.All.ToDictionary(w => w.Handle);
-        foreach (var w in assignment.Context.Concat(assignment.Work).Concat(assignment.Center is null ? [] : [assignment.Center]))
+        foreach (var w in assignment.OnPrincipal)
         {
             _dpiByHandle[w.Handle] = display.Dpi;
         }
 
         foreach (var aux in assignment.Aux)
         {
-            foreach (var w in aux.Context.Concat(aux.Work))
+            foreach (var w in aux.Panels.SelectMany(p => p.Windows))
             {
                 _dpiByHandle[w.Handle] = aux.Display.Dpi;
             }
+        }
+
+        if (assignment.Fullscreen is { } full)
+        {
+            _dpiByHandle[full.Window.Handle] = full.Display.Dpi;
         }
 
         Catalog = minSizes.Load();
@@ -150,32 +224,73 @@ public sealed class SceneApplier
     public ScenePlan Plan()
     {
         LayoutWindow ToLayout(WindowSnapshot w, int dpi) =>
-            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), dpi));
+            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), dpi))
+            {
+                TileSize = _assignment.TileSizes.GetValueOrDefault(w.Handle, TileSize.Small),
+            };
+        PanelInput Scrolled(PanelInput p) => _assignment.Scroll.TryGetValue(p.Name, out var s) ? p with { ScrollRow = s.Row, Reveal = s.Reveal } : p;
 
-        // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera.
-        var shared = DisplayTopology.SharedEdges(_display, DisplayEnumerator.Enumerate());
+        // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera. Qué borde toca cada
+        // columna depende de la vista: con el foco a un lado, la izquierda (Contexto) va al otro borde y la
+        // derecha (Trabajo) queda en medio, sin borde.
+        var edges = DisplayTopology.SharedEdges(_display, DisplayEnumerator.Enumerate());
+        var shared = _options.Focus switch
+        {
+            FocusPosition.Left => (Left: edges.Right, Right: false),
+            FocusPosition.Right => (Left: edges.Left, Right: false),
+            _ => (edges.Left, edges.Right),
+        };
         int dpi = _display.Dpi;
-        var principal = SceneLayoutEngine.Compute(new SceneInput(
+        var principalInput = new SceneInput(
             _display.WorkArea,
-            new PanelInput("Contexto", PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
-                _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left),
+            new PanelInput(_assignment.ContextId, PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
+                _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left) { Title = _assignment.ContextTitle, Height = _assignment.ContextHeight },
             _options.CenterWeight,
             _assignment.Center is null ? null : ToLayout(_assignment.Center, dpi),
-            new PanelInput("Trabajo", PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
-                _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right),
+            new PanelInput(_assignment.WorkId, PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
+                _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right) { Title = _assignment.WorkTitle, Height = _assignment.WorkHeight },
             _options.Gap,
-            PanelTopInset: Scale(_options.PanelTopInset, dpi)));
+            PanelTopInset: Scale(_options.PanelTopInset, dpi))
+        {
+            Focus = _options.Focus,
+            MinCellWidth = Scale(_options.MinCellWidth, dpi),
+            MinRowHeight = Scale(_options.MinRowHeight, dpi),
+            LeftLower = Lower(_assignment.ContextLower, PanelSide.Left, _options.ContextWeight, shared.Left),
+            RightLower = Lower(_assignment.WorkLower, PanelSide.Right, _options.WorkWeight, shared.Right),
+        };
+        var principal = SceneLayoutEngine.Compute(principalInput with
+        {
+            Left = Scrolled(principalInput.Left),
+            Right = Scrolled(principalInput.Right),
+            LeftLower = principalInput.LeftLower is { } ll ? Scrolled(ll) : null,
+            RightLower = principalInput.RightLower is { } rl ? Scrolled(rl) : null,
+        });
+
+        PanelInput? Lower(PanelAssignment? p, PanelSide side, double weight, bool sharedEdge) =>
+            p is null
+                ? null
+                : new PanelInput(p.Id, side, weight, p.Template, p.Windows.Select(w => ToLayout(w, dpi)).ToList(), sharedEdge)
+                {
+                    Title = p.Title,
+                    Slot = p.Slot,
+                    Height = p.Height,
+                };
 
         var aux = _assignment.Aux
             .Select(a => AuxLayoutEngine.Compute(new AuxInput(
                 a.Display.Key,
                 a.Display.WorkArea,
-                [
-                    new PanelInput("Contexto", PanelSide.Left, 1, a.ContextTemplate, a.Context.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
-                    new PanelInput("Trabajo", PanelSide.Right, 1, a.WorkTemplate, a.Work.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
-                ],
+                a.Panels
+                    .OrderBy(p => p.Side)
+                    .ThenBy(p => p.Slot)
+                    .Select(p => Scrolled(new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title, Slot = p.Slot, Height = p.Height }))
+                    .ToList(),
                 _options.Gap,
-                Scale(_options.PanelTopInset, a.Display.Dpi))))
+                Scale(_options.PanelTopInset, a.Display.Dpi))
+            {
+                MinCellWidth = Scale(_options.MinCellWidth, a.Display.Dpi),
+                MinRowHeight = Scale(_options.MinRowHeight, a.Display.Dpi),
+            }))
             .ToList();
 
         return new ScenePlan(principal, aux)
@@ -183,6 +298,9 @@ public sealed class SceneApplier
             Parked = _assignment.Parked
                 .Select(w => new WindowTarget(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), "Estacionada", TargetKind.Minimized, default))
                 .ToList(),
+            Fullscreen = _assignment.Fullscreen is { } full
+                ? [new WindowTarget(full.Window.Handle, Path.GetFileNameWithoutExtension(full.Window.ProcessName), "Pantalla completa", TargetKind.Maximized, full.Display.WorkArea)]
+                : [],
         };
     }
 

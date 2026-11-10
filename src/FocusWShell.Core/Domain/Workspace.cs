@@ -2,14 +2,10 @@
 
 namespace FocusWShell.Core.Domain;
 
-/// <summary>Panel al que pertenece una ventana. Persistente: sólo cambia con <see cref="SendTo"/>.</summary>
-public enum Home
-{
-    Work,
-    Context,
-}
-
-/// <summary>Dónde está ahora la ventana. <c>Parked</c> y <c>Fullscreen</c> llegan en M1/M2.</summary>
+/// <summary>
+/// Dónde está ahora la ventana. <c>Fullscreen</c> es el foco maximizado en un monitor (ADR 0012): ocupa el
+/// lugar del Centro (como mucho una de las dos) y al salir vuelve al Centro.
+/// </summary>
 public enum Placement
 {
     InPanel,
@@ -19,32 +15,100 @@ public enum Placement
 }
 
 /// <summary>
+/// Un panel (ADR 0011): entidad con nombre, ubicación y presentación, que se crea, renombra, mueve y borra.
+/// </summary>
+/// <param name="Id">Identificador estable (no cambia al renombrar).</param>
+/// <param name="Display">Monitor auxiliar (su clave estable) o <c>null</c> para el principal.</param>
+/// <param name="Side">
+/// En el principal, la columna a la que va respecto del foco. En un auxiliar, el orden de izquierda a
+/// derecha y, si ese monitor falta, a qué lado del principal van sus ventanas.
+/// </param>
+/// <param name="Template">Presentación del panel.</param>
+/// <param name="Slot">Arriba o abajo en su columna: como máximo dos paneles por columna.</param>
+/// <param name="Height">Su parte del alto de la columna si la comparte (relativa a la del otro panel).</param>
+public sealed record Panel(
+    string Id,
+    string Name,
+    string? Display,
+    PanelSide Side,
+    PanelTemplate Template = PanelTemplate.Tiles,
+    PanelSlot Slot = PanelSlot.Upper,
+    double Height = 1)
+{
+    /// <summary>Si ocupa la misma columna que <paramref name="other"/> (mismo monitor y mismo lado).</summary>
+    public bool SharesColumnWith(Panel other) =>
+        other is not null && Side == other.Side && string.Equals(Display, other.Display, StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>
 /// Una ventana gestionada. El orden dentro de su panel es su posición en <see cref="Workspace.Windows"/>;
 /// en el Centro conserva esa posición, así que al volver recupera su puesto.
 /// </summary>
-/// <param name="Display">Monitor auxiliar de su panel, o <c>null</c> si su panel está en el principal (ADR 0008).</param>
+/// <param name="PanelId">Su panel: adonde vuelve si está en el Centro o estacionada.</param>
 /// <param name="Detached">
 /// "Fuera de layout": el usuario la arrastró, la redimensionó o la maximizó en el principal. El gestor
 /// no la mueve hasta que se reencaje, se promueva o se estacione; los demás de su panel ocupan su sitio.
 /// </param>
-public sealed record ManagedWindow(nint Handle, string Label, Home Home, Placement Placement, string? Display = null, bool Detached = false);
+public sealed record ManagedWindow(nint Handle, string Label, string PanelId, Placement Placement, bool Detached = false)
+{
+    /// <summary>Columnas que ocupa en un panel en tiles (ADR 0015).</summary>
+    public TileSize Size { get; init; } = TileSize.Small;
+}
 
-/// <summary>Paneles de un monitor auxiliar, en orden.</summary>
-public sealed record AuxComposition(
-    string Display,
-    IReadOnlyList<nint> Context,
-    IReadOnlyList<nint> Work,
-    PanelTemplate ContextTemplate,
-    PanelTemplate WorkTemplate);
+/// <summary>Un panel con las ventanas que el layout coloca en él, en orden.</summary>
+public sealed record PanelView(Panel Panel, IReadOnlyList<nint> Windows)
+{
+    /// <summary>En tiles: primera fila que se ve si no caben todas.</summary>
+    public int ScrollRow { get; init; }
+
+    /// <summary>En tiles: ventana que hay que mostrar (el panel se desplaza hasta su fila).</summary>
+    public nint? Reveal { get; init; }
+}
+
+/// <summary>Paneles de un monitor auxiliar, de izquierda a derecha y, en cada columna, de arriba abajo.</summary>
+public sealed record AuxComposition(string Display, IReadOnlyList<PanelView> Panels)
+{
+    /// <summary>Ventanas del primer panel de la izquierda (atajo para las pruebas y la UI).</summary>
+    public IReadOnlyList<nint> Context => Panels.FirstOrDefault(p => p.Panel.Side == PanelSide.Left)?.Windows ?? [];
+
+    /// <summary>Ventanas del primer panel de la derecha.</summary>
+    public IReadOnlyList<nint> Work => Panels.FirstOrDefault(p => p.Panel.Side == PanelSide.Right)?.Windows ?? [];
+
+    public PanelTemplate ContextTemplate => Panels.FirstOrDefault(p => p.Panel.Side == PanelSide.Left)?.Panel.Template ?? PanelTemplate.Tiles;
+
+    public PanelTemplate WorkTemplate => Panels.FirstOrDefault(p => p.Panel.Side == PanelSide.Right)?.Panel.Template ?? PanelTemplate.Tiles;
+}
+
+/// <summary>La ventana en pantalla completa y su monitor (<c>null</c>: el principal).</summary>
+public sealed record FullscreenView(nint Handle, string? Display);
 
 /// <summary>Qué va en cada región, en orden: lo que los motores de layout necesitan.</summary>
-/// <param name="Context">Panel de Contexto del monitor principal.</param>
-/// <param name="Work">Panel de Trabajo del monitor principal.</param>
-public sealed record SceneComposition(IReadOnlyList<nint> Context, nint? Center, IReadOnlyList<nint> Work)
+/// <param name="Left">Panel a la izquierda del foco en el principal (por defecto, Contexto).</param>
+/// <param name="Right">Panel a la derecha del foco en el principal (por defecto, Trabajo).</param>
+public sealed record SceneComposition(PanelView? Left, nint? Center, PanelView? Right)
 {
-    public PanelTemplate ContextTemplate { get; init; } = PanelTemplate.Tiles;
+    /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
+    public FocusPosition View { get; init; }
 
-    public PanelTemplate WorkTemplate { get; init; } = PanelTemplate.Tiles;
+    /// <summary>Proporciones de las columnas en esa vista.</summary>
+    public ViewWeights Weights { get; init; } = ViewProportions.Default(FocusPosition.Center);
+
+    /// <summary>Segundo panel de la columna izquierda del principal (el de abajo), si lo hay.</summary>
+    public PanelView? LeftLower { get; init; }
+
+    /// <summary>La ventana del foco en pantalla completa, si la hay. Entonces <see cref="Center"/> está vacío.</summary>
+    public FullscreenView? Fullscreen { get; init; }
+
+    /// <summary>Segundo panel de la columna derecha del principal.</summary>
+    public PanelView? RightLower { get; init; }
+
+    public IReadOnlyList<nint> Context => Left?.Windows ?? [];
+
+    public IReadOnlyList<nint> Work => Right?.Windows ?? [];
+
+    public PanelTemplate ContextTemplate => Left?.Panel.Template ?? PanelTemplate.Tiles;
+
+    public PanelTemplate WorkTemplate => Right?.Panel.Template ?? PanelTemplate.Tiles;
 
     /// <summary>Monitores auxiliares con alguna ventana, por orden de aparición.</summary>
     public IReadOnlyList<AuxComposition> Aux { get; init; } = [];
@@ -53,8 +117,13 @@ public sealed record SceneComposition(IReadOnlyList<nint> Context, nint? Center,
     public IReadOnlyList<nint> Parked { get; init; } = [];
 
     /// <summary>Ventanas que el layout coloca (sin las estacionadas ni las que están fuera de layout).</summary>
-    public IEnumerable<nint> All => Context.Concat(Center is { } c ? [c] : []).Concat(Work)
-        .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)));
+    public IEnumerable<nint> All => Context.Concat(LeftLower?.Windows ?? []).Concat(Center is { } c ? [c] : []).Concat(Work)
+        .Concat(RightLower?.Windows ?? [])
+        .Concat(Aux.SelectMany(a => a.Panels.SelectMany(p => p.Windows)));
+
+    /// <summary>Los paneles del principal con su vista, de izquierda a derecha y de arriba abajo.</summary>
+    public IEnumerable<PanelView> PrincipalPanels =>
+        new[] { Left, LeftLower, Right, RightLower }.OfType<PanelView>();
 }
 
 #pragma warning disable CA1716 // Nombres del modelo de dominio (02-modelo-de-dominio.md).
@@ -62,37 +131,61 @@ public sealed record SceneComposition(IReadOnlyList<nint> Context, nint? Center,
 /// <summary>Comandos del núcleo (02-modelo-de-dominio.md, "Ubicaciones y transiciones").</summary>
 public abstract record Command;
 
-/// <summary>Empieza a gestionar una ventana elegible y la pone en su panel (en el principal o en un auxiliar).</summary>
-public sealed record Adopt(nint Handle, string Label, Home Home, string? Display = null) : Command;
+/// <summary>Empieza a gestionar una ventana libre y la pone en un panel.</summary>
+public sealed record Adopt(nint Handle, string Label, string PanelId) : Command;
 
-/// <summary>Lleva la ventana al Centro; la que estaba vuelve a su hogar. Activa la ventana.</summary>
+/// <summary>Lleva la ventana al Centro; la que estaba vuelve a su panel. Activa la ventana.</summary>
 public sealed record Promote(nint Handle) : Command;
 
 /// <summary>Devuelve la ventana del Centro a su panel. El Centro queda vacío.</summary>
 public sealed record ReturnToPanel(nint Handle) : Command;
 
+/// <summary>
+/// Pantalla completa (ADR 0012): lleva la ventana al foco, si no estaba, y la maximiza en el monitor
+/// <paramref name="Display"/> (<c>null</c>: el principal). La columna del foco queda vacía.
+/// </summary>
+public sealed record EnterFullscreen(nint Handle, string? Display = null) : Command;
+
+/// <summary>Sale de pantalla completa: la ventana vuelve al foco.</summary>
+public sealed record ExitFullscreen(nint Handle) : Command;
+
 /// <summary>Promueve la ventana que ocupó el Centro antes (CA2).</summary>
 public sealed record SwapWithPrevious : Command;
 
-/// <summary>Cambia el hogar de la ventana. Si estaba en su panel, pasa al otro.</summary>
-public sealed record SendTo(nint Handle, Home Home) : Command;
+/// <summary>Cambia la ventana de panel (al final del otro). Si está en el Centro, cambia adónde vuelve.</summary>
+public sealed record SendTo(nint Handle, string PanelId) : Command;
 
-/// <summary>Lleva el panel de la ventana a otro monitor: <c>null</c> es el principal. No cambia su hogar.</summary>
-public sealed record SendToDisplay(nint Handle, string? Display) : Command;
+/// <summary>Crea un panel.</summary>
+public sealed record CreatePanel(Panel Panel) : Command;
 
-/// <summary>Cambia el template de un panel. <c>Fill</c> sólo vale en monitores auxiliares.</summary>
-public sealed record SetTemplate(string? Display, Home Home, PanelTemplate Template) : Command;
+/// <summary>Cambia el nombre de un panel. No mueve nada.</summary>
+public sealed record RenamePanel(string PanelId, string Name) : Command;
+
+/// <summary>Lleva un panel a otro monitor, al otro lado del foco o al otro puesto de su columna, con sus ventanas.</summary>
+public sealed record MovePanel(string PanelId, string? Display, PanelSide Side, PanelSlot Slot = PanelSlot.Upper) : Command;
 
 /// <summary>
-/// Evento externo: se desconectó un monitor auxiliar. Mientras falte, sus ventanas se colocan en los
-/// paneles de su mismo hogar en el principal, nunca en el Centro, pero siguen siendo de ese monitor.
+/// Reparte el alto de una columna entre sus dos paneles (el separador arrastrado). Los valores son
+/// relativos: p. ej. los altos en píxeles de cada banda.
+/// </summary>
+public sealed record SplitColumn(string UpperId, double UpperHeight, string LowerId, double LowerHeight) : Command;
+
+/// <summary>Cambia la presentación de un panel. <c>Fill</c> sólo vale en monitores auxiliares.</summary>
+public sealed record SetPresentation(string PanelId, PanelTemplate Template) : Command;
+
+/// <summary>Borra un panel. Sus ventanas quedan libres, donde estén (ADR 0011).</summary>
+public sealed record DeletePanel(string PanelId) : Command;
+
+/// <summary>
+/// Evento externo: se desconectó un monitor auxiliar. Mientras falte, las ventanas de sus paneles se
+/// colocan en el panel del mismo lado del principal, nunca en el Centro, pero siguen siendo de su panel.
 /// </summary>
 public sealed record DisplayRemoved(string Display) : Command;
 
-/// <summary>Evento externo: volvió un monitor que faltaba. Sus ventanas vuelven a él, con sus templates.</summary>
+/// <summary>Evento externo: volvió un monitor que faltaba. Sus paneles vuelven a él.</summary>
 public sealed record DisplayAdded(string Display) : Command;
 
-/// <summary>Aparta la ventana (minimizada) sin quitarle su hogar. Aparece como estacionada en su panel (CA4).</summary>
+/// <summary>Aparta la ventana (minimizada) sin quitarle su panel (CA4).</summary>
 public sealed record Park(nint Handle) : Command;
 
 /// <summary>Devuelve una ventana estacionada a su panel, en el puesto que tenía (CA4).</summary>
@@ -104,14 +197,53 @@ public sealed record Detach(nint Handle) : Command;
 /// <summary>"Reencajar": devuelve al layout una ventana que estaba fuera.</summary>
 public sealed record Reattach(nint Handle) : Command;
 
-/// <summary>La pone la primera de su panel: en una pila, la pestaña visible.</summary>
+/// <summary>
+/// La ventana vuelve a su sitio en el layout (p. ej. tras arrastrarla o redimensionarla). Si estaba
+/// fuera de layout, vuelve a entrar.
+/// </summary>
+public sealed record SnapBack(nint Handle) : Command;
+
+/// <summary>Cambia el tamaño de tile de una ventana: 1, 2 o 3 columnas (ADR 0015).</summary>
+public sealed record SetTileSize(nint Handle, TileSize Size) : Command;
+
+/// <summary>En tiles: qué fila del panel se ve primero, si no caben todas (▲ ▼ de su tira).</summary>
+public sealed record ScrollPanel(string PanelId, int FirstRow) : Command;
+
+/// <summary>
+/// Hace visible una ventana de su panel: en pestañas, pasa a ser la primera; en tiles, el panel se
+/// desplaza hasta su fila sin cambiar el orden.
+/// </summary>
 public sealed record MakeActiveInPanel(nint Handle) : Command;
 
 /// <summary>
-/// Aplica una escena guardada ya emparejada: estas ventanas, en este orden y con estos templates.
-/// Las gestionadas que no están en la escena vuelven a su sitio original.
+/// Aplica una escena guardada ya emparejada. Sus paneles se <b>suman</b> a los del usuario: uno que ya
+/// existe conserva su nombre y su ubicación y toma la presentación de la escena; uno nuevo se añade.
+/// Una ventana cuyo panel no se puede resolver queda libre. Las gestionadas que no están en la escena
+/// vuelven a su sitio original.
 /// </summary>
-public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList<(string? Display, Home Home, PanelTemplate Template)> Templates) : Command;
+public sealed record ApplyScene(IReadOnlyList<SceneEntry> Entries, IReadOnlyList<Panel> Panels) : Command
+{
+    /// <summary>Vista de la escena; <c>null</c> deja la actual.</summary>
+    public FocusPosition? View { get; init; }
+
+    /// <summary>Proporciones de la escena para su vista; <c>null</c> deja las que ya tenga esa vista.</summary>
+    public ViewWeights? Weights { get; init; }
+}
+
+/// <summary>
+/// Cambia la vista del principal: el foco va a la izquierda, al centro o a la derecha (ADR 0012). No
+/// cambia qué ventana está en el foco ni en qué panel está cada una; sólo el orden de las columnas.
+/// </summary>
+public sealed record SetView(FocusPosition Focus) : Command;
+
+/// <summary>
+/// Cambia las proporciones de las columnas en una vista (un preset o el separador arrastrado). Se
+/// recuerdan por vista. <c>null</c> vuelve a las de partida.
+/// </summary>
+public sealed record SetProportions(FocusPosition View, ViewWeights? Weights) : Command;
+
+/// <summary>Sustituye todos los paneles (al arrancar, con los guardados). Sólo sin ventanas gestionadas.</summary>
+public sealed record ReplacePanels(IReadOnlyList<Panel> Panels) : Command;
 
 /// <summary>Devuelve la ventana a su estado original y deja de gestionarla.</summary>
 public sealed record Release(nint Handle) : Command;
@@ -130,6 +262,9 @@ public sealed record CaptureOriginal(nint Handle) : Effect;
 
 /// <summary>Aplicar el estado original guardado en el diario.</summary>
 public sealed record RestoreOriginal(nint Handle) : Effect;
+
+/// <summary>Olvidar el estado original sin aplicarlo: la ventana queda libre donde está.</summary>
+public sealed record ForgetOriginal(nint Handle) : Effect;
 
 /// <summary>Aplicar todo el diario, incluidas ventanas que el modelo no conozca.</summary>
 public sealed record RestoreEverything : Effect;
@@ -151,33 +286,52 @@ public sealed record CommandOutcome(bool Accepted, string? Rejection, IReadOnlyL
 }
 
 /// <summary>
-/// Estado lógico del gestor: qué ventanas gestiona, su hogar y su ubicación. Es puro: no conoce
-/// Win32 y no mueve nada; cada comando devuelve los efectos que otra capa ejecuta.
-/// Invariantes (02-modelo-de-dominio.md): como máximo una ventana en el Centro; un comando sólo
-/// cambia el hogar de la ventana que nombra; <c>RestoreAll</c> deja el modelo vacío.
+/// Estado lógico del gestor: qué paneles hay, qué ventanas gestiona, en qué panel está cada una y dónde.
+/// Es puro: no conoce Win32 y no mueve nada; cada comando devuelve los efectos que otra capa ejecuta.
+/// Invariantes (02-modelo-de-dominio.md): como máximo una ventana en el Centro; un comando sólo cambia
+/// el panel de la ventana que nombra; <c>RestoreAll</c> deja el modelo sin ventanas.
 /// </summary>
 public sealed class Workspace
 {
+    /// <summary>Panel por defecto a la izquierda del foco.</summary>
+    public const string ContextPanel = "contexto";
+
+    /// <summary>Panel por defecto a la derecha del foco.</summary>
+    public const string WorkPanel = "trabajo";
+
+    private readonly List<Panel> _panels = [];
     private readonly List<ManagedWindow> _windows = [];
 
     /// <summary>Ventanas que ocuparon el Centro, de la más reciente a la más antigua.</summary>
     private readonly List<nint> _centerHistory = [];
 
-    /// <summary>Monitores auxiliares desconectados: sus ventanas se colocan en el principal hasta que vuelvan.</summary>
+    /// <summary>Monitores auxiliares desconectados: sus paneles se colocan en el principal hasta que vuelvan.</summary>
     private readonly HashSet<string> _missingDisplays = new(StringComparer.OrdinalIgnoreCase);
 
-    public bool IsDisplayMissing(string? display) => display is not null && _missingDisplays.Contains(display);
+    public Workspace()
+    {
+        _panels.AddRange(DefaultPanels());
+    }
 
-    /// <summary>Monitores auxiliares que el modelo conoce: los de sus ventanas y los que faltan.</summary>
-    public IReadOnlyCollection<string> KnownDisplays =>
-        _windows.Where(w => w.Display is not null).Select(w => w.Display!).Concat(_missingDisplays)
-            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    /// <summary>Los dos paneles con los que empieza todo: uno a cada lado del foco.</summary>
+    public static IReadOnlyList<Panel> DefaultPanels() =>
+    [
+        new Panel(ContextPanel, "Contexto", null, PanelSide.Left),
+        new Panel(WorkPanel, "Trabajo", null, PanelSide.Right),
+    ];
 
-    /// <summary>Monitor donde se coloca de verdad: el suyo o, si falta, el principal.</summary>
-    private string? Effective(ManagedWindow w) => IsDisplayMissing(w.Display) ? null : w.Display;
+    public IReadOnlyList<Panel> Panels => _panels;
 
-    /// <summary>Template de cada panel, por monitor (<c>null</c> = principal) y hogar. Por defecto, Tiles.</summary>
-    private readonly Dictionary<(string? Display, Home Home), PanelTemplate> _templates = [];
+    /// <summary>Vista del principal: dónde va el foco (ADR 0012).</summary>
+    public FocusPosition View { get; private set; }
+
+    private readonly Dictionary<FocusPosition, ViewWeights> _proportions = [];
+
+    /// <summary>Proporciones ajustadas por vista (las que no están, usan las de partida).</summary>
+    public IReadOnlyDictionary<FocusPosition, ViewWeights> CustomProportions => _proportions;
+
+    /// <summary>Proporciones de una vista: las ajustadas o las de partida.</summary>
+    public ViewWeights ProportionsOf(FocusPosition view) => _proportions.GetValueOrDefault(view) ?? ViewProportions.Default(view);
 
     public IReadOnlyList<ManagedWindow> Windows => _windows;
 
@@ -185,51 +339,124 @@ public sealed class Workspace
 
     public ManagedWindow? Center => _windows.FirstOrDefault(w => w.Placement == Placement.Center);
 
+    /// <summary>La ventana con la atención: la del Centro o la que está en pantalla completa.</summary>
+    public ManagedWindow? Focused => _windows.FirstOrDefault(w => w.Placement is Placement.Center or Placement.Fullscreen);
+
+    /// <summary>Monitor de la pantalla completa (<c>null</c>: el principal).</summary>
+    private string? _fullscreenDisplay;
+
     public ManagedWindow? Find(nint handle) => _windows.FirstOrDefault(w => w.Handle == handle);
+
+    public Panel? FindPanel(string id) => _panels.FirstOrDefault(p => p.Id == id);
 
     public bool IsManaged(nint handle) => Find(handle) is not null;
 
-    public PanelTemplate TemplateOf(string? display, Home home) =>
-        _templates.GetValueOrDefault((display, home), PanelTemplate.Tiles);
+    public bool IsDisplayMissing(string? display) => display is not null && _missingDisplays.Contains(display);
 
-    public SceneComposition Composition => new(
-        InPanel(null, Home.Context),
-        Center is { Detached: false } center ? center.Handle : null,
-        InPanel(null, Home.Work))
+    /// <summary>Monitores auxiliares que el modelo conoce: los de sus paneles y los que faltan.</summary>
+    public IReadOnlyCollection<string> KnownDisplays =>
+        _panels.Where(p => p.Display is not null).Select(p => p.Display!).Concat(_missingDisplays)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+    /// <summary>
+    /// Panel donde se coloca de verdad la ventana: el suyo o, si su monitor falta, el del mismo lado en el
+    /// principal (o el otro, si ese lado no tiene panel).
+    /// </summary>
+    public Panel EffectivePanel(ManagedWindow w)
     {
-        Parked = _windows.Where(w => w.Placement == Placement.Parked).Select(w => w.Handle).ToList(),
-        ContextTemplate = TemplateOf(null, Home.Context),
-        WorkTemplate = TemplateOf(null, Home.Work),
-        Aux = _windows
-            .Where(w => Effective(w) is not null && w.Placement == Placement.InPanel && !w.Detached)
-            .Select(w => w.Display!)
-            .Distinct()
-            .Select(d => new AuxComposition(
-                d,
-                InPanel(d, Home.Context),
-                InPanel(d, Home.Work),
-                TemplateOf(d, Home.Context),
-                TemplateOf(d, Home.Work)))
-            .ToList(),
-    };
+        ArgumentNullException.ThrowIfNull(w);
+        var own = FindPanel(w.PanelId) ?? _panels[0];
+        if (!IsDisplayMissing(own.Display))
+        {
+            return own;
+        }
+
+        return PrincipalPanel(own.Side) ?? _panels.First(p => p.Display is null);
+    }
+
+    /// <summary>El panel que ocupa ese puesto (monitor, lado, arriba/abajo), si lo hay.</summary>
+    public Panel? PanelAt(string? display, PanelSide side, PanelSlot slot) =>
+        ColumnOf(display, side).FirstOrDefault(p => p.Slot == slot);
+
+    /// <summary>
+    /// Panel real de un panel de escena ya aplicada: el mismo (por identificador) o el que ocupa su puesto.
+    /// </summary>
+    public Panel? ResolveScenePanel(Panel scenePanel)
+    {
+        ArgumentNullException.ThrowIfNull(scenePanel);
+        return FindPanel(scenePanel.Id) ?? PanelAt(scenePanel.Display, scenePanel.Side, scenePanel.Slot);
+    }
+
+    /// <summary>El primer panel (el de arriba) de esa columna del principal.</summary>
+    private Panel? PrincipalPanel(PanelSide side) => ColumnOf(null, side).FirstOrDefault();
+
+    /// <summary>Paneles de una columna, de arriba abajo.</summary>
+    private List<Panel> ColumnOf(string? display, PanelSide side) =>
+        _panels.Where(p => p.Side == side && string.Equals(p.Display, display, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.Slot).ToList();
+
+    public SceneComposition Composition
+    {
+        get
+        {
+            PanelView? View(Panel? p) => p is null ? null : ViewOf(p);
+            var aux = _panels
+                .Where(p => p.Display is not null && !IsDisplayMissing(p.Display))
+                .GroupBy(p => p.Display!, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new AuxComposition(
+                    g.Key,
+                    g.OrderBy(p => p.Side).ThenBy(p => p.Slot).Select(ViewOf).Where(v => v.Windows.Count > 0).ToList()))
+                .Where(a => a.Panels.Count > 0)
+                .ToList();
+            var left = ColumnOf(null, PanelSide.Left);
+            var right = ColumnOf(null, PanelSide.Right);
+            return new SceneComposition(
+                View(left.FirstOrDefault()),
+                Center is { Detached: false } center ? center.Handle : null,
+                View(right.FirstOrDefault()))
+            {
+                View = this.View,
+                Fullscreen = _windows.FirstOrDefault(w => w.Placement == Placement.Fullscreen) is { } full
+                    ? new FullscreenView(full.Handle, IsDisplayMissing(_fullscreenDisplay) ? null : _fullscreenDisplay)
+                    : null,
+                Weights = ProportionsOf(this.View),
+                LeftLower = View(left.Skip(1).FirstOrDefault()),
+                RightLower = View(right.Skip(1).FirstOrDefault()),
+                Parked = _windows.Where(w => w.Placement == Placement.Parked).Select(w => w.Handle).ToList(),
+                Aux = aux,
+            };
+        }
+    }
 
     public CommandOutcome Execute(Command command) => command switch
     {
         Adopt c => DoAdopt(c),
         Promote c => DoPromote(c.Handle),
+        EnterFullscreen c => DoEnterFullscreen(c),
+        ExitFullscreen c => DoExitFullscreen(c.Handle),
         ReturnToPanel c => DoReturnToPanel(c.Handle),
         SwapWithPrevious => DoSwapWithPrevious(),
         SendTo c => DoSendTo(c),
-        SendToDisplay c => DoSendToDisplay(c),
-        SetTemplate c => DoSetTemplate(c),
+        CreatePanel c => DoCreatePanel(c.Panel),
+        RenamePanel c => DoRenamePanel(c),
+        MovePanel c => DoMovePanel(c),
+        SetPresentation c => DoSetPresentation(c),
+        SplitColumn c => DoSplitColumn(c),
+        DeletePanel c => DoDeletePanel(c.PanelId),
         DisplayRemoved c => DoDisplayRemoved(c.Display),
         DisplayAdded c => DoDisplayAdded(c.Display),
         Park c => DoPark(c.Handle),
         Restore c => DoRestore(c.Handle),
         Detach c => DoDetach(c.Handle),
         Reattach c => DoReattach(c.Handle),
+        SnapBack c => DoSnapBack(c.Handle),
         MakeActiveInPanel c => DoMakeActiveInPanel(c.Handle),
+        SetTileSize c => DoSetTileSize(c),
+        ScrollPanel c => DoScrollPanel(c),
         ApplyScene c => DoApplyScene(c),
+        SetView c => DoSetView(c.Focus),
+        SetProportions c => DoSetProportions(c),
+        ReplacePanels c => DoReplacePanels(c.Panels),
         Release c => DoRelease(c.Handle),
         RestoreAll => DoRestoreAll(),
         WindowClosed c => DoWindowClosed(c.Handle),
@@ -237,12 +464,27 @@ public sealed class Workspace
         _ => throw new ArgumentException($"Comando desconocido: {command.GetType().Name}", nameof(command)),
     };
 
-    private List<nint> InPanel(string? display, Home home) =>
-        _windows.Where(w => Effective(w) == display && w.Home == home && w.Placement == Placement.InPanel && !w.Detached)
+    /// <summary>Desplazamiento de cada panel en tiles: fila pedida o ventana a mostrar.</summary>
+    private readonly Dictionary<string, (int Row, nint? Reveal)> _scroll = [];
+
+    private PanelView ViewOf(Panel p)
+    {
+        var (row, reveal) = _scroll.GetValueOrDefault(p.Id);
+        return new PanelView(p, InPanel(p)) { ScrollRow = row, Reveal = reveal };
+    }
+
+    /// <summary>Ventanas que el layout coloca en este panel, en orden.</summary>
+    private List<nint> InPanel(Panel panel) =>
+        _windows.Where(w => w.Placement == Placement.InPanel && !w.Detached && EffectivePanel(w).Id == panel.Id)
             .Select(w => w.Handle).ToList();
 
     private void Replace(ManagedWindow updated) =>
         _windows[_windows.FindIndex(w => w.Handle == updated.Handle)] = updated;
+
+    private bool AnyWindowShownOn(string display) =>
+        _windows.Any(w => FindPanel(w.PanelId)?.Display is { } d && string.Equals(d, display, StringComparison.OrdinalIgnoreCase));
+
+    // --- Ventanas -----------------------------------------------------------------------------------
 
     private CommandOutcome DoAdopt(Adopt c)
     {
@@ -251,7 +493,12 @@ public sealed class Workspace
             return CommandOutcome.Reject($"{c.Label} ya está gestionada.");
         }
 
-        _windows.Add(new ManagedWindow(c.Handle, c.Label, c.Home, Placement.InPanel, c.Display));
+        if (FindPanel(c.PanelId) is null)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
+        _windows.Add(new ManagedWindow(c.Handle, c.Label, c.PanelId, Placement.InPanel));
         return CommandOutcome.Accept(new CaptureOriginal(c.Handle), new ApplyLayout());
     }
 
@@ -268,14 +515,20 @@ public sealed class Workspace
             return CommandOutcome.Reject($"{w.Label} ya está en el Centro.");
         }
 
+        if (w.Placement == Placement.Fullscreen)
+        {
+            return DoExitFullscreen(handle);
+        }
+
         if (w.Placement is not (Placement.InPanel or Placement.Parked))
         {
             return CommandOutcome.Reject($"{w.Label} no se puede promover desde {w.Placement}.");
         }
 
-        if (Center is { } previous)
+        if (Focused is { } previous)
         {
-            // La anterior vuelve a su hogar, al mismo puesto que tenía en su panel, y queda como "anterior".
+            // La anterior (en el Centro o en pantalla completa) vuelve a su panel, al mismo puesto que
+            // tenía, y queda como "anterior".
             Replace(previous with { Placement = Placement.InPanel });
             _centerHistory.Remove(previous.Handle);
             _centerHistory.Insert(0, previous.Handle);
@@ -286,12 +539,62 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout(), new Activate(handle));
     }
 
+    private CommandOutcome DoEnterFullscreen(EnterFullscreen c)
+    {
+        var w = Find(c.Handle);
+        if (w is null)
+        {
+            return CommandOutcome.Reject("La ventana no está gestionada.");
+        }
+
+        if (w.Placement == Placement.Fullscreen && string.Equals(_fullscreenDisplay, c.Display, StringComparison.OrdinalIgnoreCase))
+        {
+            return CommandOutcome.Accept();
+        }
+
+        var effects = new List<Effect>();
+        if (w.Placement is Placement.InPanel or Placement.Parked)
+        {
+            var promoted = DoPromote(c.Handle);
+            if (!promoted.Accepted)
+            {
+                return promoted;
+            }
+        }
+        else if (w.Placement is not (Placement.Center or Placement.Fullscreen))
+        {
+            return CommandOutcome.Reject($"{w.Label} no puede pasar a pantalla completa desde {w.Placement}.");
+        }
+
+        _fullscreenDisplay = c.Display;
+        Replace(Find(c.Handle)! with { Placement = Placement.Fullscreen, Detached = false });
+        return CommandOutcome.Accept(new ApplyLayout(), new Activate(c.Handle));
+    }
+
+    private CommandOutcome DoExitFullscreen(nint handle)
+    {
+        var w = Find(handle);
+        if (w is not { Placement: Placement.Fullscreen })
+        {
+            return CommandOutcome.Reject("La ventana no está en pantalla completa.");
+        }
+
+        _fullscreenDisplay = null;
+        Replace(w with { Placement = Placement.Center });
+        return CommandOutcome.Accept(new ApplyLayout(), new Activate(handle));
+    }
+
     private CommandOutcome DoReturnToPanel(nint handle)
     {
         var w = Find(handle);
-        if (w is not { Placement: Placement.Center })
+        if (w is not { Placement: Placement.Center or Placement.Fullscreen })
         {
             return CommandOutcome.Reject("Sólo se puede devolver al panel la ventana del Centro.");
+        }
+
+        if (w.Placement == Placement.Fullscreen)
+        {
+            _fullscreenDisplay = null;
         }
 
         Replace(w with { Placement = Placement.InPanel });
@@ -302,7 +605,7 @@ public sealed class Workspace
 
     private CommandOutcome DoSwapWithPrevious()
     {
-        var current = Center?.Handle;
+        var current = Focused?.Handle;
         var previous = _centerHistory.FirstOrDefault(h => h != current && IsManaged(h));
         return previous == 0
             ? CommandOutcome.Reject("No hay una ventana anterior en el Centro.")
@@ -317,65 +620,188 @@ public sealed class Workspace
             return CommandOutcome.Reject("La ventana no está gestionada.");
         }
 
+        if (FindPanel(c.PanelId) is null)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
         if (w.Placement == Placement.Fullscreen)
         {
             return CommandOutcome.Reject($"{w.Label} está en pantalla completa.");
         }
 
-        if (w.Home == c.Home)
+        if (w.PanelId == c.PanelId)
         {
             return CommandOutcome.Accept();
         }
 
-        // Pasa al final del otro panel.
+        // Pasa al final del otro panel. Si está en el Centro, sigue ahí: sólo cambia adónde vuelve.
         _windows.Remove(w);
-        _windows.Add(w with { Home = c.Home });
-        return w.Placement == Placement.InPanel
+        _windows.Add(w with { PanelId = c.PanelId });
+        return w.Placement == Placement.InPanel && !w.Detached
             ? CommandOutcome.Accept(new ApplyLayout())
             : CommandOutcome.Accept();
     }
 
-    private CommandOutcome DoSendToDisplay(SendToDisplay c)
+    // --- Paneles ------------------------------------------------------------------------------------
+
+    private string? ValidateLocation(string? display, PanelSide side, PanelSlot slot, PanelTemplate template, string? exceptId)
     {
-        var w = Find(c.Handle);
-        if (w is null)
+        if (display is null && template == PanelTemplate.Fill)
         {
-            return CommandOutcome.Reject("La ventana no está gestionada.");
+            return "Fill sólo vale en monitores auxiliares: en el principal manda el Centro.";
         }
 
-        if (w.Display == c.Display)
+        // Como máximo dos paneles por columna, uno arriba y otro abajo (ADR 0011).
+        if (ColumnOf(display, side).FirstOrDefault(p => p.Id != exceptId && p.Slot == slot) is { } occupant)
+        {
+            return $"«{occupant.Name}» ya ocupa ese puesto ({SlotName(slot)}, {SideName(display, side)}).";
+        }
+
+        return null;
+    }
+
+    private static string SlotName(PanelSlot slot) => slot == PanelSlot.Upper ? "arriba" : "abajo";
+
+    private static string SideName(string? display, PanelSide side) =>
+        display is null
+            ? $"a la {(side == PanelSide.Left ? "izquierda" : "derecha")} del foco"
+            : $"a la {(side == PanelSide.Left ? "izquierda" : "derecha")} de su monitor";
+
+    private CommandOutcome DoCreatePanel(Panel panel)
+    {
+        ArgumentNullException.ThrowIfNull(panel);
+        if (string.IsNullOrWhiteSpace(panel.Id) || string.IsNullOrWhiteSpace(panel.Name))
+        {
+            return CommandOutcome.Reject("El panel necesita un identificador y un nombre.");
+        }
+
+        if (FindPanel(panel.Id) is not null)
+        {
+            return CommandOutcome.Reject($"Ya existe un panel «{panel.Id}».");
+        }
+
+        if (ValidateLocation(panel.Display, panel.Side, panel.Slot, panel.Template, null) is { } problem)
+        {
+            return CommandOutcome.Reject(problem);
+        }
+
+        _panels.Add(panel with { Name = panel.Name.Trim() });
+        return CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoRenamePanel(RenamePanel c)
+    {
+        if (FindPanel(c.PanelId) is not { } panel)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
+        if (string.IsNullOrWhiteSpace(c.Name))
+        {
+            return CommandOutcome.Reject("El nombre no puede estar vacío.");
+        }
+
+        _panels[_panels.IndexOf(panel)] = panel with { Name = c.Name.Trim() };
+        return CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoMovePanel(MovePanel c)
+    {
+        if (FindPanel(c.PanelId) is not { } panel)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
+        if (panel.Display == c.Display && panel.Side == c.Side && panel.Slot == c.Slot)
         {
             return CommandOutcome.Accept();
         }
 
-        // Pasa al final del panel de su hogar en el otro monitor. Si está en el Centro, sigue ahí:
-        // sólo cambia adónde vuelve.
-        _windows.Remove(w);
-        _windows.Add(w with { Display = c.Display });
-        return w.Placement == Placement.InPanel ? CommandOutcome.Accept(new ApplyLayout()) : CommandOutcome.Accept();
+        if (ValidateLocation(c.Display, c.Side, c.Slot, panel.Template, panel.Id) is { } problem)
+        {
+            return CommandOutcome.Reject(problem);
+        }
+
+        _panels[_panels.IndexOf(panel)] = panel with { Display = c.Display, Side = c.Side, Slot = c.Slot };
+        return CommandOutcome.Accept(new ApplyLayout());
     }
 
-    private CommandOutcome DoSetTemplate(SetTemplate c)
+    private CommandOutcome DoSplitColumn(SplitColumn c)
     {
-        if (c.Display is null && c.Template == PanelTemplate.Fill)
+        if (FindPanel(c.UpperId) is not { } upper || FindPanel(c.LowerId) is not { } lower)
+        {
+            return CommandOutcome.Reject("No existe alguno de los paneles.");
+        }
+
+        if (!upper.SharesColumnWith(lower) || upper.Id == lower.Id)
+        {
+            return CommandOutcome.Reject($"«{upper.Name}» y «{lower.Name}» no comparten columna.");
+        }
+
+        if (!(c.UpperHeight > 0) || !(c.LowerHeight > 0) || double.IsInfinity(c.UpperHeight) || double.IsInfinity(c.LowerHeight))
+        {
+            return CommandOutcome.Reject("Los altos tienen que ser positivos.");
+        }
+
+        _panels[_panels.IndexOf(upper)] = upper with { Height = c.UpperHeight };
+        _panels[_panels.IndexOf(lower)] = lower with { Height = c.LowerHeight };
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoSetPresentation(SetPresentation c)
+    {
+        if (FindPanel(c.PanelId) is not { } panel)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
+        if (panel.Display is null && c.Template == PanelTemplate.Fill)
         {
             return CommandOutcome.Reject("Fill sólo vale en monitores auxiliares: en el principal manda el Centro.");
         }
 
-        if (TemplateOf(c.Display, c.Home) == c.Template)
+        if (panel.Template == c.Template)
         {
             return CommandOutcome.Accept();
         }
 
-        _templates[(c.Display, c.Home)] = c.Template;
+        _panels[_panels.IndexOf(panel)] = panel with { Template = c.Template };
         return CommandOutcome.Accept(new ApplyLayout());
     }
+
+    private CommandOutcome DoDeletePanel(string id)
+    {
+        if (FindPanel(id) is not { } panel)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{id}».");
+        }
+
+        if (panel.Display is null && _panels.Count(p => p.Display is null) == 1)
+        {
+            return CommandOutcome.Reject("Tiene que quedar al menos un panel en el monitor principal.");
+        }
+
+        // Sus ventanas quedan libres donde están: se olvida su estado original sin aplicarlo.
+        var effects = new List<Effect>();
+        foreach (var w in _windows.Where(w => w.PanelId == id).ToList())
+        {
+            Forget(w.Handle);
+            effects.Add(new ForgetOriginal(w.Handle));
+        }
+
+        _panels.Remove(panel);
+        effects.Add(new ApplyLayout());
+        return CommandOutcome.Accept([.. effects]);
+    }
+
+    // --- Monitores ----------------------------------------------------------------------------------
 
     private CommandOutcome DoDisplayRemoved(string display)
     {
         // Se recuerda aunque no tenga ventanas: si después se le envía alguna, debe ir al principal.
         bool added = _missingDisplays.Add(display);
-        return added && _windows.Any(w => w.Display == display)
+        return added && AnyWindowShownOn(display)
             ? CommandOutcome.Accept(new ApplyLayout())
             : CommandOutcome.Accept();
     }
@@ -383,10 +809,12 @@ public sealed class Workspace
     private CommandOutcome DoDisplayAdded(string display)
     {
         bool removed = _missingDisplays.Remove(display);
-        return removed && _windows.Any(w => w.Display == display)
+        return removed && AnyWindowShownOn(display)
             ? CommandOutcome.Accept(new ApplyLayout())
             : CommandOutcome.Accept();
     }
+
+    // --- Estacionar, fuera de layout, pestaña visible ----------------------------------------------
 
     private CommandOutcome DoPark(nint handle)
     {
@@ -401,12 +829,12 @@ public sealed class Workspace
             return CommandOutcome.Accept();
         }
 
-        if (w.Placement is not (Placement.InPanel or Placement.Center))
+        if (w.Placement is not (Placement.InPanel or Placement.Center or Placement.Fullscreen))
         {
             return CommandOutcome.Reject($"{w.Label} no se puede estacionar desde {w.Placement}.");
         }
 
-        if (w.Placement == Placement.Center)
+        if (w.Placement is Placement.Center or Placement.Fullscreen)
         {
             // El Centro queda vacío; la ventana queda como "anterior" para volver con un atajo.
             _centerHistory.Remove(handle);
@@ -454,6 +882,23 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
+    private CommandOutcome DoSnapBack(nint handle)
+    {
+        var w = Find(handle);
+        if (w is null || w.Placement == Placement.Parked)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        if (w.Detached)
+        {
+            Replace(w with { Detached = false });
+        }
+
+        // Aunque el modelo no cambie, el layout se vuelve a aplicar: es lo que devuelve la ventana.
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
     private CommandOutcome DoMakeActiveInPanel(nint handle)
     {
         var w = Find(handle);
@@ -462,7 +907,15 @@ public sealed class Workspace
             return CommandOutcome.Accept();
         }
 
-        int first = _windows.FindIndex(x => SamePanel(x, w) && x.Placement == Placement.InPanel && !x.Detached);
+        var panel = EffectivePanel(w);
+        if (panel.Template == PanelTemplate.Tiles)
+        {
+            // En tiles no se reordena: el panel se desplaza hasta su fila.
+            _scroll[panel.Id] = (0, handle);
+            return CommandOutcome.Accept(new ApplyLayout());
+        }
+
+        int first = _windows.FindIndex(x => x.Placement == Placement.InPanel && !x.Detached && EffectivePanel(x).Id == panel.Id);
         int index = _windows.IndexOf(w);
         if (first < 0 || first == index)
         {
@@ -474,10 +927,47 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
-    private bool SamePanel(ManagedWindow a, ManagedWindow b) => Effective(a) == Effective(b) && a.Home == b.Home;
+    private CommandOutcome DoSetTileSize(SetTileSize c)
+    {
+        var w = Find(c.Handle);
+        if (w is null)
+        {
+            return CommandOutcome.Reject("La ventana no está gestionada.");
+        }
+
+        if (!Enum.IsDefined(c.Size))
+        {
+            return CommandOutcome.Reject($"Tamaño de tile desconocido: {c.Size}.");
+        }
+
+        if (w.Size == c.Size)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        Replace(w with { Size = c.Size });
+        return w is { Placement: Placement.InPanel, Detached: false } ? CommandOutcome.Accept(new ApplyLayout()) : CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoScrollPanel(ScrollPanel c)
+    {
+        if (FindPanel(c.PanelId) is null)
+        {
+            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+        }
+
+        var row = Math.Max(0, c.FirstRow);
+        if (_scroll.GetValueOrDefault(c.PanelId) == (row, null))
+        {
+            return CommandOutcome.Accept();
+        }
+
+        _scroll[c.PanelId] = (row, null);
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
 
     /// <summary>
-    /// Si el layout la tiene minimizada sin que esté estacionada: no es la primera de un panel en pila
+    /// Si el layout la tiene minimizada sin que esté estacionada: no es la primera de un panel en pestañas
     /// o Fill, o es de un panel tapado por el Fill de otro en el mismo auxiliar.
     /// </summary>
     public bool IsHiddenByLayout(nint handle)
@@ -488,19 +978,16 @@ public sealed class Workspace
             return false;
         }
 
-        var panel = _windows.Where(x => SamePanel(x, w) && x.Placement == Placement.InPanel && !x.Detached).ToList();
-        var template = TemplateOf(Effective(w), w.Home);
-        if (template is PanelTemplate.Stack or PanelTemplate.Fill)
+        var panel = EffectivePanel(w);
+        if (panel.Template is PanelTemplate.Stack or PanelTemplate.Fill)
         {
-            return panel[0].Handle != handle;
+            return InPanel(panel)[0] != handle;
         }
 
         // Otro panel del mismo auxiliar en Fill la tapa.
-        var other = w.Home == Home.Work ? Home.Context : Home.Work;
-        var display = Effective(w);
-        return display is not null
-            && TemplateOf(display, other) == PanelTemplate.Fill
-            && _windows.Any(x => Effective(x) == display && x.Home == other && x.Placement == Placement.InPanel && !x.Detached);
+        return panel.Display is { } display && !IsDisplayMissing(display)
+            && _panels.Any(p => p.Id != panel.Id && string.Equals(p.Display, display, StringComparison.OrdinalIgnoreCase)
+                && p.Template == PanelTemplate.Fill && InPanel(p).Count > 0);
     }
 
     /// <summary>
@@ -515,6 +1002,8 @@ public sealed class Workspace
             return [];
         }
 
+        var panel = EffectivePanel(w);
+        bool onAux = panel.Display is not null;
         return change switch
         {
             ExternalChange.Closed => [new WindowClosed(handle)],
@@ -526,27 +1015,149 @@ public sealed class Workspace
             // Mostrarla desde la barra de tareas: si estaba estacionada, vuelve a su panel; si la
             // escondía la pila, pasa a ser la pestaña visible.
             ExternalChange.Shown when w.Placement == Placement.Parked => [new Restore(handle)],
-            ExternalChange.Shown when IsHiddenByLayout(handle) => [new MakeActiveInPanel(handle)],
+            ExternalChange.Shown when IsHiddenByLayout(handle) || w is { Placement: Placement.InPanel, Detached: false } => [new MakeActiveInPanel(handle)],
             ExternalChange.Shown => [],
 
             // Maximizar en un auxiliar es pedir Fill para su panel; en el principal, salir del layout.
-            ExternalChange.Maximized when w.Placement == Placement.InPanel && Effective(w) is { } aux =>
-                [new MakeActiveInPanel(handle), new SetTemplate(aux, w.Home, PanelTemplate.Fill)],
+            ExternalChange.Maximized when w.Placement == Placement.InPanel && onAux =>
+                [new SetPresentation(panel.Id, PanelTemplate.Fill), new MakeActiveInPanel(handle)],
             ExternalChange.Maximized => [new Detach(handle)],
 
-            // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles.
-            ExternalChange.Unmaximized when Effective(w) is { } shown && TemplateOf(shown, w.Home) == PanelTemplate.Fill =>
-                [new SetTemplate(shown, w.Home, PanelTemplate.Tiles)],
-            ExternalChange.Unmaximized => [new Detach(handle)],
+            // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles; en otro caso,
+            // la ventana vuelve a su sitio.
+            ExternalChange.Unmaximized when w.Placement == Placement.Fullscreen => [new ExitFullscreen(handle)],
+            ExternalChange.Unmaximized when onAux && panel.Template == PanelTemplate.Fill =>
+                [new SetPresentation(panel.Id, PanelTemplate.Tiles)],
+            ExternalChange.Unmaximized => [new SnapBack(handle)],
 
-            ExternalChange.MovedOrResized => [new Detach(handle)],
+            // Arrastrarla o redimensionarla: al soltarla vuelve a su sitio. (Soltarla sobre otro panel
+            // o sobre el foco lo decide quien conoce la geometría: ver ShellController.)
+            ExternalChange.MovedOrResized => [new SnapBack(handle)],
             _ => [],
         };
     }
 
+    // --- Escenas y salida ---------------------------------------------------------------------------
+
+    private CommandOutcome DoReplacePanels(IReadOnlyList<Panel> panels)
+    {
+        if (_windows.Count > 0)
+        {
+            return CommandOutcome.Reject("Los paneles sólo se sustituyen sin ventanas gestionadas.");
+        }
+
+        var valid = new List<Panel>();
+        foreach (var p in panels.DistinctBy(p => p.Id))
+        {
+            // Fill no vale en el principal; dos paneles en el mismo puesto de una columna, tampoco.
+            var panel = p.Display is null && p.Template == PanelTemplate.Fill ? p with { Template = PanelTemplate.Tiles } : p;
+            if (valid.Any(x => x.SharesColumnWith(panel) && x.Slot == panel.Slot))
+            {
+                continue;
+            }
+
+            valid.Add(panel);
+        }
+
+        if (!valid.Any(p => p.Display is null))
+        {
+            return CommandOutcome.Reject("Tiene que quedar al menos un panel en el monitor principal.");
+        }
+
+        _panels.Clear();
+        _panels.AddRange(valid);
+        return CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoSetView(FocusPosition focus)
+    {
+        if (!Enum.IsDefined(focus))
+        {
+            return CommandOutcome.Reject($"Vista desconocida: {focus}.");
+        }
+
+        if (View == focus)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        View = focus;
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoSetProportions(SetProportions c)
+    {
+        if (!Enum.IsDefined(c.View))
+        {
+            return CommandOutcome.Reject($"Vista desconocida: {c.View}.");
+        }
+
+        if (c.Weights is { IsValid: false })
+        {
+            return CommandOutcome.Reject("Las proporciones tienen que ser positivas.");
+        }
+
+        var before = ProportionsOf(c.View);
+        if (c.Weights is null || c.Weights.SameAs(ViewProportions.Default(c.View)))
+        {
+            _proportions.Remove(c.View);
+        }
+        else
+        {
+            _proportions[c.View] = c.Weights;
+        }
+
+        return c.View == View && !before.SameAs(ProportionsOf(c.View))
+            ? CommandOutcome.Accept(new ApplyLayout())
+            : CommandOutcome.Accept();
+    }
+
     private CommandOutcome DoApplyScene(ApplyScene c)
     {
-        var entries = c.Entries.DistinctBy(e => e.Handle).ToList();
+        if (c.View is { } view && Enum.IsDefined(view))
+        {
+            View = view;
+        }
+
+        if (c.Weights is { IsValid: true } weights)
+        {
+            DoSetProportions(new SetProportions(View, weights));
+        }
+
+        // Los paneles de la escena se suman a los del usuario. "map" traduce cada panel de la escena al
+        // panel real donde irán sus ventanas.
+        var map = new Dictionary<string, string>();
+        foreach (var p in c.Panels.DistinctBy(p => p.Id))
+        {
+            var wanted = p.Display is null && p.Template == PanelTemplate.Fill ? p with { Template = PanelTemplate.Tiles } : p;
+            if (FindPanel(wanted.Id) is { } existing)
+            {
+                // Ya existe: conserva su nombre y su ubicación; toma la presentación de la escena si vale ahí.
+                if (existing.Template != wanted.Template && !(existing.Display is null && wanted.Template == PanelTemplate.Fill))
+                {
+                    _panels[_panels.IndexOf(existing)] = existing with { Template = wanted.Template };
+                }
+
+                map[wanted.Id] = existing.Id;
+            }
+            else if (ColumnOf(wanted.Display, wanted.Side).FirstOrDefault(p => p.Slot == wanted.Slot) is { } occupant)
+            {
+                // Ese puesto ya tiene panel: sus ventanas van ahí.
+                map[wanted.Id] = occupant.Id;
+            }
+            else
+            {
+                _panels.Add(wanted);
+                map[wanted.Id] = wanted.Id;
+            }
+        }
+
+        // Una ventana cuyo panel no se resuelve queda libre (ADR 0011): no se adopta.
+        var entries = c.Entries
+            .DistinctBy(e => e.Handle)
+            .Select(e => map.TryGetValue(e.PanelId, out var id) ? e with { PanelId = id } : FindPanel(e.PanelId) is not null ? e : null)
+            .OfType<SceneEntry>()
+            .ToList();
         var keep = entries.Select(e => e.Handle).ToHashSet();
         var effects = new List<Effect>();
 
@@ -572,22 +1183,13 @@ public sealed class Workspace
                 ScenePlacement.Parked => Placement.Parked,
                 _ => Placement.InPanel,
             };
-            _windows.Add(new ManagedWindow(e.Handle, e.Label, e.Home, placement, e.Display));
+            _windows.Add(new ManagedWindow(e.Handle, e.Label, e.PanelId, placement) { Size = e.Size });
         }
 
         _centerHistory.RemoveAll(h => !keep.Contains(h) || h == center);
         if (previousCenter is { } prev && prev != center && keep.Contains(prev))
         {
             _centerHistory.Insert(0, prev);
-        }
-
-        _templates.Clear();
-        foreach (var (display, home, template) in c.Templates)
-        {
-            if (display is not null || template != PanelTemplate.Fill)
-            {
-                _templates[(display, home)] = template;
-            }
         }
 
         effects.Add(new ApplyLayout());
@@ -613,6 +1215,7 @@ public sealed class Workspace
 
     private CommandOutcome DoRestoreAll()
     {
+        // Los paneles se conservan: sólo las ventanas vuelven a ser libres.
         _windows.Clear();
         _centerHistory.Clear();
         return CommandOutcome.Accept(new RestoreEverything());

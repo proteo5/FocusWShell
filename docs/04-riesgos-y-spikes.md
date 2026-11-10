@@ -34,6 +34,7 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S7 — Pila | ¿Minimizar funciona bien para las ventanas ocultas de la pila? | Alternar pestañas 50 veces entre 3–4 apps. | Sin pérdidas de estado; la alternancia se siente inmediata. | R8 |
 | S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 |
 | S9 — Apuntar desde el deck | ¿Se puede apuntar con precisión en la app del foco desde el deck? | Miniatura DWM en vivo con cuadrícula y zoom en la tablet; scroll por franja lateral en Edge; lectura de controles con UI Automation en Edge, Slack, SSMS y VS Code. | El toque cae a ±1 control del objetivo con zoom; el scroll mueve la zona tocada; lectura de controles < 300 ms en apps nativas y < 1 s en Chromium. | — |
+| S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — |
 
 S1–S5 forman el hito M0. S6 y S7 se pueden posponer a M1, pero deben resolverse antes de dar por bueno el MVP.
 
@@ -131,6 +132,151 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Arrastres y redimensionados hechos con el ratón por una persona: la fase 3 está lista, pero nadie la ha ejecutado aún.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
+
+### Catálogo de apps (M1b, 2026-11-10)
+
+- **Detección:**
+  - Cada refresco registra las apps que ve en `apps.json`: clave, nombre, ejecutable, AUMID y último panel. Nunca títulos.
+  - El nombre sale de la descripción del ejecutable. Si es genérica ("Electron", o el propio archivo), se usa el nombre del producto: así "Electron" pasa a "GitHub Desktop".
+  - En este equipo detectó 10 apps sin configurar nada.
+- **Abrir:**
+  - Las apps empaquetadas (AUMID con `!`) se abren por `shell:AppsFolder`; el resto, por su ejecutable.
+  - FocusWShell espera hasta 20 s la ventana. Prefiere una nueva y, pasados 3 s, acepta una que ya estuviera abierta y libre. Después la asigna al panel elegido; por defecto, el último en el que estuvo.
+  - Probado con el Bloc de notas cerrado: "abierta en Trabajo", lanzado desde su ejecutable en `WindowsApps`.
+- **Pendiente:**
+  - Iconos.
+  - Renombrar y ocultar apps desde la UI (el modelo ya lo permite).
+  - Abrir apps que falten al aplicar una escena.
+
+### Paneles como entidades (M1b, 2026-11-10)
+
+Implementa la primera parte del [ADR 0011](adr/0011-paneles-y-catalogo.md).
+
+- **Modelo:**
+  - `Panel` (id, nombre, monitor, lado, presentación) con `CreatePanel`, `RenamePanel`, `MovePanel`, `SetPresentation` y `DeletePanel`. Borrar un panel deja sus ventanas libres, sin moverlas.
+  - Cada ventana apunta a su panel; desaparecen `Home`, `SendToDisplay` y `SetTemplate`.
+  - En el principal, de momento, un panel por columna.
+  - 158 pruebas.
+- **Persistencia:**
+  - `panels.json` guarda los paneles cada vez que cambian y se carga al arrancar.
+  - Las escenas guardan sus paneles; las del formato anterior se migran solas al cargarlas (`SavedScene.Upgrade`).
+- **App:**
+  - La columna Panel ("libre", "Al foco" o un panel) sustituye a Rol y Monitor.
+  - Una sección Paneles permite renombrar, mover, cambiar la presentación, borrar y crear paneles.
+- **Prueba de principio a fin con UI Automation:**
+  - Se creó "Monitoreo" en el HP, se asignaron ventanas y se renombró Contexto como "Comunicación". Las tiras muestran el nombre nuevo al momento.
+  - Tras reiniciar la app, los paneles seguían ahí.
+  - La escena antigua "Código" se migró y se aplicó: 5/5 exactas.
+- **Fallos encontrados y corregidos:**
+  - Crear y renombrar un panel leían un `TextBox` desde una tarea en segundo plano. La excepción activó la restauración de emergencia, que funcionó como estaba diseñada: devolvió todas las ventanas.
+  - Al refrescar la lista, WPF escribía un valor vacío en las filas antes de desconectarlas, y se generaban asignaciones a un panel "vacío".
+  - Desde ahora, los errores no controlados se registran en `%LOCALAPPDATA%\FocusWShell\errors.log`.
+- **Decisión tomada:** aplicar una escena **suma** sus paneles a los del usuario.
+  - Un panel que ya existe conserva su nombre y su ubicación, y sólo toma la presentación de la escena.
+  - Si la escena pone un panel nuevo en una columna del principal que ya está ocupada, sus ventanas van al panel que está ahí.
+  - Una ventana cuyo panel no se puede resolver queda **libre**.
+  - Probado: con "Comunicación" y "Monitoreo" creados a mano, aplicar "Código" los conservó (5/5).
+
+### Gestos de cambio de ventana (M1b, 2026-11-10)
+
+Medido en Windows 11 con `EVENT_SYSTEM_FOREGROUND`, registrando la clase de cada ventana que toma el primer plano y el estado de Alt y Win:
+
+- **Windows 11 no emite `EVENT_SYSTEM_SWITCHSTART/END`** con Alt+Tab. El selector es una ventana `XamlExplorerHostIslandWindow`, la misma que la vista de tareas. Se distinguen por la tecla pulsada cuando aparece: Alt en Alt+Tab, Win en Win+Tab (o ninguna, si se abrió con el botón de la barra).
+- Entre una ventana y otra aparecen ventanas de paso `ForegroundStaging`: se ignoran.
+- Tras elegir, el selector vuelve a tomar el primer plano unos milisegundos (un eco). Sin descartarlo, la siguiente activación por programa parecía venir de la vista de tareas y movía la ventana: un fallo de CA7 que encontró la prueba. Se descarta el selector si aparece menos de 400 ms después de un gesto.
+- La barra de tareas es `Shell_TrayWnd` (o `Shell_SecondaryTrayWnd`); su gesto sólo cuenta si la ventana se activa en menos de 2 s.
+- Volver a la ventana que ya estaba (Esc en el selector) no cuenta como gesto.
+
+Prueba con dos ventanas de Paint, una en Contexto y otra en Trabajo, desde otro proceso:
+
+| Caso | Resultado |
+| --- | --- |
+| Activarlas por programa (`SetForegroundWindow`), incluso justo después de un Alt+Tab | Nada se mueve |
+| Alt+Tab real (teclas inyectadas) a la del panel | Pasa al foco: «elegida con Alt+Tab» |
+| Win+Tab, flecha y Enter | Pasa al foco: «elegida en la vista de tareas» |
+| Alt+Tab con su casilla desactivada | Nada se mueve; el ajuste se guarda en `settings.json` |
+| Clic en la ventana del panel (clic desactivado) | Queda activa en su panel; nada se mueve |
+| Soltarla sobre la columna del foco | Pasa al foco |
+| Soltarla sobre la columna de otro panel | Cambia de panel |
+| Sacar la del foco y soltarla sobre otro panel | Vuelve del foco y cambia de panel |
+| Moverla dentro de su propio panel | Vuelve a su sitio |
+
+Pendiente: el clic real en un botón de la barra de tareas (no se simuló) y arrastres con el ratón de verdad.
+
+### Dos paneles por columna (M1b, 2026-11-10)
+
+Prueba con dos ventanas de Paint en el ultrawide, desde la interfaz y desde otro proceso:
+
+| Caso | Resultado |
+| --- | --- |
+| Crear «Notas» en «Principal · izquierda del foco · abajo» | Se crea; `panels.json` guarda `"Slot": "Lower"` |
+| Una ventana en Contexto y otra en Notas | Cada una ocupa media columna (675 px de alto), con su tira encima: «CONTEXTO» arriba y «NOTAS» a media altura |
+| Soltar la de Notas sobre la banda de Contexto | Cambia a Contexto; las dos se reparten la columna como tiles |
+| Soltarla en la mitad de abajo cuando Notas ya no tiene ventanas | Vuelve a su sitio: un panel vacío no ocupa sitio, la banda de Contexto es la columna entera |
+| Mover Notas a «derecha del foco · abajo» | Su ventana pasa a la columna derecha; como Trabajo está vacío, la ocupa entera |
+| Arrancar con un `panels.json` anterior (sin `Slot`) | Carga bien: todos los paneles quedan arriba |
+
+### Vistas (M1b, 2026-11-10)
+
+Prueba en el ultrawide (con el monitor auxiliar a la derecha), con una ventana de Paint en Contexto y otra en el foco:
+
+| Caso | Resultado |
+| --- | --- |
+| Foco a la izquierda | Foco 0–1718 px, Trabajo (vacío) en medio y Contexto pegado al borde derecho. Como ese borde da al auxiliar, el foco cede más (piso compartido) para que Contexto quepa sin invadir el otro monitor |
+| Foco a la derecha | Contexto al borde izquierdo, Trabajo en medio y el foco a la derecha |
+| Ctrl+Alt+Mayús+V | Pasa a la siguiente vista; el selector de la ventana lo refleja |
+| Reiniciar la app | Vuelve con la última vista (guardada en `panels.json`) |
+
+### Proporciones (M1b, 2026-11-10)
+
+Prueba en el ultrawide con una ventana de Paint en el foco y otra en Contexto (foco al centro):
+
+| Caso | Resultado |
+| --- | --- |
+| Preset «Foco ancho» | Foco 2131 px. Contexto pedía el 12 % pero se queda en 690 px, el mínimo de Paint |
+| Redimensionar la del foco 300 px por su borde derecho (desde otro proceso) | Separador: la vista queda en 20 · 44 · 36 %, Trabajo se ensancha y el selector muestra «Personalizadas» |
+| Redimensionar la de Contexto por su borde izquierdo (el del monitor) | No es un separador: vuelve a su sitio |
+| Reiniciar la app | Vuelve con las proporciones personalizadas (en `panels.json`, por vista) |
+| Volver a «Normal» | Se borran las personalizadas de esa vista |
+
+Pendiente: arrastrar el borde con el ratón de verdad (la prueba usó `SetWindowPos` desde otro proceso).
+
+### Catálogo: escenas que abren apps, iconos, renombrar y ocultar (M1b, 2026-11-10)
+
+| Caso | Resultado |
+| --- | --- |
+| Escena con Paint en Trabajo; Paint cerrado; aplicar la escena | Paint se abre (por su ejecutable en `WindowsApps`) y su ventana entra en Trabajo en unos segundos: «mspaint se abrió y está en Trabajo» |
+| Iconos | Salen del ejecutable de cada app, también el de Paint (paquete de la Store) |
+| Renombrar Paint en la lista | Se guarda en `apps.json` |
+| Ocultar | Desaparece de la lista; con «Ver ocultas» vuelve, en gris y con «Mostrar» |
+
+Al terminar se dejaron `scenes.json`, `apps.json`, `settings.json` y `panels.json` como estaban.
+
+### Separador apilado y pantalla completa (M1b, 2026-11-10)
+
+Dos ventanas de Paint, una en Contexto (arriba) y otra en Notas (abajo, a la izquierda del foco):
+
+| Caso | Resultado |
+| --- | --- |
+| La de abajo, 350 px más alta por su borde de arriba | Separador: 37 % arriba y 63 % abajo; se guarda en `panels.json` |
+| La de arriba, 600 px más alta por abajo | El reparto se lleva al límite: la de abajo conserva los 500 px que necesita Paint |
+| Primera prueba, antes de la corrección | La de abajo quedaba más baja que su mínimo y se minimizaba; ahora el motor respeta el mínimo si caben las dos |
+| Ctrl+Alt+Mayús+F con una en el foco | Se maximiza en el principal y desaparecen las tiras del principal; otra vez F vuelve al foco |
+| Botón «Pantalla completa» con el monitor HP | Se maximiza en el auxiliar; la tira del principal sigue |
+| Des-maximizarla desde otro proceso | Sale de pantalla completa y vuelve al foco |
+
+### Tiles adaptables (M1b, 2026-11-10)
+
+Cuatro Calculadoras en un panel «Monitoreo» de prueba en el monitor HP (1920 px a 120 DPI: 3 columnas de 640 px):
+
+| Caso | Resultado |
+| --- | --- |
+| Las cuatro en Pequeño | Tres en la primera fila; la cuarta va a la fila 2. Calculadora pide 627 px de alto, así que cabe una sola fila: la cuarta queda oculta y la tira muestra «▲ 1–1 / 2 ▼» |
+| ▼ en la tira | Se ve la fila 2 (la cuarta) y se ocultan las otras tres |
+| Clic en la pestaña de una oculta de la fila 1 | El panel vuelve a la fila 1 sin cambiar el orden |
+| «Tamaño: Grande» en el menú de la primera | Ocupa las tres columnas y las demás pasan a la fila 2 |
+
+Pendiente, sin relación con los tiles: las apps de la Store aparecen como «ApplicationFrameHost» en las pestañas, porque la etiqueta sale del proceso. Conviene usar el nombre del catálogo.
 
 ### S6 — Reconexión (2026-11-10)
 

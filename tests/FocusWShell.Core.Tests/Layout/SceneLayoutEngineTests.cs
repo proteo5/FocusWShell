@@ -119,19 +119,35 @@ public class SceneLayoutEngineTests
     }
 
     [Fact]
-    public void TilesThatDoNotFitInHeightBecomeStack()
+    public void TilesThatDoNotFitInHeightPageByRows()
     {
-        var r = SceneLayoutEngine.Compute(Scene(
-            [],
-            Win(1, "Editor"),
-            [Win(2, "GitHub Desktop", 900, 700), Win(3, "Docker", 900, 720), Win(4, "Terminal")]));
+        var windows = new[] { Win(2, "GitHub Desktop", 900, 700), Win(3, "Docker", 900, 720), Win(4, "Terminal") };
+        var r = SceneLayoutEngine.Compute(Scene([], Win(1, "Editor"), windows));
 
-        Assert.Equal(PanelTemplate.Stack, r.EffectiveTemplates["Trabajo"]);
+        // Ya no pasan a pestañas (ADR 0015): se ven las filas que caben y las demás quedan ocultas.
+        Assert.Equal(PanelTemplate.Tiles, r.EffectiveTemplates["Trabajo"]);
         Assert.Equal(TargetKind.Visible, Target(r, 2).Kind);
         Assert.Equal(r.RightColumn.Height, Target(r, 2).Rect.Height);
         Assert.Equal(TargetKind.Minimized, Target(r, 3).Kind);
         Assert.Equal(TargetKind.Minimized, Target(r, 4).Kind);
-        Assert.Contains(r.Notes, n => n.Contains("pila", StringComparison.Ordinal));
+        Assert.Equal(new TilePages(0, 1, 3), r.Pages["Trabajo"]);
+        Assert.Contains(r.Notes, n => n.Contains("ocupan 3 filas", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ScrollingAndRevealingChooseTheVisibleRows()
+    {
+        var windows = new[] { Win(2, "GitHub Desktop", 900, 700), Win(3, "Docker", 900, 720), Win(4, "Terminal") };
+        var scene = Scene([], Win(1, "Editor"), windows);
+
+        var scrolled = SceneLayoutEngine.Compute(scene with { Right = scene.Right with { ScrollRow = 1 } });
+        var revealed = SceneLayoutEngine.Compute(scene with { Right = scene.Right with { Reveal = 4 } });
+
+        // Desde la fila 2 caben Docker y Terminal (720 + 0): se ven las dos.
+        Assert.Equal(new TilePages(1, 2, 3), scrolled.Pages["Trabajo"]);
+        Assert.Equal(TargetKind.Minimized, Target(scrolled, 2).Kind);
+        Assert.Equal(TargetKind.Visible, Target(scrolled, 4).Kind);
+        Assert.Equal(new TilePages(1, 2, 3), revealed.Pages["Trabajo"]);
     }
 
     [Fact]
