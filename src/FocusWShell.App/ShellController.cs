@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using FocusWShell.Core.Displays;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Layout;
 using FocusWShell.Core.Windows;
 using FocusWShell.Win32;
 using FocusWShell.Win32.Persistence;
@@ -175,6 +176,15 @@ public sealed class ShellController
 
     private SceneApplyReport ApplyLayoutLocked()
     {
+        var displays = DisplayEnumerator.Enumerate();
+        var principal = DisplayTopology.Principal(displays) ?? throw new InvalidOperationException("No se encontró ningún monitor.");
+
+        // Un auxiliar que ya no está: sus ventanas pasan a los paneles del principal (ADR 0008).
+        foreach (var gone in _workspace.Composition.Aux.Select(a => a.Display).Where(d => displays.All(x => x.DeviceName != d)).ToList())
+        {
+            _workspace.Execute(new DisplayRemoved(gone));
+        }
+
         var c = _workspace.Composition;
         List<WindowSnapshot> Map(IEnumerable<nint> handles) =>
             handles.Where(_snapshots.ContainsKey).Select(h => _snapshots[h]).ToList();
@@ -182,8 +192,31 @@ public sealed class ShellController
         var assignment = new SceneAssignment(
             Map(c.Context),
             c.Center is { } center && _snapshots.TryGetValue(center, out var w) ? w : null,
-            Map(c.Work));
-        var applier = new SceneApplier(TargetDisplay(), assignment, new SceneOptions(), MinSizes);
+            Map(c.Work))
+        {
+            Aux = c.Aux
+                .Select(a => new AuxAssignment(
+                    displays.First(d => d.DeviceName == a.Display), Map(a.Context), Map(a.Work), a.ContextTemplate, a.WorkTemplate))
+                .ToList(),
+        };
+        var options = new SceneOptions { ContextTemplate = c.ContextTemplate, WorkTemplate = c.WorkTemplate };
+        var applier = new SceneApplier(principal, assignment, options, MinSizes);
         return applier.Apply(Journal);
+    }
+
+    /// <summary>Monitores auxiliares conectados (todos menos el principal), en orden de Windows.</summary>
+    public static IReadOnlyList<DisplayInfo> AuxiliaryDisplays()
+    {
+        var displays = DisplayEnumerator.Enumerate();
+        var principal = DisplayTopology.Principal(displays);
+        return displays.Where(d => d != principal).ToList();
+    }
+
+    public PanelTemplate TemplateOf(string? display, Home home)
+    {
+        lock (_gate)
+        {
+            return _workspace.TemplateOf(display, home);
+        }
     }
 }

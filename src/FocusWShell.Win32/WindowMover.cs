@@ -394,6 +394,71 @@ public static class WindowMover
     /// <summary>Ventana en primer plano.</summary>
     public static nint Foreground() => PInvoke.GetForegroundWindow();
 
+    /// <summary>Si la ventana ya está maximizada en el monitor de <paramref name="workArea"/>.</summary>
+    public static unsafe bool IsMaximizedOn(nint handle, PixelRect workArea)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (!PInvoke.IsWindow(hwnd) || !PInvoke.IsZoomed(hwnd))
+        {
+            return false;
+        }
+
+        var visible = ReadRects(hwnd).Visible;
+        return !visible.Intersect(workArea).IsEmpty && workArea.Contains(visible.Left + (visible.Width / 2), visible.Top + (visible.Height / 2));
+    }
+
+    /// <summary>
+    /// Maximiza la ventana en el monitor de <paramref name="workArea"/> (template <c>Fill</c>, ADR 0008).
+    /// Si está maximizada en otro monitor, primero la lleva ahí. Windows no tiene un "maximizar sin
+    /// activar": si al maximizar se lleva el foco, se intenta devolvérselo a la ventana que lo tenía.
+    /// </summary>
+    public static unsafe PlacementResult MaximizeOn(nint handle, PixelRect workArea)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (!PInvoke.IsWindow(hwnd))
+        {
+            return new PlacementResult(workArea, default, default, 0, "la ventana ya no existe");
+        }
+
+        if (PInvoke.IsHungAppWindow(hwnd))
+        {
+            return new PlacementResult(workArea, default, default, 0, "la aplicación no responde");
+        }
+
+        if (!IsMaximizedOn(handle, workArea))
+        {
+            if (PInvoke.IsZoomed(hwnd) || PInvoke.IsIconic(hwnd) || !workArea.Contains(ReadRects(hwnd).Visible.Left + 1, ReadRects(hwnd).Visible.Top + 1))
+            {
+                // Maximizada en otro monitor, minimizada o fuera: primero a este monitor, en normal.
+                Place(handle, workArea);
+            }
+
+            var previous = PInvoke.GetForegroundWindow();
+            PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOWMAXIMIZED);
+            if (previous != hwnd && !previous.IsNull && PInvoke.GetForegroundWindow() == hwnd)
+            {
+                PInvoke.SetForegroundWindow(previous);
+            }
+        }
+
+        // Maximizar se anima: se espera a que el rectángulo deje de cambiar antes de medir.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var actual = ReadRects(hwnd).Visible;
+        var changedAt = TimeSpan.Zero;
+        while (clock.Elapsed - changedAt < TimeSpan.FromMilliseconds(60) && clock.Elapsed < TimeSpan.FromMilliseconds(500))
+        {
+            Thread.Sleep(5);
+            var now = ReadRects(hwnd).Visible;
+            if (now != actual)
+            {
+                actual = now;
+                changedAt = clock.Elapsed;
+            }
+        }
+
+        return new PlacementResult(workArea, actual, default, 1, null);
+    }
+
     /// <summary>Muestra una ventana minimizada sin activarla.</summary>
     public static unsafe void ShowNoActivate(nint handle) =>
         PInvoke.ShowWindow(new HWND((void*)handle), SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);

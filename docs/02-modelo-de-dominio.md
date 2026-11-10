@@ -112,6 +112,20 @@ Cambiar de template sólo recalcula rectángulos y visibilidad. Ninguna ventana 
 - El historial del Centro guarda las ventanas que lo ocuparon, de la más reciente a la más antigua. `SwapWithPrevious` promueve la primera que siga gestionada; repetirlo alterna entre las dos últimas (CA2).
 - En M0 el cierre de una ventana se detecta al refrescar la lista (aún no hay hooks; S4 en M1).
 
+### Implementación de los monitores auxiliares (M1)
+
+- `ManagedWindow.Display` guarda el monitor auxiliar del panel de la ventana (`null` es el principal). Por ahora la clave es el nombre GDI (`\\.\DISPLAYn`); la identidad estable llega con S6.
+- Comandos nuevos:
+  - `SendToDisplay` mueve el panel de una ventana a otro monitor sin cambiar su hogar.
+  - `SetTemplate` cambia el template de un panel. `Fill` se rechaza en el principal.
+  - `DisplayRemoved` funde las ventanas de un auxiliar desconectado en los paneles del principal, nunca en el Centro.
+- `SceneComposition.Aux` lista, por monitor auxiliar, sus paneles de Contexto y Trabajo con su template.
+- `AuxLayoutEngine` coloca los paneles de un auxiliar:
+  - Los paneles vacíos no ocupan sitio, y el resto se reparte por peso.
+  - Un panel que no llega al mínimo de su ventana toma ancho de los otros.
+  - **Nada se desborda**: la ventana que no cabe se minimiza con una nota.
+  - Con `Fill`, la primera ventana del panel se maximiza y todo lo demás de ese monitor se minimiza. Si dos paneles están en `Fill`, gana el primero.
+
 ## Invariantes
 
 El núcleo debe garantizarlos después de cada comando; las pruebas unitarias los verifican:

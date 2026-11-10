@@ -129,6 +129,27 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
+### Monitores auxiliares (2026-11-09)
+
+Implementa el [ADR 0008](adr/0008-centro-solo-en-monitor-principal.md) con el monitor estándar al 125 % como auxiliar.
+
+- **Tiles en el auxiliar:**
+  - Principal Slack | Edge | Explorer y auxiliar WhatsApp | ChatGPT: **5/5 exactas**, Centro protegido, en un solo lote para los dos monitores.
+  - Las dos ventanas que cruzaban de DPI necesitaron una corrección.
+- **Fill:**
+  - ChatGPT queda maximizado en el auxiliar y GitHub Desktop, minimizado. **5/5.**
+  - El foco siguió en Edge: maximizar no lo robó.
+  - Primer intento con 2 px de desviación, porque se midió durante la animación de maximizar. Ahora se mide cuando el rectángulo deja de cambiar.
+- **S4 con la escena en los dos monitores y Fill:** 99 eventos propios, **0 falsos positivos**, 4/4 cambios externos detectados. Se añadió la expectativa "maximizada en este monitor" y el cambio `Unmaximized`.
+- **App de principio a fin**, con UI Automation:
+  - Asignar monitor y rol a cada ventana, y pasar el Trabajo del auxiliar a Fill desde la ventana principal.
+  - Promover ChatGPT del auxiliar al Centro: sale de Fill, llega al Centro con el foco, y WhatsApp vuelve a verse en el auxiliar.
+  - `Volver a la anterior` lo devuelve maximizado a su panel auxiliar.
+  - Restaurar todas: 5/5.
+- **Pendiente:**
+  - Identidad estable de monitores y desconexión real de un auxiliar (S6).
+  - Reaccionar a eventos del usuario en la app: maximizar en un auxiliar debería equivaler a pasar ese panel a Fill (llega con Estacionar/Restaurar).
+
 ### S1 y S2 con dos monitores (2026-11-09)
 
 - **Monitores:** ultrawide 3440×1440 al 100 % y, a su derecha, un monitor estándar 1920×1080 al 125 % (área de trabajo 1920×1020, 120 DPI).

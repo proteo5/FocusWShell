@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Domain;
 
@@ -14,6 +14,9 @@ public sealed record ExpectVisible(PixelRect Rect) : Expectation;
 
 /// <summary>La ventana debe estar minimizada (oculta en una pila o estacionada).</summary>
 public sealed record ExpectMinimized : Expectation;
+
+/// <summary>La ventana debe estar maximizada en el monitor de <paramref name="WorkArea"/> (template Fill).</summary>
+public sealed record ExpectMaximized(PixelRect WorkArea) : Expectation;
 
 /// <summary>Qué hizo alguien que no es el gestor con una ventana gestionada.</summary>
 public enum ExternalChange
@@ -34,6 +37,9 @@ public enum ExternalChange
 
     /// <summary>Se arrastró o redimensionó: queda fuera de layout.</summary>
     MovedOrResized,
+
+    /// <summary>Estaba maximizada por el gestor (Fill) y alguien la restauró a tamaño normal.</summary>
+    Unmaximized,
 }
 
 /// <summary>
@@ -105,9 +111,12 @@ public sealed class ExpectationRegistry
             }
             else if (change != ExternalChange.None)
             {
-                _expected[observed.Handle] = observed.Minimized
-                    ? new ExpectMinimized()
-                    : new ExpectVisible(observed.Visible);
+                _expected[observed.Handle] = observed switch
+                {
+                    { Minimized: true } => new ExpectMinimized(),
+                    { Maximized: true } => new ExpectMaximized(observed.Visible),
+                    _ => new ExpectVisible(observed.Visible),
+                };
             }
 
             return change;
@@ -126,6 +135,11 @@ public sealed class ExpectationRegistry
         return expected switch
         {
             ExpectMinimized => observed.Minimized ? ExternalChange.None : ExternalChange.Shown,
+            ExpectMaximized m when observed.Minimized => ExternalChange.Minimized,
+            ExpectMaximized m when !observed.Maximized => ExternalChange.Unmaximized,
+            ExpectMaximized m => m.WorkArea.Contains(observed.Visible.Left + (observed.Visible.Width / 2), observed.Visible.Top + (observed.Visible.Height / 2))
+                ? ExternalChange.None
+                : ExternalChange.MovedOrResized,
             ExpectVisible v when observed.Minimized => ExternalChange.Minimized,
             ExpectVisible v when observed.Maximized => ExternalChange.Maximized,
             ExpectVisible v => Differs(v.Rect, observed.Visible) ? ExternalChange.MovedOrResized : ExternalChange.None,

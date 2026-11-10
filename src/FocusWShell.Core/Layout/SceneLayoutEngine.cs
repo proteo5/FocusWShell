@@ -105,7 +105,7 @@ public static class SceneLayoutEngine
     }
 
     /// <param name="Panel">El panel con las ventanas que siguen en el layout.</param>
-    private sealed record ResolvedPanel(PanelInput Panel, PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
+    internal sealed record ResolvedPanel(PanelInput Panel, PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
 
     /// <summary>Saca del panel las ventanas más anchas que <paramref name="maxWidth"/> y vuelve a resolverlo.</summary>
     private static ResolvedPanel ExcludeTooWide(
@@ -125,7 +125,7 @@ public static class SceneLayoutEngine
         return Resolve(remaining, height, gap, tooWide.Count > 0 ? notes : []);
     }
 
-    private static ResolvedPanel Resolve(PanelInput panel, int height, int gap, List<string> notes)
+    internal static ResolvedPanel Resolve(PanelInput panel, int height, int gap, List<string> notes)
     {
         var windows = panel.Windows;
         if (windows.Count == 0)
@@ -146,7 +146,8 @@ public static class SceneLayoutEngine
             }
         }
 
-        IReadOnlyList<LayoutWindow> visible = template == PanelTemplate.Stack ? [windows[0]] : windows;
+        // Fill sólo tiene sentido en monitores auxiliares; aquí se comporta como una pila.
+        IReadOnlyList<LayoutWindow> visible = template is PanelTemplate.Stack or PanelTemplate.Fill ? [windows[0]] : windows;
         return new ResolvedPanel(panel, template, visible, visible.Max(w => w.MinSize?.Width ?? 0));
     }
 

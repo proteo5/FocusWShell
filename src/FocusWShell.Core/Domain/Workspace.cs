@@ -1,3 +1,5 @@
+﻿using FocusWShell.Core.Layout;
+
 namespace FocusWShell.Core.Domain;
 
 /// <summary>Panel al que pertenece una ventana. Persistente: sólo cambia con <see cref="SendTo"/>.</summary>
@@ -20,12 +22,31 @@ public enum Placement
 /// Una ventana gestionada. El orden dentro de su panel es su posición en <see cref="Workspace.Windows"/>;
 /// en el Centro conserva esa posición, así que al volver recupera su puesto.
 /// </summary>
-public sealed record ManagedWindow(nint Handle, string Label, Home Home, Placement Placement);
+/// <param name="Display">Monitor auxiliar de su panel, o <c>null</c> si su panel está en el principal (ADR 0008).</param>
+public sealed record ManagedWindow(nint Handle, string Label, Home Home, Placement Placement, string? Display = null);
 
-/// <summary>Qué va en cada región, en orden: lo que el motor de layout necesita.</summary>
+/// <summary>Paneles de un monitor auxiliar, en orden.</summary>
+public sealed record AuxComposition(
+    string Display,
+    IReadOnlyList<nint> Context,
+    IReadOnlyList<nint> Work,
+    PanelTemplate ContextTemplate,
+    PanelTemplate WorkTemplate);
+
+/// <summary>Qué va en cada región, en orden: lo que los motores de layout necesitan.</summary>
+/// <param name="Context">Panel de Contexto del monitor principal.</param>
+/// <param name="Work">Panel de Trabajo del monitor principal.</param>
 public sealed record SceneComposition(IReadOnlyList<nint> Context, nint? Center, IReadOnlyList<nint> Work)
 {
-    public IEnumerable<nint> All => Context.Concat(Center is { } c ? [c] : []).Concat(Work);
+    public PanelTemplate ContextTemplate { get; init; } = PanelTemplate.Tiles;
+
+    public PanelTemplate WorkTemplate { get; init; } = PanelTemplate.Tiles;
+
+    /// <summary>Monitores auxiliares con alguna ventana, por orden de aparición.</summary>
+    public IReadOnlyList<AuxComposition> Aux { get; init; } = [];
+
+    public IEnumerable<nint> All => Context.Concat(Center is { } c ? [c] : []).Concat(Work)
+        .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)));
 }
 
 #pragma warning disable CA1716 // Nombres del modelo de dominio (02-modelo-de-dominio.md).
@@ -33,8 +54,8 @@ public sealed record SceneComposition(IReadOnlyList<nint> Context, nint? Center,
 /// <summary>Comandos del núcleo (02-modelo-de-dominio.md, "Ubicaciones y transiciones").</summary>
 public abstract record Command;
 
-/// <summary>Empieza a gestionar una ventana elegible y la pone en su panel.</summary>
-public sealed record Adopt(nint Handle, string Label, Home Home) : Command;
+/// <summary>Empieza a gestionar una ventana elegible y la pone en su panel (en el principal o en un auxiliar).</summary>
+public sealed record Adopt(nint Handle, string Label, Home Home, string? Display = null) : Command;
 
 /// <summary>Lleva la ventana al Centro; la que estaba vuelve a su hogar. Activa la ventana.</summary>
 public sealed record Promote(nint Handle) : Command;
@@ -47,6 +68,15 @@ public sealed record SwapWithPrevious : Command;
 
 /// <summary>Cambia el hogar de la ventana. Si estaba en su panel, pasa al otro.</summary>
 public sealed record SendTo(nint Handle, Home Home) : Command;
+
+/// <summary>Lleva el panel de la ventana a otro monitor: <c>null</c> es el principal. No cambia su hogar.</summary>
+public sealed record SendToDisplay(nint Handle, string? Display) : Command;
+
+/// <summary>Cambia el template de un panel. <c>Fill</c> sólo vale en monitores auxiliares.</summary>
+public sealed record SetTemplate(string? Display, Home Home, PanelTemplate Template) : Command;
+
+/// <summary>Evento externo: se desconectó un monitor auxiliar. Sus ventanas pasan al principal, nunca al Centro.</summary>
+public sealed record DisplayRemoved(string Display) : Command;
 
 /// <summary>Devuelve la ventana a su estado original y deja de gestionarla.</summary>
 public sealed record Release(nint Handle) : Command;
@@ -98,6 +128,9 @@ public sealed class Workspace
     /// <summary>Ventanas que ocuparon el Centro, de la más reciente a la más antigua.</summary>
     private readonly List<nint> _centerHistory = [];
 
+    /// <summary>Template de cada panel, por monitor (<c>null</c> = principal) y hogar. Por defecto, Tiles.</summary>
+    private readonly Dictionary<(string? Display, Home Home), PanelTemplate> _templates = [];
+
     public IReadOnlyList<ManagedWindow> Windows => _windows;
 
     public IReadOnlyList<nint> CenterHistory => _centerHistory;
@@ -108,10 +141,28 @@ public sealed class Workspace
 
     public bool IsManaged(nint handle) => Find(handle) is not null;
 
+    public PanelTemplate TemplateOf(string? display, Home home) =>
+        _templates.GetValueOrDefault((display, home), PanelTemplate.Tiles);
+
     public SceneComposition Composition => new(
-        InPanel(Home.Context),
+        InPanel(null, Home.Context),
         Center?.Handle,
-        InPanel(Home.Work));
+        InPanel(null, Home.Work))
+    {
+        ContextTemplate = TemplateOf(null, Home.Context),
+        WorkTemplate = TemplateOf(null, Home.Work),
+        Aux = _windows
+            .Where(w => w.Display is not null && w.Placement == Placement.InPanel)
+            .Select(w => w.Display!)
+            .Distinct()
+            .Select(d => new AuxComposition(
+                d,
+                InPanel(d, Home.Context),
+                InPanel(d, Home.Work),
+                TemplateOf(d, Home.Context),
+                TemplateOf(d, Home.Work)))
+            .ToList(),
+    };
 
     public CommandOutcome Execute(Command command) => command switch
     {
@@ -120,6 +171,9 @@ public sealed class Workspace
         ReturnToPanel c => DoReturnToPanel(c.Handle),
         SwapWithPrevious => DoSwapWithPrevious(),
         SendTo c => DoSendTo(c),
+        SendToDisplay c => DoSendToDisplay(c),
+        SetTemplate c => DoSetTemplate(c),
+        DisplayRemoved c => DoDisplayRemoved(c.Display),
         Release c => DoRelease(c.Handle),
         RestoreAll => DoRestoreAll(),
         WindowClosed c => DoWindowClosed(c.Handle),
@@ -127,8 +181,8 @@ public sealed class Workspace
         _ => throw new ArgumentException($"Comando desconocido: {command.GetType().Name}", nameof(command)),
     };
 
-    private List<nint> InPanel(Home home) =>
-        _windows.Where(w => w.Home == home && w.Placement == Placement.InPanel).Select(w => w.Handle).ToList();
+    private List<nint> InPanel(string? display, Home home) =>
+        _windows.Where(w => w.Display == display && w.Home == home && w.Placement == Placement.InPanel).Select(w => w.Handle).ToList();
 
     private void Replace(ManagedWindow updated) =>
         _windows[_windows.FindIndex(w => w.Handle == updated.Handle)] = updated;
@@ -140,7 +194,7 @@ public sealed class Workspace
             return CommandOutcome.Reject($"{c.Label} ya está gestionada.");
         }
 
-        _windows.Add(new ManagedWindow(c.Handle, c.Label, c.Home, Placement.InPanel));
+        _windows.Add(new ManagedWindow(c.Handle, c.Label, c.Home, Placement.InPanel, c.Display));
         return CommandOutcome.Accept(new CaptureOriginal(c.Handle), new ApplyLayout());
     }
 
@@ -222,6 +276,61 @@ public sealed class Workspace
         return w.Placement == Placement.InPanel
             ? CommandOutcome.Accept(new ApplyLayout())
             : CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoSendToDisplay(SendToDisplay c)
+    {
+        var w = Find(c.Handle);
+        if (w is null)
+        {
+            return CommandOutcome.Reject("La ventana no está gestionada.");
+        }
+
+        if (w.Display == c.Display)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        // Pasa al final del panel de su hogar en el otro monitor. Si está en el Centro, sigue ahí:
+        // sólo cambia adónde vuelve.
+        _windows.Remove(w);
+        _windows.Add(w with { Display = c.Display });
+        return w.Placement == Placement.InPanel ? CommandOutcome.Accept(new ApplyLayout()) : CommandOutcome.Accept();
+    }
+
+    private CommandOutcome DoSetTemplate(SetTemplate c)
+    {
+        if (c.Display is null && c.Template == PanelTemplate.Fill)
+        {
+            return CommandOutcome.Reject("Fill sólo vale en monitores auxiliares: en el principal manda el Centro.");
+        }
+
+        if (TemplateOf(c.Display, c.Home) == c.Template)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        _templates[(c.Display, c.Home)] = c.Template;
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    private CommandOutcome DoDisplayRemoved(string display)
+    {
+        var affected = _windows.Where(w => w.Display == display).ToList();
+        if (affected.Count == 0)
+        {
+            return CommandOutcome.Accept();
+        }
+
+        // Al final de los paneles de su mismo hogar en el principal. La del Centro, si venía de ahí,
+        // sigue en el Centro y volverá al principal.
+        foreach (var w in affected)
+        {
+            _windows.Remove(w);
+            _windows.Add(w with { Display = null });
+        }
+
+        return CommandOutcome.Accept(new ApplyLayout());
     }
 
     private CommandOutcome DoRelease(nint handle)

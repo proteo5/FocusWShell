@@ -107,6 +107,13 @@ S3 midió que `BeginDeferWindowPos`/`DeferWindowPos`/`EndDeferWindowPos` **no ag
 5. Espera a que cada ventana alcance el rectángulo pedido. Si una se queda 150 ms quieta en otro tamaño, la app impuso su mínimo: se da por llegada y alimenta el catálogo de mínimos.
 6. Si una ventana cambia a un monitor con otro DPI, espera a que lleve 100 ms quieta: la app se reescala por su cuenta (`WM_DPICHANGED`) *después* de que el movimiento asíncrono se diera por llegado. S4 lo encontró.
 7. Corrige individualmente las que no quedaron exactas.
+8. Maximiza las ventanas en `Fill` de los monitores auxiliares (ADR 0008):
+   - Si ya están maximizadas en ese monitor, no se tocan.
+   - Si no, el paso 4 ya las llevó a su monitor en modo normal (así cruzan de DPI sin activarse) y aquí se maximizan.
+   - Windows no tiene un "maximizar sin activar": si el foco cambia, se devuelve a la ventana que lo tenía.
+   - Se mide cuando termina la animación.
+
+Todos los monitores se mueven en el mismo lote: `SceneApplier` combina el plan del principal (`SceneLayoutEngine`) y el de cada auxiliar (`AuxLayoutEngine`) en un `ScenePlan`.
 
 `SWP_ASYNCWINDOWPOS` además evita que una app lenta bloquee el hilo del aplicador. `PlaceBatch` conserva el modo con `DeferWindowPos` y, si el lote falla, vuelve a `SetWindowPos` ventana por ventana; queda sólo para comparar.
 

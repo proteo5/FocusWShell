@@ -10,6 +10,12 @@ public enum PanelTemplate
 
     /// <summary>Sólo la primera visible; el resto minimizadas.</summary>
     Stack,
+
+    /// <summary>
+    /// Sólo en monitores auxiliares (ADR 0008): la primera ocupa el monitor entero, maximizada; el
+    /// resto del panel, y los demás paneles de ese monitor, se minimizan.
+    /// </summary>
+    Fill,
 }
 
 /// <summary>Lado del Centro en el que está un panel. Define cuál es su borde exterior.</summary>
@@ -61,6 +67,9 @@ public enum TargetKind
 
     /// <summary>Minimizada: oculta en una pila, o fuera del layout porque no cabe sin invadir otro monitor.</summary>
     Minimized,
+
+    /// <summary>Maximizada en el monitor de <see cref="WindowTarget.Rect"/> (template <c>Fill</c>).</summary>
+    Maximized,
 }
 
 /// <summary>Destino de una ventana: rectángulo visible o minimizada.</summary>

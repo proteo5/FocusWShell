@@ -55,6 +55,7 @@ static int Usage(string? error = null)
                             [--context-template tiles|stack] [--work-template tiles|stack]
                             [--dry-run] [--no-learn] [--pause-after N]
                             [--mode async|batch|seq] [--cycles N] [--cycle-delay ms] [--display N]
+                            [--aux N --aux-context a --aux-work b [--aux-work-template tiles|stack|fill]]
               Coloca ventanas en Contexto | Centro | Trabajo del monitor principal (o del N-ésimo), respetando
               los tamaños mínimos aprendidos. Si una app impone uno nuevo, lo aprende y recoloca.
               Cada nombre busca una ventana candidata cuyo ejecutable lo contenga (p. ej. slack, msedge).
@@ -62,6 +63,7 @@ static int Usage(string? error = null)
               --mode async (por defecto) pide el movimiento a todas en paralelo (SWP_ASYNCWINDOWPOS);
               batch usa un lote DeferWindowPos; seq, SetWindowPos una a una.
               --cycles N revierte y reaplica la escena N veces midiendo cada transición (S3).
+              --aux N añade paneles en el monitor auxiliar N (sin Centro; Fill maximiza la primera).
           focus-probe restore
               Devuelve todas las ventanas del diario a su colocación original y borra el diario.
           focus-probe mins [--clear]
@@ -235,6 +237,29 @@ static (SceneApplier Applier, SceneAssignment Assignment, SceneOptions Options, 
         contextNames.Select(Find).ToList(),
         centerNames.Select(Find).FirstOrDefault(),
         workNames.Select(Find).ToList());
+
+    // Monitor auxiliar (ADR 0008): --aux N con --aux-context / --aux-work y sus templates.
+    if (Option(args, "--aux") is { } auxIndex)
+    {
+        int auxNumber = int.Parse(auxIndex, CultureInfo.InvariantCulture);
+        if (auxNumber < 1 || auxNumber > displays.Count || displays[auxNumber - 1] == display)
+        {
+            throw new ArgumentException($"--aux debe ser otro monitor, entre 1 y {displays.Count}.");
+        }
+
+        assignment = assignment with
+        {
+            Aux =
+            [
+                new AuxAssignment(
+                    displays[auxNumber - 1],
+                    ListOption(args, "--aux-context").Select(Find).ToList(),
+                    ListOption(args, "--aux-work").Select(Find).ToList(),
+                    ParseTemplate(Option(args, "--aux-context-template")),
+                    ParseTemplate(Option(args, "--aux-work-template"))),
+            ],
+        };
+    }
     var minSizes = new MinSizeStore(MinSizeStore.DefaultPath);
     var applier = new SceneApplier(display, assignment, options, minSizes);
     return (applier, assignment, options, display, split, minSizes, pauseAfter);
@@ -319,7 +344,7 @@ static void PrintPass(ApplyPass pass)
 // Ciclos de S3: revertir a la geometría de partida y reaplicar la escena, midiendo cada transición.
 static void RunCycles(
     SceneApplier applier,
-    SceneLayoutResult layout,
+    ScenePlan layout,
     List<(nint Handle, PixelRect Rect, bool Special)> originals,
     int cycles,
     int delayMs,
@@ -391,16 +416,25 @@ static PanelTemplate ParseTemplate(string? value) => value?.ToLowerInvariant() s
 {
     null or "tiles" => PanelTemplate.Tiles,
     "stack" => PanelTemplate.Stack,
-    _ => throw new ArgumentException($"Template desconocido: {value} (tiles | stack)"),
+    "fill" => PanelTemplate.Fill,
+    _ => throw new ArgumentException($"Template desconocido: {value} (tiles | stack | fill)"),
 };
 
-static void PrintLayout(SceneLayoutResult layout)
+static void PrintLayout(ScenePlan plan)
 {
+    var layout = plan.Principal;
     Console.WriteLine();
     Console.WriteLine(
-        $"Columnas: Contexto {layout.LeftColumn.Width} px ({layout.EffectiveTemplates["Contexto"]}) · " +
+        $"Principal: Contexto {layout.LeftColumn.Width} px ({layout.EffectiveTemplates["Contexto"]}) · " +
         $"Centro {layout.CenterColumn.Width} px · Trabajo {layout.RightColumn.Width} px ({layout.EffectiveTemplates["Trabajo"]})");
-    foreach (var note in layout.Notes)
+    foreach (var aux in plan.Aux)
+    {
+        Console.WriteLine(
+            $"Auxiliar {aux.Display}: " +
+            string.Join(" · ", aux.Columns.Select(c => $"{c.Key} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})")));
+    }
+
+    foreach (var note in plan.Notes)
     {
         Console.WriteLine($"  · {note}");
     }
@@ -464,7 +498,12 @@ static int Watch(string[] args)
     {
         foreach (var (t, r) in applied)
         {
-            registry.Expect(t.Handle, r is null ? new ExpectMinimized() : new ExpectVisible(r.Actual));
+            registry.Expect(t.Handle, (t.Kind, r) switch
+            {
+                (_, null) => new ExpectMinimized(),
+                (TargetKind.Maximized, _) => new ExpectMaximized(t.Rect),
+                _ => new ExpectVisible(r.Actual),
+            });
         }
     }
 

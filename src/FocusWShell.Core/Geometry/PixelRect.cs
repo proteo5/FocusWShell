@@ -1,4 +1,4 @@
-namespace FocusWShell.Core.Geometry;
+﻿namespace FocusWShell.Core.Geometry;
 
 /// <summary>
 /// Rectángulo en píxeles físicos del escritorio virtual (izquierda/arriba inclusivos,
@@ -17,6 +17,9 @@ public readonly record struct PixelRect(int Left, int Top, int Right, int Bottom
 
     public bool Contains(PixelRect other) =>
         other.Left >= Left && other.Top >= Top && other.Right <= Right && other.Bottom <= Bottom;
+
+    /// <summary>Si el punto está dentro (borde derecho e inferior excluidos).</summary>
+    public bool Contains(int x, int y) => x >= Left && x < Right && y >= Top && y < Bottom;
 
     public PixelRect Intersect(PixelRect other)
     {

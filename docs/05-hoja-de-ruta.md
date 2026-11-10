@@ -27,7 +27,7 @@ Objetivo: el modelo completo de roles con las dos presentaciones básicas.
 - Comandos `Park`, `Restore`, `SendTo`, `SetTemplate`, `ReturnToPanel`.
 - Detección de eventos del usuario (minimizar, maximizar, arrastrar) y sus interpretaciones (S4).
 - Escenas con nombre, guardar y aplicar; layouts por huella de monitores.
-- Paneles en monitores auxiliares, con template `Fill` ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md)).
+- Paneles en monitores auxiliares, con template `Fill` ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md)). **Hecho** (sin S6).
 - Mantener la pantalla encendida ([ADR 0010](adr/0010-mantener-pantalla-encendida.md)). **Hecho.**
 - Atajos configurables.
 

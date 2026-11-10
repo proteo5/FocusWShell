@@ -27,7 +27,10 @@ Hito M0 (núcleo): primera versión usable con un layout fijo Contexto | Centro 
 dotnet run --project src/FocusWShell.App
 ```
 
-- La ventana lista las apps que se pueden gestionar. Elige un rol para cada una y pulsa **Aplicar layout**.
+- La ventana lista las apps que se pueden gestionar. Elige un rol y un monitor para cada una y pulsa **Aplicar roles**.
+  - El Centro está siempre en el monitor principal.
+  - Los demás monitores alojan paneles auxiliares.
+  - Con el template **Fill**, la primera ventana de un panel auxiliar ocupa ese monitor, maximizada.
 - Cerrarla no detiene el gestor: sigue en el área de notificación. Desde su menú, **Salir** devuelve todas las ventanas a su sitio.
 - Atajos globales con `Ctrl+Alt+Mayús`:
 

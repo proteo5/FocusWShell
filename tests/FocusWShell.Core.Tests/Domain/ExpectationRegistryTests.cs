@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Tests.Domain;
@@ -64,6 +64,26 @@ public class ExpectationRegistryTests
 
         Assert.Equal(ExternalChange.None, r.Reconcile(new ObservedWindow(Edge, true, true, false, default)));
         Assert.Equal(ExternalChange.Shown, r.Reconcile(At(Center)));
+    }
+
+    [Fact]
+    public void FillWindowStaysQuietWhileMaximizedOnItsMonitor()
+    {
+        var aux = new PixelRect(3440, 0, 5360, 1020);
+        var r = new ExpectationRegistry();
+        r.Expect(Edge, new ExpectMaximized(aux));
+
+        Assert.Equal(ExternalChange.None, r.Reconcile(new ObservedWindow(Edge, true, false, true, aux)));
+        Assert.Equal(ExternalChange.Unmaximized, r.Reconcile(new ObservedWindow(Edge, true, false, false, new PixelRect(3600, 100, 4600, 900))));
+    }
+
+    [Fact]
+    public void FillWindowMaximizedOnAnotherMonitorIsMoved()
+    {
+        var r = new ExpectationRegistry();
+        r.Expect(Edge, new ExpectMaximized(new PixelRect(3440, 0, 5360, 1020)));
+
+        Assert.Equal(ExternalChange.MovedOrResized, r.Reconcile(new ObservedWindow(Edge, true, false, true, new PixelRect(0, 0, 3440, 1392))));
     }
 
     [Fact]

@@ -19,14 +19,25 @@ public enum MoveMode
     Sequential,
 }
 
-/// <summary>Qué ventana va en cada rol del layout fijo de M0.</summary>
+/// <summary>Paneles de un monitor auxiliar (ADR 0008).</summary>
+public sealed record AuxAssignment(
+    DisplayInfo Display,
+    IReadOnlyList<WindowSnapshot> Context,
+    IReadOnlyList<WindowSnapshot> Work,
+    PanelTemplate ContextTemplate = PanelTemplate.Tiles,
+    PanelTemplate WorkTemplate = PanelTemplate.Tiles);
+
+/// <summary>Qué ventana va en cada rol: Contexto | Centro | Trabajo en el principal y, opcionalmente, paneles en auxiliares.</summary>
 public sealed record SceneAssignment(
     IReadOnlyList<WindowSnapshot> Context,
     WindowSnapshot? Center,
     IReadOnlyList<WindowSnapshot> Work)
 {
+    public IReadOnlyList<AuxAssignment> Aux { get; init; } = [];
+
     public IEnumerable<WindowSnapshot> All =>
-        Context.Concat(Center is null ? [] : [Center]).Concat(Work);
+        Context.Concat(Center is null ? [] : [Center]).Concat(Work)
+            .Concat(Aux.SelectMany(a => a.Context.Concat(a.Work)));
 }
 
 public sealed record SceneOptions
@@ -45,6 +56,14 @@ public sealed record SceneOptions
     public int MaxPasses { get; init; } = 3;
 }
 
+/// <summary>Plan de toda la escena: el monitor principal y cada auxiliar.</summary>
+public sealed record ScenePlan(SceneLayoutResult Principal, IReadOnlyList<AuxLayoutResult> Aux)
+{
+    public IReadOnlyList<WindowTarget> Targets => [.. Principal.Targets, .. Aux.SelectMany(a => a.Targets)];
+
+    public IReadOnlyList<string> Notes => [.. Principal.Notes, .. Aux.SelectMany(a => a.Notes)];
+}
+
 /// <summary>Una ventana de la escena y cómo quedó; <c>Result</c> es <c>null</c> si se minimizó.</summary>
 public sealed record AppliedWindow(WindowTarget Target, PlacementResult? Result);
 
@@ -52,14 +71,14 @@ public sealed record AppliedWindow(WindowTarget Target, PlacementResult? Result)
 /// <param name="Learned">Mínimos aprendidos en esta pasada; si hay alguno, sigue otra pasada.</param>
 public sealed record ApplyPass(
     int Number,
-    SceneLayoutResult Layout,
+    ScenePlan Layout,
     IReadOnlyList<AppliedWindow> Applied,
     TimeSpan MoveTime,
     BatchPlacement? Stats,
     IReadOnlyList<string> Learned);
 
 public sealed record SceneApplyReport(
-    SceneLayoutResult Layout,
+    ScenePlan Layout,
     IReadOnlyList<AppliedWindow> Applied,
     IReadOnlyList<ApplyPass> Passes,
     string? Error)
@@ -69,7 +88,7 @@ public sealed record SceneApplyReport(
     /// <summary>Ventanas de panel cuyo rectángulo final toca el Centro.</summary>
     public IReadOnlyList<string> CenterInvaders => Applied
         .Where(a => a.Result is not null && a.Target.Region != "Centro")
-        .Where(a => !a.Result!.Actual.Intersect(Layout.CenterColumn).IsEmpty)
+        .Where(a => !a.Result!.Actual.Intersect(Layout.Principal.CenterColumn).IsEmpty)
         .Select(a => a.Target.Label)
         .ToList();
 
@@ -77,8 +96,9 @@ public sealed record SceneApplyReport(
 }
 
 /// <summary>
-/// Aplica el layout fijo Contexto | Centro | Trabajo a un monitor: calcula con el motor,
-/// escribe el diario antes de mover, mueve, aprende mínimos y recoloca si hace falta.
+/// Aplica la escena: Contexto | Centro | Trabajo en el monitor principal y paneles en los auxiliares.
+/// Calcula con los motores, escribe el diario antes de mover, mueve todo junto, aprende mínimos y
+/// recoloca si hace falta.
 /// </summary>
 public sealed class SceneApplier
 {
@@ -88,6 +108,9 @@ public sealed class SceneApplier
     private readonly MinSizeStore _minSizes;
     private readonly Dictionary<nint, WindowSnapshot> _byHandle;
 
+    /// <summary>DPI del monitor de destino de cada ventana, para el catálogo de mínimos.</summary>
+    private readonly Dictionary<nint, int> _dpiByHandle = [];
+
     public SceneApplier(DisplayInfo display, SceneAssignment assignment, SceneOptions options, MinSizeStore minSizes)
     {
         ArgumentNullException.ThrowIfNull(assignment);
@@ -96,27 +119,54 @@ public sealed class SceneApplier
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _minSizes = minSizes ?? throw new ArgumentNullException(nameof(minSizes));
         _byHandle = assignment.All.ToDictionary(w => w.Handle);
+        foreach (var w in assignment.Context.Concat(assignment.Work).Concat(assignment.Center is null ? [] : [assignment.Center]))
+        {
+            _dpiByHandle[w.Handle] = display.Dpi;
+        }
+
+        foreach (var aux in assignment.Aux)
+        {
+            foreach (var w in aux.Context.Concat(aux.Work))
+            {
+                _dpiByHandle[w.Handle] = aux.Display.Dpi;
+            }
+        }
+
         Catalog = minSizes.Load();
     }
 
     public MinSizeCatalog Catalog { get; }
 
-    public SceneLayoutResult Plan()
+    public ScenePlan Plan()
     {
-        LayoutWindow ToLayout(WindowSnapshot w) =>
-            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), _display.Dpi));
+        LayoutWindow ToLayout(WindowSnapshot w, int dpi) =>
+            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), dpi));
 
         // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera.
         var shared = DisplayTopology.SharedEdges(_display, DisplayEnumerator.Enumerate());
-        return SceneLayoutEngine.Compute(new SceneInput(
+        int dpi = _display.Dpi;
+        var principal = SceneLayoutEngine.Compute(new SceneInput(
             _display.WorkArea,
             new PanelInput("Contexto", PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
-                _assignment.Context.Select(ToLayout).ToList(), shared.Left),
+                _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left),
             _options.CenterWeight,
-            _assignment.Center is null ? null : ToLayout(_assignment.Center),
+            _assignment.Center is null ? null : ToLayout(_assignment.Center, dpi),
             new PanelInput("Trabajo", PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
-                _assignment.Work.Select(ToLayout).ToList(), shared.Right),
+                _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right),
             _options.Gap));
+
+        var aux = _assignment.Aux
+            .Select(a => AuxLayoutEngine.Compute(new AuxInput(
+                a.Display.DeviceName,
+                a.Display.WorkArea,
+                [
+                    new PanelInput("Contexto", PanelSide.Left, 1, a.ContextTemplate, a.Context.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
+                    new PanelInput("Trabajo", PanelSide.Right, 1, a.WorkTemplate, a.Work.Select(w => ToLayout(w, a.Display.Dpi)).ToList()),
+                ],
+                _options.Gap)))
+            .ToList();
+
+        return new ScenePlan(principal, aux);
     }
 
     /// <summary>
@@ -164,26 +214,31 @@ public sealed class SceneApplier
 
     /// <summary>Mueve las ventanas a <paramref name="layout"/> sin tocar el diario.</summary>
     public IReadOnlyList<AppliedWindow> Move(
-        SceneLayoutResult layout, out TimeSpan moveTime, out BatchPlacement? stats, Action<int>? beforeEach = null)
+        ScenePlan layout, out TimeSpan moveTime, out BatchPlacement? stats, Action<int>? beforeEach = null)
     {
         ArgumentNullException.ThrowIfNull(layout);
+        var targets = layout.Targets;
         if (_options.Mode == MoveMode.Sequential)
         {
             stats = null;
             var clock = System.Diagnostics.Stopwatch.StartNew();
             var list = new List<AppliedWindow>();
-            for (int i = 0; i < layout.Targets.Count; i++)
+            for (int i = 0; i < targets.Count; i++)
             {
                 beforeEach?.Invoke(i);
-                var t = layout.Targets[i];
-                if (t.Kind == TargetKind.Minimized)
+                var t = targets[i];
+                switch (t.Kind)
                 {
-                    WindowMover.Minimize(t.Handle);
-                    list.Add(new AppliedWindow(t, null));
-                }
-                else
-                {
-                    list.Add(new AppliedWindow(t, WindowMover.Place(t.Handle, t.Rect)));
+                    case TargetKind.Minimized:
+                        WindowMover.Minimize(t.Handle);
+                        list.Add(new AppliedWindow(t, null));
+                        break;
+                    case TargetKind.Maximized:
+                        list.Add(new AppliedWindow(t, WindowMover.MaximizeOn(t.Handle, t.Rect)));
+                        break;
+                    default:
+                        list.Add(new AppliedWindow(t, WindowMover.Place(t.Handle, t.Rect)));
+                        break;
                 }
             }
 
@@ -191,18 +246,26 @@ public sealed class SceneApplier
             return list;
         }
 
-        // Primero minimizar las ocultas de las pilas; luego mover las visibles juntas (R3).
-        foreach (var t in layout.Targets.Where(t => t.Kind == TargetKind.Minimized))
+        // 1. Minimizar las ocultas. 2. Mover juntas las visibles y las que hay que maximizar (éstas, al
+        //    rectángulo del monitor, para que crucen de monitor sin activarse). 3. Maximizar.
+        foreach (var t in targets.Where(t => t.Kind == TargetKind.Minimized))
         {
             WindowMover.Minimize(t.Handle);
         }
 
-        var visible = layout.Targets.Where(t => t.Kind == TargetKind.Visible).ToList();
-        stats = WindowMover.PlaceBatch(visible.Select(t => (t.Handle, t.Rect)).ToList(), _options.Mode == MoveMode.Async);
-        var results = visible.Zip(stats.Results).ToDictionary(x => x.First.Handle, x => x.Second);
+        var moving = targets
+            .Where(t => t.Kind == TargetKind.Visible || (t.Kind == TargetKind.Maximized && !WindowMover.IsMaximizedOn(t.Handle, t.Rect)))
+            .ToList();
+        stats = WindowMover.PlaceBatch(moving.Select(t => (t.Handle, t.Rect)).ToList(), _options.Mode == MoveMode.Async);
+        var results = moving.Zip(stats.Results).ToDictionary(x => x.First.Handle, x => x.Second);
+        foreach (var t in targets.Where(t => t.Kind == TargetKind.Maximized))
+        {
+            results[t.Handle] = WindowMover.MaximizeOn(t.Handle, t.Rect);
+        }
+
         moveTime = stats.MoveTime;
-        return layout.Targets
-            .Select(t => new AppliedWindow(t, t.Kind == TargetKind.Visible ? results[t.Handle] : null))
+        return targets
+            .Select(t => new AppliedWindow(t, t.Kind == TargetKind.Minimized ? null : results[t.Handle]))
             .ToList();
     }
 
@@ -229,12 +292,14 @@ public sealed class SceneApplier
         var learned = new List<string>();
         foreach (var (target, result) in applied)
         {
-            if (result is { Error: null } r && _byHandle.TryGetValue(target.Handle, out var w))
+            // Una ventana maximizada no enseña nada sobre su tamaño mínimo.
+            if (target.Kind == TargetKind.Visible && result is { Error: null } r && _byHandle.TryGetValue(target.Handle, out var w))
             {
+                int dpi = _dpiByHandle.GetValueOrDefault(target.Handle, _display.Dpi);
                 var key = MinSizeCatalog.KeyFor(w);
-                if (Catalog.Observe(key, new PixelSize(r.Target.Width, r.Target.Height), new PixelSize(r.Actual.Width, r.Actual.Height), _display.Dpi))
+                if (Catalog.Observe(key, new PixelSize(r.Target.Width, r.Target.Height), new PixelSize(r.Actual.Width, r.Actual.Height), dpi))
                 {
-                    learned.Add($"{target.Label} → mínimo {Catalog.Get(key, _display.Dpi)}");
+                    learned.Add($"{target.Label} → mínimo {Catalog.Get(key, dpi)}");
                 }
             }
         }
