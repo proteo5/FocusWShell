@@ -38,7 +38,7 @@ internal sealed class PanelColumn
     /// <summary>El panel que fija <see cref="RequiredWidth"/>, para las notas.</summary>
     public SceneLayoutEngine.ResolvedPanel? Widest => _bands.Count == 0 ? null : _bands.MaxBy(b => b.Resolved.RequiredWidth)!.Resolved;
 
-    public bool HasVisible => _bands.Any(b => b.Resolved.Visible.Count > 0);
+    public bool HasVisible => _bands.Any(b => b.Resolved.Visible.Count > 0 || b.Resolved.Template == PanelTemplate.List);
 
     /// <summary>Template efectivo de cada panel de la columna con ventanas.</summary>
     public IEnumerable<KeyValuePair<string, PanelTemplate>> Templates =>
@@ -50,7 +50,8 @@ internal sealed class PanelColumn
         IReadOnlyList<PanelInput> panels, int top, int bottom, int inset, int gap, List<string> notes, List<WindowTarget> excluded)
     {
         double weight = panels.Count > 0 ? panels[0].Weight : 1;
-        var active = panels.Where(p => p.Windows.Count > 0).OrderBy(p => p.Slot).ToList();
+        // Un panel en lista ocupa su sitio aunque no tenga ventanas: hace de lanzador de sus apps (ADR 0015).
+        var active = panels.Where(p => p.Windows.Count > 0 || p.Template == PanelTemplate.List).OrderBy(p => p.Slot).ToList();
         var bands = new List<Band>();
         if (active.Count == 0)
         {
@@ -63,7 +64,7 @@ internal sealed class PanelColumn
         {
             // Lo que necesita cada banda: su franja y la ventana más alta (en pestañas, se ve una sola).
             // Si caben las dos, el reparto pedido se lleva al límite en vez de sacar ventanas del layout.
-            int Need(PanelInput p) => inset + Math.Max(StackSeparator.MinWindowHeight, p.Windows.Max(w => w.MinSize?.Height ?? 0));
+            int Need(PanelInput p) => inset + Math.Max(StackSeparator.MinWindowHeight, p.Windows.Count == 0 ? 0 : p.Windows.Max(w => w.MinSize?.Height ?? 0));
             int need0 = Need(active[0]), need1 = Need(active[1]);
             if (need0 + need1 <= bottom - top - gap)
             {
@@ -153,7 +154,7 @@ internal sealed class PanelColumn
         {
             var resolved = band.Resolved;
             var panel = resolved.Panel;
-            if (resolved.Template == PanelTemplate.List && resolved.Visible.Count > 0)
+            if (resolved.Template == PanelTemplate.List)
             {
                 var listArea = new PixelRect(left, band.Top + _inset, right, band.Bottom);
                 areas[panel.Name] = listArea;

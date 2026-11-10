@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 
@@ -53,5 +53,34 @@ public class ListPanelTests
         Assert.Empty(outcome.Effects);
         Assert.Equal(ListLayout.Details, ws.FindPanel(Workspace.WorkPanel)!.ListLayout);
         Assert.Equal(ListLayout.LargeIcons, ws.FindPanel(Workspace.ContextPanel)!.ListLayout);
+    }
+
+    [Fact]
+    public void AnEmptyListPanelStillGetsItsAreaAsALauncher()
+    {
+        var aux = AuxLayoutEngine.Compute(new AuxInput("aux", Aux,
+            [new PanelInput("lanzador", PanelSide.Left, 1, PanelTemplate.List, []), new PanelInput("trabajo", PanelSide.Right, 1, PanelTemplate.Tiles, [Win(1)])],
+            TopInset: 35));
+        var principal = SceneLayoutEngine.Compute(new SceneInput(
+            new PixelRect(0, 0, 3440, 1392),
+            new PanelInput("contexto", PanelSide.Left, 18, PanelTemplate.List, []),
+            55,
+            null,
+            new PanelInput("trabajo", PanelSide.Right, 27, PanelTemplate.Tiles, [])));
+
+        Assert.Equal(new PixelRect(3440, 35, 4400, 1020), aux.Lists["lanzador"]);
+        Assert.Equal(new PixelRect(0, 0, 619, 1392), principal.Lists["contexto"]);
+    }
+
+    [Fact]
+    public void TheCompositionKeepsAnEmptyListPanelOnItsMonitor()
+    {
+        var ws = new Workspace();
+        ws.Execute(new CreatePanel(new Panel("lanzador", "Lanzador", "HP", PanelSide.Left, PanelTemplate.List)));
+        ws.Execute(new CreatePanel(new Panel("tiles", "Tiles", "HP", PanelSide.Right)));
+
+        var aux = ws.Composition.Aux.Single();
+
+        Assert.Equal(["lanzador"], aux.Panels.Select(p => p.Panel.Id)); // el de tiles vacío no ocupa sitio
     }
 }

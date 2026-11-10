@@ -22,16 +22,18 @@ Criterio de salida: CA1, CA2 y CA6 con layout fijo (sin escenas guardadas ni tem
 
 Objetivo: el modelo completo de roles con las dos presentaciones básicas.
 
-- Templates `Tiles` (2 y 4) y `Stack`, con divisores ajustables.
+- Templates `Tiles` (2 y 4) y `Stack`, con divisores ajustables. **Hecho**, superado en M1b por los tiles adaptables ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md)); los divisores existen entre columnas y entre dos paneles apilados, no entre tiles.
 - Overlay de panel con tira de pestañas y lista de estacionadas. **Hecho** (primera versión, sin miniaturas ni arrastrar entre paneles).
 - Comandos `Park`, `Restore`, `SendTo`, `SetTemplate`, `ReturnToPanel`. **Hecho**, más `Detach`/`Reattach` (fuera de layout) y `MakeActiveInPanel`.
 - Detección de eventos del usuario (minimizar, maximizar, arrastrar) y sus interpretaciones (S4). **Hecho** en la app.
 - Escenas con nombre, guardar y aplicar; layouts por huella de monitores. **Hecho** sin geometría propia por escena: guardar, aplicar, borrar, atajos `Ctrl+Alt+Mayús+1…9` y submenú en la bandeja.
 - Paneles en monitores auxiliares, con template `Fill` ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md)). **Hecho** (sin S6).
 - Mantener la pantalla encendida ([ADR 0010](adr/0010-mantener-pantalla-encendida.md)). **Hecho.**
-- Atajos configurables.
+- Atajos configurables. **Hecho:** ventana «Atajos…» para cambiar cada uno pulsando la combinación nueva, con validación y duplicados resueltos; se guardan en `settings.json` y se vuelven a registrar en el momento.
 
 Criterio de salida: CA3, CA4 y CA7. Spike S7 resuelto.
+
+**Estado (2026-11-10):** todo lo de la lista **hecho** y el **S7 resuelto** (confirma el [ADR 0006](adr/0006-ocultar-con-minimizar.md); la tira ya cambia de pestaña al momento). Falta el criterio de salida: comprobar CA3, CA4 y CA7 en uso diario.
 
 ## M1b — Paneles, vistas y deck
 
@@ -40,11 +42,13 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 1. **Sin deck:**
    - Paneles como entidades (crear, renombrar, mover, borrar), hasta dos por columna; Contexto y Trabajo pasan a ser los paneles por defecto. Ventanas libres por defecto. **Hecho**, con dos paneles por columna (arriba y abajo) en el principal y en los auxiliares; de momento se reparten el alto a partes iguales.
    - Catálogo de apps por detección, y abrir apps cerradas en un panel. **Hecho**, con iconos, renombrar y ocultar, y escenas que abren las apps que faltan.
-   - Presentaciones nuevas, empezando por tiles adaptables (tamaños de tile y reparto automático) y la lista tipo Explorador. Ver el [ADR 0015](adr/0015-tiles-adaptables-y-lista.md). Tiles adaptables, spike S10 (miniaturas) y lista tipo Explorador **hechos**.
+   - Presentaciones nuevas, empezando por tiles adaptables (tamaños de tile y reparto automático) y la lista tipo Explorador. Ver el [ADR 0015](adr/0015-tiles-adaptables-y-lista.md). Tiles adaptables, spike S10 (miniaturas) y lista tipo Explorador **hechos**, con la lista también como lanzador de las apps cerradas del panel.
    - Vistas con el foco a la izquierda, al centro o a la derecha. **Hecho**, con presets y separador arrastrado; las proporciones se guardan por vista, y también el reparto entre dos paneles apilados.
    - Pantalla completa (maximizada) en el monitor elegido. **Hecho.**
 
    Todo se usa desde la ventana, los atajos y las tiras.
+
+   **Estado (2026-11-10):** fase sin deck completa.
 2. **Deck en una esquina del monitor principal**, que se muestra y se oculta con un clic o un atajo, y se oculta solo al elegir.
 3. **Spike S8:** que el toque desde una tablet (Apollo/Artemis) y desde un monitor táctil físico no robe el foco (R12).
 4. **"Mandar el deck a…"** otro monitor, con paneles de pantalla completa con pestañas para tablets.
@@ -55,7 +59,7 @@ Criterio de salida: una semana de uso diario cambiando de vista y llevando apps 
 
 Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspensión, apps difíciles.
 
-- `EnterFullscreen` / `ExitFullscreen` por monitor.
+- `EnterFullscreen` / `ExitFullscreen` por monitor. **Hecho en M1b** ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)).
 - Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor.
 - Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)). **Hecho** para monitores auxiliares que se desconectan y vuelven; falta probar una tablet, la pérdida del monitor principal y la suspensión.
 - Reanudación tras suspensión.
@@ -69,7 +73,7 @@ Criterio de salida: CA5 y las siete CA juntas en una semana de uso diario sin te
 Objetivo: que el estado del escritorio se entienda de un vistazo. Sólo si la validación de M0–M2 es positiva.
 
 - Microbarras contextuales por panel, con indicadores de cambio discretos.
-- Miniaturas DWM en la tira de pestañas.
+- Miniaturas DWM en la tira de pestañas. La base existe desde M1b (`DwmThumbnail`, usada por la lista tipo Explorador).
 - Templates `Collapsible` y `Mixed`.
 - Transiciones breves que expliquen de dónde viene y a dónde va una ventana.
 - Paleta de comandos ("ir a…", "promover…").

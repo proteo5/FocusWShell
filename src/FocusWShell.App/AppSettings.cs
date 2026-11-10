@@ -6,7 +6,12 @@ namespace FocusWShell.App;
 /// <summary>Preferencias del usuario: <c>%LOCALAPPDATA%\FocusWShell\settings.json</c> (03-arquitectura, Persistencia).</summary>
 public sealed class AppSettings
 {
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    // Sin escapar "+" ni acentos: el archivo se lee a mano (p. ej. los atajos, "Ctrl+Alt+Shift+Up").
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     public static string FilePath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -26,6 +31,12 @@ public sealed class AppSettings
 
     /// <summary>Su botón en la barra de tareas la lleva al foco.</summary>
     public bool FocusOnTaskbar { get; set; } = true;
+
+    /// <summary>
+    /// Atajos cambiados por el usuario, por acción (p. ej. "al-foco" → "Win+Alt+Up"). Las que no están
+    /// usan el de siempre (<see cref="FocusWShell.Core.Input.Hotkeys.Actions"/>).
+    /// </summary>
+    public Dictionary<string, string> Hotkeys { get; set; } = [];
 
     /// <summary>Al aplicar una escena, abrir las apps que falten y ponerlas en su panel (ADR 0011).</summary>
     public bool OpenMissingApps { get; set; } = true;

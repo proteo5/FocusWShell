@@ -66,7 +66,7 @@ public static class AuxLayoutEngine
         var targets = new List<WindowTarget>();
         var area = input.WorkArea;
         int gap = input.Gap;
-        var panels = input.Panels.Where(p => p.Windows.Count > 0).ToList();
+        var panels = input.Panels.Where(p => p.Windows.Count > 0 || p.Template == PanelTemplate.List).ToList();
 
         // 1. Fill: una ventana ocupa el monitor.
         if (panels.FirstOrDefault(p => p.Template == PanelTemplate.Fill) is { } fill)

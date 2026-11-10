@@ -117,9 +117,8 @@ Detalles de implementación que siguen de esto:
   - En Iconos grandes, cada tarjeta lleva la miniatura en vivo de su ventana (`DwmThumbnail`), encajada sin deformarla. Se oculta la que sale de la zona visible del scroll.
   - Las apps cerradas (en el catálogo, con este panel como último) salen con su icono apagado. Tocar una abierta la lleva al foco; tocar una cerrada la abre en este panel.
 - **Se oculta** en el monitor de la pantalla completa. Se actualiza con cada layout y cada cambio del catálogo. Una ventana cerrada pasa a "cerrada" enseguida.
-- **Pendiente:**
-  - un panel en lista sin ninguna ventana abierta no ocupa sitio, así que su lista no se ve (sólo con apps cerradas, todavía no hace de lanzador);
-  - si se desactivan los gestos y se activa una ventana que está detrás de la lista, queda tapada por la lista.
+- **Lanzador:** un panel en lista ocupa su sitio aunque no tenga ventanas abiertas, y muestra sus apps cerradas (o un texto que explica cómo llenarla). El layout también se aplica sin ventanas gestionadas si hay alguna lista, y al arrancar.
+- **Ventana activada detrás de la lista:** al activarse (con los gestos desactivados, o si se activa sola) se pone encima y se deja ver mientras tenga el primer plano. Cuando el primer plano pasa a otra ventana, la lista vuelve a quedar encima, sin activarse.
 
 ## Consecuencias
 

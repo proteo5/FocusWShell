@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Threading;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Input;
 using FocusWShell.Core.Layout;
 using FocusWShell.Win32;
 using Forms = System.Windows.Forms;
@@ -91,6 +92,7 @@ public partial class App : Application
             _lists?.Refresh();
         });
         _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => _lists?.Refresh());
+        _controller.ForegroundChanged += hwnd => Dispatcher.BeginInvoke(() => _lists?.OnForeground(hwnd));
         _controller.FocusGestureEnabled = g => g switch
         {
             SwitchGesture.AltTab => _settings.FocusOnAltTab,
@@ -147,34 +149,75 @@ public partial class App : Application
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
         RefreshTrayScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(RefreshTrayScenes);
-        _hotkeys = GlobalHotkeys.Start(
-        [
-            new("Restaurar todas", GlobalHotkeys.VkBack, "Ctrl+Alt+Mayús+Retroceso", OnEmergencyHotkey),
-            new("Al Centro", GlobalHotkeys.VkUp, "Ctrl+Alt+Mayús+↑", () => OnCommandHotkey("Al Centro", _controller.PromoteForeground)),
-            new("Volver a la anterior", GlobalHotkeys.VkLeft, "Ctrl+Alt+Mayús+←",
-                () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious()))),
-            new("Centro al panel", GlobalHotkeys.VkDown, "Ctrl+Alt+Mayús+↓", () => OnCommandHotkey("Centro al panel", _controller.ReturnCenter)),
-            new("Pantalla encendida", GlobalHotkeys.VkP, "Ctrl+Alt+Mayús+P", () => Dispatcher.BeginInvoke(ToggleKeepAwake)),
-            new("Pantalla completa", GlobalHotkeys.VkF, "Ctrl+Alt+Mayús+F", () => OnCommandHotkey("Pantalla completa", () => _controller.ToggleFullscreen())),
-            new("Cambiar de vista", GlobalHotkeys.VkV, "Ctrl+Alt+Mayús+V", () => OnCommandHotkey("Cambiar de vista", () =>
+        StartHotkeys(announce: true);
+
+        ShowMain();
+        Task.Run(_controller.ShowLists);
+    }
+
+    /// <summary>Atajos en uso: los de siempre con los cambios del usuario (M1, atajos configurables).</summary>
+    public HotkeyMap HotkeyMap { get; private set; } = Hotkeys.Resolve(null);
+
+    /// <summary>Texto del atajo de una acción para la UI, o "" si no tiene.</summary>
+    public string ChordOf(string actionId) => HotkeyMap.Chords.TryGetValue(actionId, out var chord) ? chord.Display() : "";
+
+    /// <summary>
+    /// (Re)registra los atajos según la configuración. Avisa de los que no valen y de los que otra app
+    /// ya usa. Devuelve los avisos.
+    /// </summary>
+    public IReadOnlyList<string> StartHotkeys(bool announce)
+    {
+        _hotkeys?.Dispose();
+        HotkeyMap = Hotkeys.Resolve(_settings.Hotkeys);
+        var actions = new Dictionary<string, Action>
+        {
+            [Hotkeys.Emergency] = OnEmergencyHotkey,
+            ["al-foco"] = () => OnCommandHotkey("Al foco", _controller.PromoteForeground),
+            ["anterior"] = () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious())),
+            ["foco-al-panel"] = () => OnCommandHotkey("Foco al panel", _controller.ReturnCenter),
+            ["pantalla-completa"] = () => OnCommandHotkey("Pantalla completa", () => _controller.ToggleFullscreen()),
+            ["vista"] = () => OnCommandHotkey("Cambiar de vista", () =>
                 _controller.Execute(new SetView(_controller.View switch
                 {
                     FocusPosition.Center => FocusPosition.Left,
                     FocusPosition.Left => FocusPosition.Right,
                     _ => FocusPosition.Center,
-                })))),
-            .. Enumerable.Range(1, 9).Select(n => new HotkeyBinding(
-                $"Escena {n}", (uint)(0x30 + n), $"Ctrl+Alt+Mayús+{n}", () => ApplySceneByIndex(n - 1))),
-        ]);
-        if (_hotkeys.Failed.Count > 0)
+                }))),
+            ["pantalla-encendida"] = () => Dispatcher.BeginInvoke(ToggleKeepAwake),
+        };
+        for (int n = 1; n <= 9; n++)
         {
-            _tray.Notify("Atajos no disponibles",
-                $"Otra aplicación ya usa: {string.Join(", ", _hotkeys.Failed.Select(f => f.Description))}. " +
-                "\"Restaurar todas\" sigue en el menú de la bandeja.",
-                Forms.ToolTipIcon.Warning);
+            int index = n - 1;
+            actions[$"escena-{n}"] = () => ApplySceneByIndex(index);
         }
 
-        ShowMain();
+        var bindings = Hotkeys.Actions
+            .Where(a => HotkeyMap.Chords.ContainsKey(a.Id) && actions.ContainsKey(a.Id))
+            .Select(a => new HotkeyBinding(a.Name, (uint)HotkeyMap.Chords[a.Id].Modifiers, HotkeyMap.Chords[a.Id].VirtualKey, HotkeyMap.Chords[a.Id].Display(), actions[a.Id]))
+            .ToList();
+        _hotkeys = GlobalHotkeys.Start(bindings);
+
+        var warnings = new List<string>(HotkeyMap.Problems);
+        if (_hotkeys.Failed.Count > 0)
+        {
+            warnings.Add($"Otra aplicación ya usa: {string.Join(", ", _hotkeys.Failed.Select(f => $"{f.Description} ({f.Name})"))}. \"Restaurar todas\" sigue en el menú de la bandeja.");
+        }
+
+        if (announce && warnings.Count > 0)
+        {
+            _tray?.Notify("Atajos", string.Join(" ", warnings), Forms.ToolTipIcon.Warning);
+        }
+
+        _tray?.SetHotkeys(ChordOf("pantalla-encendida"), ChordOf(Hotkeys.Emergency), n => ChordOf($"escena-{n}"));
+        RefreshTrayScenes();
+        return warnings;
+    }
+
+    /// <summary>Deja de escuchar los atajos (mientras se eligen otros: si no, Windows se quedaría las teclas).</summary>
+    public void PauseHotkeys()
+    {
+        _hotkeys?.Dispose();
+        _hotkeys = null;
     }
 
     /// <summary>Arranque tras un cierre no limpio (ADR 0005): por defecto, restaurar.</summary>
@@ -207,7 +250,7 @@ public partial class App : Application
 
     private void RefreshTrayScenes() => _tray?.ShowScenes(_controller.SceneNames(), name => Task.Run(() => ApplyScene(name)));
 
-    /// <summary>Atajo Ctrl+Alt+Mayús+N: llega en el hilo de atajos.</summary>
+    /// <summary>Atajo de la escena N: llega en el hilo de atajos.</summary>
     private void ApplySceneByIndex(int index)
     {
         var names = _controller.SceneNames();

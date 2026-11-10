@@ -33,6 +33,18 @@ public sealed class ListPanelWindow : Window
     private readonly ScrollViewer _scroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     private readonly StackPanel _modes = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 6, 8, 2) };
 
+    /// <summary>Nombre del panel: una lista sin ventanas abiertas no tiene tira de pestañas encima.</summary>
+    private readonly TextBlock _title = new() { Foreground = DimBrush, FontSize = 11, Margin = new Thickness(12, 8, 8, 2), VerticalAlignment = VerticalAlignment.Center };
+
+    /// <summary>Texto cuando no hay ninguna app que mostrar.</summary>
+    private static TextBlock EmptyText() => new()
+    {
+        Text = "Todavía no hay apps en este panel. Asigna ventanas a él, o ábrelas desde el catálogo eligiéndolo: luego aparecerán aquí aunque estén cerradas.",
+        Foreground = DimBrush,
+        TextWrapping = TextWrapping.Wrap,
+        Margin = new Thickness(16),
+    };
+
     /// <summary>Huecos de las miniaturas, por ventana.</summary>
     private readonly Dictionary<nint, Border> _slots = [];
 
@@ -56,8 +68,12 @@ public sealed class ListPanelWindow : Window
         Background = Background0;
         Title = $"FocusWShell · lista {view.Title}";
         var root = new DockPanel();
-        DockPanel.SetDock(_modes, Dock.Top);
-        root.Children.Add(_modes);
+        var header = new DockPanel();
+        DockPanel.SetDock(_modes, Dock.Right);
+        header.Children.Add(_modes);
+        header.Children.Add(_title);
+        DockPanel.SetDock(header, Dock.Top);
+        root.Children.Add(header);
         root.Children.Add(_scroll);
         Content = root;
         _scroll.ScrollChanged += (_, _) => UpdateThumbnails();
@@ -71,6 +87,21 @@ public sealed class ListPanelWindow : Window
     }
 
     public string Key => _view.Key;
+
+    /// <summary>Ventana del panel que está en primer plano encima de la lista, si la hay.</summary>
+    public nint Peeking { get; set; }
+
+    /// <summary>Si <paramref name="hwnd"/> es una de las ventanas que esta lista tiene detrás.</summary>
+    public bool Holds(nint hwnd) => _view.Items.Any(i => i.Handle == hwnd && i.State == ListItemState.InPanel);
+
+    /// <summary>Vuelve a ponerse encima de sus ventanas, sin activarse.</summary>
+    public void Raise()
+    {
+        if (IsVisible)
+        {
+            OwnWindows.Place(new WindowInteropHelper(this).EnsureHandle(), _view.Area);
+        }
+    }
 
     public void Update(ListPanelView view)
     {
@@ -93,8 +124,10 @@ public sealed class ListPanelWindow : Window
     {
         _rendered = _view.Signature;
         _slots.Clear();
+        // Con alguna ventana abierta, la tira de pestañas ya lleva el nombre del panel.
+        _title.Text = _view.Items.Any(i => i.Handle is not null) ? "" : _view.Title.ToUpperInvariant();
         RenderModes();
-        _scroll.Content = _view.Layout switch
+        _scroll.Content = _view.Items.Count == 0 ? EmptyText() : _view.Layout switch
         {
             ListLayout.List => RenderList(),
             ListLayout.Details => RenderDetails(),

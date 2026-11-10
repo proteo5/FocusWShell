@@ -194,6 +194,9 @@ public sealed class ShellController : IDisposable
     /// <summary>Qué gestos de cambio de ventana llevan al foco (se leen de la configuración).</summary>
     public Func<SwitchGesture, bool> FocusGestureEnabled { get; set; } = g => g is SwitchGesture.AltTab or SwitchGesture.TaskView or SwitchGesture.Taskbar;
 
+    /// <summary>Se dispara (en cualquier hilo) cada vez que otra ventana pasa al primer plano.</summary>
+    public event Action<nint>? ForegroundChanged;
+
     /// <summary>Se dispara cuando un gesto de Windows llevó una ventana al foco.</summary>
     public event Action<string, ControllerResult>? FocusGestureHandled;
 
@@ -204,6 +207,8 @@ public sealed class ShellController : IDisposable
     /// </summary>
     private void OnFocusSwitch(nint hwnd, SwitchGesture gesture)
     {
+        ForegroundChanged?.Invoke(hwnd);
+
         if (gesture == SwitchGesture.Other || !FocusGestureEnabled(gesture))
         {
             return;
@@ -970,6 +975,18 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>Al arrancar: si hay paneles en lista, se aplica el layout para que se vean (sin ventanas, de lanzador).</summary>
+    public void ShowLists()
+    {
+        lock (_gate)
+        {
+            if (_workspace.Panels.Any(p => p.Template == PanelTemplate.List))
+            {
+                RunLocked([], forceLayout: true);
+            }
+        }
+    }
+
     public ControllerResult ReturnCenter()
     {
         lock (_gate)
@@ -1070,6 +1087,15 @@ public sealed class ShellController : IDisposable
                 case RestoreOriginal r:
                     restores.Add(JournalRestorer.Restore(Journal, e => e.Handle == r.Handle));
                     break;
+                case ForgetOriginal f:
+                    // La ventana queda libre donde está (o ya no existe): su entrada sale del diario sin aplicarla.
+                    var entries = Journal.Load();
+                    if (entries.RemoveAll(e => e.Handle == f.Handle) > 0)
+                    {
+                        Journal.Save(entries);
+                    }
+
+                    break;
                 case RestoreEverything:
                     restores.Add(JournalRestorer.Restore(Journal));
                     break;
@@ -1077,7 +1103,9 @@ public sealed class ShellController : IDisposable
         }
 
         SceneApplyReport? applied = null;
-        if ((forceLayout || effects.Any(e => e is ApplyLayout)) && _workspace.Windows.Count > 0)
+        // Sin ventanas gestionadas no hay nada que colocar, salvo que haya listas: hacen de lanzador (ADR 0015).
+        if ((forceLayout || effects.Any(e => e is ApplyLayout))
+            && (_workspace.Windows.Count > 0 || _workspace.Panels.Any(p => p.Template == PanelTemplate.List)))
         {
             applied = ApplyLayoutLocked();
         }

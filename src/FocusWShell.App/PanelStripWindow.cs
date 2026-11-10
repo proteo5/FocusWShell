@@ -36,8 +36,14 @@ public sealed class PanelStripWindow : Window
     /// <summary>▲ filas a–b de n ▼, si el panel en tiles no cabe entero (ADR 0015).</summary>
     private readonly StackPanel _pager = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
-    /// <summary>Primer clic pendiente de saber si es simple o doble.</summary>
-    private (nint Handle, System.Windows.Threading.DispatcherTimer Timer)? _pendingClick;
+    /// <summary>Último clic en una pestaña: un segundo clic en la misma, a tiempo, es un doble clic.</summary>
+    private (nint Handle, long Ticks)? _lastClick;
+
+    /// <summary>
+    /// Orden de las pestañas en esta tira: estable aunque el panel reordene sus ventanas (en pestañas, la
+    /// visible pasa a ser la primera). Así el segundo clic de un doble clic cae en la misma pestaña.
+    /// </summary>
+    private readonly List<nint> _order = [];
 
     public PanelStripWindow(PanelStrip strip, Func<Command, Task> run)
     {
@@ -116,7 +122,10 @@ public sealed class PanelStripWindow : Window
         }
 
         _tabs.Children.Clear();
-        foreach (var tab in _strip.Tabs)
+        var handles = _strip.Tabs.Select(t => t.Handle).ToHashSet();
+        _order.RemoveAll(h => !handles.Contains(h));
+        _order.AddRange(_strip.Tabs.Select(t => t.Handle).Where(h => !_order.Contains(h)));
+        foreach (var tab in _strip.Tabs.OrderBy(t => _order.IndexOf(t.Handle)))
         {
             _tabs.Children.Add(MakeTab(tab));
         }
@@ -180,15 +189,15 @@ public sealed class PanelStripWindow : Window
         };
         System.Windows.Automation.AutomationProperties.SetName(button, $"{_strip.Title}: {tab.Label} ({tab.State})");
 
-        // Clic: la acción natural según su estado. Doble clic: al Centro. El clic simple espera el
-        // tiempo de doble clic del sistema: si actuara al momento, la tira se redibujaría entre los dos
-        // clics y el segundo caería en otra pestaña.
+        // Clic: la acción natural según su estado, al momento (S7). Un segundo clic en la misma pestaña
+        // dentro del tiempo de doble clic: al Centro. Las pestañas no cambian de orden entre los dos clics.
         button.Click += async (_, _) =>
         {
-            if (_pendingClick is { } pending && pending.Handle == tab.Handle)
+            long now = Environment.TickCount64;
+            if (_lastClick is { } last && last.Handle == tab.Handle
+                && now - last.Ticks <= System.Windows.Forms.SystemInformation.DoubleClickTime)
             {
-                pending.Timer.Stop();
-                _pendingClick = null;
+                _lastClick = null;
                 if (tab.State != TabState.InCenter)
                 {
                     await _run(new Promote(tab.Handle));
@@ -197,30 +206,19 @@ public sealed class PanelStripWindow : Window
                 return;
             }
 
-            _pendingClick?.Timer.Stop();
-            var timer = new System.Windows.Threading.DispatcherTimer
+            _lastClick = (tab.Handle, now);
+            Command? command = tab.State switch
             {
-                Interval = TimeSpan.FromMilliseconds(System.Windows.Forms.SystemInformation.DoubleClickTime),
+                TabState.Hidden => new MakeActiveInPanel(tab.Handle),
+                TabState.Parked => new Restore(tab.Handle),
+                TabState.InCenter => new ReturnToPanel(tab.Handle),
+                TabState.Detached => new Reattach(tab.Handle),
+                _ => null,
             };
-            _pendingClick = (tab.Handle, timer);
-            timer.Tick += async (_, _) =>
+            if (command is not null)
             {
-                timer.Stop();
-                _pendingClick = null;
-                Command? command = tab.State switch
-                {
-                    TabState.Hidden => new MakeActiveInPanel(tab.Handle),
-                    TabState.Parked => new Restore(tab.Handle),
-                    TabState.InCenter => new ReturnToPanel(tab.Handle),
-                    TabState.Detached => new Reattach(tab.Handle),
-                    _ => null,
-                };
-                if (command is not null)
-                {
-                    await _run(command);
-                }
-            };
-            timer.Start();
+                await _run(command);
+            }
         };
 
         var menu = new ContextMenu();

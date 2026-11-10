@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 
@@ -34,5 +34,5 @@ public sealed record ListPanelView(string PanelId, string Title, PixelRect Area,
     public string Key => PanelId;
 
     /// <summary>Para no redibujar si nada cambió.</summary>
-    public string Signature => $"{Layout}|{string.Join(";", Items.Select(i => $"{i.Handle}:{i.State}:{i.Name}:{i.Title}"))}";
+    public string Signature => $"{Title}|{Layout}|{string.Join(";", Items.Select(i => $"{i.Handle}:{i.State}:{i.Name}:{i.Title}"))}";
 }

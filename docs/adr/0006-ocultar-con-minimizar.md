@@ -1,6 +1,6 @@
-# ADR 0006 — Las ventanas no visibles de una pila se minimizan
+﻿# ADR 0006 — Las ventanas no visibles de una pila se minimizan
 
-- **Estado:** Propuesta (a confirmar en el spike S7)
+- **Estado:** Aceptada (2026-11-10, confirmada por el spike S7)
 - **Fecha:** 2026-11-09
 
 ## Contexto
@@ -15,7 +15,7 @@ En un panel con template `Stack`, sólo una ventana se ve; las demás deben quit
 | Dejarlas detrás de la activa | No ocupan otra región, pero asoman si la activa es más pequeña y aparecen en Alt+Tab en un orden confuso. |
 | **Minimizarlas** (`SW_SHOWMINNOACTIVE`) | Animación de minimizar (depende de la configuración del sistema); algunas apps pausan contenido al minimizarse. |
 
-## Decisión (propuesta)
+## Decisión
 
 Minimizar las ventanas no visibles de una pila. Es la única opción que, si el gestor cae, deja todas las ventanas en un estado que el usuario sabe recuperar con las herramientas normales de Windows.
 
@@ -23,3 +23,4 @@ Minimizar las ventanas no visibles de una pila. Es la única opción que, si el 
 
 - Una ventana minimizada por la pila y una minimizada por el usuario se ven igual para Windows. El modelo distingue `InPanel` en pila de `Parked`; los eventos `MINIMIZEEND` sobre una ventana en pila se interpretan como "cambiar de pestaña" y no como `Restore`.
 - Si S7 muestra que la animación o las pausas molestan, la alternativa es "dejar detrás de la activa" para apps concretas.
+- **S7 (2026-11-10):** 50 cambios entre tres apps sin pérdidas de estado y con 18 ms de mediana. La espera que se notaba era de la tira, que aguardaba al tiempo de doble clic; se quitó. Ver [04 — Riesgos y spikes](../04-riesgos-y-spikes.md#s7--pila-2026-11-10).

@@ -31,7 +31,7 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S4 — Eventos propios | ¿Se distinguen movimientos propios de los del usuario? | Aplicar layouts mientras se registran eventos; luego mover ventanas a mano. | Cero falsos positivos en movimientos propios; todos los manuales detectados. | R4 |
 | S5 — Diario y caída | ¿Se recupera todo tras matar el proceso? | Aplicar escena, `taskkill /f`, arrancar de nuevo, restaurar. | Todas las ventanas vuelven a su `WINDOWPLACEMENT` original, incluidas las que estaban maximizadas o minimizadas. | R6 |
 | S6 — Reconexión | ¿Qué pasa al desconectar y reconectar el monitor estándar? | Con escena aplicada, desconectar el cable, esperar y reconectar. | Ninguna ventana queda fuera de pantalla; al reconectar se reaplica el layout guardado. | R7 |
-| S7 — Pila | ¿Minimizar funciona bien para las ventanas ocultas de la pila? | Alternar pestañas 50 veces entre 3–4 apps. | Sin pérdidas de estado; la alternancia se siente inmediata. | R8 |
+| S7 — Pila | ¿Minimizar funciona bien para las ventanas ocultas de la pila? | Alternar pestañas 50 veces entre 3–4 apps. | Sin pérdidas de estado; la alternancia se siente inmediata. | R8 · **Hecho** |
 | S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 |
 | S9 — Apuntar desde el deck | ¿Se puede apuntar con precisión en la app del foco desde el deck? | Miniatura DWM en vivo con cuadrícula y zoom en la tablet; scroll por franja lateral en Edge; lectura de controles con UI Automation en Edge, Slack, SSMS y VS Code. | El toque cae a ±1 control del objetivo con zoom; el scroll mueve la zona tocada; lectura de controles < 300 ms en apps nativas y < 1 s en Chromium. | — |
 | S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — · **Hecho** (opción B confirmada) |
@@ -311,6 +311,42 @@ Panel de prueba «Monitoreo» en lista, en el monitor HP, con dos Paint y una Ca
 Encontrado al probar:
 - **La lista no veía cerrada una app recién cerrada**, porque la foto de ventanas abiertas era la anterior al cierre. Corregido: al detectar el cierre, la ventana sale de la foto.
 - **Un clic de prueba caía fuera de su tarjeta.** El fallo estaba en el script de prueba, no en la app: se declaraba sólo «system-aware» y Windows reescalaba sus coordenadas en el monitor de 120 DPI. Las pruebas con ratón en monitores de otro DPI deben declararse per-monitor (`SetProcessDpiAwarenessContext(-4)`).
+
+### Lista como lanzador y ventanas activadas detrás (M1b, 2026-11-10)
+
+Panel de prueba «Monitoreo» en lista, en el monitor HP:
+
+| Caso | Resultado |
+| --- | --- |
+| Sin ninguna ventana, al arrancar la app | La lista se ve, con su nombre y un texto que explica cómo llenarla |
+| Abrir la Calculadora en «Monitoreo» desde el catálogo | Aparece en la lista con su miniatura en vivo |
+| Activarla por programa (sin gesto) | Se pone encima de la lista y se ve entera |
+| Activar después otra ventana | La lista vuelve a quedar encima, con la miniatura de la Calculadora |
+| Cerrar la Calculadora | La lista sigue, con la Calculadora apagada: tocarla la abre en el panel |
+
+Encontrado aquí, fallo previo: **el diario de recuperación no olvidaba nada**. El efecto `ForgetOriginal` (borrar un panel deja sus ventanas libres) no se ejecutaba, y una ventana gestionada que se cerraba seguía en el diario. Tras un cierre no limpio, la app habría ofrecido "restaurar" ventanas que ya no existen o que debían quedarse donde estaban. Corregido: `ForgetOriginal` quita la entrada del diario y `WindowClosed` lo emite. Comprobado: con la Calculadora abierta en Trabajo figura en el diario y, al cerrarla, el diario queda vacío.
+
+### S7 — Pila (2026-11-10)
+
+Panel Trabajo en pestañas con dos Paint y una Calculadora. Se alternó 50 veces con las pestañas de la tira (UI Automation) y se midió desde el clic hasta que la ventana elegida deja de estar minimizada. Animación de minimizar de Windows activada; tiempo de doble clic, 500 ms.
+
+| Versión | Cambios | Latencia (mediana · p95 · máx.) |
+| --- | --- | --- |
+| Antes: la tira esperaba al tiempo de doble clic | 50 de 50 | 512 · 521 · 553 ms |
+| Después: el clic actúa al momento | 50 de 50 | 18 · 24 · 36 ms |
+
+- **Sin pérdidas de estado:** las tres ventanas vivas, con su título, y exactamente una visible al terminar.
+- **Minimizar no era el problema; la espera de doble clic sí.** Existía porque la tira se reordenaba al cambiar de pestaña y el segundo clic caía en otra. Ahora la tira mantiene el orden de sus pestañas, el clic actúa al momento, y un segundo clic en la misma pestaña dentro del tiempo de doble clic la lleva al foco. Comprobado con el ratón de verdad.
+- **Conclusión:** se confirma el [ADR 0006](adr/0006-ocultar-con-minimizar.md) (ocultar minimizando).
+
+### Atajos configurables (M1, 2026-11-10)
+
+| Caso | Resultado |
+| --- | --- |
+| Abrir «Atajos…» y pulsar Ctrl+Alt+Mayús+J sobre «Al foco» | El cuadro muestra «Ctrl+Alt+Mayús+J»; al guardar, `settings.json` lo guarda y la cabecera lo muestra |
+| Ctrl+Alt+Mayús+↑ con una ventana de Trabajo activa | Ya no hace nada |
+| Ctrl+Alt+Mayús+J | La lleva al foco |
+| «Por defecto» y guardar | Vuelve a Ctrl+Alt+Mayús+↑; el cambio desaparece de `settings.json` |
 
 ### S6 — Reconexión (2026-11-10)
 
