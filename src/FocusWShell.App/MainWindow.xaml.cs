@@ -32,6 +32,7 @@ public partial class MainWindow : Window
         WindowList.ItemsSource = _rows;
         LoadScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(LoadScenes);
+        _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => BuildCatalog(_controller.Panels()));
         Refresh();
     }
 
@@ -116,6 +117,7 @@ public partial class MainWindow : Window
         }
 
         BuildPanels(panels, aux);
+        BuildCatalog(panels);
 
         var selected = (WindowList.SelectedItem as WindowRow)?.Snapshot.Handle;
         _rows.Clear();
@@ -281,6 +283,84 @@ public partial class MainWindow : Window
         create.Children.Add(add);
         PanelsList.Children.Add(create);
         _buildingPanels = false;
+    }
+
+    /// <summary>
+    /// Apps conocidas (ADR 0011): las abiertas en negrita; elegir panel y "Abrir" lanza la app y asigna
+    /// su ventana a ese panel. Por defecto se propone el último panel en el que estuvo.
+    /// </summary>
+    private void BuildCatalog(IReadOnlyList<Panel> panels)
+    {
+        CatalogList.Children.Clear();
+        var apps = _controller.CatalogApps();
+        if (apps.Count == 0)
+        {
+            CatalogList.Children.Add(new System.Windows.Controls.TextBlock { Text = "Todavía no hay apps: aparecerán al detectarlas abiertas.", Foreground = System.Windows.Media.Brushes.DimGray });
+            return;
+        }
+
+        foreach (var (app, open) in apps)
+        {
+            var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+            row.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = app.Name,
+                Width = 220,
+                FontWeight = open ? FontWeights.SemiBold : FontWeights.Normal,
+                Foreground = open ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.Gray,
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = app.ExecutablePath ?? app.Aumid ?? app.AppKey,
+            });
+            row.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = open ? "abierta" : "cerrada",
+                Width = 70,
+                Foreground = System.Windows.Media.Brushes.DimGray,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            var target = new System.Windows.Controls.ComboBox
+            {
+                Width = 230,
+                Margin = new Thickness(0, 0, 8, 0),
+                ItemsSource = panels.Select(p => p.Name).ToList(),
+                SelectedIndex = Math.Max(0, panels.ToList().FindIndex(p => p.Id == (app.LastPanelId ?? DefaultPanel()))),
+            };
+            System.Windows.Automation.AutomationProperties.SetName(target, $"Panel para abrir {app.Name}");
+
+            var launch = new System.Windows.Controls.Button
+            {
+                Content = "Abrir",
+                Padding = new Thickness(8, 1, 8, 1),
+                Margin = new Thickness(0, 0, 6, 0),
+                IsEnabled = app.CanLaunch,
+                ToolTip = app.CanLaunch ? "Abre la app y pone su ventana en el panel elegido" : "No se sabe cómo abrirla",
+            };
+            System.Windows.Automation.AutomationProperties.SetName(launch, $"Abrir {app.Name}");
+            launch.Click += async (_, _) =>
+            {
+                if (target.SelectedIndex < 0)
+                {
+                    return;
+                }
+
+                var panelId = panels[target.SelectedIndex].Id;
+                var key = app.AppKey;
+                launch.IsEnabled = false;
+                SetStatus($"Abriendo {app.Name}…");
+                SetStatus(await Task.Run(() => _controller.OpenApp(key, panelId)));
+                Refresh();
+            };
+
+            var forget = new System.Windows.Controls.Button { Content = "Olvidar", Padding = new Thickness(8, 1, 8, 1) };
+            System.Windows.Automation.AutomationProperties.SetName(forget, $"Olvidar {app.Name}");
+            forget.Click += (_, _) => _controller.ForgetApp(app.AppKey);
+
+            row.Children.Add(target);
+            row.Children.Add(launch);
+            row.Children.Add(forget);
+            CatalogList.Children.Add(row);
+        }
     }
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)

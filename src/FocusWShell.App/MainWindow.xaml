@@ -44,6 +44,12 @@
                  IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                  FontFamily="Consolas" FontSize="12" />
 
+        <GroupBox DockPanel.Dock="Bottom" Header="Apps conocidas (se añaden solas al verlas abiertas)" Margin="0,8,0,0" Padding="6">
+            <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="CatalogList" />
+            </ScrollViewer>
+        </GroupBox>
+
         <GroupBox DockPanel.Dock="Bottom" Header="Paneles" Margin="0,8,0,0" Padding="6">
             <StackPanel x:Name="PanelsList" />
         </GroupBox>

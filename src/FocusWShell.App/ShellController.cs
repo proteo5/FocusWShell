@@ -137,6 +137,158 @@ public sealed class ShellController : IDisposable
 
     public PanelStore PanelFile { get; } = new(PanelStore.DefaultPath);
 
+    // --- Catálogo de apps (ADR 0011) ---------------------------------------------------------------
+
+    public AppCatalogStore CatalogFile { get; } = new(AppCatalogStore.DefaultPath);
+
+    private AppCatalog _catalog = new();
+
+    /// <summary>Apps con alguna ventana abierta en el último refresco.</summary>
+    private HashSet<string> _openApps = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Se dispara cuando el catálogo cambia (app nueva, panel recordado, olvidada).</summary>
+    public event Action? CatalogChanged;
+
+    public void LoadCatalog()
+    {
+        var loaded = CatalogFile.Load();
+        lock (_gate)
+        {
+            _catalog = loaded;
+        }
+    }
+
+    /// <summary>Las apps del catálogo (sin las ocultas) y si están abiertas.</summary>
+    public IReadOnlyList<(CatalogApp App, bool Open)> CatalogApps()
+    {
+        lock (_gate)
+        {
+            return [.. _catalog.Apps.Where(a => !a.Hidden).Select(a => (a, _openApps.Contains(a.AppKey)))];
+        }
+    }
+
+    public void ForgetApp(string appKey)
+    {
+        lock (_gate)
+        {
+            if (_catalog.Forget(appKey))
+            {
+                CatalogFile.Save(_catalog);
+            }
+        }
+
+        CatalogChanged?.Invoke();
+    }
+
+    /// <summary>Registra las apps que se ven. Sólo escribe el archivo si hay algo nuevo.</summary>
+    private void ObserveApps(IReadOnlyList<WindowSnapshot> windows)
+    {
+        bool changed = false;
+        var open = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var w in windows)
+        {
+            var key = MinSizeCatalog.KeyFor(w);
+            open.Add(key);
+            var known = _catalog.Find(key);
+            string name = known?.Name
+                ?? AppLauncher.FriendlyName(w.ProcessPath)
+                ?? Path.GetFileNameWithoutExtension(w.ProcessName);
+            changed |= _catalog.Observe(key, name, w.ProcessPath, w.AppUserModelId, DateTimeOffset.Now);
+
+            // Corrige nombres genéricos guardados con el criterio anterior ("Electron", "Notepad.exe").
+            if (known is not null && (known.Name.Equals("Electron", StringComparison.OrdinalIgnoreCase)
+                || known.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                && AppLauncher.FriendlyName(w.ProcessPath) is { } better && better != known.Name)
+            {
+                changed |= _catalog.Rename(key, better);
+            }
+        }
+
+        bool openChanged = !open.SetEquals(_openApps);
+        _openApps = open;
+        if (changed)
+        {
+            CatalogFile.Save(_catalog);
+        }
+
+        if (changed || openChanged)
+        {
+            CatalogChanged?.Invoke();
+        }
+    }
+
+    /// <summary>Recuerda el panel de cada app gestionada, para sugerirlo al abrirla otra vez.</summary>
+    private void RememberAppPanels()
+    {
+        bool changed = false;
+        foreach (var w in _workspace.Windows)
+        {
+            if (_snapshots.TryGetValue(w.Handle, out var snapshot))
+            {
+                changed |= _catalog.RememberPanel(MinSizeCatalog.KeyFor(snapshot), w.PanelId);
+            }
+        }
+
+        if (changed)
+        {
+            CatalogFile.Save(_catalog);
+            CatalogChanged?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Abre una app del catálogo y asigna su ventana al panel. Espera hasta 20 s a que aparezca;
+    /// prefiere una ventana nueva y, pasados unos segundos, acepta una que ya estuviera abierta y libre.
+    /// Devuelve un mensaje para el usuario.
+    /// </summary>
+    public string OpenApp(string appKey, string panelId)
+    {
+        CatalogApp? app;
+        HashSet<nint> before;
+        string panelName;
+        lock (_gate)
+        {
+            app = _catalog.Find(appKey);
+            before = [.. _snapshots.Keys];
+            panelName = _workspace.FindPanel(panelId)?.Name ?? panelId;
+        }
+
+        if (app is null)
+        {
+            return "Esa app ya no está en el catálogo.";
+        }
+
+        if (AppLauncher.Launch(app) is { } error)
+        {
+            return error;
+        }
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while (clock.Elapsed < TimeSpan.FromSeconds(20))
+        {
+            Thread.Sleep(400);
+            var windows = Refresh();
+            lock (_gate)
+            {
+                var free = windows.Where(w => !_workspace.IsManaged(w.Handle)
+                    && string.Equals(MinSizeCatalog.KeyFor(w), appKey, StringComparison.OrdinalIgnoreCase)).ToList();
+                var pick = free.FirstOrDefault(w => !before.Contains(w.Handle))
+                    ?? (clock.Elapsed > TimeSpan.FromSeconds(3) ? free.FirstOrDefault() : null);
+                if (pick is null)
+                {
+                    continue;
+                }
+
+                var result = RunLocked([new Adopt(pick.Handle, app.Name, panelId)]);
+                return result.Rejections.Count == 0
+                    ? $"{app.Name} abierta en {panelName}."
+                    : string.Join(" ", result.Rejections);
+            }
+        }
+
+        return $"{app.Name} se abrió, pero no apareció ninguna ventana suya en 20 s; queda libre.";
+    }
+
     /// <summary>Lo último que se guardó en panels.json, para escribir sólo cuando cambia.</summary>
     private List<Panel> _savedPanels = [];
 
@@ -300,6 +452,7 @@ public sealed class ShellController : IDisposable
                 _snapshots[w.Handle] = w;
             }
 
+            ObserveApps(windows);
             var alive = windows.Select(w => w.Handle).ToHashSet();
             var closed = _workspace.Windows.Where(m => !alive.Contains(m.Handle)).Select(m => new WindowClosed(m.Handle)).ToList();
             if (closed.Count > 0)
@@ -356,6 +509,7 @@ public sealed class ShellController : IDisposable
         var result = RunEffectsLocked(commands, forceLayout);
         SyncExpectations(result.Applied);
         SavePanelsIfChanged();
+        RememberAppPanels();
         if (result.Applied is { Error: null } applied)
         {
             _lastReport = applied;

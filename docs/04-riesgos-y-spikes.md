@@ -132,6 +132,21 @@ Decisión de diseño en [ADR 0007](adr/0007-cambios-externos-por-reconciliacion.
   - Escritorios virtuales (`CLOAKED`).
 - **Decisión:** S4 aprobado. Riesgo R4 mitigado.
 
+### Catálogo de apps (M1b, 2026-11-10)
+
+- **Detección:**
+  - Cada refresco registra las apps que ve en `apps.json`: clave, nombre, ejecutable, AUMID y último panel. Nunca títulos.
+  - El nombre sale de la descripción del ejecutable. Si es genérica ("Electron", o el propio archivo), se usa el nombre del producto: así "Electron" pasa a "GitHub Desktop".
+  - En este equipo detectó 10 apps sin configurar nada.
+- **Abrir:**
+  - Las apps empaquetadas (AUMID con `!`) se abren por `shell:AppsFolder`; el resto, por su ejecutable.
+  - FocusWShell espera hasta 20 s la ventana. Prefiere una nueva y, pasados 3 s, acepta una que ya estuviera abierta y libre. Después la asigna al panel elegido; por defecto, el último en el que estuvo.
+  - Probado con el Bloc de notas cerrado: "abierta en Trabajo", lanzado desde su ejecutable en `WindowsApps`.
+- **Pendiente:**
+  - Iconos.
+  - Renombrar y ocultar apps desde la UI (el modelo ya lo permite).
+  - Abrir apps que falten al aplicar una escena.
+
 ### Paneles como entidades (M1b, 2026-11-10)
 
 Implementa la primera parte del [ADR 0011](adr/0011-paneles-y-catalogo.md).

@@ -49,6 +49,7 @@ public partial class App : Application
         OfferRecovery();
 
         _controller.LoadPanels();
+        _controller.LoadCatalog();
         _main = new MainWindow(_controller);
 
         // S4: lo que haga el usuario con las ventanas gestionadas se traduce en comandos.

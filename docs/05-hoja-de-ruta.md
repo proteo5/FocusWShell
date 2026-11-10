@@ -39,7 +39,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 
 1. **Sin deck:**
    - Paneles como entidades (crear, renombrar, mover, borrar), hasta dos por columna; Contexto y Trabajo pasan a ser los paneles por defecto. Ventanas libres por defecto. **Hecho**, de momento con un panel por columna en el principal.
-   - Catálogo de apps por detección.
+   - Catálogo de apps por detección, y abrir apps cerradas en un panel. **Hecho.**
    - Presentaciones nuevas, empezando por tiles adaptables (tamaños de tile y reparto automático) y la lista tipo Explorador.
    - Abrir apps cerradas.
    - Vistas con el foco a la izquierda, al centro o a la derecha, con proporciones por vista.
@@ -79,6 +79,10 @@ Objetivo: que el estado del escritorio se entienda de un vistazo. Sólo si la va
 
 - Sugerencias de asignación por app al aplicar una escena ("Outlook suele ir a Contexto, ¿aplicar?").
 - Reglas automáticas con modo de prueba, explicación de cada acción y deshacer.
+- **Propuesta: "Alt+Tab lleva al foco"**, opcional y desactivada por defecto.
+  - Si el usuario termina un Alt+Tab en una ventana de un panel, ésta pasa al foco. Se detecta con `EVENT_SYSTEM_SWITCHSTART/END`.
+  - Win+Tab sólo si se demuestra fiable.
+  - Un clic en la ventana o en la barra de tareas nunca mueve nada: no se puede distinguir de "sólo quiero escribir aquí un momento". Por defecto se mantiene el [ADR 0003](adr/0003-rol-independiente-del-foco.md) y la compatibilidad con Windows.
 
 ## Más adelante (sin compromiso)
 
