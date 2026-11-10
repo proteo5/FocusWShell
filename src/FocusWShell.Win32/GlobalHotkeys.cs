@@ -5,10 +5,10 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace FocusWShell.Win32;
 
-/// <summary>Un atajo Ctrl+Alt+Mayús+<paramref name="VirtualKey"/>.</summary>
+/// <summary>Un atajo global: <paramref name="Modifiers"/> (MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN) más <paramref name="VirtualKey"/>.</summary>
 /// <param name="Description">Texto para la UI, p. ej. "Ctrl+Alt+Mayús+Retroceso".</param>
 /// <param name="OnPressed">Se ejecuta en el hilo de los atajos, no en el de la UI.</param>
-public sealed record HotkeyBinding(string Name, uint VirtualKey, string Description, Action OnPressed);
+public sealed record HotkeyBinding(string Name, uint Modifiers, uint VirtualKey, string Description, Action OnPressed);
 
 /// <summary>
 /// Atajos globales en un hilo propio con su cola de mensajes (<c>RegisterHotKey</c> sin ventana).
@@ -16,14 +16,6 @@ public sealed record HotkeyBinding(string Name, uint VirtualKey, string Descript
 /// </summary>
 public sealed class GlobalHotkeys : IDisposable
 {
-    public const uint VkBack = 0x08;
-    public const uint VkLeft = 0x25;
-    public const uint VkUp = 0x26;
-    public const uint VkDown = 0x28;
-    public const uint VkF = 0x46;
-    public const uint VkP = 0x50;
-    public const uint VkV = 0x56;
-
     private const int FirstId = 0xF0C0;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _ready = new();
@@ -51,12 +43,11 @@ public sealed class GlobalHotkeys : IDisposable
     private void Run()
     {
         _threadId = PInvoke.GetCurrentThreadId();
-        const HOT_KEY_MODIFIERS Modifiers =
-            HOT_KEY_MODIFIERS.MOD_CONTROL | HOT_KEY_MODIFIERS.MOD_ALT | HOT_KEY_MODIFIERS.MOD_SHIFT | HOT_KEY_MODIFIERS.MOD_NOREPEAT;
         var registered = new List<int>();
         for (int i = 0; i < _bindings.Count; i++)
         {
-            if (PInvoke.RegisterHotKey(HWND.Null, FirstId + i, Modifiers, _bindings[i].VirtualKey))
+            var modifiers = (HOT_KEY_MODIFIERS)_bindings[i].Modifiers | HOT_KEY_MODIFIERS.MOD_NOREPEAT;
+            if (PInvoke.RegisterHotKey(HWND.Null, FirstId + i, modifiers, _bindings[i].VirtualKey))
             {
                 registered.Add(FirstId + i);
             }

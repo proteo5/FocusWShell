@@ -47,6 +47,27 @@ public partial class MainWindow : Window
         Refresh();
     }
 
+    /// <summary>Línea de atajos de la cabecera, con los que están en uso.</summary>
+    private static string HotkeySummary()
+    {
+        var app = (App)Application.Current;
+        var parts = new[]
+        {
+            ("al-foco", "al foco"), ("anterior", "anterior"), ("foco-al-panel", "foco al panel"), ("pantalla-completa", "pantalla completa"),
+            ("vista", "vista"), ("pantalla-encendida", "pantalla encendida"), (Core.Input.Hotkeys.Emergency, "restaurar todas"),
+        }
+            .Where(p => app.ChordOf(p.Item1).Length > 0)
+            .Select(p => $"{app.ChordOf(p.Item1)} {p.Item2}");
+        return "Atajos: " + string.Join(" · ", parts);
+    }
+
+    private void Hotkeys_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new HotkeysWindow(_settings) { Owner = this };
+        dialog.ShowDialog();
+        Refresh();
+    }
+
     private bool _showingView;
 
     /// <summary>Orden de las opciones de <c>ViewCombo</c>.</summary>
@@ -193,7 +214,7 @@ public partial class MainWindow : Window
         HeaderText.Text =
             $"Principal {display.FriendlyName ?? display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
             string.Concat(aux.Select(a => $"   ·   Auxiliar {a.FriendlyName ?? a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
-            "Atajos Ctrl+Alt+Mayús: ↑ al foco · ← anterior · ↓ foco al panel · F pantalla completa · V vista · P pantalla encendida · Retroceso restaurar todas";
+            HotkeySummary();
         var fullscreenTargets = new List<string> { "Principal" };
         fullscreenTargets.AddRange(aux.Select(a => a.FriendlyName ?? a.DeviceName));
         int fullscreenIndex = Math.Max(0, FullscreenTarget.SelectedIndex);

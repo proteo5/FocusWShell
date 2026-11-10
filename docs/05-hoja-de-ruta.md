@@ -29,9 +29,11 @@ Objetivo: el modelo completo de roles con las dos presentaciones básicas.
 - Escenas con nombre, guardar y aplicar; layouts por huella de monitores. **Hecho** sin geometría propia por escena: guardar, aplicar, borrar, atajos `Ctrl+Alt+Mayús+1…9` y submenú en la bandeja.
 - Paneles en monitores auxiliares, con template `Fill` ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md)). **Hecho** (sin S6).
 - Mantener la pantalla encendida ([ADR 0010](adr/0010-mantener-pantalla-encendida.md)). **Hecho.**
-- Atajos configurables.
+- Atajos configurables. **Hecho:** ventana «Atajos…» para cambiar cada uno pulsando la combinación nueva, con validación y duplicados resueltos; se guardan en `settings.json` y se vuelven a registrar en el momento.
 
 Criterio de salida: CA3, CA4 y CA7. Spike S7 resuelto.
+
+**Estado (2026-11-10):** todo lo de la lista **hecho** y el **S7 resuelto** (confirma el [ADR 0006](adr/0006-ocultar-con-minimizar.md); la tira ya cambia de pestaña al momento). Falta el criterio de salida: comprobar CA3, CA4 y CA7 en uso diario.
 
 ## M1b — Paneles, vistas y deck
 

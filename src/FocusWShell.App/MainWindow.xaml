@@ -11,7 +11,7 @@
                 <TextBlock Text="Vista:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox x:Name="ViewCombo" Width="170" Margin="0,0,24,0" AutomationProperties.Name="Vista"
                           SelectionChanged="ViewCombo_SelectionChanged"
-                          ToolTip="Dónde va el foco en el monitor principal (Ctrl+Alt+Mayús+V cambia de vista)">
+                          ToolTip="Dónde va el foco en el monitor principal">
                     <ComboBoxItem Content="Foco a la izquierda" />
                     <ComboBoxItem Content="Foco al centro" />
                     <ComboBoxItem Content="Foco a la derecha" />
@@ -20,6 +20,8 @@
                 <ComboBox x:Name="ProportionsCombo" Width="260" Margin="0,0,24,0" AutomationProperties.Name="Proporciones"
                           SelectionChanged="ProportionsCombo_SelectionChanged"
                           ToolTip="Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ventana que da a la columna vecina: se guarda." />
+                <Button x:Name="HotkeysButton" Content="Atajos…" Padding="10,2" Margin="0,0,24,0" Click="Hotkeys_Click"
+                        ToolTip="Ver y cambiar los atajos globales" />
                 <TextBlock Text="Escena:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="Escenas guardadas" />
                 <Button x:Name="ApplySceneButton" Content="Aplicar escena" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />
@@ -45,14 +47,14 @@
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
             <Button x:Name="PromoteButton" DockPanel.Dock="Left" Content="Al Centro" Padding="12,4" Margin="0,0,8,0" Click="Promote_Click"
-                    ToolTip="Lleva la ventana seleccionada al Centro (Ctrl+Alt+Mayús+↑ con la ventana activa)" />
+                    ToolTip="Lleva la ventana seleccionada al Centro" />
             <Button x:Name="FullscreenButton" DockPanel.Dock="Left" Content="Pantalla completa" Padding="12,4" Margin="0,0,4,0" Click="Fullscreen_Click"
-                    ToolTip="Maximiza la ventana seleccionada en el monitor elegido; si ya lo está, vuelve al foco (Ctrl+Alt+Mayús+F con la del foco)" />
+                    ToolTip="Maximiza la ventana seleccionada en el monitor elegido; si ya lo está, vuelve al foco" />
             <ComboBox x:Name="FullscreenTarget" DockPanel.Dock="Left" Width="130" Margin="0,0,8,0" AutomationProperties.Name="Monitor de pantalla completa" />
             <Button x:Name="SwapButton" DockPanel.Dock="Left" Content="Volver a la anterior" Padding="12,4" Margin="0,0,8,0" Click="Swap_Click"
-                    ToolTip="Devuelve al Centro la ventana que estaba antes (Ctrl+Alt+Mayús+←)" />
+                    ToolTip="Devuelve al Centro la ventana que estaba antes" />
             <Button x:Name="ReturnButton" DockPanel.Dock="Left" Content="Centro al panel" Padding="12,4" Margin="0,0,8,0" Click="Return_Click"
-                    ToolTip="Devuelve la ventana del Centro a su panel (Ctrl+Alt+Mayús+↓)" />
+                    ToolTip="Devuelve la ventana del Centro a su panel" />
             <Button x:Name="ParkButton" DockPanel.Dock="Left" Content="Estacionar" Padding="12,4" Margin="0,0,8,0" Click="Park_Click"
                     ToolTip="Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa si la minimizas tú." />
             <Button x:Name="UnparkButton" DockPanel.Dock="Left" Content="Recuperar" Padding="12,4" Margin="0,0,8,0" Click="Unpark_Click"

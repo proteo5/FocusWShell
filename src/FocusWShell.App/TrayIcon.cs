@@ -12,6 +12,8 @@ public sealed class TrayIcon : IDisposable
     private readonly Icon _awake;
     private readonly Forms.ToolStripMenuItem _keepAwakeItem;
     private readonly Forms.ToolStripMenuItem _scenesItem = new("Escenas");
+    private readonly Forms.ToolStripMenuItem _restoreItem;
+    private Func<int, string> _sceneChord = n => "";
 
     public TrayIcon(Action open, Action toggleKeepAwake, Action restoreAll, Action exit)
     {
@@ -20,9 +22,10 @@ public sealed class TrayIcon : IDisposable
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Abrir FocusWShell", null, (_, _) => open());
         menu.Items.Add(_scenesItem);
-        _keepAwakeItem = new Forms.ToolStripMenuItem("Mantener la pantalla encendida (Ctrl+Alt+Mayús+P)", null, (_, _) => toggleKeepAwake());
+        _keepAwakeItem = new Forms.ToolStripMenuItem("Mantener la pantalla encendida", null, (_, _) => toggleKeepAwake());
         menu.Items.Add(_keepAwakeItem);
-        menu.Items.Add("Restaurar todas (Ctrl+Alt+Mayús+Retroceso)", null, (_, _) => restoreAll());
+        _restoreItem = new Forms.ToolStripMenuItem("Restaurar todas", null, (_, _) => restoreAll());
+        menu.Items.Add(_restoreItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Salir (devuelve las ventanas a su sitio)", null, (_, _) => exit());
 
@@ -34,6 +37,14 @@ public sealed class TrayIcon : IDisposable
             Visible = true,
         };
         _icon.DoubleClick += (_, _) => open();
+    }
+
+    /// <summary>Pone en el menú los atajos en uso (configurables).</summary>
+    public void SetHotkeys(string keepAwake, string restoreAll, Func<int, string> scene)
+    {
+        _keepAwakeItem.Text = keepAwake.Length > 0 ? $"Mantener la pantalla encendida ({keepAwake})" : "Mantener la pantalla encendida";
+        _restoreItem.Text = restoreAll.Length > 0 ? $"Restaurar todas ({restoreAll})" : "Restaurar todas";
+        _sceneChord = scene;
     }
 
     /// <summary>Rehace el submenú de escenas: las nueve primeras con su atajo.</summary>
@@ -50,7 +61,8 @@ public sealed class TrayIcon : IDisposable
         for (int i = 0; i < names.Count; i++)
         {
             string name = names[i];
-            string text = i < 9 ? $"{name}\t(Ctrl+Alt+Mayús+{i + 1})" : name;
+            string chord = i < 9 ? _sceneChord(i + 1) : "";
+            string text = chord.Length > 0 ? $"{name}\t({chord})" : name;
             _scenesItem.DropDownItems.Add(text, null, (_, _) => apply(name));
         }
     }
