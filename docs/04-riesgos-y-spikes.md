@@ -240,6 +240,17 @@ Prueba en el ultrawide con una ventana de Paint en el foco y otra en Contexto (f
 
 Pendiente: arrastrar el borde con el ratón de verdad (la prueba usó `SetWindowPos` desde otro proceso).
 
+### Catálogo: escenas que abren apps, iconos, renombrar y ocultar (M1b, 2026-11-10)
+
+| Caso | Resultado |
+| --- | --- |
+| Escena con Paint en Trabajo; Paint cerrado; aplicar la escena | Paint se abre (por su ejecutable en `WindowsApps`) y su ventana entra en Trabajo en unos segundos: «mspaint se abrió y está en Trabajo» |
+| Iconos | Salen del ejecutable de cada app, también el de Paint (paquete de la Store) |
+| Renombrar Paint en la lista | Se guarda en `apps.json` |
+| Ocultar | Desaparece de la lista; con «Ver ocultas» vuelve, en gris y con «Mostrar» |
+
+Al terminar se dejaron `scenes.json`, `apps.json`, `settings.json` y `panels.json` como estaban.
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

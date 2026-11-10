@@ -20,14 +20,23 @@ public sealed record ControllerResult(
 /// <param name="Notes">Ajustes (p. ej. un monitor auxiliar que no está conectado).</param>
 public sealed record SceneResult(string Name, ControllerResult Result, IReadOnlyList<SceneWindow> Missing, IReadOnlyList<string> Notes)
 {
+    /// <summary>Apps que faltaban y se están abriendo; al terminar llega <c>SceneAppsOpened</c>.</summary>
+    public IReadOnlyList<string> Opening { get; init; } = [];
+
     public string Summary
     {
         get
         {
             var lines = new List<string> { $"Escena «{Name}» aplicada." };
-            if (Missing.Count > 0)
+            if (Opening.Count > 0)
             {
-                lines.Add($"No están abiertas: {string.Join(", ", Missing.Select(m => m.Label))}.");
+                lines.Add($"Abriendo las que faltaban: {string.Join(", ", Opening)}…");
+            }
+
+            var notOpening = Missing.Where(m => !Opening.Contains(m.Label)).ToList();
+            if (notOpening.Count > 0)
+            {
+                lines.Add($"No están abiertas: {string.Join(", ", notOpening.Select(m => m.Label))}.");
             }
 
             lines.AddRange(Notes);
@@ -281,13 +290,45 @@ public sealed class ShellController : IDisposable
         }
     }
 
-    /// <summary>Las apps del catálogo (sin las ocultas) y si están abiertas.</summary>
-    public IReadOnlyList<(CatalogApp App, bool Open)> CatalogApps()
+    /// <summary>Las apps del catálogo (sin las ocultas, salvo que se pidan) y si están abiertas.</summary>
+    public IReadOnlyList<(CatalogApp App, bool Open)> CatalogApps(bool includeHidden = false)
     {
         lock (_gate)
         {
-            return [.. _catalog.Apps.Where(a => !a.Hidden).Select(a => (a, _openApps.Contains(a.AppKey)))];
+            return [.. _catalog.Apps.Where(a => includeHidden || !a.Hidden).Select(a => (a, _openApps.Contains(a.AppKey)))];
         }
+    }
+
+    /// <summary>Cambia el nombre con el que se muestra una app (y con el que se gestionan sus ventanas nuevas).</summary>
+    public void RenameApp(string appKey, string name)
+    {
+        lock (_gate)
+        {
+            if (!_catalog.Rename(appKey, name))
+            {
+                return;
+            }
+
+            CatalogFile.Save(_catalog);
+        }
+
+        CatalogChanged?.Invoke();
+    }
+
+    /// <summary>Oculta una app del catálogo (sigue registrada: no vuelve a aparecer como nueva) o la muestra.</summary>
+    public void SetAppHidden(string appKey, bool hidden)
+    {
+        lock (_gate)
+        {
+            if (!_catalog.SetHidden(appKey, hidden))
+            {
+                return;
+            }
+
+            CatalogFile.Save(_catalog);
+        }
+
+        CatalogChanged?.Invoke();
     }
 
     public void ForgetApp(string appKey)
@@ -576,7 +617,115 @@ public sealed class ShellController : IDisposable
             .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot))
             .ToList();
         var result = Execute(new ApplyScene(entries, panels) { View = scene.View, Weights = scene.Weights });
-        return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList());
+
+        // Las apps que faltan y se saben abrir se abren en segundo plano; cada ventana va a su panel.
+        var opening = new List<(SceneWindow Entry, CatalogApp App, string? PanelId)>();
+        if (OpenMissingApps() && match.Missing.Count > 0)
+        {
+            lock (_gate)
+            {
+                foreach (var entry in match.Missing.DistinctBy(m => m.AppKey, StringComparer.OrdinalIgnoreCase))
+                {
+                    if (_catalog.Find(entry.AppKey) is { CanLaunch: true } app)
+                    {
+                        var scenePanel = panels.FirstOrDefault(p => p.Id == (entry.PanelId ?? Workspace.WorkPanel));
+                        var panelId = scenePanel is null
+                            ? _workspace.FindPanel(entry.PanelId ?? Workspace.WorkPanel)?.Id
+                            : _workspace.ResolveScenePanel(scenePanel)?.Id;
+                        opening.Add((entry, app, panelId));
+                    }
+                }
+            }
+        }
+
+        if (opening.Count > 0)
+        {
+            Task.Run(() => OpenSceneApps(scene.Name, opening));
+        }
+
+        return new SceneResult(scene.Name, result, match.Missing, notes.Distinct().ToList())
+        {
+            Opening = opening.Select(o => o.Entry.Label).ToList(),
+        };
+    }
+
+    /// <summary>Si al aplicar una escena se abren las apps que faltan (configuración).</summary>
+    public Func<bool> OpenMissingApps { get; set; } = () => true;
+
+    /// <summary>Al terminar de abrir las apps que faltaban en una escena: el resumen para el usuario.</summary>
+    public event Action<string, ControllerResult>? SceneAppsOpened;
+
+    /// <summary>
+    /// Abre cada app y espera (hasta 30 s en total) a que aparezca una ventana suya nueva. La pone en su
+    /// panel y, si en la escena estaba en el foco o estacionada, ahí. Si su panel no se resuelve, queda libre.
+    /// </summary>
+    private void OpenSceneApps(string sceneName, List<(SceneWindow Entry, CatalogApp App, string? PanelId)> opening)
+    {
+        HashSet<nint> before;
+        lock (_gate)
+        {
+            before = [.. _snapshots.Keys];
+        }
+
+        var lines = new List<string>();
+        var commands = new List<Command>();
+        var pending = new List<(SceneWindow Entry, CatalogApp App, string? PanelId)>();
+        foreach (var o in opening)
+        {
+            if (AppLauncher.Launch(o.App) is { } error)
+            {
+                lines.Add(error);
+            }
+            else
+            {
+                pending.Add(o);
+            }
+        }
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var results = new List<ControllerResult>();
+        while (pending.Count > 0 && clock.Elapsed < TimeSpan.FromSeconds(30))
+        {
+            Thread.Sleep(500);
+            var windows = Refresh();
+            lock (_gate)
+            {
+                foreach (var o in pending.ToList())
+                {
+                    var window = windows.FirstOrDefault(w => !before.Contains(w.Handle) && !_workspace.IsManaged(w.Handle)
+                        && string.Equals(MinSizeCatalog.KeyFor(w), o.Entry.AppKey, StringComparison.OrdinalIgnoreCase));
+                    if (window is null)
+                    {
+                        continue;
+                    }
+
+                    pending.Remove(o);
+                    if (o.PanelId is null)
+                    {
+                        lines.Add($"{o.Entry.Label} se abrió; su panel no existe, así que queda libre.");
+                        continue;
+                    }
+
+                    List<Command> place = [new Adopt(window.Handle, o.Entry.Label, o.PanelId)];
+                    if (o.Entry.Placement == ScenePlacement.Center)
+                    {
+                        place.Add(new Promote(window.Handle));
+                    }
+                    else if (o.Entry.Placement == ScenePlacement.Parked)
+                    {
+                        place.Add(new Park(window.Handle));
+                    }
+
+                    results.Add(RunLocked(place));
+                    lines.Add($"{o.Entry.Label} se abrió y está en {(o.Entry.Placement == ScenePlacement.Center ? "el foco" : _workspace.FindPanel(o.PanelId)?.Name ?? o.PanelId)}.");
+                }
+            }
+        }
+
+        lines.AddRange(pending.Select(o => $"{o.Entry.Label} se abrió, pero no apareció ninguna ventana suya en 30 s; queda libre."));
+        var last = results.LastOrDefault() ?? new ControllerResult([], [], null);
+        var summary = new ControllerResult([.. results.SelectMany(r => r.Rejections)], [.. results.SelectMany(r => r.Restores)], last.Applied);
+        SceneAppsOpened?.Invoke($"Escena «{sceneName}»: " + string.Join(" ", lines), summary);
     }
 
     /// <summary>Monitor del Centro: el principal de Windows (ADR 0008).</summary>

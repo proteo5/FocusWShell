@@ -89,6 +89,16 @@ public partial class App : Application
                 _main.SetStatus(message + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result));
             }
         });
+        _controller.OpenMissingApps = () => _settings.OpenMissingApps;
+        _controller.SceneAppsOpened += (message, result) => Dispatcher.BeginInvoke(() =>
+        {
+            _tray?.Notify("Escena", message);
+            if (_main?.IsVisible == true)
+            {
+                _main.Refresh();
+                _main.SetStatus(message + Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result));
+            }
+        });
         _controller.StartWatching();
 
         // S6: monitores que se conectan o desconectan (también tablets por wifi).

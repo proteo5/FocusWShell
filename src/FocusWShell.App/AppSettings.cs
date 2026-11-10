@@ -27,6 +27,9 @@ public sealed class AppSettings
     /// <summary>Su botón en la barra de tareas la lleva al foco.</summary>
     public bool FocusOnTaskbar { get; set; } = true;
 
+    /// <summary>Al aplicar una escena, abrir las apps que falten y ponerlas en su panel (ADR 0011).</summary>
+    public bool OpenMissingApps { get; set; } = true;
+
     /// <summary>Un clic en la propia ventana la lleva al foco. Desactivado: las ventanas saltarían a cada clic.</summary>
     public bool FocusOnClick { get; set; }
 

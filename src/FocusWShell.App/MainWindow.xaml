@@ -24,6 +24,9 @@
                 <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="Escenas guardadas" />
                 <Button x:Name="ApplySceneButton" Content="Aplicar escena" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />
                 <Button x:Name="DeleteSceneButton" Content="Borrar" Padding="10,2" Margin="6,0,24,0" Click="DeleteScene_Click" />
+                <CheckBox x:Name="OpenMissingBox" Content="Abrir las que falten" VerticalAlignment="Center" Margin="0,0,24,0"
+                          Checked="OpenMissing_Changed" Unchecked="OpenMissing_Changed"
+                          ToolTip="Al aplicar una escena, abre las apps que no estén abiertas (si el catálogo sabe cómo) y pone su ventana en su panel." />
                 <TextBox x:Name="SceneName" Width="200" VerticalContentAlignment="Center" AutomationProperties.Name="Nombre de la escena" />
                 <Button x:Name="SaveSceneButton" Content="Guardar escena actual" Padding="10,2" Margin="6,0,0,0" Click="SaveScene_Click"
                         ToolTip="Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza." />
@@ -64,7 +67,14 @@
                  IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                  FontFamily="Consolas" FontSize="12" />
 
-        <GroupBox DockPanel.Dock="Bottom" Header="Apps conocidas (se añaden solas al verlas abiertas)" Margin="0,8,0,0" Padding="6">
+        <GroupBox DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="6">
+            <GroupBox.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Apps conocidas (se añaden solas al verlas abiertas)" VerticalAlignment="Center" />
+                    <CheckBox x:Name="ShowHiddenApps" Content="Ver ocultas" Margin="16,0,0,0" VerticalAlignment="Center"
+                              Checked="ShowHiddenApps_Changed" Unchecked="ShowHiddenApps_Changed" />
+                </StackPanel>
+            </GroupBox.Header>
             <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="CatalogList" />
             </ScrollViewer>

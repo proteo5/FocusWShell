@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Domain;
@@ -105,5 +105,16 @@ public class StackedPanelTests
         ]));
 
         Assert.Equal(["a", "notas", "b"], ws.Panels.Select(p => p.Id));
+    }
+
+    [Fact]
+    public void AScenePanelResolvesToItselfOrToWhoeverHoldsItsSlot()
+    {
+        var ws = new Workspace();
+        ws.Execute(new CreatePanel(Notes));
+
+        Assert.Equal("notas", ws.ResolveScenePanel(new Panel("notas", "Otro nombre", Aux, PanelSide.Right))!.Id); // por identificador
+        Assert.Equal(Workspace.WorkPanel, ws.ResolveScenePanel(new Panel("de-otra-escena", "X", null, PanelSide.Right))!.Id); // por puesto
+        Assert.Null(ws.ResolveScenePanel(new Panel("nada", "X", Aux, PanelSide.Left))); // nadie en ese puesto
     }
 }

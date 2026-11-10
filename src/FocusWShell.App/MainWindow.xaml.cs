@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         GestureTaskView.IsChecked = settings.FocusOnTaskView;
         GestureTaskbar.IsChecked = settings.FocusOnTaskbar;
         GestureClick.IsChecked = settings.FocusOnClick;
+        OpenMissingBox.IsChecked = settings.OpenMissingApps;
         _loadingGestures = false;
         DataContext = this;
         WindowList.ItemsSource = _rows;
@@ -99,6 +100,19 @@ public partial class MainWindow : Window
         Refresh();
         SetStatus(Describe(result));
     }
+
+    private void OpenMissing_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingGestures)
+        {
+            return;
+        }
+
+        _settings.OpenMissingApps = OpenMissingBox.IsChecked == true;
+        _settings.Save();
+    }
+
+    private void ShowHiddenApps_Changed(object sender, RoutedEventArgs e) => BuildCatalog(_controller.Panels());
 
     /// <summary>Qué gestos de Windows llevan al foco (ADR 0003, enmienda). Se guarda al momento.</summary>
     private void Gesture_Changed(object sender, RoutedEventArgs e)
@@ -390,7 +404,7 @@ public partial class MainWindow : Window
     private void BuildCatalog(IReadOnlyList<Panel> panels)
     {
         CatalogList.Children.Clear();
-        var apps = _controller.CatalogApps();
+        var apps = _controller.CatalogApps(includeHidden: ShowHiddenApps.IsChecked == true);
         if (apps.Count == 0)
         {
             CatalogList.Children.Add(new System.Windows.Controls.TextBlock { Text = "Todavía no hay apps: aparecerán al detectarlas abiertas.", Foreground = System.Windows.Media.Brushes.DimGray });
@@ -400,15 +414,35 @@ public partial class MainWindow : Window
         foreach (var (app, open) in apps)
         {
             var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
-            row.Children.Add(new System.Windows.Controls.TextBlock
+            row.Children.Add(new System.Windows.Controls.Image
+            {
+                Source = AppIcons.Get(app),
+                Width = 16,
+                Height = 16,
+                Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            // El nombre se edita en el sitio; se guarda al salir del cuadro.
+            var name = new System.Windows.Controls.TextBox
             {
                 Text = app.Name,
-                Width = 220,
+                Width = 200,
+                Margin = new Thickness(0, 0, 8, 0),
                 FontWeight = open ? FontWeights.SemiBold : FontWeights.Normal,
-                Foreground = open ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.Gray,
-                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = app.Hidden ? System.Windows.Media.Brushes.Gray : System.Windows.Media.Brushes.Black,
+                VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = app.ExecutablePath ?? app.Aumid ?? app.AppKey,
-            });
+            };
+            System.Windows.Automation.AutomationProperties.SetName(name, $"Nombre de la app {app.Name}");
+            name.LostFocus += (_, _) =>
+            {
+                if (name.Text.Trim().Length > 0 && name.Text.Trim() != app.Name)
+                {
+                    _controller.RenameApp(app.AppKey, name.Text);
+                }
+            };
+            row.Children.Add(name);
             row.Children.Add(new System.Windows.Controls.TextBlock
             {
                 Text = open ? "abierta" : "cerrada",
@@ -450,12 +484,23 @@ public partial class MainWindow : Window
                 Refresh();
             };
 
+            var hide = new System.Windows.Controls.Button
+            {
+                Content = app.Hidden ? "Mostrar" : "Ocultar",
+                Padding = new Thickness(8, 1, 8, 1),
+                Margin = new Thickness(0, 0, 6, 0),
+                ToolTip = app.Hidden ? "Vuelve a mostrarla en la lista" : "La quita de la lista sin olvidarla: no vuelve a aparecer como nueva",
+            };
+            System.Windows.Automation.AutomationProperties.SetName(hide, $"{(app.Hidden ? "Mostrar" : "Ocultar")} {app.Name}");
+            hide.Click += (_, _) => _controller.SetAppHidden(app.AppKey, !app.Hidden);
+
             var forget = new System.Windows.Controls.Button { Content = "Olvidar", Padding = new Thickness(8, 1, 8, 1) };
             System.Windows.Automation.AutomationProperties.SetName(forget, $"Olvidar {app.Name}");
             forget.Click += (_, _) => _controller.ForgetApp(app.AppKey);
 
             row.Children.Add(target);
             row.Children.Add(launch);
+            row.Children.Add(hide);
             row.Children.Add(forget);
             CatalogList.Children.Add(row);
         }

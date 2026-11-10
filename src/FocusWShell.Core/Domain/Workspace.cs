@@ -317,6 +317,19 @@ public sealed class Workspace
         return PrincipalPanel(own.Side) ?? _panels.First(p => p.Display is null);
     }
 
+    /// <summary>El panel que ocupa ese puesto (monitor, lado, arriba/abajo), si lo hay.</summary>
+    public Panel? PanelAt(string? display, PanelSide side, PanelSlot slot) =>
+        ColumnOf(display, side).FirstOrDefault(p => p.Slot == slot);
+
+    /// <summary>
+    /// Panel real de un panel de escena ya aplicada: el mismo (por identificador) o el que ocupa su puesto.
+    /// </summary>
+    public Panel? ResolveScenePanel(Panel scenePanel)
+    {
+        ArgumentNullException.ThrowIfNull(scenePanel);
+        return FindPanel(scenePanel.Id) ?? PanelAt(scenePanel.Display, scenePanel.Side, scenePanel.Slot);
+    }
+
     /// <summary>El primer panel (el de arriba) de esa columna del principal.</summary>
     private Panel? PrincipalPanel(PanelSide side) => ColumnOf(null, side).FirstOrDefault();
 
