@@ -1,4 +1,4 @@
-namespace FocusWShell.Core.Domain;
+﻿namespace FocusWShell.Core.Domain;
 
 /// <summary>
 /// Una app que FocusWShell ha visto alguna vez (ADR 0011). Guarda cómo reconocerla y cómo abrirla,
@@ -22,6 +22,9 @@ public sealed record CatalogApp(
 {
     /// <summary>Si hay forma de abrirla.</summary>
     public bool CanLaunch => !string.IsNullOrEmpty(Aumid) || !string.IsNullOrEmpty(ExecutablePath);
+
+    /// <summary>Si el usuario le puso el nombre: entonces el gestor no lo vuelve a cambiar.</summary>
+    public bool Renamed { get; init; }
 }
 
 /// <summary>Catálogo de apps que se llena por detección suave: nunca se escanea lo instalado.</summary>
@@ -91,7 +94,23 @@ public sealed class AppCatalog
             return false;
         }
 
-        _apps[appKey] = app with { Name = name.Trim() };
+        _apps[appKey] = app with { Name = name.Trim(), Renamed = true };
+        return true;
+    }
+
+    /// <summary>
+    /// Mejora el nombre automático de una app (p. ej. "Application Frame Host" → "Calculator") si el usuario
+    /// no la renombró y su nombre es <paramref name="previous"/>. Devuelve si cambió.
+    /// </summary>
+    public bool ImproveName(string appKey, string previous, string better)
+    {
+        if (!_apps.TryGetValue(appKey, out var app) || app.Renamed || string.IsNullOrWhiteSpace(better)
+            || app.Name != previous || app.Name == better.Trim())
+        {
+            return false;
+        }
+
+        _apps[appKey] = app with { Name = better.Trim() };
         return true;
     }
 

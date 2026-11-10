@@ -276,7 +276,7 @@ Cuatro Calculadoras en un panel «Monitoreo» de prueba en el monitor HP (1920 p
 | Clic en la pestaña de una oculta de la fila 1 | El panel vuelve a la fila 1 sin cambiar el orden |
 | «Tamaño: Grande» en el menú de la primera | Ocupa las tres columnas y las demás pasan a la fila 2 |
 
-Pendiente, sin relación con los tiles: las apps de la Store aparecen como «ApplicationFrameHost» en las pestañas, porque la etiqueta sale del proceso. Conviene usar el nombre del catálogo.
+Encontrado aquí y ya corregido: las apps de la Store aparecían como «ApplicationFrameHost» en las pestañas y en la lista, porque la etiqueta salía del proceso, y como «Application Frame Host» en el catálogo. Ahora el nombre de una app empaquetada se pide al shell por su AUMID (`shell:AppsFolder`) y la lista y las etiquetas nuevas usan el nombre del catálogo. Los nombres automáticos ya guardados se corrigen solos al volver a ver la app, salvo los que el usuario renombró (`Renamed`). Comprobado con la Calculadora: «Calculator» en la lista, en la pestaña y en `apps.json`.
 
 ### S6 — Reconexión (2026-11-10)
 

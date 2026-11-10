@@ -16,11 +16,12 @@ public sealed record AssignmentOption(string Key, string Label)
 }
 
 /// <summary>Una ventana en la lista de la ventana principal, con lo que el usuario quiere hacer con ella.</summary>
-public sealed class WindowRow(WindowSnapshot snapshot, string assignment) : INotifyPropertyChanged
+public sealed class WindowRow(WindowSnapshot snapshot, string assignment, string? appName = null) : INotifyPropertyChanged
 {
     public WindowSnapshot Snapshot { get; } = snapshot;
 
-    public string App => Path.GetFileNameWithoutExtension(Snapshot.ProcessName);
+    /// <summary>Nombre de la app (el del catálogo si se conoce; si no, el del proceso).</summary>
+    public string App { get; } = appName ?? Path.GetFileNameWithoutExtension(snapshot.ProcessName);
 
     public string Title => Snapshot.Title;
 

@@ -383,6 +383,22 @@ public sealed class ShellController : IDisposable
         CatalogChanged?.Invoke();
     }
 
+    /// <summary>Nombre automático de cada app en esta sesión (leerlo cuesta: versión del ejecutable o el shell).</summary>
+    private readonly Dictionary<string, string> _autoNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Nombre de la app de una ventana: el del catálogo o, si no está, el del proceso. Así las apps de la
+    /// Store dejan de verse como "ApplicationFrameHost".
+    /// </summary>
+    public string AppName(WindowSnapshot window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        lock (_gate)
+        {
+            return _catalog.Find(MinSizeCatalog.KeyFor(window))?.Name ?? Path.GetFileNameWithoutExtension(window.ProcessName);
+        }
+    }
+
     /// <summary>Registra las apps que se ven. Sólo escribe el archivo si hay algo nuevo.</summary>
     private void ObserveApps(IReadOnlyList<WindowSnapshot> windows)
     {
@@ -393,17 +409,23 @@ public sealed class ShellController : IDisposable
             var key = MinSizeCatalog.KeyFor(w);
             open.Add(key);
             var known = _catalog.Find(key);
-            string name = known?.Name
-                ?? AppLauncher.FriendlyName(w.ProcessPath)
-                ?? Path.GetFileNameWithoutExtension(w.ProcessName);
-            changed |= _catalog.Observe(key, name, w.ProcessPath, w.AppUserModelId, DateTimeOffset.Now);
-
-            // Corrige nombres genéricos guardados con el criterio anterior ("Electron", "Notepad.exe").
-            if (known is not null && (known.Name.Equals("Electron", StringComparison.OrdinalIgnoreCase)
-                || known.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                && AppLauncher.FriendlyName(w.ProcessPath) is { } better && better != known.Name)
+            bool firstTime = !_autoNames.TryGetValue(key, out var auto);
+            if (firstTime)
             {
-                changed |= _catalog.Rename(key, better);
+                auto = AppLauncher.FriendlyName(w.ProcessPath, w.AppUserModelId) ?? Path.GetFileNameWithoutExtension(w.ProcessName);
+                _autoNames[key] = auto;
+            }
+
+            changed |= _catalog.Observe(key, known?.Name ?? auto!, w.ProcessPath, w.AppUserModelId, DateTimeOffset.Now);
+
+            // Corrige nombres automáticos de criterios anteriores ("Electron", "Notepad.exe" o, en las apps
+            // de la Store, "Application Frame Host"), salvo que el usuario la haya renombrado.
+            if (firstTime && known is { Renamed: false } && known.Name != auto
+                && (known.Name.Equals("Electron", StringComparison.OrdinalIgnoreCase)
+                    || known.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                    || known.Name == AppLauncher.FriendlyName(w.ProcessPath)))
+            {
+                changed |= _catalog.ImproveName(key, known.Name, auto!);
             }
         }
 
