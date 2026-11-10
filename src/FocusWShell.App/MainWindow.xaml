@@ -46,6 +46,9 @@
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
             <Button x:Name="PromoteButton" DockPanel.Dock="Left" Content="Al Centro" Padding="12,4" Margin="0,0,8,0" Click="Promote_Click"
                     ToolTip="Lleva la ventana seleccionada al Centro (Ctrl+Alt+Mayús+↑ con la ventana activa)" />
+            <Button x:Name="FullscreenButton" DockPanel.Dock="Left" Content="Pantalla completa" Padding="12,4" Margin="0,0,4,0" Click="Fullscreen_Click"
+                    ToolTip="Maximiza la ventana seleccionada en el monitor elegido; si ya lo está, vuelve al foco (Ctrl+Alt+Mayús+F con la del foco)" />
+            <ComboBox x:Name="FullscreenTarget" DockPanel.Dock="Left" Width="130" Margin="0,0,8,0" AutomationProperties.Name="Monitor de pantalla completa" />
             <Button x:Name="SwapButton" DockPanel.Dock="Left" Content="Volver a la anterior" Padding="12,4" Margin="0,0,8,0" Click="Swap_Click"
                     ToolTip="Devuelve al Centro la ventana que estaba antes (Ctrl+Alt+Mayús+←)" />
             <Button x:Name="ReturnButton" DockPanel.Dock="Left" Content="Centro al panel" Padding="12,4" Margin="0,0,8,0" Click="Return_Click"

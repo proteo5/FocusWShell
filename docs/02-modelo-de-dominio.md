@@ -253,6 +253,8 @@ Cada ajuste genera una nota en lenguaje natural, por ejemplo: "Contexto se ampli
 
 Con el foco en un extremo, la columna derecha queda en medio y no puede desbordar: su ventana demasiado ancha sale del layout. La izquierda toca un borde del monitor y desborda hacia fuera, salvo que ese borde dé a otro monitor.
 
+**Pantalla completa.** `Placement.Fullscreen` es el foco maximizado en un monitor: ocupa el lugar del Centro (como mucho una ventana tiene la atención, en el Centro o en pantalla completa; `Workspace.Focused`). `EnterFullscreen`, `ExitFullscreen`; `Promote`, `ReturnToPanel`, `Park` y `SwapWithPrevious` la tratan como al Centro. Des-maximizarla es `ExitFullscreen`.
+
 **Proporciones.** Cada vista tiene las suyas (`ViewWeights`: izquierda, foco, derecha); las que no se han tocado son las de partida. `SetProportions(vista, pesos)` las cambia (un preset o el separador arrastrado) y sólo mueve algo si es la vista actual; con `null` vuelven a las de partida. Redimensionar una ventana del principal sólo por el borde que comparte con la columna vecina es mover el separador: el controlador lo detecta con `ColumnSeparator` y manda `SetProportions` + `SnapBack` en lugar de sólo `SnapBack`.
 
 ### Dos paneles en una columna
@@ -262,7 +264,8 @@ Cada panel tiene un **puesto** en su columna (`Slot`: arriba o abajo), y en cada
 En el layout (`PanelColumn`, común al principal y a los auxiliares):
 
 - Un panel sin ventanas no ocupa sitio: el otro se queda con la columna entera, sea cual sea su puesto.
-- Con dos, se reparten el alto a partes iguales (las proporciones llegan con [ADR 0012](adr/0012-vistas-posicion-del-foco.md)). Cada uno tiene su **banda**, con su tira de pestañas arriba.
+- Con dos, se reparten el alto según su `Height` (a partes iguales por defecto); arrastrar el borde entre los dos lo cambia (`SplitColumn`). Cada uno tiene su **banda**, con su tira de pestañas arriba.
+- Si el reparto deja a una banda sin el alto que pide su ventana, se lleva al límite con una nota (cuando caben las dos).
 - Ninguno invade al otro: una ventana más alta que su banda sale del layout (se minimiza) con una nota. En tiles, si no caben, el panel pasa a pila, como siempre.
 - La columna es tan ancha como pide la ventana visible más ancha de sus dos paneles.
 - Soltar una ventana arrastrada sobre la banda de un panel la manda a ese panel.

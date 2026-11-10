@@ -172,6 +172,7 @@ public partial class MainWindow : Window
             { Placement: Placement.Parked } => $"Estacionada en {name}{missing}",
             { Detached: true } => "Fuera de layout",
             { Placement: Placement.Center } => $"Foco (vuelve a {name})",
+            { Placement: Placement.Fullscreen } => $"Pantalla completa (vuelve a {name})",
             _ => $"En {name}{missing}",
         };
     }
@@ -192,7 +193,12 @@ public partial class MainWindow : Window
         HeaderText.Text =
             $"Principal {display.FriendlyName ?? display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
             string.Concat(aux.Select(a => $"   ·   Auxiliar {a.FriendlyName ?? a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
-            "Atajos Ctrl+Alt+Mayús: ↑ al foco · ← anterior · ↓ foco al panel · V vista · P pantalla encendida · Retroceso restaurar todas";
+            "Atajos Ctrl+Alt+Mayús: ↑ al foco · ← anterior · ↓ foco al panel · F pantalla completa · V vista · P pantalla encendida · Retroceso restaurar todas";
+        var fullscreenTargets = new List<string> { "Principal" };
+        fullscreenTargets.AddRange(aux.Select(a => a.FriendlyName ?? a.DeviceName));
+        int fullscreenIndex = Math.Max(0, FullscreenTarget.SelectedIndex);
+        FullscreenTarget.ItemsSource = fullscreenTargets;
+        FullscreenTarget.SelectedIndex = Math.Min(fullscreenIndex, fullscreenTargets.Count - 1);
         ShowView(_controller.View);
 
         // Primero se desconectan las filas: al vaciar las opciones, WPF les escribe un valor vacío.
@@ -624,6 +630,35 @@ public partial class MainWindow : Window
         Refresh();
     }
 
+    /// <summary>
+    /// Pantalla completa (ADR 0012) de la ventana seleccionada en el monitor elegido; si ya lo está ahí,
+    /// sale y vuelve al foco.
+    /// </summary>
+    private async void Fullscreen_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowList.SelectedItem is not WindowRow row)
+        {
+            SetStatus("Selecciona una ventana de la lista.");
+            return;
+        }
+
+        var h = row.Snapshot.Handle;
+        var aux = ShellController.AuxiliaryDisplays();
+        string? display = FullscreenTarget.SelectedIndex > 0 && FullscreenTarget.SelectedIndex - 1 < aux.Count
+            ? aux[FullscreenTarget.SelectedIndex - 1].Key
+            : null;
+        var current = _controller.Managed().FirstOrDefault(m => m.Handle == h);
+        Command[] commands = current switch
+        {
+            null => [new Adopt(h, row.App, DefaultPanel()), new EnterFullscreen(h, display)],
+            { Placement: Placement.Fullscreen } when _controller.FullscreenDisplay == display => [new ExitFullscreen(h)],
+            _ => [new EnterFullscreen(h, display)],
+        };
+        _pending.Remove(h);
+        await Run(() => _controller.Execute(commands));
+        Refresh();
+    }
+
     private async void Swap_Click(object sender, RoutedEventArgs e)
     {
         await Run(() => _controller.Execute(new SwapWithPrevious()));
@@ -678,7 +713,7 @@ public partial class MainWindow : Window
 
     private async Task Run(Func<ControllerResult> action)
     {
-        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, SwapButton, ReturnButton, ParkButton, UnparkButton, ReattachButton, ReleaseButton };
+        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, FullscreenButton, SwapButton, ReturnButton, ParkButton, UnparkButton, ReattachButton, ReleaseButton };
         foreach (var b in buttons)
         {
             b.IsEnabled = false;

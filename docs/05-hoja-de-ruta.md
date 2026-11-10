@@ -41,8 +41,8 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
    - Paneles como entidades (crear, renombrar, mover, borrar), hasta dos por columna; Contexto y Trabajo pasan a ser los paneles por defecto. Ventanas libres por defecto. **Hecho**, con dos paneles por columna (arriba y abajo) en el principal y en los auxiliares; de momento se reparten el alto a partes iguales.
    - Catálogo de apps por detección, y abrir apps cerradas en un panel. **Hecho**, con iconos, renombrar y ocultar, y escenas que abren las apps que faltan.
    - Presentaciones nuevas, empezando por tiles adaptables (tamaños de tile y reparto automático) y la lista tipo Explorador.
-   - Vistas con el foco a la izquierda, al centro o a la derecha. **Hecho**, con presets y separador arrastrado; las proporciones se guardan por vista. Falta el separador entre dos paneles apilados.
-   - Pantalla completa (maximizada) en el monitor elegido.
+   - Vistas con el foco a la izquierda, al centro o a la derecha. **Hecho**, con presets y separador arrastrado; las proporciones se guardan por vista, y también el reparto entre dos paneles apilados.
+   - Pantalla completa (maximizada) en el monitor elegido. **Hecho.**
 
    Todo se usa desde la ventana, los atajos y las tiras.
 2. **Deck en una esquina del monitor principal**, que se muestra y se oculta con un clic o un atajo, y se oculta solo al elegir.

@@ -2,7 +2,10 @@
 
 namespace FocusWShell.Core.Domain;
 
-/// <summary>Dónde está ahora la ventana. <c>Fullscreen</c> llega en M1b.</summary>
+/// <summary>
+/// Dónde está ahora la ventana. <c>Fullscreen</c> es el foco maximizado en un monitor (ADR 0012): ocupa el
+/// lugar del Centro (como mucho una de las dos) y al salir vuelve al Centro.
+/// </summary>
 public enum Placement
 {
     InPanel,
@@ -22,8 +25,15 @@ public enum Placement
 /// </param>
 /// <param name="Template">Presentación del panel.</param>
 /// <param name="Slot">Arriba o abajo en su columna: como máximo dos paneles por columna.</param>
+/// <param name="Height">Su parte del alto de la columna si la comparte (relativa a la del otro panel).</param>
 public sealed record Panel(
-    string Id, string Name, string? Display, PanelSide Side, PanelTemplate Template = PanelTemplate.Tiles, PanelSlot Slot = PanelSlot.Upper)
+    string Id,
+    string Name,
+    string? Display,
+    PanelSide Side,
+    PanelTemplate Template = PanelTemplate.Tiles,
+    PanelSlot Slot = PanelSlot.Upper,
+    double Height = 1)
 {
     /// <summary>Si ocupa la misma columna que <paramref name="other"/> (mismo monitor y mismo lado).</summary>
     public bool SharesColumnWith(Panel other) =>
@@ -58,6 +68,9 @@ public sealed record AuxComposition(string Display, IReadOnlyList<PanelView> Pan
     public PanelTemplate WorkTemplate => Panels.FirstOrDefault(p => p.Panel.Side == PanelSide.Right)?.Panel.Template ?? PanelTemplate.Tiles;
 }
 
+/// <summary>La ventana en pantalla completa y su monitor (<c>null</c>: el principal).</summary>
+public sealed record FullscreenView(nint Handle, string? Display);
+
 /// <summary>Qué va en cada región, en orden: lo que los motores de layout necesitan.</summary>
 /// <param name="Left">Panel a la izquierda del foco en el principal (por defecto, Contexto).</param>
 /// <param name="Right">Panel a la derecha del foco en el principal (por defecto, Trabajo).</param>
@@ -71,6 +84,9 @@ public sealed record SceneComposition(PanelView? Left, nint? Center, PanelView? 
 
     /// <summary>Segundo panel de la columna izquierda del principal (el de abajo), si lo hay.</summary>
     public PanelView? LeftLower { get; init; }
+
+    /// <summary>La ventana del foco en pantalla completa, si la hay. Entonces <see cref="Center"/> está vacío.</summary>
+    public FullscreenView? Fullscreen { get; init; }
 
     /// <summary>Segundo panel de la columna derecha del principal.</summary>
     public PanelView? RightLower { get; init; }
@@ -113,6 +129,15 @@ public sealed record Promote(nint Handle) : Command;
 /// <summary>Devuelve la ventana del Centro a su panel. El Centro queda vacío.</summary>
 public sealed record ReturnToPanel(nint Handle) : Command;
 
+/// <summary>
+/// Pantalla completa (ADR 0012): lleva la ventana al foco, si no estaba, y la maximiza en el monitor
+/// <paramref name="Display"/> (<c>null</c>: el principal). La columna del foco queda vacía.
+/// </summary>
+public sealed record EnterFullscreen(nint Handle, string? Display = null) : Command;
+
+/// <summary>Sale de pantalla completa: la ventana vuelve al foco.</summary>
+public sealed record ExitFullscreen(nint Handle) : Command;
+
 /// <summary>Promueve la ventana que ocupó el Centro antes (CA2).</summary>
 public sealed record SwapWithPrevious : Command;
 
@@ -127,6 +152,12 @@ public sealed record RenamePanel(string PanelId, string Name) : Command;
 
 /// <summary>Lleva un panel a otro monitor, al otro lado del foco o al otro puesto de su columna, con sus ventanas.</summary>
 public sealed record MovePanel(string PanelId, string? Display, PanelSide Side, PanelSlot Slot = PanelSlot.Upper) : Command;
+
+/// <summary>
+/// Reparte el alto de una columna entre sus dos paneles (el separador arrastrado). Los valores son
+/// relativos: p. ej. los altos en píxeles de cada banda.
+/// </summary>
+public sealed record SplitColumn(string UpperId, double UpperHeight, string LowerId, double LowerHeight) : Command;
 
 /// <summary>Cambia la presentación de un panel. <c>Fill</c> sólo vale en monitores auxiliares.</summary>
 public sealed record SetPresentation(string PanelId, PanelTemplate Template) : Command;
@@ -288,6 +319,12 @@ public sealed class Workspace
 
     public ManagedWindow? Center => _windows.FirstOrDefault(w => w.Placement == Placement.Center);
 
+    /// <summary>La ventana con la atención: la del Centro o la que está en pantalla completa.</summary>
+    public ManagedWindow? Focused => _windows.FirstOrDefault(w => w.Placement is Placement.Center or Placement.Fullscreen);
+
+    /// <summary>Monitor de la pantalla completa (<c>null</c>: el principal).</summary>
+    private string? _fullscreenDisplay;
+
     public ManagedWindow? Find(nint handle) => _windows.FirstOrDefault(w => w.Handle == handle);
 
     public Panel? FindPanel(string id) => _panels.FirstOrDefault(p => p.Id == id);
@@ -359,6 +396,9 @@ public sealed class Workspace
                 View(right.FirstOrDefault()))
             {
                 View = this.View,
+                Fullscreen = _windows.FirstOrDefault(w => w.Placement == Placement.Fullscreen) is { } full
+                    ? new FullscreenView(full.Handle, IsDisplayMissing(_fullscreenDisplay) ? null : _fullscreenDisplay)
+                    : null,
                 Weights = ProportionsOf(this.View),
                 LeftLower = View(left.Skip(1).FirstOrDefault()),
                 RightLower = View(right.Skip(1).FirstOrDefault()),
@@ -372,6 +412,8 @@ public sealed class Workspace
     {
         Adopt c => DoAdopt(c),
         Promote c => DoPromote(c.Handle),
+        EnterFullscreen c => DoEnterFullscreen(c),
+        ExitFullscreen c => DoExitFullscreen(c.Handle),
         ReturnToPanel c => DoReturnToPanel(c.Handle),
         SwapWithPrevious => DoSwapWithPrevious(),
         SendTo c => DoSendTo(c),
@@ -379,6 +421,7 @@ public sealed class Workspace
         RenamePanel c => DoRenamePanel(c),
         MovePanel c => DoMovePanel(c),
         SetPresentation c => DoSetPresentation(c),
+        SplitColumn c => DoSplitColumn(c),
         DeletePanel c => DoDeletePanel(c.PanelId),
         DisplayRemoved c => DoDisplayRemoved(c.Display),
         DisplayAdded c => DoDisplayAdded(c.Display),
@@ -441,14 +484,20 @@ public sealed class Workspace
             return CommandOutcome.Reject($"{w.Label} ya está en el Centro.");
         }
 
+        if (w.Placement == Placement.Fullscreen)
+        {
+            return DoExitFullscreen(handle);
+        }
+
         if (w.Placement is not (Placement.InPanel or Placement.Parked))
         {
             return CommandOutcome.Reject($"{w.Label} no se puede promover desde {w.Placement}.");
         }
 
-        if (Center is { } previous)
+        if (Focused is { } previous)
         {
-            // La anterior vuelve a su panel, al mismo puesto que tenía, y queda como "anterior".
+            // La anterior (en el Centro o en pantalla completa) vuelve a su panel, al mismo puesto que
+            // tenía, y queda como "anterior".
             Replace(previous with { Placement = Placement.InPanel });
             _centerHistory.Remove(previous.Handle);
             _centerHistory.Insert(0, previous.Handle);
@@ -459,12 +508,62 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout(), new Activate(handle));
     }
 
+    private CommandOutcome DoEnterFullscreen(EnterFullscreen c)
+    {
+        var w = Find(c.Handle);
+        if (w is null)
+        {
+            return CommandOutcome.Reject("La ventana no está gestionada.");
+        }
+
+        if (w.Placement == Placement.Fullscreen && string.Equals(_fullscreenDisplay, c.Display, StringComparison.OrdinalIgnoreCase))
+        {
+            return CommandOutcome.Accept();
+        }
+
+        var effects = new List<Effect>();
+        if (w.Placement is Placement.InPanel or Placement.Parked)
+        {
+            var promoted = DoPromote(c.Handle);
+            if (!promoted.Accepted)
+            {
+                return promoted;
+            }
+        }
+        else if (w.Placement is not (Placement.Center or Placement.Fullscreen))
+        {
+            return CommandOutcome.Reject($"{w.Label} no puede pasar a pantalla completa desde {w.Placement}.");
+        }
+
+        _fullscreenDisplay = c.Display;
+        Replace(Find(c.Handle)! with { Placement = Placement.Fullscreen, Detached = false });
+        return CommandOutcome.Accept(new ApplyLayout(), new Activate(c.Handle));
+    }
+
+    private CommandOutcome DoExitFullscreen(nint handle)
+    {
+        var w = Find(handle);
+        if (w is not { Placement: Placement.Fullscreen })
+        {
+            return CommandOutcome.Reject("La ventana no está en pantalla completa.");
+        }
+
+        _fullscreenDisplay = null;
+        Replace(w with { Placement = Placement.Center });
+        return CommandOutcome.Accept(new ApplyLayout(), new Activate(handle));
+    }
+
     private CommandOutcome DoReturnToPanel(nint handle)
     {
         var w = Find(handle);
-        if (w is not { Placement: Placement.Center })
+        if (w is not { Placement: Placement.Center or Placement.Fullscreen })
         {
             return CommandOutcome.Reject("Sólo se puede devolver al panel la ventana del Centro.");
+        }
+
+        if (w.Placement == Placement.Fullscreen)
+        {
+            _fullscreenDisplay = null;
         }
 
         Replace(w with { Placement = Placement.InPanel });
@@ -475,7 +574,7 @@ public sealed class Workspace
 
     private CommandOutcome DoSwapWithPrevious()
     {
-        var current = Center?.Handle;
+        var current = Focused?.Handle;
         var previous = _centerHistory.FirstOrDefault(h => h != current && IsManaged(h));
         return previous == 0
             ? CommandOutcome.Reject("No hay una ventana anterior en el Centro.")
@@ -597,6 +696,28 @@ public sealed class Workspace
         return CommandOutcome.Accept(new ApplyLayout());
     }
 
+    private CommandOutcome DoSplitColumn(SplitColumn c)
+    {
+        if (FindPanel(c.UpperId) is not { } upper || FindPanel(c.LowerId) is not { } lower)
+        {
+            return CommandOutcome.Reject("No existe alguno de los paneles.");
+        }
+
+        if (!upper.SharesColumnWith(lower) || upper.Id == lower.Id)
+        {
+            return CommandOutcome.Reject($"«{upper.Name}» y «{lower.Name}» no comparten columna.");
+        }
+
+        if (!(c.UpperHeight > 0) || !(c.LowerHeight > 0) || double.IsInfinity(c.UpperHeight) || double.IsInfinity(c.LowerHeight))
+        {
+            return CommandOutcome.Reject("Los altos tienen que ser positivos.");
+        }
+
+        _panels[_panels.IndexOf(upper)] = upper with { Height = c.UpperHeight };
+        _panels[_panels.IndexOf(lower)] = lower with { Height = c.LowerHeight };
+        return CommandOutcome.Accept(new ApplyLayout());
+    }
+
     private CommandOutcome DoSetPresentation(SetPresentation c)
     {
         if (FindPanel(c.PanelId) is not { } panel)
@@ -677,12 +798,12 @@ public sealed class Workspace
             return CommandOutcome.Accept();
         }
 
-        if (w.Placement is not (Placement.InPanel or Placement.Center))
+        if (w.Placement is not (Placement.InPanel or Placement.Center or Placement.Fullscreen))
         {
             return CommandOutcome.Reject($"{w.Label} no se puede estacionar desde {w.Placement}.");
         }
 
-        if (w.Placement == Placement.Center)
+        if (w.Placement is Placement.Center or Placement.Fullscreen)
         {
             // El Centro queda vacío; la ventana queda como "anterior" para volver con un atajo.
             _centerHistory.Remove(handle);
@@ -827,6 +948,7 @@ public sealed class Workspace
 
             // Des-maximizar la ventana de un panel en Fill devuelve el panel a Tiles; en otro caso,
             // la ventana vuelve a su sitio.
+            ExternalChange.Unmaximized when w.Placement == Placement.Fullscreen => [new ExitFullscreen(handle)],
             ExternalChange.Unmaximized when onAux && panel.Template == PanelTemplate.Fill =>
                 [new SetPresentation(panel.Id, PanelTemplate.Tiles)],
             ExternalChange.Unmaximized => [new SnapBack(handle)],

@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using FocusWShell.Core.Displays;
 using FocusWShell.Core.Domain;
+using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 using FocusWShell.Core.Windows;
 using FocusWShell.Win32;
@@ -58,6 +59,8 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
         (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
         (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
         (_, [SnapBack]) => $"{Label}: la moviste; vuelve a su sitio.",
+        (_, [ExitFullscreen]) => $"{Label}: dejó de estar maximizada; sale de pantalla completa y vuelve al foco.",
+        (_, [SplitColumn s, SnapBack]) => $"{Label}: moviste el separador entre los dos paneles de su columna; quedan {Math.Round(100 * s.UpperHeight / (s.UpperHeight + s.LowerHeight))} % arriba y {Math.Round(100 * s.LowerHeight / (s.UpperHeight + s.LowerHeight))} % abajo.",
         (_, [SetProportions p, SnapBack]) => $"{Label}: moviste el separador; esta vista queda en {p.Weights!.Describe(p.View)}.",
         (_, [Promote]) => $"{Label}: la soltaste sobre el foco; pasa al foco.",
         (_, [SendTo s]) => $"{Label}: la soltaste sobre otro panel; se queda en él.",
@@ -164,6 +167,33 @@ public sealed class ShellController : IDisposable
     }
 
     /// <summary>
+    /// Si el cambio de tamaño de una ventana de un panel apilado es mover el separador con el otro panel
+    /// de su columna, el comando que guarda el reparto nuevo.
+    /// </summary>
+    private SplitColumn? StackSplit(ManagedWindow w, PixelRect before, PixelRect after, SceneApplyReport report)
+    {
+        var panel = _workspace.EffectivePanel(w);
+        var other = _workspace.Panels.FirstOrDefault(p => p.Id != panel.Id && p.SharesColumnWith(panel));
+        if (other is null)
+        {
+            return null;
+        }
+
+        var (bands, strip) = panel.Display is { } display && report.Layout.Aux.FirstOrDefault(a => string.Equals(a.Display, display, StringComparison.OrdinalIgnoreCase)) is { } aux
+            ? (aux.Bands, aux.StripHeight)
+            : (report.Layout.Principal.Bands, report.Layout.Principal.StripHeight);
+        if (!bands.TryGetValue(panel.Id, out var own) || !bands.TryGetValue(other.Id, out var theirs))
+        {
+            return null; // el otro panel está vacío: no hay separador
+        }
+
+        var (upperPanel, upperBand, lowerPanel, lowerBand) = own.Top < theirs.Top ? (panel, own, other, theirs) : (other, theirs, panel, own);
+        return StackSeparator.Detect(before, after, upperBand, lowerBand, strip) is { } heights
+            ? new SplitColumn(upperPanel.Id, heights.Upper, lowerPanel.Id, heights.Lower)
+            : null;
+    }
+
+    /// <summary>
     /// Dónde se soltó una ventana arrastrada, según el último layout: en la columna del foco, en la de
     /// otro panel o en ninguna.
     /// </summary>
@@ -226,6 +256,15 @@ public sealed class ShellController : IDisposable
             var label = _workspace.Find(handle)?.Label ?? "?";
             var commands = _workspace.Interpret(handle, change);
 
+            // Redimensionada sólo por el borde que da al otro panel de su columna: es mover el separador
+            // entre los dos paneles apilados (ADR 0011). El reparto se guarda en los paneles.
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && expected is ExpectVisible { Rect: var stackBefore }
+                && _lastReport is { } stackReport && _workspace.Find(handle) is { Placement: Placement.InPanel } stacked
+                && StackSplit(stacked, stackBefore, observed.Visible, stackReport) is { } split)
+            {
+                commands = [split, new SnapBack(handle)];
+            }
+
             // Redimensionada sólo por el borde que comparte con la columna vecina, en el principal: es
             // mover el separador (ADR 0012). Las proporciones nuevas se guardan para esta vista.
             if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && expected is ExpectVisible { Rect: var before }
@@ -237,7 +276,7 @@ public sealed class ShellController : IDisposable
             }
 
             // Arrastrada y soltada: sobre el foco va al foco; sobre otro panel, a ese panel; si no, vuelve.
-            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && _workspace.Find(handle) is { } dragged)
+            if (commands is [SnapBack] && change == ExternalChange.MovedOrResized && _workspace.Find(handle) is { Placement: not Placement.Fullscreen } dragged)
             {
                 var (focus, panelId) = DropTarget(WindowMover.Observe(handle));
                 if (focus && dragged.Placement != Placement.Center)
@@ -494,6 +533,18 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>Monitor de la pantalla completa (<c>null</c>: el principal o ninguna).</summary>
+    public string? FullscreenDisplay
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _workspace.Composition.Fullscreen?.Display;
+            }
+        }
+    }
+
     /// <summary>Vista actual del principal (ADR 0012).</summary>
     public FocusPosition View
     {
@@ -561,7 +612,7 @@ public sealed class ShellController : IDisposable
                 })
                 .ToList();
             var panels = _workspace.Panels
-                .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template, p.Slot))
+                .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template, p.Slot, p.Height))
                 .ToList();
             scene = new SavedScene(name.Trim(), windows)
             {
@@ -614,7 +665,7 @@ public sealed class ShellController : IDisposable
             .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.PanelId ?? Workspace.WorkPanel, m.Entry.Placement))
             .ToList();
         var panels = scene.Panels
-            .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot))
+            .Select(p => new Panel(p.Id, p.Name, DisplayOf(p.AuxIndex), p.Side, p.Template, p.Slot, p.Height))
             .ToList();
         var result = Execute(new ApplyScene(entries, panels) { View = scene.View, Weights = scene.Weights });
 
@@ -807,11 +858,29 @@ public sealed class ShellController : IDisposable
     }
 
     /// <summary>Devuelve el Centro a su panel (atajo).</summary>
+    /// <summary>
+    /// Pantalla completa de la ventana del foco en el principal, o salir si ya lo está (atajo F).
+    /// </summary>
+    public ControllerResult ToggleFullscreen(string? display = null)
+    {
+        lock (_gate)
+        {
+            if (_workspace.Focused is not { } focused)
+            {
+                return new ControllerResult(["No hay ninguna ventana en el foco."], [], null);
+            }
+
+            return focused.Placement == Placement.Fullscreen && display is null
+                ? RunLocked([new ExitFullscreen(focused.Handle)])
+                : RunLocked([new EnterFullscreen(focused.Handle, display)]);
+        }
+    }
+
     public ControllerResult ReturnCenter()
     {
         lock (_gate)
         {
-            return _workspace.Center is { } c
+            return _workspace.Focused is { } c
                 ? RunLocked([new ReturnToPanel(c.Handle)])
                 : new ControllerResult(["El Centro está vacío."], [], null);
         }
@@ -1037,7 +1106,7 @@ public sealed class ShellController : IDisposable
         List<WindowSnapshot> Map(IEnumerable<nint> handles) =>
             handles.Where(_snapshots.ContainsKey).Select(h => _snapshots[h]).ToList();
         PanelAssignment? Assign(PanelView? v) =>
-            v is null ? null : new PanelAssignment(v.Panel.Id, v.Panel.Name, v.Panel.Side, v.Panel.Template, Map(v.Windows)) { Slot = v.Panel.Slot };
+            v is null ? null : new PanelAssignment(v.Panel.Id, v.Panel.Name, v.Panel.Side, v.Panel.Template, Map(v.Windows)) { Slot = v.Panel.Slot, Height = v.Panel.Height };
 
         var assignment = new SceneAssignment(
             Map(c.Context),
@@ -1048,9 +1117,14 @@ public sealed class ShellController : IDisposable
             ContextTitle = c.Left?.Panel.Name ?? "Contexto",
             WorkId = c.Right?.Panel.Id ?? Workspace.WorkPanel,
             WorkTitle = c.Right?.Panel.Name ?? "Trabajo",
+            ContextHeight = c.Left?.Panel.Height ?? 1,
+            WorkHeight = c.Right?.Panel.Height ?? 1,
             ContextLower = Assign(c.LeftLower),
             WorkLower = Assign(c.RightLower),
             Parked = Map(c.Parked),
+            Fullscreen = c.Fullscreen is { } full && _snapshots.TryGetValue(full.Handle, out var fullWindow)
+                ? (fullWindow, full.Display is { } fd && displays.FirstOrDefault(d => d.Key == fd) is { } fullDisplay ? fullDisplay : principal)
+                : null,
             Aux = c.Aux
                 .Select(a => new AuxAssignment(
                     displays.First(d => d.Key == a.Display),

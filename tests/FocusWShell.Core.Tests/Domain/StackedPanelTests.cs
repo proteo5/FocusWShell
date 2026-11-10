@@ -117,4 +117,20 @@ public class StackedPanelTests
         Assert.Equal(Workspace.WorkPanel, ws.ResolveScenePanel(new Panel("de-otra-escena", "X", null, PanelSide.Right))!.Id); // por puesto
         Assert.Null(ws.ResolveScenePanel(new Panel("nada", "X", Aux, PanelSide.Left))); // nadie en ese puesto
     }
+
+    [Fact]
+    public void SplitColumnOnlyBetweenPanelsOfTheSameColumn()
+    {
+        var ws = new Workspace();
+        ws.Execute(new CreatePanel(Notes));
+
+        var ok = ws.Execute(new SplitColumn(Workspace.ContextPanel, 900, "notas", 492));
+
+        Assert.True(ok.Accepted);
+        Assert.Contains(ok.Effects, e => e is ApplyLayout);
+        Assert.Equal(900, ws.FindPanel(Workspace.ContextPanel)!.Height);
+        Assert.Equal(492, ws.FindPanel("notas")!.Height);
+        Assert.False(ws.Execute(new SplitColumn(Workspace.ContextPanel, 1, Workspace.WorkPanel, 1)).Accepted);
+        Assert.False(ws.Execute(new SplitColumn(Workspace.ContextPanel, 0, "notas", 1)).Accepted);
+    }
 }

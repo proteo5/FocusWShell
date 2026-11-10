@@ -144,6 +144,12 @@ public sealed record PanelInput(
     /// <summary>Arriba o abajo en su columna, si la comparte con otro panel.</summary>
     public PanelSlot Slot { get; init; }
 
+    /// <summary>
+    /// Su parte del alto de la columna cuando la comparte con otro panel (relativa a la del otro). Por
+    /// defecto, a partes iguales.
+    /// </summary>
+    public double Height { get; init; } = 1;
+
     public string DisplayTitle => Title ?? Name;
 }
 

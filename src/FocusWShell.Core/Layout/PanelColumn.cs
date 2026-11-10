@@ -50,7 +50,26 @@ internal sealed class PanelColumn
             return new PanelColumn(bands, inset, weight);
         }
 
-        var spans = Splitter.Rows(new PixelRect(0, top, 1, bottom), Enumerable.Repeat(1.0, active.Count).ToList(), gap);
+        // Cada panel, su parte del alto; nunca menos que su franja más un mínimo para sus ventanas.
+        var spans = Splitter.Rows(new PixelRect(0, top, 1, bottom), active.Select(p => p.Height > 0 ? p.Height : 1).ToList(), gap);
+        if (spans.Count == 2)
+        {
+            // Lo que necesita cada banda: su franja y la ventana más alta (en pestañas, se ve una sola).
+            // Si caben las dos, el reparto pedido se lleva al límite en vez de sacar ventanas del layout.
+            int Need(PanelInput p) => inset + Math.Max(StackSeparator.MinWindowHeight, p.Windows.Max(w => w.MinSize?.Height ?? 0));
+            int need0 = Need(active[0]), need1 = Need(active[1]);
+            if (need0 + need1 <= bottom - top - gap)
+            {
+                int split = Math.Clamp(spans[0].Bottom, top + need0, bottom - gap - need1);
+                if (split != spans[0].Bottom)
+                {
+                    var (short_, needed) = split > spans[0].Bottom ? (active[0], need0) : (active[1], need1);
+                    notes.Add($"{short_.DisplayTitle} necesita {needed} px de alto en su columna; el reparto con el otro panel se lleva a ese límite.");
+                    spans = [new PixelRect(0, top, 1, split), new PixelRect(0, split + gap, 1, bottom)];
+                }
+            }
+        }
+
         for (int i = 0; i < active.Count; i++)
         {
             var panel = active[i];

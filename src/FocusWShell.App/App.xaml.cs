@@ -137,6 +137,7 @@ public partial class App : Application
                 () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious()))),
             new("Centro al panel", GlobalHotkeys.VkDown, "Ctrl+Alt+Mayús+↓", () => OnCommandHotkey("Centro al panel", _controller.ReturnCenter)),
             new("Pantalla encendida", GlobalHotkeys.VkP, "Ctrl+Alt+Mayús+P", () => Dispatcher.BeginInvoke(ToggleKeepAwake)),
+            new("Pantalla completa", GlobalHotkeys.VkF, "Ctrl+Alt+Mayús+F", () => OnCommandHotkey("Pantalla completa", () => _controller.ToggleFullscreen())),
             new("Cambiar de vista", GlobalHotkeys.VkV, "Ctrl+Alt+Mayús+V", () => OnCommandHotkey("Cambiar de vista", () =>
                 _controller.Execute(new SetView(_controller.View switch
                 {

@@ -20,6 +20,7 @@ public sealed class GlobalHotkeys : IDisposable
     public const uint VkLeft = 0x25;
     public const uint VkUp = 0x26;
     public const uint VkDown = 0x28;
+    public const uint VkF = 0x46;
     public const uint VkP = 0x50;
     public const uint VkV = 0x56;
 

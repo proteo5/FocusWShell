@@ -66,13 +66,16 @@ public static class PanelStripBuilder
             }
         }
 
+        // En el monitor de la pantalla completa no se muestran tiras: la ventana lo ocupa entero.
+        var fullscreen = workspace.Composition.Fullscreen;
         var principal = report.Layout.Principal;
-        foreach (var (panelId, band) in principal.Bands)
+        IEnumerable<KeyValuePair<string, PixelRect>> principalBands = fullscreen is { Display: null } ? [] : principal.Bands;
+        foreach (var (panelId, band) in principalBands)
         {
             Add(panelId, band, principal.StripHeight, principalDpi, PanelTemplate.Tiles);
         }
 
-        foreach (var aux in report.Layout.Aux)
+        foreach (var aux in report.Layout.Aux.Where(a => fullscreen?.Display is not { } d || !string.Equals(d, a.Display, StringComparison.OrdinalIgnoreCase)))
         {
             foreach (var (panelId, band) in aux.Bands)
             {
@@ -89,7 +92,7 @@ public static class PanelStripBuilder
             .Where(w => workspace.EffectivePanel(w).Id == panelId)
             .Select(w => new StripTab(w.Handle, w.Label, w switch
             {
-                { Placement: Placement.Center } => TabState.InCenter,
+                { Placement: Placement.Center or Placement.Fullscreen } => TabState.InCenter,
                 { Placement: Placement.Parked } => TabState.Parked,
                 { Detached: true } => TabState.Detached,
                 _ => kinds.GetValueOrDefault(w.Handle) == TargetKind.Minimized ? TabState.Hidden : TabState.Active,

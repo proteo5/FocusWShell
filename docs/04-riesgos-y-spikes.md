@@ -251,6 +251,19 @@ Pendiente: arrastrar el borde con el ratón de verdad (la prueba usó `SetWindow
 
 Al terminar se dejaron `scenes.json`, `apps.json`, `settings.json` y `panels.json` como estaban.
 
+### Separador apilado y pantalla completa (M1b, 2026-11-10)
+
+Dos ventanas de Paint, una en Contexto (arriba) y otra en Notas (abajo, a la izquierda del foco):
+
+| Caso | Resultado |
+| --- | --- |
+| La de abajo, 350 px más alta por su borde de arriba | Separador: 37 % arriba y 63 % abajo; se guarda en `panels.json` |
+| La de arriba, 600 px más alta por abajo | El reparto se lleva al límite: la de abajo conserva los 500 px que necesita Paint |
+| Primera prueba, antes de la corrección | La de abajo quedaba más baja que su mínimo y se minimizaba; ahora el motor respeta el mínimo si caben las dos |
+| Ctrl+Alt+Mayús+F con una en el foco | Se maximiza en el principal y desaparecen las tiras del principal; otra vez F vuelve al foco |
+| Botón «Pantalla completa» con el monitor HP | Se maximiza en el auxiliar; la tira del principal sigue |
+| Des-maximizarla desde otro proceso | Sale de pantalla completa y vuelve al foco |
+
 ### S6 — Reconexión (2026-11-10)
 
 - **Identidad estable:** `QueryDisplayConfig` + `DisplayConfigGetDeviceInfo` dan, por cada monitor activo, su nombre GDI (para cruzarlo con `EnumDisplayMonitors`), su `monitorDevicePath` y su nombre comercial.

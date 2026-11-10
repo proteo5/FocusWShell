@@ -1,4 +1,4 @@
-using FocusWShell.Core.Geometry;
+﻿using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Layout;
@@ -54,7 +54,8 @@ public class StackedPanelsTests
     [Fact]
     public void AWindowTallerThanItsBandLeavesTheLayoutInsteadOfCoveringTheOtherPanel()
     {
-        var r = Principal([Win(1, "Teams", minH: 900)], [Win(2, "OneNote")]);
+        // Ni llevando el reparto al límite cabe: 1300 px más las dos franjas y el mínimo del otro.
+        var r = Principal([Win(1, "Teams", minH: 1300)], [Win(2, "OneNote")]);
 
         Assert.Equal(TargetKind.Minimized, Target(r, 1).Kind);
         Assert.Contains(r.Notes, n => n.Contains("Teams", StringComparison.Ordinal) && n.Contains("comparte la columna", StringComparison.Ordinal));
@@ -103,5 +104,78 @@ public class StackedPanelsTests
         Assert.Equal(new PixelRect(4400, 0, 5360, 1020), r.Bands["chat"]);
         Assert.Equal(new PixelRect(3440, 510 + Inset, 4400, 1020), r.Targets.Single(t => t.Handle == 2).Rect);
         Assert.Equal(new PixelRect(3440, 510 + Inset, 4400, 1020), r.Columns["logs"]);
+    }
+
+    private static readonly PixelRect UpperBand = new(0, 0, 619, 696);
+    private static readonly PixelRect LowerBand = new(0, 696, 619, 1392);
+
+    [Fact]
+    public void DraggingTheUpperWindowsBottomEdgeMovesTheSplit()
+    {
+        var heights = StackSeparator.Detect(new(0, Inset, 619, 696), new(0, Inset, 619, 900), UpperBand, LowerBand, Inset);
+
+        Assert.Equal((900, 492), heights);
+    }
+
+    [Fact]
+    public void DraggingTheLowerWindowsTopEdgeMovesTheSplitAboveItsStrip()
+    {
+        var heights = StackSeparator.Detect(new(0, 696 + Inset, 619, 1392), new(0, 500, 619, 1392), UpperBand, LowerBand, Inset);
+
+        Assert.Equal((460, 932), heights);
+    }
+
+    [Fact]
+    public void TheSplitNeverLeavesABandWithoutRoom()
+    {
+        var heights = StackSeparator.Detect(new(0, Inset, 619, 696), new(0, Inset, 619, 1385), UpperBand, LowerBand, Inset);
+
+        Assert.Equal(1392 - (Inset + StackSeparator.MinWindowHeight), heights!.Value.Upper);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 619, 800)] // también se movió el borde de arriba (la franja)
+    [InlineData(0, Inset, 700, 900)] // también el de la derecha
+    [InlineData(0, 100, 619, 756)] // movida entera
+    public void AnythingElseIsNotTheStackSeparator(int left, int top, int right, int bottom)
+    {
+        Assert.Null(StackSeparator.Detect(new(0, Inset, 619, 696), new(left, top, right, bottom), UpperBand, LowerBand, Inset));
+    }
+
+    [Fact]
+    public void ThePanelsHeightsSetTheSplit()
+    {
+        var r = SceneLayoutEngine.Compute(new SceneInput(
+            Work,
+            new PanelInput("comunicacion", PanelSide.Left, 18, PanelTemplate.Tiles, [Win(1, "Slack")]) { Height = 900 },
+            55,
+            null,
+            new PanelInput("trabajo", PanelSide.Right, 27, PanelTemplate.Tiles, []),
+            PanelTopInset: Inset)
+        {
+            LeftLower = new PanelInput("notas", PanelSide.Left, 18, PanelTemplate.Tiles, [Win(2, "OneNote")]) { Slot = PanelSlot.Lower, Height = 492 },
+        });
+
+        Assert.Equal(new PixelRect(0, 0, 619, 900), r.Bands["comunicacion"]);
+        Assert.Equal(new PixelRect(0, 900, 619, 1392), r.Bands["notas"]);
+    }
+
+    [Fact]
+    public void ASplitThatLeavesAWindowWithoutRoomIsTakenToTheLimit()
+    {
+        var r = SceneLayoutEngine.Compute(new SceneInput(
+            Work,
+            new PanelInput("comunicacion", PanelSide.Left, 18, PanelTemplate.Tiles, [Win(1, "Slack")]) { Height = 1100 },
+            55,
+            null,
+            new PanelInput("trabajo", PanelSide.Right, 27, PanelTemplate.Tiles, []),
+            PanelTopInset: Inset)
+        {
+            LeftLower = new PanelInput("notas", PanelSide.Left, 18, PanelTemplate.Tiles, [Win(2, "Paint", minH: 600)]) { Title = "Notas", Slot = PanelSlot.Lower, Height = 292 },
+        });
+
+        Assert.Equal(TargetKind.Visible, Target(r, 2).Kind);
+        Assert.Equal(new PixelRect(0, 1392 - 640, 619, 1392), r.Bands["notas"]);
+        Assert.Contains(r.Notes, n => n.StartsWith("Notas necesita 640 px", StringComparison.Ordinal));
     }
 }

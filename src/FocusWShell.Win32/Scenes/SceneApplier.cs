@@ -26,6 +26,9 @@ public sealed record PanelAssignment(string Id, string Title, PanelSide Side, Pa
 {
     /// <summary>Arriba o abajo en su columna.</summary>
     public PanelSlot Slot { get; init; }
+
+    /// <summary>Su parte del alto de la columna si la comparte.</summary>
+    public double Height { get; init; } = 1;
 }
 
 /// <summary>Paneles de un monitor auxiliar, de izquierda a derecha (ADR 0008).</summary>
@@ -66,6 +69,14 @@ public sealed record SceneAssignment(
 
     public string WorkTitle { get; init; } = "Trabajo";
 
+    /// <summary>La ventana del foco en pantalla completa y su monitor, si la hay (ADR 0012).</summary>
+    public (WindowSnapshot Window, DisplayInfo Display)? Fullscreen { get; init; }
+
+    /// <summary>Parte del alto de cada panel de arriba del principal, si comparte columna.</summary>
+    public double ContextHeight { get; init; } = 1;
+
+    public double WorkHeight { get; init; } = 1;
+
     /// <summary>Segundo panel de la columna izquierda del principal, si lo hay.</summary>
     public PanelAssignment? ContextLower { get; init; }
 
@@ -79,7 +90,8 @@ public sealed record SceneAssignment(
     public IEnumerable<WindowSnapshot> All =>
         OnPrincipal
             .Concat(Aux.SelectMany(a => a.Panels.SelectMany(p => p.Windows)))
-            .Concat(Parked);
+            .Concat(Parked)
+            .Concat(Fullscreen is { } f ? [f.Window] : []);
 }
 
 public sealed record SceneOptions
@@ -111,7 +123,10 @@ public sealed record ScenePlan(SceneLayoutResult Principal, IReadOnlyList<AuxLay
     /// <summary>Ventanas estacionadas (minimizadas).</summary>
     public IReadOnlyList<WindowTarget> Parked { get; init; } = [];
 
-    public IReadOnlyList<WindowTarget> Targets => [.. Principal.Targets, .. Aux.SelectMany(a => a.Targets), .. Parked];
+    /// <summary>La ventana en pantalla completa: maximizada en su monitor.</summary>
+    public IReadOnlyList<WindowTarget> Fullscreen { get; init; } = [];
+
+    public IReadOnlyList<WindowTarget> Targets => [.. Principal.Targets, .. Aux.SelectMany(a => a.Targets), .. Parked, .. Fullscreen];
 
     public IReadOnlyList<string> Notes => [.. Principal.Notes, .. Aux.SelectMany(a => a.Notes)];
 }
@@ -184,6 +199,11 @@ public sealed class SceneApplier
             }
         }
 
+        if (assignment.Fullscreen is { } full)
+        {
+            _dpiByHandle[full.Window.Handle] = full.Display.Dpi;
+        }
+
         Catalog = minSizes.Load();
     }
 
@@ -208,11 +228,11 @@ public sealed class SceneApplier
         var principal = SceneLayoutEngine.Compute(new SceneInput(
             _display.WorkArea,
             new PanelInput(_assignment.ContextId, PanelSide.Left, _options.ContextWeight, _options.ContextTemplate,
-                _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left) { Title = _assignment.ContextTitle },
+                _assignment.Context.Select(w => ToLayout(w, dpi)).ToList(), shared.Left) { Title = _assignment.ContextTitle, Height = _assignment.ContextHeight },
             _options.CenterWeight,
             _assignment.Center is null ? null : ToLayout(_assignment.Center, dpi),
             new PanelInput(_assignment.WorkId, PanelSide.Right, _options.WorkWeight, _options.WorkTemplate,
-                _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right) { Title = _assignment.WorkTitle },
+                _assignment.Work.Select(w => ToLayout(w, dpi)).ToList(), shared.Right) { Title = _assignment.WorkTitle, Height = _assignment.WorkHeight },
             _options.Gap,
             PanelTopInset: Scale(_options.PanelTopInset, dpi))
         {
@@ -228,6 +248,7 @@ public sealed class SceneApplier
                 {
                     Title = p.Title,
                     Slot = p.Slot,
+                    Height = p.Height,
                 };
 
         var aux = _assignment.Aux
@@ -237,7 +258,7 @@ public sealed class SceneApplier
                 a.Panels
                     .OrderBy(p => p.Side)
                     .ThenBy(p => p.Slot)
-                    .Select(p => new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title, Slot = p.Slot })
+                    .Select(p => new PanelInput(p.Id, p.Side, 1, p.Template, p.Windows.Select(w => ToLayout(w, a.Display.Dpi)).ToList()) { Title = p.Title, Slot = p.Slot, Height = p.Height })
                     .ToList(),
                 _options.Gap,
                 Scale(_options.PanelTopInset, a.Display.Dpi))))
@@ -248,6 +269,9 @@ public sealed class SceneApplier
             Parked = _assignment.Parked
                 .Select(w => new WindowTarget(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), "Estacionada", TargetKind.Minimized, default))
                 .ToList(),
+            Fullscreen = _assignment.Fullscreen is { } full
+                ? [new WindowTarget(full.Window.Handle, Path.GetFileNameWithoutExtension(full.Window.ProcessName), "Pantalla completa", TargetKind.Maximized, full.Display.WorkArea)]
+                : [],
         };
     }
 
