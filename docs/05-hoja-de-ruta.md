@@ -65,6 +65,10 @@ Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspens
 - Reanudación tras suspensión. **Hecho** (simulada con el mensaje de energía); falta una suspensión real.
 - Detección y presentación de ventanas no gestionables (elevadas). **Hecho:** salen en la lista con el motivo y sin poder elegir panel; falta probar el atajo «Al foco» con el teclado.
 - Lista de exclusión editable. **Hecho:** por ejecutable, AUMID o clase, desde el clic derecho en la lista o a mano; se guarda en `settings.json`.
+- Escritorios virtuales de Windows: FocusWShell los sigue, con un foco y unas apps por escritorio y los paneles comunes ([ADR 0016](adr/0016-escritorios-virtuales.md)). **Propuesta.** Fases:
+  1. No abrir otra copia de una app que está en otro escritorio, y no mostrarla en el deck como si estuviera aquí.
+  2. Un foco y unas apps por escritorio, con su sesión. Antes, el spike S11.
+  3. En el deck: indicador y ◀ ▶ de escritorios, y las escenas fuera del deck.
 
 Criterio de salida: CA5 y las siete CA juntas en una semana de uso diario sin tener que usar el atajo de emergencia por un fallo.
 

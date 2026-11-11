@@ -561,6 +561,27 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Spike: escritorios virtuales de Windows (2026-11-11)
+
+**Pregunta:** ¿qué tanto choca FocusWShell con los escritorios virtuales y se pueden aprovechar en lugar de las escenas propias?
+
+**Método:** con FocusWShell abierto (deck en la tablet, tiras de Contexto y Trabajo, Claude en el foco), un script creó un escritorio con `Ctrl+Win+D`, observó a los 2,5 s y a los 5,5 s, lo cerró con `Ctrl+Win+F4` y comparó todas las ventanas visibles antes y después. Usó sólo la API documentada (`IVirtualDesktopManager`) y `DWMWA_CLOAKED`. Windows 11, compilación 26300.
+
+**Resultados:**
+- **El deck y las tiras sobreviven al cambio sin hacer nada.** Son ventanas `WS_EX_TOOLWINDOW` y Windows no las asigna a ningún escritorio (`GetWindowDesktopId` = GUID vacío), así que se ven en todos. La ventana principal sí pertenece a un escritorio y se oculta en los demás.
+- **Se puede saber el escritorio actual con lo documentado:** una ventana propia recién creada nace en el escritorio actual, y `GetWindowDesktopId` la identifica. Coincidió siempre con el valor del registro (`CurrentVirtualDesktop`, no documentado). También se sabe el escritorio de cada ventana.
+- **FocusWShell no reaccionó:** ninguna ventana se movió y ninguna gestionada se dio por cerrada, porque sólo se da por cerrada la que ya no existe. Al volver, todo estaba igual.
+- **Pero en el escritorio nuevo el deck engaña:** muestra las apps del escritorio 1 y las tiras se dibujan sobre una pantalla vacía. El modelo es un solo espacio de trabajo para todos los escritorios.
+
+**Prueba manual (el usuario):** mandó SmallNotePad, gestionada en el panel Trabajo, al escritorio 2 desde la Vista de tareas y volvió al 1.
+- La app **siguió saliendo en el deck**, en su panel, aunque no estaba en ese escritorio.
+- Al tocarla, pareció minimizarse; con otro toque apareció una SmallNotePad en el foco.
+- **Lo que pasó en realidad:** se abrió una **segunda instancia** (proceso nuevo a las 15:16:03). La original siguió oculta en el escritorio 2. FocusWShell, al no ver la ventana original como candidata (está *cloaked*), actuó como si la app estuviera cerrada y la abrió. Con una app que no admite varias instancias el resultado sería otro, pero en ningún caso es lo esperado.
+
+**Riesgo:** hoy, mover una app gestionada a otro escritorio deja al deck con información falsa y puede duplicar apps. Mientras no haya soporte de escritorios, conviene no usarlos con FocusWShell.
+
+**Conclusión:** los escritorios son viables como reemplazo de las escenas sin API no documentada, si FocusWShell **los sigue en vez de manejarlos**: un espacio de trabajo por escritorio, que el deck muestra según el escritorio actual. El usuario cambia de escritorio con los gestos de Windows.
+
 ### Deck: la presentación del panel, en segmentos (validación, 2026-11-11)
 
 La cabecera de cada panel tenía un solo botón que mostraba la presentación actual («Tiles») pero, al tocarlo, pasaba a la siguiente: lo que se leía no era lo que se obtenía, y para llegar a «Lista» había que tocar varias veces sabiendo el orden. Además medía 40×36, chico para el dedo en una tablet de 8 pulgadas.
