@@ -163,12 +163,12 @@ public sealed class DeckWindow : Window
 
         Row(FocusHeader(state), GridLength.Auto);
         Row(Buttons(2, FocusActions(state, shortText: false)), GridLength.Auto);
-        Row(Label("VISTA"), GridLength.Auto);
+        Row(Label(Strings.Deck_SecView), GridLength.Auto);
         Row(Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto);
         Row(Buttons(3, WidthButtons(state)), GridLength.Auto);
         if (state.Scenes.Count > 0)
         {
-            Row(Label("ESCENAS"), GridLength.Auto);
+            Row(Label(Strings.Deck_SecScenes), GridLength.Auto);
             Row(TextGrid(SceneButtons(state)), new GridLength(1, GridUnitType.Star));
         }
         else
@@ -179,7 +179,7 @@ public sealed class DeckWindow : Window
         var tabs = MonitorTabs(state);
         if (tabs.Count > 1)
         {
-            Row(Label("MONITORES"), GridLength.Auto);
+            Row(Label(Strings.Deck_SecMonitors), GridLength.Auto);
             var tabGrid = new UniformGrid { Columns = 1, Margin = new Thickness(0, 0, 0, 6) };
             foreach (var tab in tabs)
             {
@@ -350,13 +350,13 @@ public sealed class DeckWindow : Window
 
     private Button TabButton(MonitorTab tab)
     {
-        string text = tab.Connected ? $"{tab.Name} · {tab.Apps}" : $"{tab.Name} (desconectado)";
+        string text = tab.Connected ? $"{tab.Name} · {tab.Apps}" : Core.Text.F(Strings.Deck_TabDisconnected, tab.Name);
         var b = WideButton("🖵  " + text, true, () =>
         {
             _tab = TabKey(tab.Display);
             Render();
         });
-        System.Windows.Automation.AutomationProperties.SetName(b, $"Deck: monitor {tab.Name}");
+        System.Windows.Automation.AutomationProperties.SetName(b, Core.Text.F(Strings.Deck_TabName, tab.Name));
         if (OnTab(tab.Display))
         {
             b.Background = ActiveBrush;
@@ -382,7 +382,7 @@ public sealed class DeckWindow : Window
     /// <summary>Un monitor sin paneles: cómo crearlos.</summary>
     private Border NoPanelsCard(DeckState state)
     {
-        var name = MonitorTabs(state).FirstOrDefault(t => OnTab(t.Display))?.Name ?? "Este monitor";
+        var name = MonitorTabs(state).FirstOrDefault(t => OnTab(t.Display))?.Name ?? Strings.Deck_ThisMonitor;
         return new Border
         {
             BorderBrush = CardBrush,
@@ -392,7 +392,7 @@ public sealed class DeckWindow : Window
             Margin = new Thickness(0, 0, 8, 8),
             Child = new TextBlock
             {
-                Text = $"{name} no tiene paneles. Créalos en la ventana de FocusWShell, pestaña Paneles: escribe un nombre, elige «{name}, izquierda» o «derecha» y pulsa Crear panel.",
+                Text = Core.Text.F(Strings.Deck_NoPanels, name),
                 Foreground = DimBrush,
                 FontSize = 14,
                 TextWrapping = TextWrapping.Wrap,
@@ -405,10 +405,10 @@ public sealed class DeckWindow : Window
     private DockPanel FocusHeader(DeckState state)
     {
         var header = new DockPanel { Margin = new Thickness(0, 0, 8, 8) };
-        var close = SmallButton("✕", "Ocultar el deck", () => _actions.Hide());
+        var close = SmallButton("✕", Strings.Deck_Hide, () => _actions.Hide());
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
-        var send = SmallButton("📌", "Mandar el deck a", () => { });
+        var send = SmallButton("📌", Strings.Deck_SendTo, () => { });
         send.Margin = new Thickness(0, 0, 6, 0);
         send.ContextMenu = SendMenu(state);
         send.Click += (_, _) =>
@@ -419,7 +419,7 @@ public sealed class DeckWindow : Window
         DockPanel.SetDock(send, Dock.Right);
         header.Children.Add(send);
         var focus = new StackPanel();
-        focus.Children.Add(Label("FOCO"));
+        focus.Children.Add(Label(Strings.Deck_SecFocus));
 
         // El icono de la app del foco, a la izquierda de su nombre y su título.
         var line = new DockPanel();
@@ -440,7 +440,7 @@ public sealed class DeckWindow : Window
         var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         names.Children.Add(new TextBlock
         {
-            Text = state.Focus is { } f ? f.Name : "vacío",
+            Text = state.Focus is { } f ? f.Name : Strings.Deck_FocusEmpty,
             Foreground = state.Focus is null ? DimBrush : TextBrush,
             FontSize = 18,
             FontWeight = FontWeights.SemiBold,
@@ -460,30 +460,30 @@ public sealed class DeckWindow : Window
 
     private List<Button> FocusActions(DeckState state, bool shortText)
     {
-        var previous = WideButton("⇄  Anterior", state.HasPrevious, () => Run(true, new SwapWithPrevious()));
-        var back = WideButton(shortText ? "↓  Al panel" : "↓  Foco al panel", state.Focus is not null, () => Run(false, new ReturnToPanel(state.Focus!.Handle!.Value)));
-        System.Windows.Automation.AutomationProperties.SetName(back, "Deck: Foco al panel");
-        var move = WideButton(_moving is not null ? "⇆  Moviendo…" : shortText ? "⇆  Mover" : "⇆  Mover una app", true, () =>
+        var previous = WideButton("⇄  " + Strings.Deck_Previous, state.HasPrevious, () => Run(true, new SwapWithPrevious()));
+        var back = WideButton(shortText ? "↓  " + Strings.Deck_ToPanelShort : "↓  " + Strings.Deck_ToPanel, state.Focus is not null, () => Run(false, new ReturnToPanel(state.Focus!.Handle!.Value)));
+        System.Windows.Automation.AutomationProperties.SetName(back, "Deck: " + Strings.Deck_ToPanel);
+        var move = WideButton("⇆  " + (_moving is not null ? Strings.Deck_Moving : shortText ? Strings.Deck_MoveShort : Strings.Deck_Move), true, () =>
         {
             _moving = _moving is null ? MoveStep.PickApp : null;
             _moveApp = null;
             _closing = false;
             Render();
         });
-        System.Windows.Automation.AutomationProperties.SetName(move, "Deck: Mover una app");
+        System.Windows.Automation.AutomationProperties.SetName(move, "Deck: " + Strings.Deck_Move);
         if (_moving is not null)
         {
             move.Background = ActiveBrush;
         }
 
-        var close = WideButton(_closing ? "✕  Cerrando…" : shortText ? "✕  Cerrar" : "✕  Cerrar una app", true, () =>
+        var close = WideButton("✕  " + (_closing ? Strings.Deck_Closing : shortText ? Strings.Deck_CloseShort : Strings.Deck_Close), true, () =>
         {
             _closing = !_closing;
             _moving = null;
             _moveApp = null;
             Render();
         });
-        System.Windows.Automation.AutomationProperties.SetName(close, "Deck: Cerrar una app");
+        System.Windows.Automation.AutomationProperties.SetName(close, "Deck: " + Strings.Deck_Close);
         if (_closing)
         {
             close.Background = WarnBrush;
@@ -504,8 +504,8 @@ public sealed class DeckWindow : Window
     private List<Button> ViewButtons(DeckState state, bool shortText)
     {
         var views = shortText
-            ? new[] { (FocusPosition.Left, "◧  Izq."), (FocusPosition.Center, "▣  Centro"), (FocusPosition.Right, "◨  Der.") }
-            : new[] { (FocusPosition.Left, "◧  Izquierda"), (FocusPosition.Center, "▣  Centro"), (FocusPosition.Right, "◨  Derecha") };
+            ? new[] { (FocusPosition.Left, "◧  " + Strings.Deck_LeftShort), (FocusPosition.Center, "▣  " + Strings.Deck_Center), (FocusPosition.Right, "◨  " + Strings.Deck_RightShort) }
+            : new[] { (FocusPosition.Left, "◧  " + Strings.Deck_Left), (FocusPosition.Center, "▣  " + Strings.Deck_Center), (FocusPosition.Right, "◨  " + Strings.Deck_Right) };
         return views.Select(v =>
         {
             var b = WideButton(v.Item2, true, () => Run(false, new SetView(v.Item1)));
@@ -542,7 +542,7 @@ public sealed class DeckWindow : Window
 
     private Button AwakeButton()
     {
-        var awake = WideButton(_actions.KeepAwake() ? "☀  Pantalla encendida: sí" : "☾  Pantalla encendida: no", true, () =>
+        var awake = WideButton(_actions.KeepAwake() ? "☀  " + Strings.Deck_AwakeOn : "☾  " + Strings.Deck_AwakeOff, true, () =>
         {
             _actions.ToggleKeepAwake();
             Render();
@@ -558,7 +558,7 @@ public sealed class DeckWindow : Window
     private Button RestoreButton()
     {
         bool armed = DateTime.Now - _restoreArmed < TimeSpan.FromSeconds(4);
-        var restore = WideButton(armed ? "⟲  ¿Seguro? Otra vez" : "⟲  Restaurar todas", true, () =>
+        var restore = WideButton(armed ? "⟲  " + Strings.Deck_RestoreSure : "⟲  " + Strings.Deck_RestoreAll, true, () =>
         {
             if (DateTime.Now - _restoreArmed < TimeSpan.FromSeconds(4))
             {
@@ -627,7 +627,7 @@ public sealed class DeckWindow : Window
         body.Children.Add(header);
         if (panel.Apps.Count == 0)
         {
-            body.Children.Add(new TextBlock { Text = "sin apps (suelta aquí una app)", Foreground = DimBrush, Margin = new Thickness(4), VerticalAlignment = VerticalAlignment.Top });
+            body.Children.Add(new TextBlock { Text = Strings.Deck_PanelEmpty, Foreground = DimBrush, Margin = new Thickness(4), VerticalAlignment = VerticalAlignment.Top });
         }
         else
         {
@@ -640,7 +640,7 @@ public sealed class DeckWindow : Window
         UIElement content = body;
         if (target)
         {
-            content = WithTarget(body, "⬇  Mover aquí", $"Deck: Mover {_moveApp!.Name} a {panel.Name}", () => MoveChosenTo(panel));
+            content = WithTarget(body, "⬇  " + Strings.Deck_MoveHere, Core.Text.F(Strings.Deck_MoveHereName, _moveApp!.Name, panel.Name), () => MoveChosenTo(panel));
         }
 
         var zone = DropZone(content, panel);
@@ -667,7 +667,7 @@ public sealed class DeckWindow : Window
     private Border FreeCard(DeckState state)
     {
         var body = new DockPanel();
-        var label = Label("LIBRES");
+        var label = Label(Strings.Deck_SecFree);
         DockPanel.SetDock(label, Dock.Top);
         body.Children.Add(label);
         if (state.Free.Count > 0)
@@ -676,14 +676,14 @@ public sealed class DeckWindow : Window
         }
         else
         {
-            body.Children.Add(new TextBlock { Text = "Sin ventanas libres.", Foreground = DimBrush, Margin = new Thickness(4) });
+            body.Children.Add(new TextBlock { Text = Strings.Deck_NoFree, Foreground = DimBrush, Margin = new Thickness(4) });
         }
 
         UIElement content = body;
         bool target = CanReleaseChosen;
         if (target)
         {
-            content = WithTarget(body, "⬇  Liberar aquí", $"Deck: Liberar {_moveApp!.Name}", ReleaseChosen);
+            content = WithTarget(body, "⬇  " + Strings.Deck_ReleaseHere, Core.Text.F(Strings.Deck_ReleaseName, _moveApp!.Name), ReleaseChosen);
         }
 
         var card = new Border
@@ -795,7 +795,7 @@ public sealed class DeckWindow : Window
             Cursor = Cursors.Hand,
             FontSize = 13,
         };
-        System.Windows.Automation.AutomationProperties.SetName(more, "Deck: más apps");
+        System.Windows.Automation.AutomationProperties.SetName(more, Strings.Deck_MoreName);
         more.Click += (_, _) =>
         {
             var menu = new ContextMenu { PlacementTarget = more };
@@ -809,7 +809,7 @@ public sealed class DeckWindow : Window
             menu.IsOpen = true;
         };
         grid.More = more;
-        grid.OverflowChanged = hidden => more.Content = $"+{hidden} más";
+        grid.OverflowChanged = hidden => more.Content = Core.Text.F(Strings.Deck_More, hidden);
         grid.Children.Add(more);
         return grid;
     }
@@ -836,7 +836,7 @@ public sealed class DeckWindow : Window
         });
         var name = new TextBlock
         {
-            Text = app.Handle is { } shown && shown == _closingNow ? "Cerrando…" : app.Name + app.State switch
+            Text = app.Handle is { } shown && shown == _closingNow ? Strings.Deck_Closing : app.Name + app.State switch
             {
                 ListItemState.InFocus => " ↑",
                 ListItemState.Parked => " ⏸",
@@ -1010,18 +1010,18 @@ public sealed class DeckWindow : Window
         if (cycles)
         {
             // En pestañas, la visible es la primera: ▶ pone la segunda; ◀, la última.
-            controls.Children.Add(NavButton("◀", $"Pestaña anterior de {panel.Name}", () => Run(false, new MakeActiveInPanel(tabs[^1].Handle!.Value))));
-            controls.Children.Add(NavButton("▶", $"Pestaña siguiente de {panel.Name}", () => Run(false, new MakeActiveInPanel(tabs[1].Handle!.Value))));
+            controls.Children.Add(NavButton("◀", Core.Text.F(Strings.Deck_PrevTab, panel.Name), () => Run(false, new MakeActiveInPanel(tabs[^1].Handle!.Value))));
+            controls.Children.Add(NavButton("▶", Core.Text.F(Strings.Deck_NextTab, panel.Name), () => Run(false, new MakeActiveInPanel(tabs[1].Handle!.Value))));
         }
 
         var order = panel.Display is null
             ? new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List }
             : new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List, PanelTemplate.Fill };
         var next = order[(Array.IndexOf(order, panel.Template) + 1) % order.Length];
-        var template = NavButton(TemplateName(panel.Template), $"Presentación de {panel.Name}: pasar a {TemplateName(next)}", () => Run(false, new SetPresentation(panel.Id, next)));
+        var template = NavButton(TemplateName(panel.Template), Core.Text.F(Strings.Deck_PresentationName, panel.Name, TemplateName(next)), () => Run(false, new SetPresentation(panel.Id, next)));
         template.Width = double.NaN;
         template.Padding = new Thickness(10, 0, 10, 0);
-        template.ToolTip = $"Pasar a {TemplateName(next)}";
+        template.ToolTip = Core.Text.F(Strings.Deck_SwitchTo, TemplateName(next));
         controls.Children.Add(template);
         DockPanel.SetDock(controls, Dock.Right);
         header.Children.Add(controls);
@@ -1033,10 +1033,10 @@ public sealed class DeckWindow : Window
 
     private static string TemplateName(PanelTemplate template) => template switch
     {
-        PanelTemplate.Stack => "Pestañas",
-        PanelTemplate.Fill => "Pantalla completa",
-        PanelTemplate.List => "Lista",
-        _ => "Tiles",
+        PanelTemplate.Stack => Strings.Tpl_Stack,
+        PanelTemplate.Fill => Strings.Tpl_Fill,
+        PanelTemplate.List => Strings.Tpl_List,
+        _ => Strings.Tpl_Tiles,
     };
 
     private static Button NavButton(string text, string name, Func<Task> click)
@@ -1146,13 +1146,13 @@ public sealed class DeckWindow : Window
 
         if (app.Handle is not { } h)
         {
-            Item(menu, "Abrir en su panel", () => Choose(app));
+            Item(menu, Strings.DeckMenu_OpenInPanel, () => Choose(app));
             return menu;
         }
 
         bool free = app.PanelId is null;
-        Item(menu, "Al foco", () => Choose(app), app.State != ListItemState.InFocus);
-        var fullscreen = new MenuItem { Header = "Pantalla completa en" };
+        Item(menu, Strings.DeckMenu_ToFocus, () => Choose(app), app.State != ListItemState.InFocus);
+        var fullscreen = new MenuItem { Header = Strings.DeckMenu_FullscreenOn };
         foreach (var (display, name) in _state!.Displays)
         {
             Item(fullscreen, name, () => Run(true, free ? [new Adopt(h, app.Name, DefaultPanel()), new EnterFullscreen(h, display)] : [new EnterFullscreen(h, display)]));
@@ -1161,11 +1161,11 @@ public sealed class DeckWindow : Window
         menu.Items.Add(fullscreen);
         if (!free)
         {
-            Item(menu, app.State == ListItemState.Parked ? "Recuperar" : "Estacionar",
+            Item(menu, app.State == ListItemState.Parked ? Strings.DeckMenu_Unpark : Strings.DeckMenu_Park,
                 () => Run(false, app.State == ListItemState.Parked ? new Restore(h) : new Park(h)));
         }
 
-        var move = new MenuItem { Header = free ? "Poner en" : "Mover a" };
+        var move = new MenuItem { Header = free ? Strings.DeckMenu_PutIn : Strings.DeckMenu_MoveTo };
         foreach (var panel in _state.Panels.Where(p => p.Id != app.PanelId))
         {
             Item(move, panel.Name, () => Run(false, free ? new Adopt(h, app.Name, panel.Id) : new SendTo(h, panel.Id)));
@@ -1175,14 +1175,14 @@ public sealed class DeckWindow : Window
         if (!free)
         {
             menu.Items.Add(new Separator());
-            Item(menu, "Liberar (devolverla a su sitio original)", () => Run(false, new Release(h)));
+            Item(menu, Strings.DeckMenu_Release, () => Run(false, new Release(h)));
         }
 
         return menu;
     }
 
     private string DefaultPanel() =>
-        _state!.Panels.FirstOrDefault(p => p.Where.StartsWith("principal, derecha", StringComparison.Ordinal))?.Id ?? _state.Panels[0].Id;
+        _state!.Panels.FirstOrDefault(p => p.Id == Workspace.WorkPanel)?.Id ?? _state.Panels[0].Id;
 
     /// <summary>
     /// "Mandar el deck a…": la esquina del principal (se oculta solo) o un monitor, en una mitad o entero;
@@ -1199,14 +1199,14 @@ public sealed class DeckWindow : Window
             menu.Items.Add(item);
         }
 
-        Item("Esquina del monitor principal (se oculta solo)", null);
+        Item(Strings.DeckSend_Corner, null);
         foreach (var (display, name) in state.Displays.Where(d => d.Display is not null))
         {
             bool hasPanels = state.Panels.Any(p => string.Equals(p.Display, display, StringComparison.OrdinalIgnoreCase));
             menu.Items.Add(new Separator());
-            Item($"{name}: mitad izquierda", new DeckDock(display!, DeckZone.LeftHalf));
-            Item($"{name}: mitad derecha", new DeckDock(display!, DeckZone.RightHalf));
-            Item(hasPanels ? $"{name}: entero (tiene paneles)" : $"{name}: entero", new DeckDock(display!, DeckZone.Whole), !hasPanels);
+            Item(Core.Text.F(Strings.DeckSend_LeftHalf, name), new DeckDock(display!, DeckZone.LeftHalf));
+            Item(Core.Text.F(Strings.DeckSend_RightHalf, name), new DeckDock(display!, DeckZone.RightHalf));
+            Item(Core.Text.F(hasPanels ? Strings.DeckSend_WholeHasPanels : Strings.DeckSend_Whole, name), new DeckDock(display!, DeckZone.Whole), !hasPanels);
         }
 
         return menu;

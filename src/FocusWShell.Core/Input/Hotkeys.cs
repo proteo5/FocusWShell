@@ -22,8 +22,8 @@ public sealed record KeyChord(HotkeyModifiers Modifiers, uint VirtualKey)
     private static readonly (string Token, uint Vk, string Display)[] Named =
     [
         ("Up", 0x26, "↑"), ("Down", 0x28, "↓"), ("Left", 0x25, "←"), ("Right", 0x27, "→"),
-        ("Back", 0x08, "Retroceso"), ("Space", 0x20, "Espacio"), ("Home", 0x24, "Inicio"), ("End", 0x23, "Fin"),
-        ("PageUp", 0x21, "RePág"), ("PageDown", 0x22, "AvPág"), ("Insert", 0x2D, "Insert"), ("Delete", 0x2E, "Supr"),
+        ("Back", 0x08, Strings.Key_Back), ("Space", 0x20, Strings.Key_Space), ("Home", 0x24, Strings.Key_Home), ("End", 0x23, Strings.Key_End),
+        ("PageUp", 0x21, Strings.Key_PageUp), ("PageDown", 0x22, Strings.Key_PageDown), ("Insert", 0x2D, "Insert"), ("Delete", 0x2E, Strings.Key_Delete),
     ];
 
     /// <summary>Si la tecla es una que FocusWShell sabe nombrar (letras, dígitos, F1–F24 y las de <see cref="Named"/>).</summary>
@@ -40,7 +40,7 @@ public sealed record KeyChord(HotkeyModifiers Modifiers, uint VirtualKey)
     public override string ToString() => Join("Ctrl", "Alt", "Shift", "Win", KeyToken(VirtualKey) ?? $"0x{VirtualKey:X2}");
 
     /// <summary>Texto para la UI: "Ctrl+Alt+Mayús+↑".</summary>
-    public string Display() => Join("Ctrl", "Alt", "Mayús", "Win", KeyDisplay(VirtualKey) ?? $"0x{VirtualKey:X2}");
+    public string Display() => Join("Ctrl", "Alt", Strings.Key_Shift, "Win", KeyDisplay(VirtualKey) ?? $"0x{VirtualKey:X2}");
 
     public static bool TryParse(string? text, out KeyChord chord)
     {
@@ -169,15 +169,15 @@ public static class Hotkeys
     /// <summary>Las acciones, en el orden en que se muestran, con los atajos de siempre (Ctrl+Alt+Mayús+…).</summary>
     public static IReadOnlyList<HotkeyAction> Actions { get; } =
     [
-        new(Emergency, "Restaurar todas", Cas(0x08)),
-        new("al-foco", "Al foco (la ventana activa)", Cas(0x26)),
-        new("anterior", "Volver a la anterior", Cas(0x25)),
-        new("foco-al-panel", "Foco al panel", Cas(0x28)),
-        new("pantalla-completa", "Pantalla completa", Cas(0x46)),
-        new("vista", "Cambiar de vista", Cas(0x56)),
-        new("pantalla-encendida", "Pantalla encendida", Cas(0x50)),
-        new(Deck, "Mostrar u ocultar el deck", Cas(0x44)),
-        .. Enumerable.Range(1, 9).Select(n => new HotkeyAction($"escena-{n}", $"Escena {n}", Cas((uint)(0x30 + n)))),
+        new(Emergency, Strings.Action_RestoreAll, Cas(0x08)),
+        new("al-foco", Strings.Action_ToFocus, Cas(0x26)),
+        new("anterior", Strings.Action_Previous, Cas(0x25)),
+        new("foco-al-panel", Strings.Action_FocusToPanel, Cas(0x28)),
+        new("pantalla-completa", Strings.Action_Fullscreen, Cas(0x46)),
+        new("vista", Strings.Action_View, Cas(0x56)),
+        new("pantalla-encendida", Strings.Action_KeepAwake, Cas(0x50)),
+        new(Deck, Strings.Action_Deck, Cas(0x44)),
+        .. Enumerable.Range(1, 9).Select(n => new HotkeyAction($"escena-{n}", Text.F(Strings.Action_Scene, n), Cas((uint)(0x30 + n)))),
     ];
 
     /// <summary>
@@ -199,7 +199,7 @@ public static class Hotkeys
                 }
                 else
                 {
-                    problems.Add($"«{text}» no vale para {action.Name} (hace falta Ctrl, Alt o Win y una tecla conocida); se usa {action.Default.Display()}.");
+                    problems.Add(Text.F(Strings.Hotkey_Invalid, text, action.Name, action.Default.Display()));
                 }
             }
 
@@ -217,8 +217,9 @@ public static class Hotkeys
                 var fallback = action.Default;
                 bool free = !used.ContainsKey(fallback) && !chords.Any(c => c.Key != action.Id && c.Value == fallback);
                 problems.Add(
-                    $"{chord.Display()} ya es de {Actions.First(a => a.Id == owner).Name}; " +
-                    (free ? $"{action.Name} usa {fallback.Display()}." : $"{action.Name} se queda sin atajo."));
+                    free
+                        ? Text.F(Strings.Hotkey_TakenFallback, chord.Display(), Actions.First(a => a.Id == owner).Name, action.Name, fallback.Display())
+                        : Text.F(Strings.Hotkey_TakenNone, chord.Display(), Actions.First(a => a.Id == owner).Name, action.Name));
                 if (free)
                 {
                     chords[action.Id] = fallback;

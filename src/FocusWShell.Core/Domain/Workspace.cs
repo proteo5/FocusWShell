@@ -322,8 +322,8 @@ public sealed class Workspace
     /// <summary>Los dos paneles con los que empieza todo: uno a cada lado del foco.</summary>
     public static IReadOnlyList<Panel> DefaultPanels() =>
     [
-        new Panel(ContextPanel, "Contexto", null, PanelSide.Left),
-        new Panel(WorkPanel, "Trabajo", null, PanelSide.Right),
+        new Panel(ContextPanel, Strings.Panel_Context, null, PanelSide.Left),
+        new Panel(WorkPanel, Strings.Panel_Work, null, PanelSide.Right),
     ];
 
     public IReadOnlyList<Panel> Panels => _panels;
@@ -497,12 +497,12 @@ public sealed class Workspace
     {
         if (IsManaged(c.Handle))
         {
-            return CommandOutcome.Reject($"{c.Label} ya está gestionada.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_AlreadyManaged, c.Label));
         }
 
         if (FindPanel(c.PanelId) is null)
         {
-            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, c.PanelId));
         }
 
         _windows.Add(new ManagedWindow(c.Handle, c.Label, c.PanelId, Placement.InPanel));
@@ -514,12 +514,12 @@ public sealed class Workspace
         var w = Find(handle);
         if (w is null)
         {
-            return CommandOutcome.Reject("La ventana no está gestionada.");
+            return CommandOutcome.Reject(Strings.Rej_NotManaged);
         }
 
         if (w.Placement == Placement.Center)
         {
-            return CommandOutcome.Reject($"{w.Label} ya está en el Centro.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_AlreadyCenter, w.Label));
         }
 
         if (w.Placement == Placement.Fullscreen)
@@ -529,7 +529,7 @@ public sealed class Workspace
 
         if (w.Placement is not (Placement.InPanel or Placement.Parked))
         {
-            return CommandOutcome.Reject($"{w.Label} no se puede promover desde {w.Placement}.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_CantPromote, w.Label, w.Placement));
         }
 
         if (Focused is { } previous)
@@ -551,7 +551,7 @@ public sealed class Workspace
         var w = Find(c.Handle);
         if (w is null)
         {
-            return CommandOutcome.Reject("La ventana no está gestionada.");
+            return CommandOutcome.Reject(Strings.Rej_NotManaged);
         }
 
         if (w.Placement == Placement.Fullscreen && string.Equals(_fullscreenDisplay, c.Display, StringComparison.OrdinalIgnoreCase))
@@ -570,7 +570,7 @@ public sealed class Workspace
         }
         else if (w.Placement is not (Placement.Center or Placement.Fullscreen))
         {
-            return CommandOutcome.Reject($"{w.Label} no puede pasar a pantalla completa desde {w.Placement}.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_CantFullscreen, w.Label, w.Placement));
         }
 
         _fullscreenDisplay = c.Display;
@@ -583,7 +583,7 @@ public sealed class Workspace
         var w = Find(handle);
         if (w is not { Placement: Placement.Fullscreen })
         {
-            return CommandOutcome.Reject("La ventana no está en pantalla completa.");
+            return CommandOutcome.Reject(Strings.Rej_NotFullscreen);
         }
 
         _fullscreenDisplay = null;
@@ -596,7 +596,7 @@ public sealed class Workspace
         var w = Find(handle);
         if (w is not { Placement: Placement.Center or Placement.Fullscreen })
         {
-            return CommandOutcome.Reject("Sólo se puede devolver al panel la ventana del Centro.");
+            return CommandOutcome.Reject(Strings.Rej_OnlyCenterReturns);
         }
 
         if (w.Placement == Placement.Fullscreen)
@@ -615,7 +615,7 @@ public sealed class Workspace
         var current = Focused?.Handle;
         var previous = _centerHistory.FirstOrDefault(h => h != current && IsManaged(h));
         return previous == 0
-            ? CommandOutcome.Reject("No hay una ventana anterior en el Centro.")
+            ? CommandOutcome.Reject(Strings.Rej_NoPrevious)
             : DoPromote(previous);
     }
 
@@ -624,17 +624,17 @@ public sealed class Workspace
         var w = Find(c.Handle);
         if (w is null)
         {
-            return CommandOutcome.Reject("La ventana no está gestionada.");
+            return CommandOutcome.Reject(Strings.Rej_NotManaged);
         }
 
         if (FindPanel(c.PanelId) is null)
         {
-            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, c.PanelId));
         }
 
         if (w.Placement == Placement.Fullscreen)
         {
-            return CommandOutcome.Reject($"{w.Label} está en pantalla completa.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_IsFullscreen, w.Label));
         }
 
         if (w.PanelId == c.PanelId)
@@ -656,36 +656,39 @@ public sealed class Workspace
     {
         if (display is null && template == PanelTemplate.Fill)
         {
-            return "Fill sólo vale en monitores auxiliares: en el principal manda el Centro.";
+            return Strings.Rej_FillOnlyAux;
         }
 
         // Como máximo dos paneles por columna, uno arriba y otro abajo (ADR 0011).
         if (ColumnOf(display, side).FirstOrDefault(p => p.Id != exceptId && p.Slot == slot) is { } occupant)
         {
-            return $"«{occupant.Name}» ya ocupa ese puesto ({SlotName(slot)}, {SideName(display, side)}).";
+            return Text.F(Strings.Rej_SlotTaken, occupant.Name, SlotName(slot), SideName(display, side));
         }
 
         return null;
     }
 
-    private static string SlotName(PanelSlot slot) => slot == PanelSlot.Upper ? "arriba" : "abajo";
+    private static string SlotName(PanelSlot slot) => slot == PanelSlot.Upper ? Strings.Slot_Upper : Strings.Slot_Lower;
 
-    private static string SideName(string? display, PanelSide side) =>
-        display is null
-            ? $"a la {(side == PanelSide.Left ? "izquierda" : "derecha")} del foco"
-            : $"a la {(side == PanelSide.Left ? "izquierda" : "derecha")} de su monitor";
+    private static string SideName(string? display, PanelSide side) => (display is null, side) switch
+    {
+        (true, PanelSide.Left) => Strings.Side_LeftOfFocus,
+        (true, _) => Strings.Side_RightOfFocus,
+        (false, PanelSide.Left) => Strings.Side_LeftOfMonitor,
+        _ => Strings.Side_RightOfMonitor,
+    };
 
     private CommandOutcome DoCreatePanel(Panel panel)
     {
         ArgumentNullException.ThrowIfNull(panel);
         if (string.IsNullOrWhiteSpace(panel.Id) || string.IsNullOrWhiteSpace(panel.Name))
         {
-            return CommandOutcome.Reject("El panel necesita un identificador y un nombre.");
+            return CommandOutcome.Reject(Strings.Rej_PanelNeedsName);
         }
 
         if (FindPanel(panel.Id) is not null)
         {
-            return CommandOutcome.Reject($"Ya existe un panel «{panel.Id}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_PanelExists, panel.Id));
         }
 
         if (ValidateLocation(panel.Display, panel.Side, panel.Slot, panel.Template, null) is { } problem)
@@ -701,12 +704,12 @@ public sealed class Workspace
     {
         if (FindPanel(c.PanelId) is not { } panel)
         {
-            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, c.PanelId));
         }
 
         if (string.IsNullOrWhiteSpace(c.Name))
         {
-            return CommandOutcome.Reject("El nombre no puede estar vacío.");
+            return CommandOutcome.Reject(Strings.Rej_EmptyName);
         }
 
         _panels[_panels.IndexOf(panel)] = panel with { Name = c.Name.Trim() };
@@ -717,7 +720,7 @@ public sealed class Workspace
     {
         if (FindPanel(c.PanelId) is not { } panel)
         {
-            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, c.PanelId));
         }
 
         if (panel.Display == c.Display && panel.Side == c.Side && panel.Slot == c.Slot)
@@ -738,12 +741,12 @@ public sealed class Workspace
     {
         if (FindPanel(c.PanelId) is not { } panel)
         {
-            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, c.PanelId));
         }
 
         if (!Enum.IsDefined(c.Layout))
         {
-            return CommandOutcome.Reject($"Modo de lista desconocido: {c.Layout}.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_UnknownListLayout, c.Layout));
         }
 
         // No mueve ventanas: sólo cambia lo que dibuja la lista.
@@ -755,17 +758,17 @@ public sealed class Workspace
     {
         if (FindPanel(c.UpperId) is not { } upper || FindPanel(c.LowerId) is not { } lower)
         {
-            return CommandOutcome.Reject("No existe alguno de los paneles.");
+            return CommandOutcome.Reject(Strings.Rej_SomePanelMissing);
         }
 
         if (!upper.SharesColumnWith(lower) || upper.Id == lower.Id)
         {
-            return CommandOutcome.Reject($"«{upper.Name}» y «{lower.Name}» no comparten columna.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NotSameColumn, upper.Name, lower.Name));
         }
 
         if (!(c.UpperHeight > 0) || !(c.LowerHeight > 0) || double.IsInfinity(c.UpperHeight) || double.IsInfinity(c.LowerHeight))
         {
-            return CommandOutcome.Reject("Los altos tienen que ser positivos.");
+            return CommandOutcome.Reject(Strings.Rej_HeightsPositive);
         }
 
         _panels[_panels.IndexOf(upper)] = upper with { Height = c.UpperHeight };
@@ -777,12 +780,12 @@ public sealed class Workspace
     {
         if (FindPanel(c.PanelId) is not { } panel)
         {
-            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, c.PanelId));
         }
 
         if (panel.Display is null && c.Template == PanelTemplate.Fill)
         {
-            return CommandOutcome.Reject("Fill sólo vale en monitores auxiliares: en el principal manda el Centro.");
+            return CommandOutcome.Reject(Strings.Rej_FillOnlyAux);
         }
 
         if (panel.Template == c.Template)
@@ -798,12 +801,12 @@ public sealed class Workspace
     {
         if (FindPanel(id) is not { } panel)
         {
-            return CommandOutcome.Reject($"No existe el panel «{id}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, id));
         }
 
         if (panel.Display is null && _panels.Count(p => p.Display is null) == 1)
         {
-            return CommandOutcome.Reject("Tiene que quedar al menos un panel en el monitor principal.");
+            return CommandOutcome.Reject(Strings.Rej_KeepOnePanel);
         }
 
         // Sus ventanas quedan libres donde están: se olvida su estado original sin aplicarlo.
@@ -845,7 +848,7 @@ public sealed class Workspace
         var w = Find(handle);
         if (w is null)
         {
-            return CommandOutcome.Reject("La ventana no está gestionada.");
+            return CommandOutcome.Reject(Strings.Rej_NotManaged);
         }
 
         if (w.Placement == Placement.Parked)
@@ -855,7 +858,7 @@ public sealed class Workspace
 
         if (w.Placement is not (Placement.InPanel or Placement.Center or Placement.Fullscreen))
         {
-            return CommandOutcome.Reject($"{w.Label} no se puede estacionar desde {w.Placement}.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_CantPark, w.Label, w.Placement));
         }
 
         if (w.Placement is Placement.Center or Placement.Fullscreen)
@@ -874,7 +877,7 @@ public sealed class Workspace
         var w = Find(handle);
         if (w is not { Placement: Placement.Parked })
         {
-            return CommandOutcome.Reject("Sólo se puede restaurar una ventana estacionada.");
+            return CommandOutcome.Reject(Strings.Rej_OnlyParkedRestores);
         }
 
         // Conserva su puesto en el panel: su posición en la lista no cambió al estacionarla.
@@ -899,7 +902,7 @@ public sealed class Workspace
         var w = Find(handle);
         if (w is not { Detached: true })
         {
-            return CommandOutcome.Reject("La ventana no está fuera de layout.");
+            return CommandOutcome.Reject(Strings.Rej_NotDetached);
         }
 
         Replace(w with { Detached = false });
@@ -956,12 +959,12 @@ public sealed class Workspace
         var w = Find(c.Handle);
         if (w is null)
         {
-            return CommandOutcome.Reject("La ventana no está gestionada.");
+            return CommandOutcome.Reject(Strings.Rej_NotManaged);
         }
 
         if (!Enum.IsDefined(c.Size))
         {
-            return CommandOutcome.Reject($"Tamaño de tile desconocido: {c.Size}.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_UnknownTileSize, c.Size));
         }
 
         if (w.Size == c.Size)
@@ -977,7 +980,7 @@ public sealed class Workspace
     {
         if (FindPanel(c.PanelId) is null)
         {
-            return CommandOutcome.Reject($"No existe el panel «{c.PanelId}».");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_NoPanel, c.PanelId));
         }
 
         var row = Math.Max(0, c.FirstRow);
@@ -1067,7 +1070,7 @@ public sealed class Workspace
     {
         if (_windows.Count > 0)
         {
-            return CommandOutcome.Reject("Los paneles sólo se sustituyen sin ventanas gestionadas.");
+            return CommandOutcome.Reject(Strings.Rej_ReplacePanelsBusy);
         }
 
         var valid = new List<Panel>();
@@ -1085,7 +1088,7 @@ public sealed class Workspace
 
         if (!valid.Any(p => p.Display is null))
         {
-            return CommandOutcome.Reject("Tiene que quedar al menos un panel en el monitor principal.");
+            return CommandOutcome.Reject(Strings.Rej_KeepOnePanel);
         }
 
         _panels.Clear();
@@ -1097,7 +1100,7 @@ public sealed class Workspace
     {
         if (!Enum.IsDefined(focus))
         {
-            return CommandOutcome.Reject($"Vista desconocida: {focus}.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_UnknownView, focus));
         }
 
         if (View == focus)
@@ -1113,12 +1116,12 @@ public sealed class Workspace
     {
         if (!Enum.IsDefined(c.View))
         {
-            return CommandOutcome.Reject($"Vista desconocida: {c.View}.");
+            return CommandOutcome.Reject(Text.F(Strings.Rej_UnknownView, c.View));
         }
 
         if (c.Weights is { IsValid: false })
         {
-            return CommandOutcome.Reject("Las proporciones tienen que ser positivas.");
+            return CommandOutcome.Reject(Strings.Rej_WeightsPositive);
         }
 
         var before = ProportionsOf(c.View);
@@ -1230,7 +1233,7 @@ public sealed class Workspace
         var w = Find(handle);
         if (w is null)
         {
-            return CommandOutcome.Reject("La ventana no está gestionada.");
+            return CommandOutcome.Reject(Strings.Rej_NotManaged);
         }
 
         Forget(handle);

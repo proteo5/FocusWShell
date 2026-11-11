@@ -14,8 +14,13 @@ namespace FocusWShell.App;
 /// </summary>
 public static class DeckPreview
 {
-    public static void Run(string folder)
+    public static void Run(string folder, string? language = null)
     {
+        if (language is not null)
+        {
+            Localization.Apply(language);
+        }
+
         Directory.CreateDirectory(folder);
         var sizes = new[] { ("tablet-entera", 1280, 672), ("media-tablet", 640, 672), ("esquina", 640, 980) };
         foreach (var (name, width, height) in sizes)

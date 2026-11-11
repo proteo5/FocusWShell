@@ -9,66 +9,73 @@
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
             <TextBlock x:Name="HeaderText" FontWeight="SemiBold" TextWrapping="Wrap" />
             <WrapPanel Margin="0,8,0,0">
-                <TextBlock Text="Vista:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                <ComboBox x:Name="ViewCombo" Width="170" Margin="0,0,24,0" AutomationProperties.Name="Vista"
+                <TextBlock Text="{x:Static local:Strings.Main_ViewLabel}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="ViewCombo" Width="170" Margin="0,0,24,0" AutomationProperties.Name="{x:Static local:Strings.Main_ViewName}"
                           SelectionChanged="ViewCombo_SelectionChanged"
-                          ToolTip="Dónde va el foco en el monitor principal">
-                    <ComboBoxItem Content="Foco a la izquierda" />
-                    <ComboBoxItem Content="Foco al centro" />
-                    <ComboBoxItem Content="Foco a la derecha" />
+                          ToolTip="{x:Static local:Strings.Main_ViewTip}">
+                    <ComboBoxItem Content="{x:Static local:Strings.Main_ViewLeft}" />
+                    <ComboBoxItem Content="{x:Static local:Strings.Main_ViewCenter}" />
+                    <ComboBoxItem Content="{x:Static local:Strings.Main_ViewRight}" />
                 </ComboBox>
-                <TextBlock Text="Proporciones:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                <ComboBox x:Name="ProportionsCombo" Width="260" Margin="0,0,24,0" AutomationProperties.Name="Proporciones"
+                <TextBlock Text="{x:Static local:Strings.Main_ProportionsLabel}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="ProportionsCombo" Width="260" Margin="0,0,24,0" AutomationProperties.Name="{x:Static local:Strings.Main_ProportionsName}"
                           SelectionChanged="ProportionsCombo_SelectionChanged"
-                          ToolTip="Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ventana que da a la columna vecina: se guarda." />
+                          ToolTip="{x:Static local:Strings.Main_ProportionsTip}" />
                 <Button x:Name="DeckButton" Content="Deck" Padding="10,2" Margin="0,0,8,0" Click="Deck_Click"
-                        ToolTip="Mostrar u ocultar el deck en la esquina del monitor principal" />
-                <Button x:Name="HotkeysButton" Content="Atajos…" Padding="10,2" Margin="0,0,24,0" Click="Hotkeys_Click"
-                        ToolTip="Ver y cambiar los atajos globales" />
-                <TextBlock Text="Escena:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="Escenas guardadas" />
-                <Button x:Name="ApplySceneButton" Content="Aplicar escena" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />
-                <Button x:Name="DeleteSceneButton" Content="Borrar" Padding="10,2" Margin="6,0,24,0" Click="DeleteScene_Click" />
-                <CheckBox x:Name="OpenMissingBox" Content="Abrir las que falten" VerticalAlignment="Center" Margin="0,0,24,0"
+                        ToolTip="{x:Static local:Strings.Main_DeckTip}" />
+                <Button x:Name="HotkeysButton" Content="{x:Static local:Strings.Main_Hotkeys}" Padding="10,2" Margin="0,0,24,0" Click="Hotkeys_Click"
+                        ToolTip="{x:Static local:Strings.Main_HotkeysTip}" />
+                <TextBlock Text="{x:Static local:Strings.Main_SceneLabel}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox x:Name="SceneCombo" Width="220" AutomationProperties.Name="{x:Static local:Strings.Main_ScenesName}" />
+                <Button x:Name="ApplySceneButton" Content="{x:Static local:Strings.Main_ApplyScene}" Padding="10,2" Margin="6,0,0,0" Click="ApplyScene_Click" />
+                <Button x:Name="DeleteSceneButton" Content="{x:Static local:Strings.Main_Delete}" Padding="10,2" Margin="6,0,24,0" Click="DeleteScene_Click" />
+                <CheckBox x:Name="OpenMissingBox" Content="{x:Static local:Strings.Main_OpenMissing}" VerticalAlignment="Center" Margin="0,0,24,0"
                           Checked="OpenMissing_Changed" Unchecked="OpenMissing_Changed"
-                          ToolTip="Al aplicar una escena, abre las apps que no estén abiertas (si el catálogo sabe cómo) y pone su ventana en su panel." />
-                <TextBox x:Name="SceneName" Width="200" VerticalContentAlignment="Center" AutomationProperties.Name="Nombre de la escena" />
-                <Button x:Name="SaveSceneButton" Content="Guardar escena actual" Padding="10,2" Margin="6,0,0,0" Click="SaveScene_Click"
-                        ToolTip="Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza." />
+                          ToolTip="{x:Static local:Strings.Main_OpenMissingTip}" />
+                <TextBox x:Name="SceneName" Width="200" VerticalContentAlignment="Center" AutomationProperties.Name="{x:Static local:Strings.Main_SceneNameName}" />
+                <Button x:Name="SaveSceneButton" Content="{x:Static local:Strings.Main_SaveScene}" Padding="10,2" Margin="6,0,0,0" Click="SaveScene_Click"
+                        ToolTip="{x:Static local:Strings.Main_SaveSceneTip}" />
+                <TextBlock Text="{x:Static local:Strings.Main_LanguageLabel}" VerticalAlignment="Center" Margin="24,0,6,0" />
+                <ComboBox x:Name="LanguageCombo" Width="190" AutomationProperties.Name="{x:Static local:Strings.Main_LanguageName}"
+                          SelectionChanged="LanguageCombo_SelectionChanged" ToolTip="{x:Static local:Strings.Main_LanguageTip}">
+                    <ComboBoxItem Content="{x:Static local:Strings.Main_LanguageAuto}" Tag="auto" />
+                    <ComboBoxItem Content="Español" Tag="es" />
+                    <ComboBoxItem Content="English" Tag="en" />
+                </ComboBox>
             </WrapPanel>
             <WrapPanel Margin="0,8,0,0">
-                <TextBlock Text="Llevar al foco la ventana de un panel que elijas con:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{x:Static local:Strings.Main_GesturesLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <CheckBox x:Name="GestureAltTab" Content="Alt+Tab" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
-                <CheckBox x:Name="GestureTaskView" Content="Vista de tareas (Win+Tab)" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
-                <CheckBox x:Name="GestureTaskbar" Content="Barra de tareas" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
-                <CheckBox x:Name="GestureClick" Content="Clic en la ventana" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed"
-                          ToolTip="Desactivado por defecto: con él, cada clic en un panel movería ventanas bajo el cursor." />
+                <CheckBox x:Name="GestureTaskView" Content="{x:Static local:Strings.Main_GestureTaskView}" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureTaskbar" Content="{x:Static local:Strings.Main_GestureTaskbar}" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
+                <CheckBox x:Name="GestureClick" Content="{x:Static local:Strings.Main_GestureClick}" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed"
+                          ToolTip="{x:Static local:Strings.Main_GestureClickTip}" />
             </WrapPanel>
             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="DimGray"
-                       Text="Elige el panel de cada ventana (o déjala libre) y pulsa Aplicar. El foco está siempre en el monitor principal. En la pestaña Paneles puedes renombrarlos, moverlos a otro monitor, cambiar su presentación, borrarlos o crear nuevos; borrar un panel deja sus ventanas libres, donde estén." />
+                       Text="{x:Static local:Strings.Main_Help}" />
         </StackPanel>
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
-            <Button x:Name="PromoteButton" DockPanel.Dock="Left" Content="Al Centro" Padding="12,4" Margin="0,0,8,0" Click="Promote_Click"
-                    ToolTip="Lleva la ventana seleccionada al Centro" />
-            <Button x:Name="FullscreenButton" DockPanel.Dock="Left" Content="Pantalla completa" Padding="12,4" Margin="0,0,4,0" Click="Fullscreen_Click"
-                    ToolTip="Maximiza la ventana seleccionada en el monitor elegido; si ya lo está, vuelve al foco" />
-            <ComboBox x:Name="FullscreenTarget" DockPanel.Dock="Left" Width="130" Margin="0,0,8,0" AutomationProperties.Name="Monitor de pantalla completa" />
-            <Button x:Name="SwapButton" DockPanel.Dock="Left" Content="Volver a la anterior" Padding="12,4" Margin="0,0,8,0" Click="Swap_Click"
-                    ToolTip="Devuelve al Centro la ventana que estaba antes" />
-            <Button x:Name="ReturnButton" DockPanel.Dock="Left" Content="Centro al panel" Padding="12,4" Margin="0,0,8,0" Click="Return_Click"
-                    ToolTip="Devuelve la ventana del Centro a su panel" />
-            <Button x:Name="ParkButton" DockPanel.Dock="Left" Content="Estacionar" Padding="12,4" Margin="0,0,8,0" Click="Park_Click"
-                    ToolTip="Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa si la minimizas tú." />
-            <Button x:Name="UnparkButton" DockPanel.Dock="Left" Content="Recuperar" Padding="12,4" Margin="0,0,8,0" Click="Unpark_Click"
-                    ToolTip="Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pasa si la abres desde la barra de tareas." />
-            <Button x:Name="ReattachButton" DockPanel.Dock="Left" Content="Reencajar" Padding="12,4" Margin="0,0,8,0" Click="Reattach_Click"
-                    ToolTip="Devuelve al layout una ventana que maximizaste tú" />
-            <Button x:Name="ReleaseButton" DockPanel.Dock="Left" Content="Liberar" Padding="12,4" Margin="0,0,8,0" Click="Release_Click"
-                    ToolTip="Devuelve la ventana seleccionada a su sitio original y deja de gestionarla" />
-            <Button x:Name="ApplyButton" DockPanel.Dock="Right" Content="Aplicar" Padding="12,4" IsDefault="True" Click="Apply_Click" />
-            <Button x:Name="RestoreButton" DockPanel.Dock="Right" Content="Restaurar todas" Padding="12,4" Margin="0,0,8,0" Click="Restore_Click" />
-            <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="Actualizar lista" Padding="12,4" Margin="0,0,8,0" Click="Refresh_Click" />
+            <Button x:Name="PromoteButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Promote}" Padding="12,4" Margin="0,0,8,0" Click="Promote_Click"
+                    ToolTip="{x:Static local:Strings.Main_PromoteTip}" />
+            <Button x:Name="FullscreenButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Fullscreen}" Padding="12,4" Margin="0,0,4,0" Click="Fullscreen_Click"
+                    ToolTip="{x:Static local:Strings.Main_FullscreenTip}" />
+            <ComboBox x:Name="FullscreenTarget" DockPanel.Dock="Left" Width="130" Margin="0,0,8,0" AutomationProperties.Name="{x:Static local:Strings.Main_FullscreenMonitorName}" />
+            <Button x:Name="SwapButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Swap}" Padding="12,4" Margin="0,0,8,0" Click="Swap_Click"
+                    ToolTip="{x:Static local:Strings.Main_SwapTip}" />
+            <Button x:Name="ReturnButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Return}" Padding="12,4" Margin="0,0,8,0" Click="Return_Click"
+                    ToolTip="{x:Static local:Strings.Main_ReturnTip}" />
+            <Button x:Name="ParkButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Park}" Padding="12,4" Margin="0,0,8,0" Click="Park_Click"
+                    ToolTip="{x:Static local:Strings.Main_ParkTip}" />
+            <Button x:Name="UnparkButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Unpark}" Padding="12,4" Margin="0,0,8,0" Click="Unpark_Click"
+                    ToolTip="{x:Static local:Strings.Main_UnparkTip}" />
+            <Button x:Name="ReattachButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Reattach}" Padding="12,4" Margin="0,0,8,0" Click="Reattach_Click"
+                    ToolTip="{x:Static local:Strings.Main_ReattachTip}" />
+            <Button x:Name="ReleaseButton" DockPanel.Dock="Left" Content="{x:Static local:Strings.Main_Release}" Padding="12,4" Margin="0,0,8,0" Click="Release_Click"
+                    ToolTip="{x:Static local:Strings.Main_ReleaseTip}" />
+            <Button x:Name="ApplyButton" DockPanel.Dock="Right" Content="{x:Static local:Strings.Main_Apply}" Padding="12,4" IsDefault="True" Click="Apply_Click" />
+            <Button x:Name="RestoreButton" DockPanel.Dock="Right" Content="{x:Static local:Strings.Main_RestoreAll}" Padding="12,4" Margin="0,0,8,0" Click="Restore_Click" />
+            <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="{x:Static local:Strings.Main_Refresh}" Padding="12,4" Margin="0,0,8,0" Click="Refresh_Click" />
         </DockPanel>
 
         <TextBox x:Name="StatusText" DockPanel.Dock="Bottom" Height="110" Margin="0,8,0,0"
@@ -77,7 +84,7 @@
 
         <!-- Cada sección en su pestaña: así ninguna se queda sin alto en una ventana pequeña. -->
         <TabControl x:Name="Sections">
-            <TabItem Header="Ventanas" AutomationProperties.Name="Pestaña Ventanas">
+            <TabItem Header="{x:Static local:Strings.Main_TabWindows}" AutomationProperties.Name="{x:Static local:Strings.Main_TabWindowsName}">
                 <ListView x:Name="WindowList" SelectionMode="Single" ContextMenuOpening="WindowList_ContextMenuOpening">
                     <ListView.ContextMenu>
                         <ContextMenu />
@@ -97,29 +104,29 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Estado" Width="220" DisplayMemberBinding="{Binding State}" />
+                            <GridViewColumn Header="{x:Static local:Strings.Main_ColState}" Width="220" DisplayMemberBinding="{Binding State}" />
                             <GridViewColumn Header="App" Width="150" DisplayMemberBinding="{Binding App}" />
-                            <GridViewColumn Header="Título" Width="360" DisplayMemberBinding="{Binding Title}" />
+                            <GridViewColumn Header="{x:Static local:Strings.Main_ColTitle}" Width="360" DisplayMemberBinding="{Binding Title}" />
                         </GridView>
                     </ListView.View>
                 </ListView>
             </TabItem>
 
-            <TabItem Header="Paneles" AutomationProperties.Name="Pestaña Paneles">
+            <TabItem Header="{x:Static local:Strings.Main_TabPanels}" AutomationProperties.Name="{x:Static local:Strings.Main_TabPanelsName}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="6">
                     <StackPanel>
                         <TextBlock TextWrapping="Wrap" Foreground="DimGray" Margin="0,0,0,8"
-                                   Text="Cada monitor tiene dos columnas (izquierda y derecha) y cada una puede partirse arriba y abajo. Para crear un panel, escribe su nombre en la última fila, elige dónde va y pulsa Crear panel." />
+                                   Text="{x:Static local:Strings.Main_PanelsHelp}" />
                         <StackPanel x:Name="PanelsList" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Apps" AutomationProperties.Name="Pestaña Apps">
+            <TabItem Header="Apps" AutomationProperties.Name="{x:Static local:Strings.Main_TabAppsName}">
                 <DockPanel Margin="6">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-                        <TextBlock Text="Apps conocidas (se añaden solas al verlas abiertas)" VerticalAlignment="Center" />
-                        <CheckBox x:Name="ShowHiddenApps" Content="Ver ocultas" Margin="16,0,0,0" VerticalAlignment="Center"
+                        <TextBlock Text="{x:Static local:Strings.Main_AppsHelp}" VerticalAlignment="Center" />
+                        <CheckBox x:Name="ShowHiddenApps" Content="{x:Static local:Strings.Main_ShowHidden}" Margin="16,0,0,0" VerticalAlignment="Center"
                                   Checked="ShowHiddenApps_Changed" Unchecked="ShowHiddenApps_Changed" />
                     </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -128,20 +135,20 @@
                 </DockPanel>
             </TabItem>
 
-            <TabItem Header="Excluidas" AutomationProperties.Name="Pestaña Excluidas">
+            <TabItem Header="{x:Static local:Strings.Main_TabExcluded}" AutomationProperties.Name="{x:Static local:Strings.Main_TabExcludedName}">
                 <StackPanel Margin="6">
                     <TextBlock TextWrapping="Wrap" Foreground="DimGray" Margin="0,0,0,8"
-                               Text="FocusWShell no gestiona ni muestra estas ventanas. También puedes excluir una con clic derecho en la pestaña Ventanas." />
+                               Text="{x:Static local:Strings.Main_ExcludedHelp}" />
                     <WrapPanel x:Name="ExclusionsList" />
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <ComboBox x:Name="ExclusionKindCombo" Width="150" SelectedIndex="0" AutomationProperties.Name="Tipo de exclusión">
-                            <ComboBoxItem Content="Ejecutable" />
+                        <ComboBox x:Name="ExclusionKindCombo" Width="150" SelectedIndex="0" AutomationProperties.Name="{x:Static local:Strings.Main_ExclusionKindName}">
+                            <ComboBoxItem Content="{x:Static local:Strings.Main_ExclExecutable}" />
                             <ComboBoxItem Content="AUMID" />
-                            <ComboBoxItem Content="Clase de ventana" />
+                            <ComboBoxItem Content="{x:Static local:Strings.Main_ExclClass}" />
                         </ComboBox>
                         <TextBox x:Name="ExclusionValueBox" Width="260" Margin="6,0" VerticalContentAlignment="Center"
-                                 AutomationProperties.Name="Qué excluir" ToolTip="Por ejemplo NetBird.exe" />
-                        <Button Content="Excluir" Padding="12,2" Click="AddExclusion_Click" AutomationProperties.Name="Agregar exclusión" />
+                                 AutomationProperties.Name="{x:Static local:Strings.Main_ExclValueName}" ToolTip="{x:Static local:Strings.Main_ExclValueTip}" />
+                        <Button Content="{x:Static local:Strings.Main_Exclude}" Padding="12,2" Click="AddExclusion_Click" AutomationProperties.Name="{x:Static local:Strings.Main_ExcludeName}" />
                     </StackPanel>
                 </StackPanel>
             </TabItem>

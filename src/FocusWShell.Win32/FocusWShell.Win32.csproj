@@ -16,4 +16,9 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Strings y Text (textos en español e inglés) del núcleo. -->
+    <Using Include="FocusWShell.Core" />
+  </ItemGroup>
+
 </Project>

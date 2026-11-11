@@ -561,6 +561,28 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Español e inglés (2026-11-11)
+
+La app estaba sólo en español. Ahora sus textos están en recursos `.resx`: `Strings.resx` en español, que es el idioma base, y `Strings.en.resx` en inglés. Añadir otro idioma es añadir otro archivo. Hay dos juegos:
+
+- **`FocusWShell.Core/Strings.resx`** (97 textos): los rechazos del modelo, las notas del layout, los nombres de los atajos y de las teclas, las exclusiones y los motivos de «no gestionable». Win32 los usa también: errores al abrir apps, el resumen de restaurar, los errores al mover. La clase la genera MSBuild.
+- **`FocusWShell.App/Strings.resx`** (341 textos): la ventana principal (XAML con `{x:Static local:Strings.X}`), el deck, la bandeja, las tiras, las listas, la ventana de atajos y los mensajes de estado. `Strings.Designer.cs` lo escribe la herramienta de textos junto al `.resx`, porque el compilador de XAML necesita la clase antes de que MSBuild genere recursos (si se genera en `obj`, falla con MC3050).
+- **Los textos con valores** usan huecos `{0}` y `Text.F(Strings.X, a, b)`. Las frases con «izquierda» o «derecha» van enteras, porque el orden de las palabras cambia de un idioma a otro.
+- **No se traducen los identificadores:** la región «Centro» del layout, los títulos internos de las ventanas propias (las pruebas los buscan), los ids de los paneles y los archivos. Las presets de ancho sí se traducen al mostrarse, porque se guardan los pesos, no el nombre.
+
+**Elegir el idioma.** En la ventana principal, «Idioma: Automático (el de Windows) / Español / English», guardado en `settings.json` (`Language`).
+
+- Se aplica al arrancar, en el constructor estático de `App`, antes de crear ningún texto. Cambiarlo ofrece reiniciar: la instancia nueva (`--reinicio`) espera a que la vieja se cierre, y la sesión devuelve las ventanas a sus paneles.
+- «Automático» da español si Windows está en español, e inglés en otro caso.
+- Una configuración de antes de los idiomas, sin `Language`, sigue en español: con Windows en inglés, «automático» la habría cambiado sin que nadie lo pidiera.
+
+**Pruebas.**
+
+- Fijan la cultura en español (`TestCulture`, un `ModuleInitializer`), porque comprueban mensajes.
+- `TranslationTests` comprueba que el inglés tiene las mismas claves que el español y los mismos huecos en cada texto: un hueco de menos rompería al usar ese texto.
+- `--deck-preview <carpeta> <es|en>` dibuja el deck en cada idioma.
+- Revisado en inglés: el deck (con los modos mover y cerrar, y un monitor sin paneles) y la ventana principal (Ventanas y Paneles). Los guiones de prueba buscan los textos en español, así que se ejecutan con el idioma en español.
+
 ### Ventanas libres que siguen libres (validación, 2026-11-11)
 
 Encontrado en uso con una llamada de Zoom:

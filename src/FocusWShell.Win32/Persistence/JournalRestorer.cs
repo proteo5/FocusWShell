@@ -1,4 +1,4 @@
-namespace FocusWShell.Win32.Persistence;
+﻿namespace FocusWShell.Win32.Persistence;
 
 /// <summary>Qué pasó con una entrada del diario al restaurar.</summary>
 public enum RestoreOutcome
@@ -25,8 +25,7 @@ public sealed record RestoreReport(IReadOnlyList<RestoreEntryResult> Entries)
     public bool IsComplete => Entries.All(e => e.Outcome is RestoreOutcome.Restored or RestoreOutcome.Gone);
 
     public string Summary =>
-        $"{Count(RestoreOutcome.Restored)} restauradas · {Count(RestoreOutcome.Gone)} ya cerradas · " +
-        $"{Count(RestoreOutcome.Pending)} pendientes · {Count(RestoreOutcome.RestoredWithDifferences)} con diferencias";
+        Text.F(Strings.Restore_Summary, Count(RestoreOutcome.Restored), Count(RestoreOutcome.Gone), Count(RestoreOutcome.Pending), Count(RestoreOutcome.RestoredWithDifferences));
 }
 
 /// <summary>Aplica el diario directamente, sin pasar por el motor de layout (ADR 0005).</summary>
@@ -67,7 +66,7 @@ public static class JournalRestorer
     {
         if (!WindowMover.IsSameWindow(e.Handle, e.ProcessId))
         {
-            return new(e, RestoreOutcome.Gone, "ya no existe");
+            return new(e, RestoreOutcome.Gone, Strings.Restore_Gone);
         }
 
         // Si la ventana cruza a un monitor con otro DPI, la app se reescala al llegar y el tamaño
@@ -83,11 +82,11 @@ public static class JournalRestorer
             now = WindowMover.Capture((nint)e.Handle, e.ProcessId, e.ProcessName, e.Title);
             if (now is not null && now.NormalPosition == e.NormalPosition && now.ShowCmd == e.ShowCmd)
             {
-                return new(e, RestoreOutcome.Restored, attempt == 1 ? "restaurada" : "restaurada (2 pasadas)");
+                return new(e, RestoreOutcome.Restored, attempt == 1 ? Strings.Restore_Done : Strings.Restore_DoneTwice);
             }
         }
 
         return new(e, RestoreOutcome.RestoredWithDifferences,
-            $"quedó en {now?.NormalPosition} show {now?.ShowCmd} (original {e.NormalPosition} show {e.ShowCmd}); se conserva en el diario");
+            Text.F(Strings.Restore_Differs, now?.NormalPosition, now?.ShowCmd, e.NormalPosition, e.ShowCmd));
     }
 }

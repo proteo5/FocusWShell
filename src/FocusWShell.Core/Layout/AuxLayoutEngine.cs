@@ -94,7 +94,7 @@ public static class AuxLayoutEngine
             var hidden = panels.Where(p => p != fill).Select(p => p.DisplayTitle).ToList();
             if (hidden.Count > 0)
             {
-                notes.Add($"{main.Label} ocupa el monitor ({fill.DisplayTitle} en Fill); {string.Join(" y ", hidden)} se minimiza.");
+                notes.Add(Text.F(Strings.Note_FillHides, main.Label, fill.DisplayTitle, string.Join(Strings.And, hidden)));
             }
 
             // Sin maximizar, el panel en Fill lleva su tira de pestañas (como una pila que ocupa el monitor).
@@ -126,7 +126,7 @@ public static class AuxLayoutEngine
             int othersNeed = cols.Where((_, k) => k != i).Sum(c => c.RequiredWidth);
             int max = available - othersNeed;
             cols[i].ExcludeTooWide(max, targets, notes, (w, panel, limit) =>
-                $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.DisplayTitle} puede tener como mucho {limit} en este monitor; se minimiza y queda fuera del layout.");
+                Text.F(Strings.Note_TooWideAux, w.Label, w.MinSize!.Value.Width, panel.DisplayTitle, limit));
         }
 
         cols = cols.Where(c => c.HasVisible).ToList();
@@ -158,7 +158,7 @@ public static class AuxLayoutEngine
             if (widths[i] > ideal[i] && cols[i].Widest is { } widestPanel)
             {
                 var widest = widestPanel.Visible.MaxBy(w => w.MinSize?.Width ?? 0)!;
-                notes.Add($"{widestPanel.Panel.DisplayTitle} se amplió a {widths[i]} px porque {widest.Label} necesita {cols[i].RequiredWidth} px de ancho.");
+                notes.Add(Text.F(Strings.Note_AuxPanelGrew, widestPanel.Panel.DisplayTitle, widths[i], widest.Label, cols[i].RequiredWidth));
             }
         }
 

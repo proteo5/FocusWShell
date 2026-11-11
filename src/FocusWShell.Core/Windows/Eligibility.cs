@@ -1,4 +1,4 @@
-namespace FocusWShell.Core.Windows;
+﻿namespace FocusWShell.Core.Windows;
 
 /// <summary>Por qué una ventana no es candidata a ser gestionada.</summary>
 public enum ExclusionReason
@@ -41,8 +41,8 @@ public static class Unmanageable
     public static string? Reason(IntegrityLevel target, IntegrityLevel own) => target switch
     {
         _ when EligibilityFilter.CanControl(target, own) => null,
-        IntegrityLevel.Unknown => "no se pudo leer su nivel de permisos (protegida o como administrador)",
-        IntegrityLevel.System => "es del sistema",
-        _ => "corre como administrador",
+        IntegrityLevel.Unknown => Strings.Unmanageable_Unknown,
+        IntegrityLevel.System => Strings.Unmanageable_System,
+        _ => Strings.Unmanageable_Admin,
     };
 }

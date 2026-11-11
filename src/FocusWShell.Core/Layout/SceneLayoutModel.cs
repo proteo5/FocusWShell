@@ -73,9 +73,9 @@ public sealed record ViewWeights(double Left, double Center, double Right)
         int Pct(double w) => (int)Math.Round(100 * w / total);
         return focus switch
         {
-            FocusPosition.Left => $"foco {Pct(Center)} · derecha {Pct(Right)} · izquierda {Pct(Left)} %",
-            FocusPosition.Right => $"izquierda {Pct(Left)} · derecha {Pct(Right)} · foco {Pct(Center)} %",
-            _ => $"izquierda {Pct(Left)} · foco {Pct(Center)} · derecha {Pct(Right)} %",
+            FocusPosition.Left => Text.F(Strings.Weights_FocusLeft, Pct(Center), Pct(Right), Pct(Left)),
+            FocusPosition.Right => Text.F(Strings.Weights_FocusRight, Pct(Left), Pct(Right), Pct(Center)),
+            _ => Text.F(Strings.Weights_FocusCenter, Pct(Left), Pct(Center), Pct(Right)),
         };
     }
 
@@ -95,9 +95,12 @@ public sealed record ViewWeights(double Left, double Center, double Right)
 /// <summary>Proporciones de partida y presets de cada vista (ADR 0012).</summary>
 public static class ViewProportions
 {
-    public const string Normal = "Normal";
-    public const string WideFocus = "Foco ancho";
-    public const string HalfAndHalf = "Mitad y mitad";
+    // Nombres para mostrar (en el idioma de la interfaz); no se guardan: lo que se guarda son los pesos.
+    public static string Normal => Strings.Preset_Normal;
+
+    public static string WideFocus => Strings.Preset_WideFocus;
+
+    public static string HalfAndHalf => Strings.Preset_HalfAndHalf;
 
     /// <summary>Las de la tabla del ADR 0012.</summary>
     public static ViewWeights Default(FocusPosition focus) => focus switch

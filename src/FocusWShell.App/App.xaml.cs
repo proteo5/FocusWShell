@@ -15,6 +15,9 @@ namespace FocusWShell.App;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "Application no es IDisposable; se liberan en OnExit.")]
 public partial class App : Application
 {
+    // El idioma, antes de crear cualquier texto (también los del controlador, que es un campo).
+    static App() => Localization.Apply(AppSettings.Load().Language);
+
     private readonly ShellController _controller = new();
     private Mutex? _singleInstance;
     private TrayIcon? _tray;
@@ -45,7 +48,9 @@ public partial class App : Application
         int preview = Array.IndexOf(e.Args, "--deck-preview");
         if (preview >= 0)
         {
-            DeckPreview.Run(preview + 1 < e.Args.Length ? e.Args[preview + 1] : System.IO.Path.GetTempPath());
+            DeckPreview.Run(
+                preview + 1 < e.Args.Length ? e.Args[preview + 1] : System.IO.Path.GetTempPath(),
+                preview + 2 < e.Args.Length ? e.Args[preview + 2] : null);
             Shutdown();
             return;
         }
@@ -53,6 +58,18 @@ public partial class App : Application
         // "FocusWShell.exe --salir": pide a la instancia abierta que salga devolviendo las ventanas (lo usa
         // build\instalar.ps1 antes de reemplazar la copia instalada).
         bool exitRequest = e.Args.Any(a => a is "--salir" or "--exit");
+
+        // "--reinicio": la abrió la instancia anterior al reiniciarse; espera a que termine de cerrarse.
+        if (e.Args.Contains("--reinicio"))
+        {
+            var until = DateTime.Now.AddSeconds(20);
+            while (Mutex.TryOpenExisting(@"Local\FocusWShell", out var previous) && DateTime.Now < until)
+            {
+                previous.Dispose();
+                Thread.Sleep(300);
+            }
+        }
+
         _singleInstance = new Mutex(initiallyOwned: true, @"Local\FocusWShell", out bool createdNew);
         if (exitRequest)
         {
@@ -82,7 +99,7 @@ public partial class App : Application
             }
             else
             {
-                MessageBox.Show("FocusWShell ya se está ejecutando. Búscalo en el área de notificación.", "FocusWShell");
+                MessageBox.Show(Strings.App_AlreadyRunning, "FocusWShell");
             }
 
             _singleInstance.Dispose();
@@ -175,7 +192,7 @@ public partial class App : Application
         _controller.SetExclusions(_settings.Exclusions);
         _controller.SceneAppsOpened += (message, result) => Dispatcher.BeginInvoke(() =>
         {
-            _tray?.Notify("Escena", message);
+            _tray?.Notify(Strings.Tray_Scene, message);
             if (_main?.IsVisible == true)
             {
                 _main.Refresh();
@@ -195,7 +212,7 @@ public partial class App : Application
                     FollowDeckMonitor();
                     if (events.Count > 0)
                     {
-                        _tray?.Notify(resumed ? "Tras la suspensión" : "Monitores", string.Join(" ", events));
+                        _tray?.Notify(resumed ? Strings.Tray_AfterSleep : Strings.Tray_Monitors, string.Join(" ", events));
                     }
 
                     if (_main?.IsVisible == true)
@@ -203,7 +220,7 @@ public partial class App : Application
                         _main.Refresh();
                         if (events.Count > 0 || resumed)
                         {
-                            var lines = resumed ? events.Prepend("Volvió de la suspensión: se revisaron ventanas y monitores.") : events;
+                            var lines = resumed ? events.Prepend(Strings.Status_Resumed) : events;
                             _main.SetStatus(string.Join(Environment.NewLine, lines) +
                                 (result is null ? "" : Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result)));
                         }
@@ -271,11 +288,11 @@ public partial class App : Application
         var actions = new Dictionary<string, Action>
         {
             [Hotkeys.Emergency] = OnEmergencyHotkey,
-            ["al-foco"] = () => OnCommandHotkey("Al foco", _controller.PromoteForeground),
-            ["anterior"] = () => OnCommandHotkey("Volver a la anterior", () => _controller.Execute(new SwapWithPrevious())),
-            ["foco-al-panel"] = () => OnCommandHotkey("Foco al panel", _controller.ReturnCenter),
-            ["pantalla-completa"] = () => OnCommandHotkey("Pantalla completa", () => _controller.ToggleFullscreen()),
-            ["vista"] = () => OnCommandHotkey("Cambiar de vista", () =>
+            ["al-foco"] = () => OnCommandHotkey(Core.Strings.Action_ToFocus, _controller.PromoteForeground),
+            ["anterior"] = () => OnCommandHotkey(Core.Strings.Action_Previous, () => _controller.Execute(new SwapWithPrevious())),
+            ["foco-al-panel"] = () => OnCommandHotkey(Core.Strings.Action_FocusToPanel, _controller.ReturnCenter),
+            ["pantalla-completa"] = () => OnCommandHotkey(Core.Strings.Action_Fullscreen, () => _controller.ToggleFullscreen()),
+            ["vista"] = () => OnCommandHotkey(Core.Strings.Action_View, () =>
                 _controller.Execute(new SetView(_controller.View switch
                 {
                     FocusPosition.Center => FocusPosition.Left,
@@ -300,12 +317,12 @@ public partial class App : Application
         var warnings = new List<string>(HotkeyMap.Problems);
         if (_hotkeys.Failed.Count > 0)
         {
-            warnings.Add($"Otra aplicación ya usa: {string.Join(", ", _hotkeys.Failed.Select(f => $"{f.Description} ({f.Name})"))}. \"Restaurar todas\" sigue en el menú de la bandeja.");
+            warnings.Add(Core.Text.F(Strings.Hotkeys_InUse, string.Join(", ", _hotkeys.Failed.Select(f => $"{f.Description} ({f.Name})"))));
         }
 
         if (announce && warnings.Count > 0)
         {
-            _tray?.Notify("Atajos", string.Join(" ", warnings), Forms.ToolTipIcon.Warning);
+            _tray?.Notify(Strings.Tray_Hotkeys, string.Join(" ", warnings), Forms.ToolTipIcon.Warning);
         }
 
         _tray?.SetHotkeys(ChordOf("pantalla-encendida"), ChordOf(Hotkeys.Emergency), n => ChordOf($"escena-{n}"));
@@ -577,9 +594,8 @@ public partial class App : Application
         }
 
         var answer = MessageBox.Show(
-            $"FocusWShell no se cerró bien la última vez y {pending} ventana(s) siguen fuera de su sitio original.\n\n" +
-            "¿Restaurarlas ahora?\n\n(Si eliges No, se quedan donde están y podrás restaurarlas más tarde.)",
-            "FocusWShell — recuperación",
+            Core.Text.F(Strings.Recovery_Ask, pending),
+            Strings.Recovery_Title,
             MessageBoxButton.YesNo,
             MessageBoxImage.Question,
             MessageBoxResult.Yes);
@@ -588,7 +604,7 @@ public partial class App : Application
             var report = _controller.RestoreAllWindows();
             if (!report.IsComplete)
             {
-                MessageBox.Show(global::FocusWShell.App.MainWindow.Describe(report), "FocusWShell — recuperación");
+                MessageBox.Show(global::FocusWShell.App.MainWindow.Describe(report), Strings.Recovery_Title);
             }
         }
     }
@@ -640,8 +656,8 @@ public partial class App : Application
         var result = _controller.ApplySavedScene(name);
         Dispatcher.BeginInvoke(() =>
         {
-            _tray?.Notify($"Escena «{result.Name}»", result.Missing.Count == 0 && result.Notes.Count == 0
-                ? "Aplicada."
+            _tray?.Notify(Core.Text.F(Strings.Tray_SceneName, result.Name), result.Missing.Count == 0 && result.Notes.Count == 0
+                ? Strings.Tray_Applied
                 : string.Join(" ", result.Summary.Split(Environment.NewLine).Skip(1)));
             if (_main?.IsVisible == true)
             {
@@ -658,7 +674,7 @@ public partial class App : Application
     {
         if (!_keepAwake.Set(active))
         {
-            _tray?.Notify("Pantalla encendida", "Windows no aceptó la petición de energía.", Forms.ToolTipIcon.Warning);
+            _tray?.Notify(Strings.Tray_KeepAwake, Strings.Tray_KeepAwakeFailed, Forms.ToolTipIcon.Warning);
             return;
         }
 
@@ -672,17 +688,17 @@ public partial class App : Application
         if (announce)
         {
             _tray?.Notify(
-                active ? "Pantalla siempre encendida" : "Pantalla con ahorro normal",
+                active ? Strings.Tray_AwakeOn : Strings.Tray_AwakeOff,
                 active
-                    ? "Ni la pantalla se apagará ni saltará el protector de pantalla mientras esté activo."
-                    : "Windows vuelve a apagar la pantalla por inactividad como siempre.");
+                    ? Strings.Tray_AwakeOnText
+                    : Strings.Tray_AwakeOffText);
         }
     }
 
     private void RestoreFromTray()
     {
         var report = _controller.RestoreAllWindows();
-        _tray?.Notify("Restaurar todas", report.Entries.Count == 0 ? "No había nada que restaurar." : report.Summary);
+        _tray?.Notify(Strings.Tray_RestoreAll, report.Entries.Count == 0 ? Strings.Tray_NothingToRestore : report.Summary);
         _main?.Refresh();
     }
 
@@ -692,7 +708,7 @@ public partial class App : Application
         var report = _controller.RestoreAllWindows();
         Dispatcher.BeginInvoke(() =>
         {
-            _tray?.Notify("Emergencia: ventanas restauradas", report.Entries.Count == 0 ? "No había nada que restaurar." : report.Summary);
+            _tray?.Notify(Strings.Tray_Emergency, report.Entries.Count == 0 ? Strings.Tray_NothingToRestore : report.Summary);
             if (_main?.IsVisible == true)
             {
                 _main.Refresh();
@@ -745,7 +761,7 @@ public partial class App : Application
         }
 
         ShowStartup();
-        _tray?.Notify("Iniciar con Windows", enable ? $"FocusWShell se abrirá al iniciar sesión ({ExePath})." : "FocusWShell ya no se abrirá al iniciar sesión.");
+        _tray?.Notify(Strings.Tray_StartWithWindows, enable ? Core.Text.F(Strings.Tray_StartOn, ExePath) : Strings.Tray_StartOff);
     }
 
     /// <summary>La sesión se guarda sólo después de restaurarla al arrancar (si no, se guardaría vacía).</summary>
@@ -797,6 +813,13 @@ public partial class App : Application
         timer.Start();
     }
 
+    /// <summary>Reinicia FocusWShell (p. ej. para cambiar de idioma): sale como «Salir» y abre otra instancia.</summary>
+    public void Restart()
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ExePath, "--reinicio") { UseShellExecute = false });
+        ExitAndRestore();
+    }
+
     private void ExitAndRestore()
     {
         // Antes de devolver las ventanas a su sitio: así, al volver a abrir FocusWShell, vuelven a sus paneles.
@@ -845,7 +868,7 @@ public partial class App : Application
         LogError(e.Exception);
         TryRestoreAll();
         MessageBox.Show(
-            $"Error inesperado. Las ventanas se han devuelto a su sitio.\n\n{e.Exception.Message}",
+            Core.Text.F(Strings.App_UnexpectedError, e.Exception.Message),
             "FocusWShell", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }

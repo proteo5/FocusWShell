@@ -370,7 +370,7 @@ public sealed class SceneApplier
             .ToList();
         if (captures.Count != all.Count)
         {
-            return new SceneApplyReport(layout, [], [], "No se pudo capturar el estado original de todas las ventanas; no se movió nada.");
+            return new SceneApplyReport(layout, [], [], Strings.Apply_CaptureFailed);
         }
 
         journal.AddIfMissing(captures);
@@ -486,7 +486,7 @@ public sealed class SceneApplier
                 var key = MinSizeCatalog.KeyFor(w);
                 if (Catalog.Observe(key, new PixelSize(r.Target.Width, r.Target.Height), new PixelSize(r.Actual.Width, r.Actual.Height), dpi))
                 {
-                    learned.Add($"{target.Label} → mínimo {Catalog.Get(key, dpi)}");
+                    learned.Add(Text.F(Strings.Apply_LearnedMin, target.Label, Catalog.Get(key, dpi)));
                 }
             }
         }

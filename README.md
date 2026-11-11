@@ -33,6 +33,7 @@ powershell -File build\instalar.ps1 -Abrir
 - Al volver a ejecutarlo, actualiza la copia: cierra la que esté abierta devolviendo las ventanas a su sitio, y la vuelve a abrir.
 - En la bandeja, **Iniciar con Windows** hace que se abra al iniciar sesión.
 - `FocusWShell.exe --salir` cierra la instancia abierta como lo haría **Salir**.
+- En español o en inglés: «Idioma» en la ventana principal (automático: el de Windows).
 
 Para desarrollar:
 

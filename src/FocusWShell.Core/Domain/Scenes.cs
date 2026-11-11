@@ -74,13 +74,13 @@ public sealed record SavedScene(string Name, IReadOnlyList<SceneWindow> Windows)
 
         var panels = new List<ScenePanel>
         {
-            new(Workspace.ContextPanel, "Contexto", null, PanelSide.Left, PanelTemplate.Tiles),
-            new(Workspace.WorkPanel, "Trabajo", null, PanelSide.Right, PanelTemplate.Tiles),
+            new(Workspace.ContextPanel, Strings.Panel_Context, null, PanelSide.Left, PanelTemplate.Tiles),
+            new(Workspace.WorkPanel, Strings.Panel_Work, null, PanelSide.Right, PanelTemplate.Tiles),
         };
         foreach (var aux in Windows.Where(w => w.AuxIndex is not null).Select(w => (w.Home, w.AuxIndex)).Distinct())
         {
             bool context = aux.Home == "Context";
-            panels.Add(new ScenePanel(IdOf(aux.Home, aux.AuxIndex), context ? "Contexto" : "Trabajo", aux.AuxIndex,
+            panels.Add(new ScenePanel(IdOf(aux.Home, aux.AuxIndex), context ? Strings.Panel_Context : Strings.Panel_Work, aux.AuxIndex,
                 context ? PanelSide.Left : PanelSide.Right, PanelTemplate.Tiles));
         }
 

@@ -32,11 +32,11 @@ public static class AppLauncher
                 return null;
             }
 
-            return $"No se sabe cómo abrir {app.Name}: no hay ejecutable ni AUMID.";
+            return Text.F(Strings.Launch_Unknown, app.Name);
         }
         catch (Win32Exception ex)
         {
-            return $"No se pudo abrir {app.Name}: {ex.Message}";
+            return Text.F(Strings.Launch_Failed, app.Name, ex.Message);
         }
     }
 

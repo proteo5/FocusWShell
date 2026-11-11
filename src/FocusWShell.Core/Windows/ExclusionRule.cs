@@ -1,4 +1,4 @@
-namespace FocusWShell.Core.Windows;
+﻿namespace FocusWShell.Core.Windows;
 
 /// <summary>Con qué se identifica una ventana excluida (03-arquitectura, elegibilidad).</summary>
 public enum ExclusionKind
@@ -49,9 +49,9 @@ public sealed record ExclusionRule(ExclusionKind Kind, string Value)
     /// <summary>Texto para la UI.</summary>
     public string Describe() => Kind switch
     {
-        ExclusionKind.Executable => $"App {Value}",
-        ExclusionKind.Aumid => $"App empaquetada {Value}",
-        _ => $"Ventanas de clase {Value}",
+        ExclusionKind.Executable => Text.F(Strings.Excl_App, Value),
+        ExclusionKind.Aumid => Text.F(Strings.Excl_Packaged, Value),
+        _ => Text.F(Strings.Excl_Class, Value),
     };
 
     /// <summary>La regla que excluye la app de una ventana: el AUMID si es empaquetada; si no, el ejecutable.</summary>

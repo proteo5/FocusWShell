@@ -87,13 +87,13 @@ public static class WindowMover
         ArgumentNullException.ThrowIfNull(saved);
         if (!IsSameWindow(saved.Handle, saved.ProcessId))
         {
-            return "la ventana ya no existe";
+            return Strings.Move_Gone;
         }
 
         var hwnd = new HWND((void*)saved.Handle);
         if (PInvoke.IsHungAppWindow(hwnd))
         {
-            return "la aplicación no responde";
+            return Strings.Move_Hung;
         }
 
         var n = saved.NormalPosition;
@@ -107,7 +107,7 @@ public static class WindowMover
             rcNormalPosition = new RECT(n.Left, n.Top, n.Right, n.Bottom),
         };
 
-        return PInvoke.SetWindowPlacement(hwnd, in wp) ? null : $"SetWindowPlacement falló ({Marshal.GetLastPInvokeError()})";
+        return PInvoke.SetWindowPlacement(hwnd, in wp) ? null : Text.F(Strings.Move_ApiFailed, "SetWindowPlacement", Marshal.GetLastPInvokeError());
     }
 
     /// <summary>
@@ -120,13 +120,13 @@ public static class WindowMover
         var hwnd = new HWND((void*)handle);
         if (!PInvoke.IsWindow(hwnd))
         {
-            return new PlacementResult(visibleTarget, default, default, 0, "la ventana ya no existe");
+            return new PlacementResult(visibleTarget, default, default, 0, Strings.Move_Gone);
         }
 
         // SetWindowPos sobre una ventana colgada bloquearía este hilo.
         if (PInvoke.IsHungAppWindow(hwnd))
         {
-            return new PlacementResult(visibleTarget, default, default, 0, "la aplicación no responde");
+            return new PlacementResult(visibleTarget, default, default, 0, Strings.Move_Hung);
         }
 
         if (PInvoke.IsIconic(hwnd) || PInvoke.IsZoomed(hwnd))
@@ -149,7 +149,7 @@ public static class WindowMover
             {
                 var (_, current) = ReadRects(hwnd);
                 return new PlacementResult(
-                    visibleTarget, current, margins, attempt, $"SetWindowPos falló ({Marshal.GetLastPInvokeError()})");
+                    visibleTarget, current, margins, attempt, Text.F(Strings.Move_ApiFailed, "SetWindowPos", Marshal.GetLastPInvokeError()));
             }
 
             (_, actual) = ReadRects(hwnd);
@@ -180,12 +180,12 @@ public static class WindowMover
             var hwnd = new HWND((void*)items[i].Handle);
             if (!PInvoke.IsWindow(hwnd))
             {
-                results[i] = new PlacementResult(items[i].Target, default, default, 0, "la ventana ya no existe");
+                results[i] = new PlacementResult(items[i].Target, default, default, 0, Strings.Move_Gone);
             }
             else if (PInvoke.IsHungAppWindow(hwnd))
             {
                 // Una ventana colgada bloquearía EndDeferWindowPos entero.
-                results[i] = new PlacementResult(items[i].Target, default, default, 0, "la aplicación no responde");
+                results[i] = new PlacementResult(items[i].Target, default, default, 0, Strings.Move_Hung);
             }
             else
             {
@@ -491,12 +491,12 @@ public static class WindowMover
         var hwnd = new HWND((void*)handle);
         if (!PInvoke.IsWindow(hwnd))
         {
-            return new PlacementResult(workArea, default, default, 0, "la ventana ya no existe");
+            return new PlacementResult(workArea, default, default, 0, Strings.Move_Gone);
         }
 
         if (PInvoke.IsHungAppWindow(hwnd))
         {
-            return new PlacementResult(workArea, default, default, 0, "la aplicación no responde");
+            return new PlacementResult(workArea, default, default, 0, Strings.Move_Hung);
         }
 
         if (!IsMaximizedOn(handle, workArea))
@@ -547,12 +547,12 @@ public static class WindowMover
         var hwnd = new HWND((void*)handle);
         if (!PInvoke.IsWindow(hwnd))
         {
-            return "la ventana ya no existe";
+            return Strings.Move_Gone;
         }
 
         if (PInvoke.IsHungAppWindow(hwnd))
         {
-            return "la aplicación no responde";
+            return Strings.Move_Hung;
         }
 
         PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOWMINNOACTIVE);
