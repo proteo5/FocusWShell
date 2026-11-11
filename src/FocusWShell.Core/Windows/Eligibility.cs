@@ -30,3 +30,19 @@ public readonly record struct Eligibility(ExclusionReason Reason, bool Manageabl
 
     public static Eligibility Excluded(ExclusionReason reason) => new(reason, Manageable: false);
 }
+
+/// <summary>
+/// Ventanas que se ven pero el gestor no puede mover (M2): su proceso tiene más integridad que el gestor
+/// (UIPI) o no se pudo leer. Se muestran igual, con el motivo, para que no "desaparezcan".
+/// </summary>
+public static class Unmanageable
+{
+    /// <summary>Motivo para la UI, o <c>null</c> si sí se puede gestionar.</summary>
+    public static string? Reason(IntegrityLevel target, IntegrityLevel own) => target switch
+    {
+        _ when EligibilityFilter.CanControl(target, own) => null,
+        IntegrityLevel.Unknown => "no se pudo leer su nivel de permisos (protegida o como administrador)",
+        IntegrityLevel.System => "es del sistema",
+        _ => "corre como administrador",
+    };
+}

@@ -256,6 +256,16 @@ public partial class MainWindow : Window
             _rows.Add(row);
         }
 
+        // Las que no se pueden mover (M2), al final y sin elegir panel: así no "desaparecen".
+        foreach (var (w, reason) in _controller.UnmanageableWindows())
+        {
+            _rows.Add(new WindowRow(w, AssignmentOption.Free, _controller.AppName(w))
+            {
+                State = $"No gestionable: {reason}",
+                Manageable = false,
+            });
+        }
+
         foreach (var gone in _pending.Keys.Except(windows.Select(w => w.Handle)).ToList())
         {
             _pending.Remove(gone);

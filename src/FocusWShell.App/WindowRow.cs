@@ -28,6 +28,9 @@ public sealed class WindowRow(WindowSnapshot snapshot, string assignment, string
     /// <summary>Lo que el gestor hace ahora con la ventana, según el modelo.</summary>
     public string State { get; init; } = "";
 
+    /// <summary>Si FocusWShell puede moverla. Si no (elevada, del sistema), la fila no deja elegir panel.</summary>
+    public bool Manageable { get; init; } = true;
+
     /// <summary>Destino elegido: <see cref="AssignmentOption.Free"/>, <see cref="AssignmentOption.Focus"/> o el id de un panel.</summary>
     public string Assignment
     {

@@ -428,6 +428,17 @@ Encontrado aquí y ya corregido:
 
 Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
 
+### Ventanas no gestionables (M2, 2026-11-10)
+
+Una ventana cuyo proceso tiene más integridad que FocusWShell (una app como administrador, o del sistema) no se puede mover: UIPI lo impide. Antes se quitaba de la lista sin más. Ahora:
+
+- **En la lista principal sale al final**, con el estado «No gestionable: corre como administrador» («es del sistema», o «no se pudo leer su nivel» si no se pudo saber). El selector de panel está desactivado. El motivo lo da `Core.Windows.Unmanageable`, con pruebas.
+- **El atajo «Al foco»** sobre una de ellas dice por qué no puede, en lugar de «no está gestionada».
+
+Probado con el Administrador de tareas, que se eleva solo: sale en la lista como «No gestionable: corre como administrador», con el selector desactivado.
+
+No se pudo probar el atajo: con una ventana elevada en primer plano, Windows descarta las teclas inyectadas desde un proceso normal (UIPI). Hay que probarlo con el teclado de verdad.
+
 ### Suspensión y pérdida del monitor principal (M2, 2026-11-10)
 
 **Suspensión.** La ventana oculta que ya escuchaba los cambios de monitores (S6) escucha también `WM_POWERBROADCAST`:

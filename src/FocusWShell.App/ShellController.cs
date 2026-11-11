@@ -1032,12 +1032,20 @@ public sealed class ShellController : IDisposable
     public IReadOnlyList<WindowSnapshot> Refresh()
     {
         var own = WindowEnumerator.CurrentIntegrity();
-        var windows = WindowEnumerator.EnumerateTopLevel()
-            .Where(w => _filter.Evaluate(w, own) is { IsCandidate: true, Manageable: true })
+        var candidates = WindowEnumerator.EnumerateTopLevel()
+            .Select(w => (Window: w, Eligibility: _filter.Evaluate(w, own)))
+            .Where(c => c.Eligibility.IsCandidate)
             .ToList();
+        var windows = candidates.Where(c => c.Eligibility.Manageable).Select(c => c.Window).ToList();
 
         lock (_gate)
         {
+            // Las que se ven pero no se pueden mover (M2): elevadas o del sistema. Se muestran con su motivo.
+            _unmanageable = candidates
+                .Where(c => !c.Eligibility.Manageable)
+                .Select(c => (c.Window, Unmanageable.Reason(c.Window.Integrity, own) ?? "no se puede mover"))
+                .ToList();
+
             foreach (var w in windows)
             {
                 _snapshots[w.Handle] = w;
@@ -1079,15 +1087,38 @@ public sealed class ShellController : IDisposable
     public RestoreReport RestoreAllWindows() =>
         Execute(new RestoreAll()).Restores is [var report, ..] ? report : new RestoreReport([]);
 
+    private List<(WindowSnapshot Window, string Reason)> _unmanageable = [];
+
+    /// <summary>
+    /// Ventanas que se ven pero FocusWShell no puede mover, con el motivo (M2), según el último
+    /// <see cref="Refresh"/>.
+    /// </summary>
+    public IReadOnlyList<(WindowSnapshot Window, string Reason)> UnmanageableWindows()
+    {
+        lock (_gate)
+        {
+            return [.. _unmanageable];
+        }
+    }
+
     /// <summary>Promueve la ventana en primer plano, si está gestionada (atajo).</summary>
     public ControllerResult PromoteForeground()
     {
         var foreground = WindowMover.Foreground();
         lock (_gate)
         {
-            return _workspace.IsManaged(foreground)
-                ? RunLocked([new Promote(foreground)])
-                : new ControllerResult(["La ventana activa no está gestionada por FocusWShell."], [], null);
+            if (_workspace.IsManaged(foreground))
+            {
+                return RunLocked([new Promote(foreground)]);
+            }
+
+            var why = _unmanageable.FirstOrDefault(u => u.Window.Handle == foreground);
+            return new ControllerResult(
+                [why.Window is not null
+                    ? $"{why.Window.Title}: FocusWShell no puede moverla, {why.Reason}."
+                    : "La ventana activa no está gestionada por FocusWShell."],
+                [],
+                null);
         }
     }
 
