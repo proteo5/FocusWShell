@@ -135,3 +135,7 @@ SetCursorPos
 
 // Cerrar una app desde el deck
 PostMessage
+
+// Energía (deck)
+LockWorkStation
+SetSuspendState

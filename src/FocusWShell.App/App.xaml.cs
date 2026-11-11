@@ -374,7 +374,19 @@ public partial class App : Application
             ApplyScene: name => Task.Run(() => ApplyScene(name)),
             ToggleKeepAwake: ToggleKeepAwake,
             KeepAwake: () => _keepAwake.IsActive,
-            RestoreAll: RestoreFromTray,
+            FreeAll: RestoreFromTray,
+            CanRearrange: () => _controller.CanRearrange,
+            RearrangeAll: () => Task.Run(() =>
+            {
+                var result = _controller.RearrangeAll();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    _main?.Refresh();
+                    PresentDeck();
+                });
+                return result;
+            }),
+            Power: PowerAction,
             Hide: () => _deck?.Hide(),
             Dock: dock => DockDeck(dock),
             CurrentDock: () => _controller.DeckDock,
@@ -395,7 +407,12 @@ public partial class App : Application
                 // Al frente, con el cursor encima, sin gestionarla.
                 WindowMover.Activate(handle);
                 WindowMover.PointAt(handle);
-            })));
+            }),
+            SetPinned: (appKey, pinned) =>
+            {
+                _controller.SetAppPinned(appKey, pinned);
+                PresentDeck();
+            }));
 
         PresentDeck();
         StartDeckPolling();
@@ -697,15 +714,48 @@ public partial class App : Application
 
     private void RestoreFromTray()
     {
-        var report = _controller.RestoreAllWindows();
+        var report = _controller.FreeAllWindows();
         _tray?.Notify(Strings.Tray_RestoreAll, report.Entries.Count == 0 ? Strings.Tray_NothingToRestore : report.Summary);
         _main?.Refresh();
+    }
+
+    /// <summary>
+    /// Energía desde el deck. Ninguna libera las ventanas: antes de reiniciar, apagar o cerrar sesión se
+    /// guarda la sesión, y al volver FocusWShell las pone otra vez en sus paneles.
+    /// </summary>
+    private void PowerAction(DeckPower action)
+    {
+        if (action is DeckPower.Restart or DeckPower.ShutDown or DeckPower.SignOut && _sessionReady)
+        {
+            _sessionSave?.Stop();
+            _controller.SaveSession();
+        }
+
+        _deck?.Hide();
+        switch (action)
+        {
+            case DeckPower.Lock:
+                Power.Lock();
+                break;
+            case DeckPower.Sleep:
+                Power.Sleep();
+                break;
+            case DeckPower.Restart:
+                Power.Restart();
+                break;
+            case DeckPower.ShutDown:
+                Power.ShutDown();
+                break;
+            case DeckPower.SignOut:
+                Power.SignOut();
+                break;
+        }
     }
 
     /// <summary>Llega en el hilo del atajo: restaura sin pasar por la UI y luego avisa.</summary>
     private void OnEmergencyHotkey()
     {
-        var report = _controller.RestoreAllWindows();
+        var report = _controller.FreeAllWindows();
         Dispatcher.BeginInvoke(() =>
         {
             _tray?.Notify(Strings.Tray_Emergency, report.Entries.Count == 0 ? Strings.Tray_NothingToRestore : report.Summary);

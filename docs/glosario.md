@@ -10,7 +10,7 @@ La documentación está en español y el código en inglés. Esta tabla fija la 
 | Hogar | `Home` | Panel al que pertenece una ventana (`Work` o `Context`). Persistente. |
 | Ubicación | `Placement` | Dónde está la ventana ahora: `InPanel`, `Center`, `Parked`, `Fullscreen`. |
 | Estacionada | `Parked` | Abierta pero apartada (minimizada); se recupera desde la tira de su panel. Minimizarla con el botón de Windows la estaciona. |
-| Estacionar / Recuperar | `Park` / `Restore` | Apartar una ventana sin quitarle su panel, y devolverla a su puesto. En la UI, "Recuperar" para no confundirlo con "Restaurar todas". |
+| Estacionar / Recuperar | `Park` / `Restore` | Apartar una ventana sin quitarle su panel, y devolverla a su puesto. En la UI, "Recuperar" para no confundirlo con "Reordenar todas". |
 | Fuera de layout | `Detached` | La ventana que el usuario maximizó en el principal. El gestor no la mueve hasta que se des-maximice o se reencaje. (Arrastrarla ya no la deja fuera: vuelve a su sitio o cambia de panel.) |
 | Reencajar | `Reattach` | Devolver al layout una ventana que estaba fuera. |
 | Fill | `PanelTemplate.Fill` | Template de un panel de un monitor auxiliar: la primera ventana ocupa el monitor, maximizada. |
@@ -27,7 +27,9 @@ La documentación está en español y el código en inglés. Esta tabla fija la 
 | Diario | `Journal` | Archivo en disco que permite restaurar todo tras una caída. |
 | Plan de layout | `LayoutPlan` | Lista de operaciones que el núcleo pide aplicar a las ventanas. |
 | Microbarra | `PanelBar` | Barra propia del gestor en cada panel: pestañas, estacionadas, indicadores. |
-| Restaurar todas | `RestoreAll` | Salida de emergencia: devuelve todas las ventanas a su estado original. |
+| Liberar todas | `RestoreAll` | Salida de emergencia: devuelve todas las ventanas a su estado original y las deja libres. Antes se llamaba "Restaurar todas"; en inglés, "Free all". |
+| Reordenar todas | `RearrangeAll` | Deshace el último "Liberar todas": vuelve a poner en sus paneles las ventanas que siguen abiertas. Un solo nivel. |
+| Anclar | `Pinned` | Una app anclada sigue saliendo en su panel, apagada, cuando está cerrada. Las no ancladas sólo salen abiertas. |
 | Catálogo de apps | `AppCatalog` | Apps que FocusWShell ha visto alguna vez, con cómo reconocerlas y cómo abrirlas. Se llena solo, por detección ([ADR 0011](adr/0011-paneles-y-catalogo.md)). |
 | Panel | `Panel` | Entidad con nombre (renombrable), ubicación (columna del principal, monitor auxiliar o tablet) y presentación. "Contexto" y "Trabajo" son los dos paneles por defecto ([ADR 0011](adr/0011-paneles-y-catalogo.md)). |
 | Presentación | `PanelPresentation` | Cómo muestra un panel sus ventanas: tiles, lista (tipo Explorador), pestañas, colapsables, pantalla completa en el panel, mixto o deck. |

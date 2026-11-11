@@ -204,7 +204,7 @@ public sealed class ShellController : IDisposable
                     }
 
                     // Las cerradas que "viven" en este panel: tocarlas las abre aquí.
-                    foreach (var app in _catalog.Apps.Where(a => a.LastPanelId == panelId && !a.Hidden && !openKeys.Contains(a.AppKey)))
+                    foreach (var app in _catalog.Apps.Where(a => a.LastPanelId == panelId && a.Pinned && !a.Hidden && !openKeys.Contains(a.AppKey)))
                     {
                         items.Add(new ListItem(app.Name, app.AppKey, null, ListItemState.Closed, "", app));
                     }
@@ -261,6 +261,7 @@ public sealed class ShellController : IDisposable
                     .Where(w => _workspace.EffectivePanel(w).Id == p.Id && _snapshots.ContainsKey(w.Handle))
                     .Select(w => Managed(w, _snapshots[w.Handle]))
                     .ToList();
+                // Las cerradas de este panel; el deck sólo muestra las ancladas, salvo en el modo anclar.
                 apps.AddRange(_catalog.Apps
                     .Where(a => a.LastPanelId == p.Id && !a.Hidden && !openKeys.Contains(a.AppKey))
                     .Select(a => new DeckApp(a.Name, a.AppKey, null, ListItemState.Closed, "", p.Id, a)));
@@ -560,10 +561,40 @@ public sealed class ShellController : IDisposable
     public void LoadCatalog()
     {
         var loaded = CatalogFile.Load();
+
+        // Al llegar las anclas: se anclan las apps de la última sesión (las de uso continuo); las demás que
+        // se usaron alguna vez dejan de salir cerradas en los paneles.
+        if (CatalogFile.LoadedOldVersion)
+        {
+            var session = Session.Load().FirstOrDefault()?.Windows.Select(w => w.AppKey) ?? [];
+            foreach (var key in session)
+            {
+                loaded.SetPinned(key, true);
+            }
+
+            CatalogFile.Save(loaded);
+        }
+
         lock (_gate)
         {
             _catalog = loaded;
         }
+    }
+
+    /// <summary>Ancla una app a su panel (cerrada, sigue saliendo en él) o la desancla.</summary>
+    public void SetAppPinned(string appKey, bool pinned)
+    {
+        lock (_gate)
+        {
+            if (!_catalog.SetPinned(appKey, pinned))
+            {
+                return;
+            }
+
+            CatalogFile.Save(_catalog);
+        }
+
+        CatalogChanged?.Invoke();
     }
 
     /// <summary>Las apps del catálogo (sin las ocultas, salvo que se pidan) y si están abiertas.</summary>
@@ -1227,6 +1258,76 @@ public sealed class ShellController : IDisposable
         {
             return RunLocked(commands);
         }
+    }
+
+    /// <summary>
+    /// Cómo estaba todo antes del último «Liberar todas» (qué ventana en qué panel, la vista), para
+    /// «Reordenar todas». Un solo nivel: se borra al usarlo; el siguiente «Liberar todas» lo reemplaza.
+    /// </summary>
+    private ApplyScene? _beforeFreeAll;
+
+    /// <summary>Si hay algo que reordenar (hubo un «Liberar todas» y no se ha usado «Reordenar todas»).</summary>
+    public bool CanRearrange
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _beforeFreeAll is not null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// «Liberar todas» del usuario (deck, bandeja, ventana principal o atajo de emergencia): antes guarda
+    /// cómo estaba todo, para poder deshacerlo con <see cref="RearrangeAll"/>. Al salir no se usa esto.
+    /// </summary>
+    public RestoreReport FreeAllWindows() =>
+        FreeAll().Restores is [var report, ..] ? report : new RestoreReport([]);
+
+    /// <inheritdoc cref="FreeAllWindows"/>
+    public ControllerResult FreeAll()
+    {
+        lock (_gate)
+        {
+            var entries = _workspace.Windows
+                .Select(w => new SceneEntry(w.Handle, w.Label, w.PanelId, w.Placement switch
+                {
+                    Placement.Center => ScenePlacement.Center,
+                    Placement.Parked => ScenePlacement.Parked,
+                    _ => ScenePlacement.InPanel,
+                }) { Size = w.Size })
+                .ToList();
+            if (entries.Count > 0)
+            {
+                _beforeFreeAll = new ApplyScene(entries, []) { View = _workspace.View, Weights = _workspace.ProportionsOf(_workspace.View) };
+            }
+        }
+
+        return Execute(new RestoreAll());
+    }
+
+    /// <summary>
+    /// «Reordenar todas»: vuelve a poner en sus paneles las ventanas que había antes del último «Liberar
+    /// todas» y siguen abiertas. Se usa una sola vez.
+    /// </summary>
+    public ControllerResult? RearrangeAll()
+    {
+        ApplyScene? before;
+        lock (_gate)
+        {
+            before = _beforeFreeAll;
+            _beforeFreeAll = null;
+        }
+
+        if (before is null)
+        {
+            return null;
+        }
+
+        var open = Refresh().Select(w => w.Handle).ToHashSet();
+        var entries = before.Entries.Where(e => open.Contains(e.Handle)).ToList();
+        return entries.Count == 0 ? null : Execute(before with { Entries = entries });
     }
 
     /// <summary><c>RestoreAll</c>: vacía el modelo y aplica todo el diario, sin motor de layout.</summary>

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -29,9 +29,13 @@ public static class DeckPreview
             Save(Sample(manyApps: true), width, height, Path.Combine(folder, $"deck-{name}-muchas.png"));
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-hp.png"), "hp");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-tablet.png"), "tablet");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-mover-elegir.png"), mode: "mover-elegir");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-mover.png"), mode: "mover");
             Save(Sample(manyApps: false) with { Free = [] }, width, height, Path.Combine(folder, $"deck-{name}-sin-libres.png"));
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-cerrar.png"), mode: "cerrar");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia.png"), mode: "energia");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-anclar.png"), mode: "anclar");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia-seguro.png"), mode: "energia-seguro");
         }
     }
 
@@ -44,11 +48,15 @@ public static class DeckPreview
             () => { },
             () => false,
             () => { },
+            () => true,
+            () => Task.CompletedTask,
+            _ => { },
             () => { },
             _ => { },
             () => null,
             _ => Task.CompletedTask,
-            _ => Task.CompletedTask);
+            _ => Task.CompletedTask,
+            (_, _) => { });
         var deck = new DeckWindow(actions) { Left = -20000, Top = -20000 };
         deck.ShowTab(tab);
         deck.ShowMode(mode, state);
@@ -74,17 +82,17 @@ public static class DeckPreview
     /// <summary>Un ejecutable que siempre existe, para que el ejemplo tenga iconos.</summary>
     private static readonly string SampleExe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
 
-    private static DeckApp App(string name, nint? handle, ListItemState state, string panel) =>
+    private static DeckApp App(string name, nint? handle, ListItemState state, string panel, bool pinned = false) =>
         new(name, name.ToLowerInvariant() + ".exe", handle, state, handle is null ? "" : $"{name} — ventana", panel,
-            new Core.Domain.CatalogApp(name.ToLowerInvariant() + ".exe", name, SampleExe, null, panel, false, DateTimeOffset.Now, DateTimeOffset.Now));
+            new Core.Domain.CatalogApp(name.ToLowerInvariant() + ".exe", name, SampleExe, null, panel, false, DateTimeOffset.Now, DateTimeOffset.Now) { Pinned = pinned });
 
     private static DeckState Sample(bool manyApps)
     {
         var work = new List<DeckApp>
         {
-            App("Google Chrome", 1, ListItemState.InPanel, "trabajo"),
-            App("Claude", 2, ListItemState.InFocus, "trabajo"),
-            App("Notepad", null, ListItemState.Closed, "trabajo"),
+            App("Google Chrome", 1, ListItemState.InPanel, "trabajo", pinned: true),
+            App("Claude", 2, ListItemState.InFocus, "trabajo", pinned: true),
+            App("Notepad", null, ListItemState.Closed, "trabajo", pinned: true),
             App("Paint", null, ListItemState.Closed, "trabajo"),
         };
         if (manyApps)
@@ -95,7 +103,8 @@ public static class DeckPreview
             }
         }
 
-        var free = FreeNames
+        // Con muchas apps, también muchas libres (para ver que LIBRES no recorta nada).
+        var free = (manyApps ? FreeNames.Concat(FreeNames).Concat(FreeNames).ToArray() : FreeNames)
             .Select((n, i) => App(n, 50 + i, ListItemState.InPanel, null!) with { PanelId = null })
             .ToList();
         var panels = new List<DeckPanel>

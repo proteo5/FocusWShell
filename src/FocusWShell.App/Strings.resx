@@ -38,10 +38,12 @@
   <data name="DeckMenu_MoveTo" xml:space="preserve"><value>Mover a</value></data>
   <data name="DeckMenu_OpenInPanel" xml:space="preserve"><value>Abrir en su panel</value></data>
   <data name="DeckMenu_Park" xml:space="preserve"><value>Estacionar</value></data>
+  <data name="DeckMenu_Pin" xml:space="preserve"><value>Anclar a su panel (sale aunque esté cerrada)</value></data>
   <data name="DeckMenu_PutIn" xml:space="preserve"><value>Poner en</value></data>
   <data name="DeckMenu_Release" xml:space="preserve"><value>Liberar (devolverla a su sitio original)</value></data>
   <data name="DeckMenu_ToFocus" xml:space="preserve"><value>Al foco</value></data>
   <data name="DeckMenu_Unpark" xml:space="preserve"><value>Recuperar</value></data>
+  <data name="DeckMenu_Unpin" xml:space="preserve"><value>Desanclar</value></data>
   <data name="DeckSend_Corner" xml:space="preserve"><value>Esquina del monitor principal (se oculta solo)</value></data>
   <data name="DeckSend_LeftHalf" xml:space="preserve"><value>{0}: mitad izquierda</value></data>
   <data name="DeckSend_RightHalf" xml:space="preserve"><value>{0}: mitad derecha</value></data>
@@ -68,19 +70,32 @@
   <data name="Deck_NoFree" xml:space="preserve"><value>Sin ventanas libres.</value></data>
   <data name="Deck_NoPanels" xml:space="preserve"><value>{0} no tiene paneles. Créalos en la ventana de FocusWShell, pestaña Paneles: escribe un nombre, elige «{0}, izquierda» o «derecha» y pulsa Crear panel.</value></data>
   <data name="Deck_PanelEmpty" xml:space="preserve"><value>sin apps (suelta aquí una app)</value></data>
+  <data name="Deck_Pin" xml:space="preserve"><value>Anclar</value></data>
+  <data name="Deck_Pinning" xml:space="preserve"><value>Anclando…</value></data>
+  <data name="Deck_Power" xml:space="preserve"><value>Energía</value></data>
+  <data name="Deck_PowerCancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Deck_PowerLock" xml:space="preserve"><value>Bloquear</value></data>
+  <data name="Deck_PowerRestart" xml:space="preserve"><value>Reiniciar</value></data>
+  <data name="Deck_PowerShutDown" xml:space="preserve"><value>Apagar</value></data>
+  <data name="Deck_PowerSignOut" xml:space="preserve"><value>Cerrar sesión</value></data>
+  <data name="Deck_PowerSleep" xml:space="preserve"><value>Suspender</value></data>
+  <data name="Deck_PowerSure" xml:space="preserve"><value>{0}: ¿seguro?</value></data>
   <data name="Deck_PresentationName" xml:space="preserve"><value>Presentación de {0}: pasar a {1}</value></data>
   <data name="Deck_PrevTab" xml:space="preserve"><value>Pestaña anterior de {0}</value></data>
   <data name="Deck_Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Deck_Rearrange" xml:space="preserve"><value>Reordenar todas</value></data>
   <data name="Deck_ReleaseHere" xml:space="preserve"><value>Liberar aquí</value></data>
   <data name="Deck_ReleaseName" xml:space="preserve"><value>Deck: Liberar {0}</value></data>
-  <data name="Deck_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Deck_RestoreAll" xml:space="preserve"><value>Liberar todas</value></data>
   <data name="Deck_RestoreSure" xml:space="preserve"><value>¿Seguro? Otra vez</value></data>
   <data name="Deck_Right" xml:space="preserve"><value>Derecha</value></data>
   <data name="Deck_RightShort" xml:space="preserve"><value>Der.</value></data>
   <data name="Deck_SecFocus" xml:space="preserve"><value>FOCO</value></data>
   <data name="Deck_SecFree" xml:space="preserve"><value>LIBRES</value></data>
   <data name="Deck_SecMonitors" xml:space="preserve"><value>MONITORES</value></data>
+  <data name="Deck_SecPower" xml:space="preserve"><value>ENERGÍA</value></data>
   <data name="Deck_SecScenes" xml:space="preserve"><value>ESCENAS</value></data>
+  <data name="Deck_SecSystem" xml:space="preserve"><value>SISTEMA</value></data>
   <data name="Deck_SecView" xml:space="preserve"><value>VISTA</value></data>
   <data name="Deck_SendTo" xml:space="preserve"><value>Mandar el deck a</value></data>
   <data name="Deck_SwitchTo" xml:space="preserve"><value>Pasar a {0}</value></data>
@@ -131,18 +146,18 @@
   <data name="Hk_DefaultName" xml:space="preserve"><value>Atajo por defecto de {0}</value></data>
   <data name="Hk_FocusToPanel" xml:space="preserve"><value>foco al panel</value></data>
   <data name="Hk_Fullscreen" xml:space="preserve"><value>pantalla completa</value></data>
-  <data name="Hk_Help" xml:space="preserve"><value>Haz clic en un atajo y pulsa la combinación nueva. Hace falta Ctrl, Alt o Win. Mientras esta ventana está abierta, los atajos no funcionan; «Restaurar todas» sigue en el menú de la bandeja.</value></data>
+  <data name="Hk_Help" xml:space="preserve"><value>Haz clic en un atajo y pulsa la combinación nueva. Hace falta Ctrl, Alt o Win. Mientras esta ventana está abierta, los atajos no funcionan; «Liberar todas» sigue en el menú de la bandeja.</value></data>
   <data name="Hk_Invalid" xml:space="preserve"><value>{0} no vale para {1}: hace falta Ctrl, Alt o Win y una letra, un número, F1–F24, una flecha u otra tecla de edición.</value></data>
   <data name="Hk_KeepAwake" xml:space="preserve"><value>pantalla encendida</value></data>
   <data name="Hk_Label" xml:space="preserve"><value>Atajos: </value></data>
   <data name="Hk_None" xml:space="preserve"><value>(sin atajo)</value></data>
   <data name="Hk_Previous" xml:space="preserve"><value>anterior</value></data>
-  <data name="Hk_RestoreAll" xml:space="preserve"><value>restaurar todas</value></data>
+  <data name="Hk_RestoreAll" xml:space="preserve"><value>liberar todas</value></data>
   <data name="Hk_Save" xml:space="preserve"><value>Guardar</value></data>
   <data name="Hk_ToFocus" xml:space="preserve"><value>al foco</value></data>
   <data name="Hk_View" xml:space="preserve"><value>vista</value></data>
   <data name="Hk_WindowTitle" xml:space="preserve"><value>FocusWShell · atajos</value></data>
-  <data name="Hotkeys_InUse" xml:space="preserve"><value>Otra aplicación ya usa: {0}. «Restaurar todas» sigue en el menú de la bandeja.</value></data>
+  <data name="Hotkeys_InUse" xml:space="preserve"><value>Otra aplicación ya usa: {0}. «Liberar todas» sigue en el menú de la bandeja.</value></data>
   <data name="ListState_Closed" xml:space="preserve"><value>cerrada</value></data>
   <data name="ListState_Detached" xml:space="preserve"><value>fuera de layout</value></data>
   <data name="ListState_InFocus" xml:space="preserve"><value>en el foco</value></data>
@@ -206,7 +221,7 @@
   <data name="Main_Refresh" xml:space="preserve"><value>Actualizar lista</value></data>
   <data name="Main_Release" xml:space="preserve"><value>Liberar</value></data>
   <data name="Main_ReleaseTip" xml:space="preserve"><value>Devuelve la ventana seleccionada a su sitio original y deja de gestionarla</value></data>
-  <data name="Main_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Main_RestoreAll" xml:space="preserve"><value>Liberar todas</value></data>
   <data name="Main_Return" xml:space="preserve"><value>Centro al panel</value></data>
   <data name="Main_ReturnTip" xml:space="preserve"><value>Devuelve la ventana del Centro a su panel</value></data>
   <data name="Main_SaveScene" xml:space="preserve"><value>Guardar escena actual</value></data>
@@ -338,7 +353,7 @@
   <data name="Tray_KeepAwakeFailed" xml:space="preserve"><value>Windows no aceptó la petición de energía.</value></data>
   <data name="Tray_Monitors" xml:space="preserve"><value>Monitores</value></data>
   <data name="Tray_NothingToRestore" xml:space="preserve"><value>No había nada que restaurar.</value></data>
-  <data name="Tray_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Tray_RestoreAll" xml:space="preserve"><value>Liberar todas</value></data>
   <data name="Tray_Scene" xml:space="preserve"><value>Escena</value></data>
   <data name="Tray_SceneName" xml:space="preserve"><value>Escena «{0}»</value></data>
   <data name="Tray_StartOff" xml:space="preserve"><value>FocusWShell ya no se abrirá al iniciar sesión.</value></data>

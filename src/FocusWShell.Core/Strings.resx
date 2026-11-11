@@ -9,7 +9,7 @@
   <data name="Action_Fullscreen" xml:space="preserve"><value>Pantalla completa</value></data>
   <data name="Action_KeepAwake" xml:space="preserve"><value>Pantalla encendida</value></data>
   <data name="Action_Previous" xml:space="preserve"><value>Volver a la anterior</value></data>
-  <data name="Action_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Action_RestoreAll" xml:space="preserve"><value>Liberar todas</value></data>
   <data name="Action_Scene" xml:space="preserve"><value>Escena {0}</value></data>
   <data name="Action_ToFocus" xml:space="preserve"><value>Al foco (la ventana activa)</value></data>
   <data name="Action_View" xml:space="preserve"><value>Cambiar de vista</value></data>
