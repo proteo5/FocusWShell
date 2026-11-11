@@ -22,7 +22,8 @@ public sealed record DeckActions(
     Action Hide,
     Action<DeckDock?> Dock,
     Func<DeckDock?> CurrentDock,
-    Func<nint, Task> CloseApp);
+    Func<nint, Task> CloseApp,
+    Func<nint, Task> BringToFront);
 
 /// <summary>
 /// El deck (ADR 0013, fase 2): una superficie de control en una esquina del monitor principal. Muestra el
@@ -194,11 +195,9 @@ public sealed class DeckWindow : Window
 
         // Derecha: paneles en columnas (dos filas si son más de tres) y las libres abajo.
         var right = new Grid();
-        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(ShowFree(state) ? 3 : 1, GridUnitType.Star) });
-        if (ShowFree(state))
-        {
-            right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 90 });
-        }
+        // LIBRES va siempre, aunque esté vacía: el deck no cambia de forma y se ve que es un destino.
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3, GridUnitType.Star) });
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(state.Free.Count > 0 ? 1 : 0.5, GridUnitType.Star), MinHeight = 90 });
 
         var shown = PanelsOnTab(state);
         var panels = new Grid();
@@ -228,12 +227,9 @@ public sealed class DeckWindow : Window
         }
 
         right.Children.Add(panels);
-        if (ShowFree(state))
-        {
-            var free = FreeCard(state);
-            Grid.SetRow(free, 1);
-            right.Children.Add(free);
-        }
+        var free = FreeCard(state);
+        Grid.SetRow(free, 1);
+        right.Children.Add(free);
 
         Grid.SetColumn(right, 2);
         _root.Children.Add(right);
@@ -277,10 +273,7 @@ public sealed class DeckWindow : Window
             Row(PanelCard(panel), new GridLength(1 + panel.Apps.Count, GridUnitType.Star), 116);
         }
 
-        if (ShowFree(state))
-        {
-            Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), 90);
-        }
+        Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
 
         // Abajo: escenas, pantalla encendida y restaurar.
         int buttons = state.Scenes.Count + 2;
@@ -667,9 +660,6 @@ public sealed class DeckWindow : Window
     /// <summary>Si la app elegida para mover está en un panel: entonces LIBRES es un destino (liberarla).</summary>
     private bool CanReleaseChosen => _moving == MoveStep.PickPanel && _moveApp is { PanelId: not null };
 
-    /// <summary>Si hay que dibujar LIBRES: con ventanas libres, o como destino al mover.</summary>
-    private bool ShowFree(DeckState state) => state.Free.Count > 0 || CanReleaseChosen;
-
     /// <summary>
     /// Las ventanas libres. También es un destino: soltar ahí una app (arrastrada, o al moverla con toques)
     /// la libera, y vuelve a su sitio original.
@@ -683,6 +673,10 @@ public sealed class DeckWindow : Window
         if (state.Free.Count > 0)
         {
             body.Children.Add(AppGrid(state.Free));
+        }
+        else
+        {
+            body.Children.Add(new TextBlock { Text = "Sin ventanas libres.", Foreground = DimBrush, Margin = new Thickness(4) });
         }
 
         UIElement content = body;
@@ -748,13 +742,22 @@ public sealed class DeckWindow : Window
     /// <summary>Pone encima del contenido el velo amarillo de destino, con su texto; un toque hace <paramref name="onTap"/>.</summary>
     private static Grid WithTarget(UIElement content, string text, string name, Func<Task> onTap)
     {
-        var overlay = new Border
+        // Un botón de verdad (con su plantilla: el velo amarillo), no un Border que espera el ratón: con el
+        // toque de la tablet por Apollo, sólo los botones respondían.
+        var face = new FrameworkElementFactory(typeof(Border));
+        face.SetValue(Border.BackgroundProperty, TargetWash);
+        face.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenter.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
+        face.AppendChild(presenter);
+        var overlay = new Button
         {
-            Background = TargetWash,
-            CornerRadius = new CornerRadius(4),
+            Template = new ControlTemplate(typeof(Button)) { VisualTree = face },
+            Focusable = false,
             Cursor = Cursors.Hand,
             // El texto en una etiqueta oscura: se lee aunque quede encima de las tarjetas.
-            Child = new Border
+            Content = new Border
             {
                 Background = Background0,
                 BorderBrush = TargetBrush,
@@ -767,11 +770,7 @@ public sealed class DeckWindow : Window
             },
         };
         System.Windows.Automation.AutomationProperties.SetName(overlay, name);
-        overlay.MouseLeftButtonUp += async (_, e) =>
-        {
-            e.Handled = true;
-            await onTap();
-        };
+        overlay.Click += async (_, _) => await onTap();
         var layered = new Grid();
         layered.Children.Add(content);
         layered.Children.Add(overlay);
@@ -1119,7 +1118,20 @@ public sealed class DeckWindow : Window
             return;
         }
 
-        await Run(true, app.PanelId is null ? [new Adopt(h, app.Name, DefaultPanel()), new Promote(h)] : [new Promote(h)]);
+        // Una libre sólo se trae al frente y sigue libre: hay ventanas que conviene dejar flotando (las de
+        // una llamada de Zoom, un diálogo). Para ponerla en un panel o en el foco está «Mover».
+        if (app.PanelId is null)
+        {
+            if (!Docked)
+            {
+                _actions.Hide();
+            }
+
+            await _actions.BringToFront(h);
+            return;
+        }
+
+        await Run(true, new Promote(h));
     }
 
     private ContextMenu MenuFor(DeckApp app)

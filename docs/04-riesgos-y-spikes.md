@@ -549,6 +549,8 @@ Probado con clics reales sobre el deck: la ventana de prueba se cerró, el modo 
   - Ahora LIBRES es un destino más: al mover una app que está en un panel, LIBRES se pone amarillo con «⬇ Liberar aquí», aunque esté vacío, y un toque la libera (vuelve a su sitio original).
   - Con el ratón, soltarla arrastrada ahí hace lo mismo.
   - Los textos de destino van en una etiqueta oscura, para que se lean encima de las tarjetas.
+  - «Mover aquí» y «Liberar aquí» son botones. Por un tiempo fueron un velo que escuchaba el ratón: con el mouse y con toques inyectados (`InjectTouchInput`) funcionaba, pero con el toque de la tablet por Apollo no. En el deck, sólo los botones respondían siempre. Comprobado con toques inyectados: la app se movió.
+  - LIBRES se dibuja siempre, aunque esté vacía («Sin ventanas libres»). Antes sólo salía si había ventanas libres. Con la sesión restaurada todas estaban en paneles, así que desaparecía, y parecía que se había perdido la función de mover.
   - Probado con clics reales: la ventana de prueba pasó de «En Trabajo» a libre.
 
 Probado con clics reales sobre el deck en la tablet:
@@ -558,6 +560,28 @@ Probado con clics reales sobre el deck en la tablet:
 - «Cerrar» se enciende y se apaga igual.
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
+
+### Ventanas libres que siguen libres (validación, 2026-11-11)
+
+Encontrado en uso con una llamada de Zoom:
+
+- **Tocar una app libre en el deck la adoptaba en Trabajo y la llevaba al foco.** Hay ventanas que conviene dejar flotando: las de Zoom, un diálogo. Ahora tocar una libre sólo la trae al frente, con el cursor encima, y sigue libre. Para ponerla en un panel o en el foco está «Mover».
+- **Al terminar la llamada, sus ventanas seguían en LIBRES.** FocusWShell guarda la última foto de cada ventana vista, y sólo olvidaba las gestionadas que se cerraban. Ahora, al refrescar, también se olvidan las libres que ya no aparecen.
+
+Comprobado con toques inyectados y una ventana de prueba libre: al tocarla quedó en primer plano y libre; al cerrarla, salió de LIBRES en menos de 5 s.
+
+### La ventana de configuración quedaba detrás (validación, 2026-11-11)
+
+Encontrado en uso: la ventana principal no se podía poner al frente. Causa: WPF la centra en el monitor del cursor (`CenterScreen`), y usando el deck el cursor está en la tablet. La ventana se abría ahí, debajo del deck, que va siempre encima.
+
+Arreglo:
+
+- Al mostrarla, si cae en el monitor donde está fijado el deck (según la configuración, porque al arrancar el deck aún no se ve), va al centro del principal.
+- Se pone al frente con la activación robusta y un instante «siempre encima».
+- Al arrancar, tras restaurar la sesión, que activa la app del foco, se vuelve a poner delante.
+- Abrir `FocusWShell.exe` con uno ya abierto muestra su ventana en lugar del aviso «ya se está ejecutando».
+
+Comprobado arrancando con el cursor en la tablet: la ventana quedó en el principal, encima y en primer plano. Tapada por otra ventana, abrir el ejecutable otra vez la trajo al frente.
 
 ### Iconos que faltaban (validación, 2026-11-10)
 

@@ -30,6 +30,11 @@ public partial class App : Application
 
     private const string ExitEventName = @"Local\FocusWShell.Salir";
     private EventWaitHandle? _exitRequested;
+
+    /// <summary>Otra instancia pide mostrar la ventana principal (al volver a abrir FocusWShell).</summary>
+    private const string ShowEventName = @"Local\FocusWShell.Mostrar";
+    private EventWaitHandle? _showRequested;
+    private RegisteredWaitHandle? _showWait;
     private RegisteredWaitHandle? _exitWait;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -67,7 +72,19 @@ public partial class App : Application
 
         if (!createdNew)
         {
-            MessageBox.Show("FocusWShell ya se está ejecutando. Búscalo en el área de notificación.", "FocusWShell");
+            // Ya hay uno abierto: se le pide que muestre su ventana (al frente) en lugar de un aviso.
+            if (EventWaitHandle.TryOpenExisting(ShowEventName, out var showEvent))
+            {
+                using (showEvent)
+                {
+                    showEvent.Set();
+                }
+            }
+            else
+            {
+                MessageBox.Show("FocusWShell ya se está ejecutando. Búscalo en el área de notificación.", "FocusWShell");
+            }
+
             _singleInstance.Dispose();
             _singleInstance = null;
             Shutdown();
@@ -77,6 +94,9 @@ public partial class App : Application
         _exitRequested = new EventWaitHandle(false, EventResetMode.AutoReset, ExitEventName);
         _exitWait = ThreadPool.RegisterWaitForSingleObject(
             _exitRequested, (_, _) => Dispatcher.BeginInvoke(ExitAndRestore), null, Timeout.Infinite, executeOnlyOnce: true);
+        _showRequested = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
+        _showWait = ThreadPool.RegisterWaitForSingleObject(
+            _showRequested, (_, _) => Dispatcher.BeginInvoke(ShowMain), null, Timeout.Infinite, executeOnlyOnce: false);
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -209,6 +229,12 @@ public partial class App : Application
                 if (restored is not null)
                 {
                     RefreshAfter(restored);
+
+                    // Restaurar la sesión activa la app del foco; acabas de abrir FocusWShell: su ventana, delante.
+                    if (_main?.IsVisible == true)
+                    {
+                        ShowMain();
+                    }
                 }
 
                 _sessionReady = true;
@@ -346,7 +372,13 @@ public partial class App : Application
                 });
                 await Task.Delay(1500);
                 PresentDeck();
-            }));
+            },
+            BringToFront: handle => Task.Run(() =>
+            {
+                // Al frente, con el cursor encima, sin gestionarla.
+                WindowMover.Activate(handle);
+                WindowMover.PointAt(handle);
+            })));
 
         PresentDeck();
         StartDeckPolling();
@@ -561,7 +593,35 @@ public partial class App : Application
         }
     }
 
-    private void ShowMain() => _main?.ShowAndActivate();
+    private void ShowMain()
+    {
+        if (_main is null)
+        {
+            return;
+        }
+
+        _main.ShowAndActivate();
+
+        // WPF la centra en el monitor del cursor. Si usas el deck en la tablet, el cursor está ahí y la
+        // ventana quedaba detrás del deck (que va siempre encima). Si cae donde está el deck, va al centro
+        // del monitor principal.
+        // Vale también al arrancar, cuando el deck fijado aún no se ve: se mira el monitor guardado.
+        var handle = new System.Windows.Interop.WindowInteropHelper(_main).Handle;
+        var rect = WindowMover.Observe(handle).Visible;
+        var deckMonitor = _settings.DeckDisplay is { } key
+            ? ShellController.AuxiliaryDisplays().FirstOrDefault(d => string.Equals(d.Key, key, StringComparison.OrdinalIgnoreCase))?.Bounds
+            : null;
+        var deckArea = deckMonitor ?? (_deck?.IsVisible == true ? DeckPlace() : (Core.Geometry.PixelRect?)null);
+        if (deckArea is { } area0 && !rect.IsEmpty && area0.Contains(rect.Left + (rect.Width / 2), rect.Top + (rect.Height / 2)))
+        {
+            var area = ShellController.TargetDisplay().WorkArea;
+            int width = Math.Min(rect.Width, area.Width);
+            int height = Math.Min(rect.Height, area.Height);
+            OwnWindows.Place(handle, Core.Geometry.PixelRect.FromSize(
+                area.Left + ((area.Width - width) / 2), area.Top + ((area.Height - height) / 2), width, height));
+            WindowMover.Activate(handle);
+        }
+    }
 
     private void RefreshTrayScenes() => _tray?.ShowScenes(_controller.SceneNames(), name => Task.Run(() => ApplyScene(name)));
 
@@ -794,6 +854,8 @@ public partial class App : Application
     {
         _exitWait?.Unregister(null);
         _exitRequested?.Dispose();
+        _showWait?.Unregister(null);
+        _showRequested?.Dispose();
         _displays?.Dispose();
         _strips?.CloseAll();
         _lists?.CloseAll();

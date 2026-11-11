@@ -291,7 +291,12 @@ public partial class MainWindow : Window
             WindowState = WindowState.Normal;
         }
 
+        // Al frente aunque Windows no nos deje tomar el primer plano (p. ej. si se abre desde el deck o la
+        // bandeja con el toque de la tablet): un instante "siempre encima", y la activación robusta.
+        Topmost = true;
         Activate();
+        FocusWShell.Win32.WindowMover.Activate(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+        Topmost = false;
     }
 
     /// <summary>Destino que el modelo da a una ventana gestionada.</summary>

@@ -1203,6 +1203,13 @@ public sealed class ShellController : IDisposable
                 RunLocked(closed);
             }
 
+            // Las libres que ya no aparecen (cerradas, como las ventanas de una llamada de Zoom) se olvidan: si no,
+            // seguían saliendo en LIBRES del deck. Las gestionadas conservan su foto (ver arriba).
+            foreach (var gone in _snapshots.Keys.Where(h => !alive.Contains(h) && !_workspace.IsManaged(h)).ToList())
+            {
+                _snapshots.Remove(gone);
+            }
+
             // Las gestionadas que siguen vivas pero no son elegibles ahora siguen en la lista, con su última foto.
             windows.AddRange(_workspace.Windows
                 .Where(m => !alive.Contains(m.Handle) && _snapshots.ContainsKey(m.Handle))
