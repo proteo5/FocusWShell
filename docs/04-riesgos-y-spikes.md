@@ -561,6 +561,49 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Deck: la presentación del panel, en segmentos (validación, 2026-11-11)
+
+La cabecera de cada panel tenía un solo botón que mostraba la presentación actual («Tiles») pero, al tocarlo, pasaba a la siguiente: lo que se leía no era lo que se obtenía, y para llegar a «Lista» había que tocar varias veces sabiendo el orden. Además medía 40×36, chico para el dedo en una tablet de 8 pulgadas.
+
+- **Ahora son botones pegados, uno por presentación,** con la activa en azul. Se ven todas y un toque basta para cualquiera. Los paneles del principal tienen 3 (Tiles, Pestañas, Lista); los de otros monitores suman Pantalla completa.
+- **Con iconos** (▦ Tiles, ⧉ Pestañas, ☰ Lista, ⛶ Pantalla completa) y el nombre en el tooltip. Con texto no cabrían cuatro junto al nombre del panel.
+- **Todos los botones de la cabecera miden 48×48,** el tamaño táctil del resto del deck, incluidos ◀ ▶ de las pestañas. La cabecera crece 12 px, que sale del sitio que dejaron libre las apps cerradas sin anclar. Si falta ancho, se recorta el nombre del panel, nunca los botones.
+
+### Deck: botones de modo frente a botones de acción (validación, 2026-11-11)
+
+Mover, Anclar y Cerrar no actúan al tocarlos: se quedan encendidos esperando el siguiente toque, como Shift. Anterior, Al panel y Ratón actúan al momento. Antes, esa diferencia sólo se veía después de tocarlos. Ahora se ve de antemano con tres señales:
+
+- **«…» al final del texto** («Mover…», «Anclar…», «Cerrar…»), la convención de Windows para «este botón te pedirá algo más». Encendidos, el texto ya acaba en «…» («Moviendo…»).
+- **Una barra abajo en el color de su modo:** amarilla en Mover, índigo en Anclar y roja tenue en Cerrar. Sigue la regla de color del deck: es el color que tomarán las ventanas tocables en ese modo. Encendido, el botón se rellena con ese color y la barra desaparece.
+- **Un hueco entre los dos grupos:** en el deck ancho, entre sus dos filas; en el estrecho, tras «Ratón» en la fila de seis.
+
+No se usa una flechita (▾), porque promete un menú, ni un aspecto de interruptor, porque ocupa sitio que el deck no tiene.
+
+### Deck: la disposición del principal, resumida (validación, 2026-11-11)
+
+Los botones de «Vista» (dónde va el foco y su ancho) casi no se cambian, pero ocupaban dos filas fijas. Además, «Vista» no decía qué controla: no toca los paneles, sino dónde va el foco en el principal y qué ancho tiene.
+
+- **Nuevo nombre:** «Disposición del principal» («Main screen layout»). En la documentación se sigue llamando «vista» (ADR 0012).
+- **Resumen de un vistazo**, que se toca para cambiarla. Muestra el icono de la vista y el ancho (o «A medida» si no es un preset). En el deck ancho es una fila en la tarjeta Disposición («▣ Centro · Normal ⚙»), porque la cabecera del foco no tiene sitio sin recortar el nombre de la app. En el estrecho va en la cabecera («▣ Normal»).
+- **Tocarlo abre los botones aquí mismo,** como Energía, y «✓ Listo» los cierra. No se usa una ventana aparte, porque el deck va siempre encima y no toma el foco. En el deck estrecho, mientras están abiertos, se ocultan las escenas para que todo quepa sin scroll.
+- Las escenas ganan una fila en el deck ancho.
+
+### Deck: el ratón al foco (validación, 2026-11-11)
+
+Al tocar la tablet, Windows lleva el cursor al punto tocado, así que después de usar el deck el ratón queda en la tablet. «🖱 Ratón» (en la tarjeta Foco, junto a Anterior y Al panel) lo lleva al centro de la app del foco, que es donde se va a trabajar. Si no hay app en el foco, o está minimizada, lo lleva al centro del monitor principal. Sólo mueve el cursor: no cambia qué ventana está al frente.
+
+### Deck: indicador de la ventana al frente (validación, 2026-11-11)
+
+El usuario a veces hace clic con el ratón en apps que no están en el foco, sobre todo en las del segundo monitor, para hacer algo rápido sin cambiar el foco. Con el clic al foco desactivado, esa app recibe el teclado sin entrar en el foco. El deck seguía marcando sólo la del foco y no decía dónde iba lo que se escribía.
+
+- **Sólo si la ventana al frente no es la del foco.** En el caso normal no se marca nada, así que el indicador, cuando sale, significa «el teclado no está en el foco».
+- **Borde fino blanco** en esa app, sea de un panel o libre. Queda fuera de los colores de los modos (amarillo, rojo e índigo). Mientras hay un modo encendido mandan sus bordes y no se marca.
+- **La pestaña de su monitor** lleva el mismo borde si la app está en otro monitor y esa pestaña no se está viendo.
+- Si la ventana al frente no está en el deck (el escritorio, la barra de tareas, una excluida), no se marca nada. Tocar el deck no lo cambia, porque el deck no se pone al frente.
+- **Al momento:** se usa el aviso de cambio de primer plano que ya tenían las listas. Sólo se redibuja si cambia qué se marca, para no perder un toque a mitad. El repaso de cada 3 s lee además la ventana al frente real, por si algún aviso no llega (p. ej., volver a la misma ventana desde Alt+Tab).
+
+Probado con `--deck-preview`: una libre al frente, y una app del segundo monitor al frente con la pestaña marcada.
+
 ### Deck: volver a la app del foco cuando una libre flota encima (validación, 2026-11-11)
 
 Encontrado en uso. Con una app de panel en el foco, tocar una libre la trae al frente y la deja libre, que es lo correcto. Pero después, tocar en el deck la app del foco no hacía nada: el código ignoraba el toque porque la app ya estaba en el foco. Para volver a ella había que tocar otra app del panel y luego la del foco. Con el ratón bastaba un clic.
@@ -571,7 +614,7 @@ Se compararon tres opciones:
 - Que la libre pase a ser la del foco y la del panel vuelva a su panel. Movía ventanas sin pedirlo, rompía la regla de «una libre sigue libre» y dejaba el foco vacío al cerrarse la ventana flotante.
 - Que tocar la app del foco la traiga al frente. Es la elegida.
 
-Ahora tocar la app del foco la trae al frente con el cursor encima, como un clic del ratón. La libre queda detrás, libre y en su sitio, sin cambiar el layout. Queda pendiente, si hace falta, marcar en el deck qué ventana está realmente al frente: el azul dice qué app ocupa el foco, no cuál se ve encima.
+Ahora tocar la app del foco la trae al frente con el cursor encima, como un clic del ratón. La libre queda detrás, libre y en su sitio, sin cambiar el layout. El azul dice qué app ocupa el foco, no cuál está encima. Para eso está el indicador «al frente» (sección siguiente).
 
 ### Deck v2: tarjetas, mover entre monitores, energía y anclar (validación, 2026-11-11)
 

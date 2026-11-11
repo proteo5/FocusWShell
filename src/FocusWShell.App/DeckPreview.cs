@@ -35,6 +35,10 @@ public static class DeckPreview
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-cerrar.png"), mode: "cerrar");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia.png"), mode: "energia");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-anclar.png"), mode: "anclar");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-vista.png"), mode: "vista");
+            // Al frente sin ser la del foco: una libre (Docker) y una de otro monitor (Grafana, en el HP).
+            Save(Sample(manyApps: false) with { Foreground = 50 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-libre.png"));
+            Save(Sample(manyApps: false) with { Foreground = 7 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-hp.png"));
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia-seguro.png"), mode: "energia-seguro");
         }
     }
@@ -56,6 +60,7 @@ public static class DeckPreview
             () => null,
             _ => Task.CompletedTask,
             _ => Task.CompletedTask,
+            () => Task.CompletedTask,
             (_, _) => { });
         var deck = new DeckWindow(actions) { Left = -20000, Top = -20000 };
         deck.ShowTab(tab);
@@ -112,7 +117,7 @@ public static class DeckPreview
             new("contexto", "Contexto", "principal, izquierda", [App("Google Chrome", 3, ListItemState.InPanel, "contexto")]) { Template = PanelTemplate.Tiles },
             new("trabajo", "Trabajo", "principal, derecha", work) { Template = PanelTemplate.Tiles },
             new("monitoreo", "Monitoreo", "HP 24fw, izquierda", [App("Grafana", 7, ListItemState.InPanel, "monitoreo"), App("Logs", 8, ListItemState.InPanel, "monitoreo")]) { Display = "hp", Template = PanelTemplate.Tiles },
-            new("chat", "Chat", "HP 24fw, derecha", [App("Slack", 9, ListItemState.InPanel, "chat")]) { Display = "hp", Template = PanelTemplate.Stack },
+            new("chat", "Chat", "HP 24fw, derecha", [App("Slack", 9, ListItemState.InPanel, "chat"), App("Teams", 10, ListItemState.InPanel, "chat")]) { Display = "hp", Template = PanelTemplate.Stack },
         };
         return new DeckState(
             App("Claude", 2, ListItemState.InFocus, "trabajo"),

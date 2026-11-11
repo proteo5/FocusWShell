@@ -57,10 +57,14 @@
   <data name="Deck_Closing" xml:space="preserve"><value>Closing…</value></data>
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>empty</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Hide the deck</value></data>
+  <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} is in front (it gets the keyboard), but it isn't the focus app</value></data>
   <data name="Deck_Left" xml:space="preserve"><value>Left</value></data>
   <data name="Deck_LeftShort" xml:space="preserve"><value>Left</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} more</value></data>
   <data name="Deck_MoreName" xml:space="preserve"><value>Deck: more apps</value></data>
+  <data name="Deck_Mouse" xml:space="preserve"><value>Mouse to focus</value></data>
+  <data name="Deck_MouseShort" xml:space="preserve"><value>Mouse</value></data>
+  <data name="Deck_MouseTip" xml:space="preserve"><value>Moves the mouse pointer to the center of the focus app (or, if there is none, to the center of the main screen)</value></data>
   <data name="Deck_Move" xml:space="preserve"><value>Move an app</value></data>
   <data name="Deck_MoveHere" xml:space="preserve"><value>Move here</value></data>
   <data name="Deck_MoveHereName" xml:space="preserve"><value>Deck: Move {0} to {1}</value></data>
@@ -96,14 +100,16 @@
   <data name="Deck_SecPower" xml:space="preserve"><value>POWER</value></data>
   <data name="Deck_SecScenes" xml:space="preserve"><value>SCENES</value></data>
   <data name="Deck_SecSystem" xml:space="preserve"><value>SYSTEM</value></data>
-  <data name="Deck_SecView" xml:space="preserve"><value>VIEW</value></data>
+  <data name="Deck_SecView" xml:space="preserve"><value>MAIN SCREEN LAYOUT</value></data>
   <data name="Deck_SendTo" xml:space="preserve"><value>Send the deck to</value></data>
-  <data name="Deck_SwitchTo" xml:space="preserve"><value>Switch to {0}</value></data>
   <data name="Deck_TabDisconnected" xml:space="preserve"><value>{0} (disconnected)</value></data>
   <data name="Deck_TabName" xml:space="preserve"><value>Deck: monitor {0}</value></data>
   <data name="Deck_ThisMonitor" xml:space="preserve"><value>This monitor</value></data>
   <data name="Deck_ToPanel" xml:space="preserve"><value>Focus to panel</value></data>
   <data name="Deck_ToPanelShort" xml:space="preserve"><value>To panel</value></data>
+  <data name="Deck_ViewCustom" xml:space="preserve"><value>Custom</value></data>
+  <data name="Deck_ViewDone" xml:space="preserve"><value>Done</value></data>
+  <data name="Deck_ViewTip" xml:space="preserve"><value>Main screen layout: where the focus goes and how wide it is. Tap to change it.</value></data>
   <data name="Display_AMonitor" xml:space="preserve"><value>a monitor</value></data>
   <data name="Display_Lost" xml:space="preserve"><value>{0} disconnected: its windows move to the principal monitor's panels until it's back.</value></data>
   <data name="Display_PrincipalBack" xml:space="preserve"><value>{0} is the principal monitor again; {1} gets its panels back.</value></data>

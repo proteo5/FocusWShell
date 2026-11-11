@@ -27,6 +27,7 @@ public sealed record DeckActions(
     Func<DeckDock?> CurrentDock,
     Func<nint, Task> CloseApp,
     Func<nint, Task> BringToFront,
+    Func<Task> MouseToFocus,
     Action<string, bool> SetPinned);
 
 /// <summary>Lo que hace el panel de energía del deck.</summary>
@@ -99,6 +100,7 @@ public sealed class DeckWindow : Window
                 _moveApp = null;
                 _closing = false;
                 _pinning = false;
+                _viewOpen = false;
                 _powerOpen = false;
                 _powerArmed = null;
             }
@@ -117,6 +119,38 @@ public sealed class DeckWindow : Window
 
         OwnWindows.Place(new WindowInteropHelper(this).EnsureHandle(), where);
     }
+
+    /// <summary>
+    /// Cambió la ventana al frente: sólo se redibuja si cambia qué se marca (así un toque en curso no se
+    /// pierde por redibujar a cada cambio de ventana).
+    /// </summary>
+    public void UpdateForeground(nint hwnd)
+    {
+        if (_state is not { } state)
+        {
+            return;
+        }
+
+        var before = ForegroundMark(state);
+        _state = state with { Foreground = hwnd };
+        if (IsVisible && ForegroundMark(_state) != before)
+        {
+            Render();
+        }
+    }
+
+    /// <summary>
+    /// La app que se marca como «al frente»: la que recibe el teclado, sólo si no es la del foco (en el caso
+    /// normal no se marca nada) y si está en el deck (un panel o las libres).
+    /// </summary>
+    private static nint? ForegroundMark(DeckState state) =>
+        state.Foreground is { } fg && fg != state.Focus?.Handle
+            && state.Panels.SelectMany(p => p.Apps).Concat(state.Free).Any(a => a.Handle == fg)
+            ? fg
+            : null;
+
+    /// <summary>Si hay un modo encendido: entonces mandan sus bordes, no el de «al frente».</summary>
+    private bool InMode => _moving is not null || _closing || _pinning;
 
     /// <summary>Actualiza el contenido si está visible.</summary>
     public void Update(DeckState state)
@@ -186,14 +220,25 @@ public sealed class DeckWindow : Window
 
         // Mover, anclar y cerrar en una fila de tres: con sus textos cortos, para que quepan.
         var actions = FocusActions(state, shortText: true);
-        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(2, actions.Take(2)), GridLength.Auto), (Buttons(3, actions.Skip(2)), GridLength.Auto)]), GridLength.Auto);
+        // Arriba las de acción inmediata, abajo las de modo, con un hueco que separa los dos tipos.
+        var modes = Buttons(3, actions.Skip(3));
+        modes.Margin = new Thickness(0, 8, 0, 2);
+        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
 
-        var layout = new List<(UIElement, GridLength)>
+        // La disposición del principal casi no se cambia: se ve resumida en un botón, que abre aquí mismo
+        // sus botones (vista y ancho) hasta tocar «Listo». Así las escenas tienen más sitio.
+        var layout = new List<(UIElement, GridLength)> { (Label(Strings.Deck_SecView), GridLength.Auto) };
+        if (_viewOpen)
         {
-            (Label(Strings.Deck_SecView), GridLength.Auto),
-            (Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto),
-            (Buttons(3, WidthButtons(state)), GridLength.Auto),
-        };
+            layout.Add((Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto));
+            layout.Add((Buttons(3, WidthButtons(state)), GridLength.Auto));
+            layout.Add((Buttons(1, [ViewDoneButton()]), GridLength.Auto));
+        }
+        else
+        {
+            layout.Add((Buttons(1, [ViewSummary(state, full: true)]), GridLength.Auto));
+        }
+
         if (state.Scenes.Count > 0)
         {
             layout.Add((Label(Strings.Deck_SecScenes), GridLength.Auto));
@@ -278,10 +323,18 @@ public sealed class DeckWindow : Window
             _root.Children.Add(e);
         }
 
-        Row(FocusHeader(state), GridLength.Auto);
-        Row(Buttons(5, FocusActions(state, shortText: true)), GridLength.Auto);
-        // Vista y ancho en una sola fila de seis.
-        Row(Buttons(6, [.. ViewButtons(state, shortText: true), .. WidthButtons(state)]), GridLength.Auto);
+        Row(FocusHeader(state, viewSummary: true), GridLength.Auto);
+        // Las seis en una fila: un hueco tras «Ratón» separa las de acción inmediata de las de modo.
+        var focusActions = FocusActions(state, shortText: true);
+        var focusRow = Buttons(6, focusActions);
+        focusActions[2].Margin = new Thickness(0, 0, 20, 8);
+        Row(focusRow, GridLength.Auto);
+        // Vista y ancho: resumidos en la cabecera; abiertos, en una fila de seis y «Listo» debajo.
+        if (_viewOpen)
+        {
+            Row(Buttons(6, [.. ViewButtons(state, shortText: true), .. WidthButtons(state)]), GridLength.Auto);
+            Row(Buttons(1, [ViewDoneButton()]), GridLength.Auto);
+        }
 
         // Pestañas por monitor y, debajo, sus paneles uno debajo de otro, con alto según cuántas apps tienen.
         var tabs = MonitorTabs(state);
@@ -310,7 +363,8 @@ public sealed class DeckWindow : Window
         Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
 
         // Abajo: las escenas (una fila; si no caben, «+N más») y, aparte, lo del sistema.
-        if (state.Scenes.Count > 0 && !_powerOpen)
+        // Con la energía o la disposición abiertas, sin escenas: así cabe todo sin scroll.
+        if (state.Scenes.Count > 0 && !_powerOpen && !_viewOpen)
         {
             Row(TextGrid(SceneButtons(state)), new GridLength(Touch + 8));
         }
@@ -347,6 +401,7 @@ public sealed class DeckWindow : Window
 
         _closing = mode == "cerrar";
         _pinning = mode == "anclar";
+        _viewOpen = mode == "vista";
         _powerOpen = mode is "energia" or "energia-seguro";
         if (mode == "energia-seguro")
         {
@@ -411,6 +466,13 @@ public sealed class DeckWindow : Window
         {
             b.Background = ActiveBrush;
         }
+        else if (!InMode && _state is { } current && ForegroundMark(current) is { } front
+            && current.Panels.Any(p => string.Equals(TabKey(p.Display), TabKey(tab.Display), StringComparison.OrdinalIgnoreCase) && p.Apps.Any(a => a.Handle == front)))
+        {
+            // La app al frente está en otro monitor: su pestaña lo dice, aunque no se esté viendo.
+            b.BorderBrush = TextBrush;
+            b.BorderThickness = new Thickness(2);
+        }
         else
         {
             if (!tab.Connected)
@@ -464,7 +526,7 @@ public sealed class DeckWindow : Window
 
     // --- Piezas ----------------------------------------------------------------------------------------
 
-    private DockPanel FocusHeader(DeckState state)
+    private DockPanel FocusHeader(DeckState state, bool viewSummary = false)
     {
         var header = new DockPanel { Margin = new Thickness(0, 0, 8, 8) };
         var close = SmallButton("✕", Strings.Deck_Hide, () => _actions.Hide());
@@ -481,6 +543,14 @@ public sealed class DeckWindow : Window
         };
         DockPanel.SetDock(send, Dock.Right);
         header.Children.Add(send);
+        if (viewSummary)
+        {
+            var summary = ViewSummary(state, full: false);
+            summary.Margin = new Thickness(0, 0, 6, 0);
+            summary.VerticalAlignment = VerticalAlignment.Top;
+            DockPanel.SetDock(summary, Dock.Right);
+            header.Children.Add(summary);
+        }
         var focus = new StackPanel();
         focus.Children.Add(Label(Strings.Deck_SecFocus));
 
@@ -569,7 +639,38 @@ public sealed class DeckWindow : Window
             pin.Background = PinBrush;
         }
 
-        return [previous, back, move, pin, close];
+        // El ratón al foco: tras tocar el deck, el cursor queda en la tablet; así vuelve a donde se trabaja.
+        var mouse = WideButton("🖱  " + (shortText ? Strings.Deck_MouseShort : Strings.Deck_Mouse), true, () => _actions.MouseToFocus());
+        mouse.ToolTip = Strings.Deck_MouseTip;
+        System.Windows.Automation.AutomationProperties.SetName(mouse, "Deck: " + Strings.Deck_Mouse);
+
+        Sticky(move, _moving is not null, TargetBrush);
+        Sticky(pin, _pinning, PinBrush);
+        Sticky(close, _closing, WarnFaintBrush);
+        return [previous, back, mouse, move, pin, close];
+    }
+
+    private static readonly Brush WarnFaintBrush = Frozen(Color.FromArgb(0x90, 0xC2, 0x3B, 0x3B));
+
+    /// <summary>
+    /// Un botón de modo (se queda encendido esperando el siguiente toque, como Shift) se distingue de uno de
+    /// acción inmediata antes de tocarlo: «…» al final, como en Windows («pide algo más»), y una barra abajo en
+    /// el color que tomarán las ventanas en ese modo. Encendido, el relleno ya lo dice y el texto ya acaba en «…».
+    /// </summary>
+    private static void Sticky(Button b, bool on, Brush mode)
+    {
+        if (on)
+        {
+            return;
+        }
+
+        if (b.Content is string text && !text.EndsWith('…'))
+        {
+            b.Content = text + "…";
+        }
+
+        b.BorderBrush = mode;
+        b.BorderThickness = new Thickness(0, 0, 0, 3);
     }
 
     /// <summary>
@@ -595,6 +696,45 @@ public sealed class DeckWindow : Window
 
     /// <summary>La app que se acaba de mandar cerrar: su tarjeta dice «Cerrando…» hasta que desaparece.</summary>
     private nint? _closingNow;
+
+    /// <summary>Si están abiertos los botones de la disposición del principal (vista y ancho).</summary>
+    private bool _viewOpen;
+
+    /// <summary>
+    /// La disposición del principal, para leerla de un vistazo («▣ Centro · Normal»); tocarla abre sus
+    /// botones. Con <paramref name="full"/> en falso, sólo el icono de la vista y el ancho (para la cabecera).
+    /// </summary>
+    private Button ViewSummary(DeckState state, bool full)
+    {
+        var (icon, where) = state.View switch
+        {
+            FocusPosition.Left => ("◧", Strings.Deck_Left),
+            FocusPosition.Right => ("◨", Strings.Deck_Right),
+            _ => ("▣", Strings.Deck_Center),
+        };
+        var width = ViewProportions.Presets(state.View).Where(p => p.Weights.SameAs(state.Weights)).Select(p => p.Name).FirstOrDefault() ?? Strings.Deck_ViewCustom;
+        var b = WideButton(full ? $"{icon}  {where} · {width}   ⚙" : $"{icon}  {width}", true, () =>
+        {
+            _viewOpen = !_viewOpen;
+            Render();
+        });
+        b.MinWidth = 0;
+        b.Padding = new Thickness(10, 0, 10, 0);
+        b.ToolTip = Strings.Deck_ViewTip;
+        System.Windows.Automation.AutomationProperties.SetName(b, "Deck: " + Strings.Deck_ViewTip);
+        if (_viewOpen)
+        {
+            b.Background = ActiveBrush;
+        }
+
+        return b;
+    }
+
+    private Button ViewDoneButton() => WideButton("✓  " + Strings.Deck_ViewDone, true, () =>
+    {
+        _viewOpen = false;
+        Render();
+    });
 
     private List<Button> ViewButtons(DeckState state, bool shortText)
     {
@@ -1155,6 +1295,14 @@ public sealed class DeckWindow : Window
             tile.BorderBrush = WarnBrush;
             tile.BorderThickness = new Thickness(2);
         }
+        else if (!InMode && app.Handle is { } shownHandle && _state is { } current && ForegroundMark(current) == shownHandle)
+        {
+            // Al frente (recibe el teclado) sin ser la del foco: un borde fino blanco, fuera de los colores
+            // de los modos.
+            tile.BorderBrush = TextBrush;
+            tile.BorderThickness = new Thickness(2);
+            tile.ToolTip = Core.Text.F(Strings.Deck_InFrontTip, app.Name);
+        }
 
         tile.Click += async (_, _) =>
         {
@@ -1289,15 +1437,29 @@ public sealed class DeckWindow : Window
             controls.Children.Add(NavButton("▶", Core.Text.F(Strings.Deck_NextTab, panel.Name), () => Run(false, new MakeActiveInPanel(tabs[1].Handle!.Value))));
         }
 
+        // La presentación, como botones pegados: se ven todas, la activa en azul, y un toque basta para
+        // cualquiera (antes, un botón mostraba la actual y al tocarlo pasaba a la siguiente).
         var order = panel.Display is null
             ? new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List }
             : new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List, PanelTemplate.Fill };
-        var next = order[(Array.IndexOf(order, panel.Template) + 1) % order.Length];
-        var template = NavButton(TemplateName(panel.Template), Core.Text.F(Strings.Deck_PresentationName, panel.Name, TemplateName(next)), () => Run(false, new SetPresentation(panel.Id, next)));
-        template.Width = double.NaN;
-        template.Padding = new Thickness(10, 0, 10, 0);
-        template.ToolTip = Core.Text.F(Strings.Deck_SwitchTo, TemplateName(next));
-        controls.Children.Add(template);
+        var segments = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(cycles ? 10 : 0, 0, 0, 0) };
+        foreach (var t in order)
+        {
+            bool on = t == panel.Template;
+            var segment = NavButton(TemplateIcon(t), Core.Text.F(Strings.Deck_PresentationName, panel.Name, TemplateName(t)),
+                () => on ? Task.CompletedTask : Run(false, new SetPresentation(panel.Id, t)));
+            segment.Margin = new Thickness(2, 0, 0, 0);
+            segment.FontSize = 20;
+            segment.ToolTip = TemplateName(t);
+            if (on)
+            {
+                segment.Background = ActiveBrush;
+            }
+
+            segments.Children.Add(segment);
+        }
+
+        controls.Children.Add(segments);
         DockPanel.SetDock(controls, Dock.Right);
         header.Children.Add(controls);
         var title = Label($"{panel.Name.ToUpperInvariant()} · {panel.Where}");
@@ -1314,20 +1476,29 @@ public sealed class DeckWindow : Window
         _ => Strings.Tpl_Tiles,
     };
 
+    private static string TemplateIcon(PanelTemplate template) => template switch
+    {
+        PanelTemplate.Stack => "⧉",
+        PanelTemplate.Fill => "⛶",
+        PanelTemplate.List => "☰",
+        _ => "▦",
+    };
+
+    /// <summary>Botón de la cabecera de un panel: del tamaño del dedo, como el resto del deck.</summary>
     private static Button NavButton(string text, string name, Func<Task> click)
     {
         var b = new Button
         {
             Content = text,
-            Width = 40,
-            Height = 36,
+            Width = Touch,
+            Height = Touch,
             Margin = new Thickness(4, 0, 0, 0),
             Focusable = false,
             BorderThickness = new Thickness(0),
             Foreground = TextBrush,
             Background = CardBrush,
             Cursor = Cursors.Hand,
-            FontSize = 11,
+            FontSize = 16,
         };
         System.Windows.Automation.AutomationProperties.SetName(b, $"Deck: {name}");
         b.Click += async (_, _) => await click();
