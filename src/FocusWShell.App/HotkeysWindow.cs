@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using FocusWShell.Core.Input;
@@ -21,6 +21,7 @@ public sealed class HotkeysWindow : Window
         _settings = settings;
         _pending = new Dictionary<string, string>(settings.Hotkeys);
         Title = "FocusWShell · atajos";
+        Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/FocusWShell.ico"));
         Width = 620;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;

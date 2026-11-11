@@ -194,8 +194,8 @@ public sealed class DeckWindow : Window
 
         // Derecha: paneles en columnas (dos filas si son más de tres) y las libres abajo.
         var right = new Grid();
-        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(state.Free.Count > 0 ? 3 : 1, GridUnitType.Star) });
-        if (state.Free.Count > 0)
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(ShowFree(state) ? 3 : 1, GridUnitType.Star) });
+        if (ShowFree(state))
         {
             right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 90 });
         }
@@ -228,7 +228,7 @@ public sealed class DeckWindow : Window
         }
 
         right.Children.Add(panels);
-        if (state.Free.Count > 0)
+        if (ShowFree(state))
         {
             var free = FreeCard(state);
             Grid.SetRow(free, 1);
@@ -277,7 +277,7 @@ public sealed class DeckWindow : Window
             Row(PanelCard(panel), new GridLength(1 + panel.Apps.Count, GridUnitType.Star), 116);
         }
 
-        if (state.Free.Count > 0)
+        if (ShowFree(state))
         {
             Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), 90);
         }
@@ -647,31 +647,7 @@ public sealed class DeckWindow : Window
         UIElement content = body;
         if (target)
         {
-            var overlay = new Border
-            {
-                Background = TargetWash,
-                CornerRadius = new CornerRadius(4),
-                Cursor = Cursors.Hand,
-                Child = new TextBlock
-                {
-                    Text = "⬇  Mover aquí",
-                    Foreground = TextBrush,
-                    FontSize = 16,
-                    FontWeight = FontWeights.SemiBold,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                },
-            };
-            System.Windows.Automation.AutomationProperties.SetName(overlay, $"Deck: Mover {_moveApp!.Name} a {panel.Name}");
-            overlay.MouseLeftButtonUp += async (_, e) =>
-            {
-                e.Handled = true;
-                await MoveChosenTo(panel);
-            };
-            var layered = new Grid();
-            layered.Children.Add(body);
-            layered.Children.Add(overlay);
-            content = layered;
+            content = WithTarget(body, "⬇  Mover aquí", $"Deck: Mover {_moveApp!.Name} a {panel.Name}", () => MoveChosenTo(panel));
         }
 
         var zone = DropZone(content, panel);
@@ -688,22 +664,118 @@ public sealed class DeckWindow : Window
     /// <summary>Velo encima de ese panel: se ve que todo él es el destino.</summary>
     private static readonly Brush TargetWash = Frozen(Color.FromArgb(0x55, 0xF2, 0xC1, 0x2E));
 
+    /// <summary>Si la app elegida para mover está en un panel: entonces LIBRES es un destino (liberarla).</summary>
+    private bool CanReleaseChosen => _moving == MoveStep.PickPanel && _moveApp is { PanelId: not null };
+
+    /// <summary>Si hay que dibujar LIBRES: con ventanas libres, o como destino al mover.</summary>
+    private bool ShowFree(DeckState state) => state.Free.Count > 0 || CanReleaseChosen;
+
+    /// <summary>
+    /// Las ventanas libres. También es un destino: soltar ahí una app (arrastrada, o al moverla con toques)
+    /// la libera, y vuelve a su sitio original.
+    /// </summary>
     private Border FreeCard(DeckState state)
     {
         var body = new DockPanel();
         var label = Label("LIBRES");
         DockPanel.SetDock(label, Dock.Top);
         body.Children.Add(label);
-        body.Children.Add(AppGrid(state.Free));
-        return new Border
+        if (state.Free.Count > 0)
         {
-            Child = body,
-            BorderBrush = CardBrush,
-            BorderThickness = new Thickness(1),
+            body.Children.Add(AppGrid(state.Free));
+        }
+
+        UIElement content = body;
+        bool target = CanReleaseChosen;
+        if (target)
+        {
+            content = WithTarget(body, "⬇  Liberar aquí", $"Deck: Liberar {_moveApp!.Name}", ReleaseChosen);
+        }
+
+        var card = new Border
+        {
+            Child = content,
+            BorderBrush = target ? TargetBrush : CardBrush,
+            BorderThickness = new Thickness(target ? 3 : 1),
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(6),
+            Padding = new Thickness(target ? 4 : 6),
             Margin = new Thickness(0, 0, 8, 8),
+            Background = Brushes.Transparent,
+            AllowDrop = true,
         };
+
+        // Con el ratón: soltar aquí una app de un panel la libera.
+        bool Accepts(DragEventArgs e) => e.Data.GetData(DragFormat) is DeckApp { PanelId: not null };
+        card.DragEnter += (_, e) =>
+        {
+            e.Effects = Accepts(e) ? DragDropEffects.Move : DragDropEffects.None;
+            if (Accepts(e))
+            {
+                card.Background = DropBrush;
+            }
+        };
+        card.DragOver += (_, e) =>
+        {
+            e.Effects = Accepts(e) ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        };
+        card.DragLeave += (_, _) => card.Background = Brushes.Transparent;
+        card.Drop += async (_, e) =>
+        {
+            card.Background = Brushes.Transparent;
+            _dragged = false;
+            if (e.Data.GetData(DragFormat) is DeckApp { PanelId: not null, Handle: { } h })
+            {
+                await Run(false, new Release(h));
+            }
+        };
+        return card;
+    }
+
+    /// <summary>Libera la app elegida (vuelve a su sitio original) y sale del modo mover.</summary>
+    private async Task ReleaseChosen()
+    {
+        if (_moveApp is not { Handle: { } h, PanelId: not null })
+        {
+            return;
+        }
+
+        _moving = null;
+        _moveApp = null;
+        await Run(false, new Release(h));
+    }
+
+    /// <summary>Pone encima del contenido el velo amarillo de destino, con su texto; un toque hace <paramref name="onTap"/>.</summary>
+    private static Grid WithTarget(UIElement content, string text, string name, Func<Task> onTap)
+    {
+        var overlay = new Border
+        {
+            Background = TargetWash,
+            CornerRadius = new CornerRadius(4),
+            Cursor = Cursors.Hand,
+            // El texto en una etiqueta oscura: se lee aunque quede encima de las tarjetas.
+            Child = new Border
+            {
+                Background = Background0,
+                BorderBrush = TargetBrush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(14, 6, 14, 6),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = text, Foreground = TextBrush, FontSize = 16, FontWeight = FontWeights.SemiBold },
+            },
+        };
+        System.Windows.Automation.AutomationProperties.SetName(overlay, name);
+        overlay.MouseLeftButtonUp += async (_, e) =>
+        {
+            e.Handled = true;
+            await onTap();
+        };
+        var layered = new Grid();
+        layered.Children.Add(content);
+        layered.Children.Add(overlay);
+        return layered;
     }
 
     /// <summary>Las apps de un panel o las libres: tantas como quepan; si no, la última celda es «+N más».</summary>
