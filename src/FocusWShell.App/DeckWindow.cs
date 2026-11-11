@@ -1400,8 +1400,21 @@ public sealed class DeckWindow : Window
             return;
         }
 
-        if (app.Handle is not { } h || app.State == ListItemState.InFocus)
+        if (app.Handle is not { } h)
         {
+            return;
+        }
+
+        // Ya está en el foco, pero puede tener una libre flotando encima (p. ej. una llamada): se trae al
+        // frente, como con un clic del ratón, y la libre queda detrás, libre y en su sitio.
+        if (app.State == ListItemState.InFocus)
+        {
+            if (!Docked)
+            {
+                _actions.Hide();
+            }
+
+            await _actions.BringToFront(h);
             return;
         }
 

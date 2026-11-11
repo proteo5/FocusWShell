@@ -561,6 +561,18 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Deck: volver a la app del foco cuando una libre flota encima (validación, 2026-11-11)
+
+Encontrado en uso. Con una app de panel en el foco, tocar una libre la trae al frente y la deja libre, que es lo correcto. Pero después, tocar en el deck la app del foco no hacía nada: el código ignoraba el toque porque la app ya estaba en el foco. Para volver a ella había que tocar otra app del panel y luego la del foco. Con el ratón bastaba un clic.
+
+Se compararon tres opciones:
+
+- Dejarlo como estaba.
+- Que la libre pase a ser la del foco y la del panel vuelva a su panel. Movía ventanas sin pedirlo, rompía la regla de «una libre sigue libre» y dejaba el foco vacío al cerrarse la ventana flotante.
+- Que tocar la app del foco la traiga al frente. Es la elegida.
+
+Ahora tocar la app del foco la trae al frente con el cursor encima, como un clic del ratón. La libre queda detrás, libre y en su sitio, sin cambiar el layout. Queda pendiente, si hace falta, marcar en el deck qué ventana está realmente al frente: el azul dice qué app ocupa el foco, no cuál se ve encima.
+
 ### Deck v2: tarjetas, mover entre monitores, energía y anclar (validación, 2026-11-11)
 
 Objetivo: que el deck sea la forma normal de trabajar y se use mucho menos el ratón. Antes de tocar nada se analizó con el usuario; lo que se decidió y cómo quedó:
