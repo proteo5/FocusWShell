@@ -22,7 +22,7 @@ public static class AppLauncher
                 return null;
             }
 
-            if (app.ExecutablePath is { } path && File.Exists(path))
+            if (app.ExecutablePath is { } stored && ExecutableLocator.Resolve(stored) is { } path)
             {
                 using var process = Process.Start(new ProcessStartInfo(path)
                 {

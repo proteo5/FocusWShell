@@ -46,6 +46,21 @@ public class AppCatalogTests
     }
 
     [Fact]
+    public void AnUpdatedAppGetsItsNewPath()
+    {
+        // Las apps de la Store cambian de carpeta en cada versión; la vieja deja de existir.
+        var c = new AppCatalog();
+        c.Observe("claude.exe", "Claude", @"C:\Program Files\WindowsApps\Claude_4.1_x64pp\claude.exe", null, T0);
+
+        Assert.True(c.Observe("claude.exe", "Claude", @"C:\Program Files\WindowsApps\Claude_4.2_x64pp\claude.exe", null, T0.AddDays(1)));
+        Assert.Equal(@"C:\Program Files\WindowsApps\Claude_4.2_x64pp\claude.exe", c.Find("claude.exe")!.ExecutablePath);
+
+        // Una ventana sin ruta legible no borra la que se sabía.
+        Assert.False(c.Observe("claude.exe", "Claude", null, null, T0.AddDays(2)));
+        Assert.NotNull(c.Find("claude.exe")!.ExecutablePath);
+    }
+
+    [Fact]
     public void RemembersTheLastPanel()
     {
         var c = new AppCatalog();

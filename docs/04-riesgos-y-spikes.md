@@ -428,6 +428,18 @@ Encontrado aquí y ya corregido:
 
 Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
 
+### Iconos que faltaban (validación, 2026-11-10)
+
+Encontrado en uso: faltaban iconos en el deck y en la ventana principal. `focus-probe icons` muestra de dónde sale el de cada app. Había tres causas:
+
+| Causa | Apps | Arreglo |
+| --- | --- | --- |
+| La ruta del catálogo quedó vieja: la app se actualizó y su carpeta de versión desapareció. El catálogo sólo rellenaba la ruta la primera vez. Abrir la app cerrada desde una lista también fallaba | Claude (`Claude_4.23118…` → `Claude_5.1231…`), Google Drive (`133.0.2.0` → `134.0.1.0`), Notepad | El catálogo guarda siempre la última ruta vista. Si la app está cerrada, `ExecutablePaths.Resolve` busca la versión más nueva junto a la vieja (para el icono y para abrirla). En `WindowsApps`, que no se puede listar, se deduce el AUMID de la carpeta (`Nombre_Editor!App`), sólo para el icono |
+| Apps de la Store alojadas en `ApplicationFrameHost` | Calculadora, Configuración | El icono se pide al shell por su AUMID (`IShellItemImageFactory`, `ShellIcon`), como lo muestra el Explorador |
+| La caché guardaba «sin icono» toda la sesión | Todas | La clave incluye la ruta y el AUMID: si cambian, se vuelve a intentar |
+
+Comprobado con `focus-probe icons`: Calculadora y Configuración dan su propio icono; Google Drive lo saca de `134.0.1.0`; Notepad, del AUMID deducido. Claude lo recupera cuando el catálogo la ve abierta (su id de app no es «App», así que deducir no basta).
+
 ### Ventanas de tamaño fijo (validación, 2026-11-10)
 
 Encontrado en uso: NetBird no declara borde redimensionable (`WS_THICKFRAME`) ni botón de maximizar, pero el layout la estiraba a su hueco (943×689, cuando la suya es de unos 366×653) y se veía mal. Ya se leía `IsResizable` al enumerar; el layout no lo usaba.

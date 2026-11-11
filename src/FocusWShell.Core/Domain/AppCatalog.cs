@@ -81,7 +81,9 @@ public sealed class AppCatalog
 
         var updated = app with
         {
-            ExecutablePath = app.ExecutablePath ?? Empty(executablePath),
+            // La ruta, siempre la última vista: al actualizarse, muchas apps cambian de carpeta
+            // (WindowsApps\Claude_4.x…, Drive File Stream[.x…) y la vieja ya no existe.
+            ExecutablePath = Empty(executablePath) ?? app.ExecutablePath,
             Aumid = app.Aumid ?? Empty(aumid),
             LastSeen = now,
         };

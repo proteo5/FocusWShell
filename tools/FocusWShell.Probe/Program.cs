@@ -29,6 +29,7 @@ try
         "mins" => Mins(rest),
         "move" => Move(rest),
         "watch" => Watch(rest),
+        "icons" => Icons(),
         _ => Usage($"Comando desconocido: {command}"),
     };
 }
@@ -47,6 +48,8 @@ static int Usage(string? error = null)
 
     Console.Error.WriteLine("""
         Uso:
+          focus-probe icons
+              De qué sale el icono de cada app del catálogo (AUMID, ejecutable o shell) y si tiene imagen. Sólo lee.
           focus-probe list [--all] [--json]
               Lista las ventanas top-level y si son candidatas. Sólo lee.
           focus-probe monitors
@@ -657,3 +660,73 @@ static int Restore()
 
 static string Trim(string value, int max) =>
     value.Length <= max ? value : string.Concat(value.AsSpan(0, max - 1), "…");
+
+// --- icons: de dónde sale el icono de cada app del catálogo -------------------------------------------
+static int Icons()
+{
+    // El shell (COM) prefiere un hilo STA, como el de la UI.
+    int code = 0;
+    var thread = new Thread(() => code = IconsOnSta());
+    thread.SetApartmentState(ApartmentState.STA);
+    thread.Start();
+    thread.Join();
+    return code;
+}
+
+static int IconsOnSta()
+{
+    var catalog = new AppCatalogStore(AppCatalogStore.DefaultPath).Load();
+    // Ruta actual de las apps abiertas, para ver si la del catálogo quedó vieja.
+    var live = WindowEnumerator.EnumerateTopLevel()
+        .Where(w => w.ProcessPath.Length > 0)
+        .GroupBy(w => MinSizeCatalog.KeyFor(w), StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(g => g.Key, g => g.First().ProcessPath, StringComparer.OrdinalIgnoreCase);
+
+    static string Describe(IconPixels? p)
+    {
+        if (p is null)
+        {
+            return "sin imagen";
+        }
+
+        int opaque = 0;
+        for (int i = 3; i < p.Bgra.Length; i += 4)
+        {
+            opaque += p.Bgra[i] > 0 ? 1 : 0;
+        }
+
+        return $"{p.Width}x{p.Height}, {opaque * 100 / (p.Width * p.Height)}% opaco";
+    }
+
+    foreach (var app in catalog.Apps)
+    {
+        var path = app.ExecutablePath;
+        var aumidIcon = app.Aumid is { } a ? ShellIcon.ForAumid(a, 48) : null;
+        var pathIcon = path is not null ? ShellIcon.For(path, 48) : null;
+        string exists = path is null ? "sin ruta" : File.Exists(path) ? "existe" : "NO existe";
+        Console.WriteLine($"{app.Name}");
+        Console.WriteLine($"  ruta: {path ?? "-"} ({exists})");
+        if (live.TryGetValue(app.AppKey, out var now) && !string.Equals(now, path, StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"  ruta actual (abierta): {now} → icono: {Describe(ShellIcon.For(now, 48))}");
+        }
+
+        if (app.Aumid is not null)
+        {
+            Console.WriteLine($"  AUMID {app.Aumid} → {Describe(aumidIcon)}");
+        }
+
+        Console.WriteLine($"  shell por ruta → {Describe(pathIcon)}");
+        if (path is not null && !File.Exists(path))
+        {
+            var resolved = ExecutableLocator.Resolve(path);
+            Console.WriteLine($"  versión nueva junto a ella: {resolved ?? "ninguna"}{(resolved is null ? "" : $" → {Describe(ShellIcon.For(resolved, 48))}")}");
+            if (resolved is null && ExecutablePaths.GuessPackagedAumid(path) is { } guessed)
+            {
+                Console.WriteLine($"  AUMID deducido {guessed} → {Describe(ShellIcon.ForAumid(guessed, 48))}");
+            }
+        }
+    }
+
+    return 0;
+}

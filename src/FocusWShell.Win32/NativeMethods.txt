@@ -114,3 +114,16 @@ DwmRegisterThumbnail
 DwmUnregisterThumbnail
 DwmUpdateThumbnailProperties
 DWM_THUMBNAIL_PROPERTIES
+
+// Iconos de apps por el shell (AUMID o ruta): IShellItemImageFactory
+SHCreateItemFromParsingName
+IShellItemImageFactory
+SIIGBF
+DeleteObject
+GetDIBits
+CreateCompatibleDC
+DeleteDC
+BITMAPINFO
+BITMAPINFOHEADER
+DIB_USAGE
+BI_COMPRESSION
