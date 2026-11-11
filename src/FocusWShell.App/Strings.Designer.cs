@@ -168,6 +168,9 @@ public static class Strings
     /// <summary>Ocultar el deck</summary>
     public static string Deck_Hide => ResourceManager.GetString("Deck_Hide", Culture)!;
 
+    /// <summary>{0} está al frente (recibe el teclado), pero no es la del foco</summary>
+    public static string Deck_InFrontTip => ResourceManager.GetString("Deck_InFrontTip", Culture)!;
+
     /// <summary>Izquierda</summary>
     public static string Deck_Left => ResourceManager.GetString("Deck_Left", Culture)!;
 

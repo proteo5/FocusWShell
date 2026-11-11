@@ -36,4 +36,7 @@ public sealed record DeckState(
 {
     /// <summary>Proporciones de la vista actual (para los presets de ancho del foco).</summary>
     public ViewWeights Weights { get; init; } = ViewProportions.Default(FocusPosition.Center);
+
+    /// <summary>La ventana al frente (la que recibe el teclado), sea o no de FocusWShell.</summary>
+    public nint? Foreground { get; init; }
 }

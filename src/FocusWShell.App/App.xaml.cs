@@ -170,7 +170,11 @@ public partial class App : Application
             _lists?.Refresh();
             RefreshDeck();
         });
-        _controller.ForegroundChanged += hwnd => Dispatcher.BeginInvoke(() => _lists?.OnForeground(hwnd));
+        _controller.ForegroundChanged += hwnd => Dispatcher.BeginInvoke(() =>
+        {
+            _lists?.OnForeground(hwnd);
+            _deck?.UpdateForeground(hwnd); // el indicador de «al frente», sin esperar al siguiente repaso
+        });
         _controller.PauseChanged += _ => Dispatcher.BeginInvoke(FollowPause);
         _controller.FocusGestureEnabled = g => g switch
         {
@@ -556,7 +560,7 @@ public partial class App : Application
             _controller.Refresh();
             var state = _controller.DeckState();
             var signature = string.Join("|", state.Panels.SelectMany(p => p.Apps).Concat(state.Free)
-                .Select(a => $"{a.AppKey}:{a.Handle}:{a.State}:{a.PanelId}")) + $"|{state.Focus?.Handle}";
+                .Select(a => $"{a.AppKey}:{a.Handle}:{a.State}:{a.PanelId}")) + $"|{state.Focus?.Handle}|{state.Foreground}";
             Dispatcher.BeginInvoke(() =>
             {
                 if (signature != _deckSignature)

@@ -35,6 +35,9 @@ public static class DeckPreview
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-cerrar.png"), mode: "cerrar");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia.png"), mode: "energia");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-anclar.png"), mode: "anclar");
+            // Al frente sin ser la del foco: una libre (Docker) y una de otro monitor (Grafana, en el HP).
+            Save(Sample(manyApps: false) with { Foreground = 50 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-libre.png"));
+            Save(Sample(manyApps: false) with { Foreground = 7 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-hp.png"));
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia-seguro.png"), mode: "energia-seguro");
         }
     }

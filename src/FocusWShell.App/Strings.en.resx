@@ -57,6 +57,7 @@
   <data name="Deck_Closing" xml:space="preserve"><value>Closing…</value></data>
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>empty</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Hide the deck</value></data>
+  <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} is in front (it gets the keyboard), but it isn't the focus app</value></data>
   <data name="Deck_Left" xml:space="preserve"><value>Left</value></data>
   <data name="Deck_LeftShort" xml:space="preserve"><value>Left</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} more</value></data>

@@ -118,6 +118,38 @@ public sealed class DeckWindow : Window
         OwnWindows.Place(new WindowInteropHelper(this).EnsureHandle(), where);
     }
 
+    /// <summary>
+    /// Cambió la ventana al frente: sólo se redibuja si cambia qué se marca (así un toque en curso no se
+    /// pierde por redibujar a cada cambio de ventana).
+    /// </summary>
+    public void UpdateForeground(nint hwnd)
+    {
+        if (_state is not { } state)
+        {
+            return;
+        }
+
+        var before = ForegroundMark(state);
+        _state = state with { Foreground = hwnd };
+        if (IsVisible && ForegroundMark(_state) != before)
+        {
+            Render();
+        }
+    }
+
+    /// <summary>
+    /// La app que se marca como «al frente»: la que recibe el teclado, sólo si no es la del foco (en el caso
+    /// normal no se marca nada) y si está en el deck (un panel o las libres).
+    /// </summary>
+    private static nint? ForegroundMark(DeckState state) =>
+        state.Foreground is { } fg && fg != state.Focus?.Handle
+            && state.Panels.SelectMany(p => p.Apps).Concat(state.Free).Any(a => a.Handle == fg)
+            ? fg
+            : null;
+
+    /// <summary>Si hay un modo encendido: entonces mandan sus bordes, no el de «al frente».</summary>
+    private bool InMode => _moving is not null || _closing || _pinning;
+
     /// <summary>Actualiza el contenido si está visible.</summary>
     public void Update(DeckState state)
     {
@@ -410,6 +442,13 @@ public sealed class DeckWindow : Window
         if (OnTab(tab.Display))
         {
             b.Background = ActiveBrush;
+        }
+        else if (!InMode && _state is { } current && ForegroundMark(current) is { } front
+            && current.Panels.Any(p => string.Equals(TabKey(p.Display), TabKey(tab.Display), StringComparison.OrdinalIgnoreCase) && p.Apps.Any(a => a.Handle == front)))
+        {
+            // La app al frente está en otro monitor: su pestaña lo dice, aunque no se esté viendo.
+            b.BorderBrush = TextBrush;
+            b.BorderThickness = new Thickness(2);
         }
         else
         {
@@ -1154,6 +1193,14 @@ public sealed class DeckWindow : Window
         {
             tile.BorderBrush = WarnBrush;
             tile.BorderThickness = new Thickness(2);
+        }
+        else if (!InMode && app.Handle is { } shownHandle && _state is { } current && ForegroundMark(current) == shownHandle)
+        {
+            // Al frente (recibe el teclado) sin ser la del foco: un borde fino blanco, fuera de los colores
+            // de los modos.
+            tile.BorderBrush = TextBrush;
+            tile.BorderThickness = new Thickness(2);
+            tile.ToolTip = Core.Text.F(Strings.Deck_InFrontTip, app.Name);
         }
 
         tile.Click += async (_, _) =>

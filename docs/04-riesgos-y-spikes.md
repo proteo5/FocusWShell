@@ -561,6 +561,18 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Deck: indicador de la ventana al frente (validación, 2026-11-11)
+
+El usuario a veces hace clic con el ratón en apps que no están en el foco, sobre todo en las del segundo monitor, para hacer algo rápido sin cambiar el foco. Con el clic al foco desactivado, esa app recibe el teclado sin entrar en el foco. El deck seguía marcando sólo la del foco y no decía dónde iba lo que se escribía.
+
+- **Sólo si la ventana al frente no es la del foco.** En el caso normal no se marca nada, así que el indicador, cuando sale, significa «el teclado no está en el foco».
+- **Borde fino blanco** en esa app, sea de un panel o libre. Queda fuera de los colores de los modos (amarillo, rojo e índigo). Mientras hay un modo encendido mandan sus bordes y no se marca.
+- **La pestaña de su monitor** lleva el mismo borde si la app está en otro monitor y esa pestaña no se está viendo.
+- Si la ventana al frente no está en el deck (el escritorio, la barra de tareas, una excluida), no se marca nada. Tocar el deck no lo cambia, porque el deck no se pone al frente.
+- **Al momento:** se usa el aviso de cambio de primer plano que ya tenían las listas. Sólo se redibuja si cambia qué se marca, para no perder un toque a mitad. El repaso de cada 3 s lee además la ventana al frente real, por si algún aviso no llega (p. ej., volver a la misma ventana desde Alt+Tab).
+
+Probado con `--deck-preview`: una libre al frente, y una app del segundo monitor al frente con la pestaña marcada.
+
 ### Deck: volver a la app del foco cuando una libre flota encima (validación, 2026-11-11)
 
 Encontrado en uso. Con una app de panel en el foco, tocar una libre la trae al frente y la deja libre, que es lo correcto. Pero después, tocar en el deck la app del foco no hacía nada: el código ignoraba el toque porque la app ya estaba en el foco. Para volver a ella había que tocar otra app del panel y luego la del foco. Con el ratón bastaba un clic.
@@ -571,7 +583,7 @@ Se compararon tres opciones:
 - Que la libre pase a ser la del foco y la del panel vuelva a su panel. Movía ventanas sin pedirlo, rompía la regla de «una libre sigue libre» y dejaba el foco vacío al cerrarse la ventana flotante.
 - Que tocar la app del foco la traiga al frente. Es la elegida.
 
-Ahora tocar la app del foco la trae al frente con el cursor encima, como un clic del ratón. La libre queda detrás, libre y en su sitio, sin cambiar el layout. Queda pendiente, si hace falta, marcar en el deck qué ventana está realmente al frente: el azul dice qué app ocupa el foco, no cuál se ve encima.
+Ahora tocar la app del foco la trae al frente con el cursor encima, como un clic del ratón. La libre queda detrás, libre y en su sitio, sin cambiar el layout. El azul dice qué app ocupa el foco, no cuál está encima. Para eso está el indicador «al frente» (sección siguiente).
 
 ### Deck v2: tarjetas, mover entre monitores, energía y anclar (validación, 2026-11-11)
 

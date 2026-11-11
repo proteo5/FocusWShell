@@ -57,6 +57,7 @@
   <data name="Deck_Closing" xml:space="preserve"><value>Cerrando…</value></data>
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>vacío</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Ocultar el deck</value></data>
+  <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} está al frente (recibe el teclado), pero no es la del foco</value></data>
   <data name="Deck_Left" xml:space="preserve"><value>Izquierda</value></data>
   <data name="Deck_LeftShort" xml:space="preserve"><value>Izq.</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} más</value></data>

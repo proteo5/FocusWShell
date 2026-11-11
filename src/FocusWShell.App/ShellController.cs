@@ -282,6 +282,7 @@ public sealed class ShellController : IDisposable
             return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays)
             {
                 Weights = _workspace.ProportionsOf(_workspace.View),
+                Foreground = WindowMover.Foreground(),
             };
         }
     }
