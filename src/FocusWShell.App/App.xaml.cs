@@ -116,6 +116,7 @@ public partial class App : Application
             }
         });
         _controller.OpenMissingApps = () => _settings.OpenMissingApps;
+        _controller.SetExclusions(_settings.Exclusions);
         _controller.SceneAppsOpened += (message, result) => Dispatcher.BeginInvoke(() =>
         {
             _tray?.Notify("Escena", message);

@@ -428,6 +428,30 @@ Encontrado aquí y ya corregido:
 
 Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
 
+### Lista de exclusión (M2, 2026-11-10)
+
+Reglas del usuario (`Core.Windows.ExclusionRule`, con pruebas) que se aplican encima de las de elegibilidad. Hay tres tipos:
+
+- **Por ejecutable:** `NetBird.exe` o `netbird`, sin distinguir mayúsculas.
+- **Por AUMID:** para apps empaquetadas.
+- **Por clase de ventana:** excluye un tipo de ventana, no la app entera.
+
+Se guardan en `settings.json` (`"Exclusions": [{ "Kind": "Executable", "Value": "…" }]`). Una ventana excluida no se gestiona ni sale en la lista. Si estaba en un panel, se suelta y vuelve a su sitio original.
+
+En la ventana principal:
+
+- **Clic derecho en una ventana:** «Excluir la app…» (el AUMID si es empaquetada; si no, el ejecutable) o «Excluir sólo este tipo de ventana».
+- **Sección «Excluidas»:** las reglas, cada una con «Quitar», y un campo para añadir una a mano.
+
+| Caso | Resultado |
+| --- | --- |
+| Excluir `msedge.exe` con Edge en Trabajo | Edge se suelta y vuelve a su sitio original. Sale de la lista y de la tira, y la regla queda en `settings.json` |
+| Añadir `MSEDGE` otra vez | «Ya estaba excluida» |
+| Quitar la regla | Edge vuelve a la lista, libre |
+| Clic derecho en NetBird (el caso pendiente de S1) | Ofrece excluir `netbird-ui.exe` o la clase `WailsWebviewWindow`. Excluida, desaparece de la lista |
+
+Encontrado aquí y ya corregido: en el menú, el «_» de una clase (`Chrome_WidgetWin_1`) se tomaba como tecla de acceso y desaparecía.
+
 ### Ventanas no gestionables (M2, 2026-11-10)
 
 Una ventana cuyo proceso tiene más integridad que FocusWShell (una app como administrador, o del sistema) no se puede mover: UIPI lo impide. Antes se quitaba de la lista sin más. Ahora:

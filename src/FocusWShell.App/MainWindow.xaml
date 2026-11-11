@@ -87,11 +87,30 @@
             </ScrollViewer>
         </GroupBox>
 
+        <GroupBox DockPanel.Dock="Bottom" Header="Excluidas: FocusWShell no las gestiona ni las muestra (clic derecho en una ventana para excluirla)" Margin="0,8,0,0" Padding="6">
+            <StackPanel>
+                <WrapPanel x:Name="ExclusionsList" />
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <ComboBox x:Name="ExclusionKindCombo" Width="150" SelectedIndex="0" AutomationProperties.Name="Tipo de exclusión">
+                        <ComboBoxItem Content="Ejecutable" />
+                        <ComboBoxItem Content="AUMID" />
+                        <ComboBoxItem Content="Clase de ventana" />
+                    </ComboBox>
+                    <TextBox x:Name="ExclusionValueBox" Width="260" Margin="6,0" VerticalContentAlignment="Center"
+                             AutomationProperties.Name="Qué excluir" ToolTip="Por ejemplo NetBird.exe" />
+                    <Button Content="Excluir" Padding="12,2" Click="AddExclusion_Click" AutomationProperties.Name="Agregar exclusión" />
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
         <GroupBox DockPanel.Dock="Bottom" Header="Paneles" Margin="0,8,0,0" Padding="6">
             <StackPanel x:Name="PanelsList" />
         </GroupBox>
 
-        <ListView x:Name="WindowList" SelectionMode="Single">
+        <ListView x:Name="WindowList" SelectionMode="Single" ContextMenuOpening="WindowList_ContextMenuOpening">
+            <ListView.ContextMenu>
+                <ContextMenu />
+            </ListView.ContextMenu>
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Panel" Width="300">

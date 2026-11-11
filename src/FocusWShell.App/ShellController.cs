@@ -81,7 +81,33 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
 public sealed class ShellController : IDisposable
 {
     private readonly Lock _gate = new();
-    private readonly EligibilityFilter _filter = new();
+    private EligibilityFilter? _filterCache;
+
+    /// <summary>Lista de exclusión del usuario (M2), aplicada encima de las reglas de elegibilidad.</summary>
+    private IReadOnlyList<ExclusionRule> _exclusions = [];
+
+    private EligibilityFilter Filter => _filterCache ??= new(userExcluded: w => ExclusionRule.AnyMatches(_exclusions, w));
+
+    /// <summary>Las reglas de exclusión actuales.</summary>
+    public IReadOnlyList<ExclusionRule> Exclusions => _exclusions;
+
+    /// <summary>
+    /// Cambia la lista de exclusión (M2). Las ventanas gestionadas que pasen a estar excluidas se sueltan:
+    /// quedan libres y FocusWShell deja de verlas.
+    /// </summary>
+    public ControllerResult SetExclusions(IEnumerable<ExclusionRule> rules)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        lock (_gate)
+        {
+            _exclusions = [.. rules];
+            var released = _workspace.Windows
+                .Where(m => _snapshots.TryGetValue(m.Handle, out var w) && ExclusionRule.AnyMatches(_exclusions, w))
+                .Select(m => (Command)new Release(m.Handle))
+                .ToList();
+            return released.Count > 0 ? RunLocked(released) : new ControllerResult([], [], null);
+        }
+    }
     private readonly Workspace _workspace = new();
     private readonly ExpectationRegistry _expectations = new();
     private WindowEventWatcher? _watcher;
@@ -1033,7 +1059,7 @@ public sealed class ShellController : IDisposable
     {
         var own = WindowEnumerator.CurrentIntegrity();
         var candidates = WindowEnumerator.EnumerateTopLevel()
-            .Select(w => (Window: w, Eligibility: _filter.Evaluate(w, own)))
+            .Select(w => (Window: w, Eligibility: Filter.Evaluate(w, own)))
             .Where(c => c.Eligibility.IsCandidate)
             .ToList();
         var windows = candidates.Where(c => c.Eligibility.Manageable).Select(c => c.Window).ToList();

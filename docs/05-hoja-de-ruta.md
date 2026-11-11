@@ -64,7 +64,7 @@ Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspens
 - Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)). **Hecho** para monitores auxiliares que se desconectan y vuelven, y para la pérdida del monitor principal (otro hace de principal hasta que vuelve); falta probar una tablet y desconectar de verdad el principal.
 - Reanudación tras suspensión. **Hecho** (simulada con el mensaje de energía); falta una suspensión real.
 - Detección y presentación de ventanas no gestionables (elevadas). **Hecho:** salen en la lista con el motivo y sin poder elegir panel; falta probar el atajo «Al foco» con el teclado.
-- Lista de exclusión editable.
+- Lista de exclusión editable. **Hecho:** por ejecutable, AUMID o clase, desde el clic derecho en la lista o a mano; se guarda en `settings.json`.
 
 Criterio de salida: CA5 y las siete CA juntas en una semana de uso diario sin tener que usar el atajo de emergencia por un fallo.
 
