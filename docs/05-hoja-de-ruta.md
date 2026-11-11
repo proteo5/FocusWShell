@@ -61,10 +61,10 @@ Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspens
 
 - `EnterFullscreen` / `ExitFullscreen` por monitor. **Hecho en M1b** ([ADR 0012](adr/0012-vistas-posicion-del-foco.md)).
 - Detección de pantalla completa propia de las apps (juegos, presentaciones) y pausa de ese monitor. **Hecho** (F11 en Edge, ver [riesgos](04-riesgos-y-spikes.md)); falta probar un juego y una presentación.
-- Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)). **Hecho** para monitores auxiliares que se desconectan y vuelven; falta probar una tablet, la pérdida del monitor principal y la suspensión.
-- Reanudación tras suspensión.
-- Detección y presentación de ventanas no gestionables (elevadas).
-- Lista de exclusión editable.
+- Cambios de monitores con *debounce* y layouts derivados (S6), incluidas tablets por wifi que van y vienen (R11, [ADR 0009](adr/0009-tablets-como-monitores-auxiliares.md)). **Hecho** para monitores auxiliares que se desconectan y vuelven, y para la pérdida del monitor principal (otro hace de principal hasta que vuelve); falta probar una tablet y desconectar de verdad el principal.
+- Reanudación tras suspensión. **Hecho** (simulada con el mensaje de energía); falta una suspensión real.
+- Detección y presentación de ventanas no gestionables (elevadas). **Hecho:** salen en la lista con el motivo y sin poder elegir panel; falta probar el atajo «Al foco» con el teclado.
+- Lista de exclusión editable. **Hecho:** por ejecutable, AUMID o clase, desde el clic derecho en la lista o a mano; se guarda en `settings.json`.
 
 Criterio de salida: CA5 y las siete CA juntas en una semana de uso diario sin tener que usar el atajo de emergencia por un fallo.
 

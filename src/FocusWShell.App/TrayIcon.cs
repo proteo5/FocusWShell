@@ -13,9 +13,10 @@ public sealed class TrayIcon : IDisposable
     private readonly Forms.ToolStripMenuItem _keepAwakeItem;
     private readonly Forms.ToolStripMenuItem _scenesItem = new("Escenas");
     private readonly Forms.ToolStripMenuItem _restoreItem;
+    private readonly Forms.ToolStripMenuItem _startupItem;
     private Func<int, string> _sceneChord = n => "";
 
-    public TrayIcon(Action open, Action toggleKeepAwake, Action restoreAll, Action exit, Action toggleDeck)
+    public TrayIcon(Action open, Action toggleKeepAwake, Action restoreAll, Action exit, Action toggleDeck, Action toggleStartup)
     {
         _normal = DrawIcon(Color.FromArgb(40, 120, 220));
         _awake = DrawIcon(Color.FromArgb(235, 160, 30));
@@ -28,6 +29,8 @@ public sealed class TrayIcon : IDisposable
         _restoreItem = new Forms.ToolStripMenuItem("Restaurar todas", null, (_, _) => restoreAll());
         menu.Items.Add(_restoreItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
+        _startupItem = new Forms.ToolStripMenuItem("Iniciar con Windows", null, (_, _) => toggleStartup());
+        menu.Items.Add(_startupItem);
         menu.Items.Add("Salir (devuelve las ventanas a su sitio)", null, (_, _) => exit());
 
         _icon = new Forms.NotifyIcon
@@ -66,6 +69,15 @@ public sealed class TrayIcon : IDisposable
             string text = chord.Length > 0 ? $"{name}\t({chord})" : name;
             _scenesItem.DropDownItems.Add(text, null, (_, _) => apply(name));
         }
+    }
+
+    /// <summary>Marca "Iniciar con Windows"; <paramref name="other"/> es otra copia registrada, si la hay.</summary>
+    public void ShowStartup(bool enabled, string? other)
+    {
+        _startupItem.Checked = enabled;
+        _startupItem.ToolTipText = enabled ? "Se abre al iniciar sesión"
+            : other is not null ? $"Ahora se inicia otra copia: {other}. Márcalo para iniciar ésta."
+            : "No se abre al iniciar sesión";
     }
 
     /// <summary>Refleja en el menú y en el icono si la pantalla se mantiene encendida.</summary>

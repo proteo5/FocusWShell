@@ -28,11 +28,34 @@ public partial class App : Application
 
     public bool IsExiting { get; private set; }
 
+    private const string ExitEventName = @"Local\FocusWShell.Salir";
+    private EventWaitHandle? _exitRequested;
+    private RegisteredWaitHandle? _exitWait;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
+        // "FocusWShell.exe --salir": pide a la instancia abierta que salga devolviendo las ventanas (lo usa
+        // build\instalar.ps1 antes de reemplazar la copia instalada).
+        bool exitRequest = e.Args.Any(a => a is "--salir" or "--exit");
         _singleInstance = new Mutex(initiallyOwned: true, @"Local\FocusWShell", out bool createdNew);
+        if (exitRequest)
+        {
+            if (!createdNew && EventWaitHandle.TryOpenExisting(ExitEventName, out var exitEvent))
+            {
+                using (exitEvent)
+                {
+                    exitEvent.Set();
+                }
+            }
+
+            _singleInstance.Dispose();
+            _singleInstance = null;
+            Shutdown();
+            return;
+        }
+
         if (!createdNew)
         {
             MessageBox.Show("FocusWShell ya se está ejecutando. Búscalo en el área de notificación.", "FocusWShell");
@@ -41,6 +64,10 @@ public partial class App : Application
             Shutdown();
             return;
         }
+
+        _exitRequested = new EventWaitHandle(false, EventResetMode.AutoReset, ExitEventName);
+        _exitWait = ThreadPool.RegisterWaitForSingleObject(
+            _exitRequested, (_, _) => Dispatcher.BeginInvoke(ExitAndRestore), null, Timeout.Infinite, executeOnlyOnce: true);
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -116,6 +143,7 @@ public partial class App : Application
             }
         });
         _controller.OpenMissingApps = () => _settings.OpenMissingApps;
+        _controller.SetExclusions(_settings.Exclusions);
         _controller.SceneAppsOpened += (message, result) => Dispatcher.BeginInvoke(() =>
         {
             _tray?.Notify("Escena", message);
@@ -127,10 +155,10 @@ public partial class App : Application
         });
         _controller.StartWatching();
 
-        // S6: monitores que se conectan o desconectan (también tablets por wifi).
+        // S6: monitores que se conectan o desconectan (también tablets por wifi). M2: y la suspensión.
         _displays = new DisplayChangeListener(
             _controller.BeginDisplayChange,
-            () => Task.Run(() =>
+            resumed => Task.Run(() =>
             {
                 var (events, result) = _controller.EndDisplayChange();
                 Dispatcher.BeginInvoke(() =>
@@ -138,21 +166,23 @@ public partial class App : Application
                     FollowDeckMonitor();
                     if (events.Count > 0)
                     {
-                        _tray?.Notify("Monitores", string.Join(" ", events));
+                        _tray?.Notify(resumed ? "Tras la suspensión" : "Monitores", string.Join(" ", events));
                     }
 
                     if (_main?.IsVisible == true)
                     {
                         _main.Refresh();
-                        if (events.Count > 0)
+                        if (events.Count > 0 || resumed)
                         {
-                            _main.SetStatus(string.Join(Environment.NewLine, events) +
+                            var lines = resumed ? events.Prepend("Volvió de la suspensión: se revisaron ventanas y monitores.") : events;
+                            _main.SetStatus(string.Join(Environment.NewLine, lines) +
                                 (result is null ? "" : Environment.NewLine + global::FocusWShell.App.MainWindow.Describe(result)));
                         }
                     }
                 });
             }));
-        _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore, () => Dispatcher.BeginInvoke(ToggleDeck));
+        _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore, () => Dispatcher.BeginInvoke(ToggleDeck), ToggleStartup);
+        ShowStartup();
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
         RefreshTrayScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(RefreshTrayScenes);
@@ -538,6 +568,35 @@ public partial class App : Application
         });
     }
 
+    private static string ExePath => Environment.ProcessPath ?? "";
+
+    private void ShowStartup()
+    {
+        var registered = StartWithWindows.RegisteredPath();
+        bool mine = StartWithWindows.IsEnabledFor(ExePath);
+        _tray?.ShowStartup(mine, mine ? null : registered);
+    }
+
+    /// <summary>
+    /// Iniciar con Windows este ejecutable, o dejar de hacerlo. Si estaba registrada otra copia (p. ej. la
+    /// de desarrollo), marcarlo la cambia por ésta.
+    /// </summary>
+    private void ToggleStartup()
+    {
+        bool enable = !StartWithWindows.IsEnabledFor(ExePath);
+        if (enable)
+        {
+            StartWithWindows.Enable(ExePath);
+        }
+        else
+        {
+            StartWithWindows.Disable();
+        }
+
+        ShowStartup();
+        _tray?.Notify("Iniciar con Windows", enable ? $"FocusWShell se abrirá al iniciar sesión ({ExePath})." : "FocusWShell ya no se abrirá al iniciar sesión.");
+    }
+
     private void ExitAndRestore()
     {
         IsExiting = true;
@@ -586,6 +645,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _exitWait?.Unregister(null);
+        _exitRequested?.Dispose();
         _displays?.Dispose();
         _strips?.CloseAll();
         _lists?.CloseAll();

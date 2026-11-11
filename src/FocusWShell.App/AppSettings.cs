@@ -11,6 +11,7 @@ public sealed class AppSettings
     {
         WriteIndented = true,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
     };
 
     public static string FilePath { get; } = Path.Combine(
@@ -46,6 +47,11 @@ public sealed class AppSettings
 
     /// <summary>Al aplicar una escena, abrir las apps que falten y ponerlas en su panel (ADR 0011).</summary>
     public bool OpenMissingApps { get; set; } = true;
+
+    /// <summary>
+    /// Lista de exclusión (M2): apps o clases de ventana que FocusWShell no gestiona ni muestra en la lista.
+    /// </summary>
+    public List<FocusWShell.Core.Windows.ExclusionRule> Exclusions { get; set; } = [];
 
     /// <summary>Un clic en la propia ventana la lleva al foco. Desactivado: las ventanas saltarían a cada clic.</summary>
     public bool FocusOnClick { get; set; }

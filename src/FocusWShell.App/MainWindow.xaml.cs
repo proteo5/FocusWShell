@@ -5,8 +5,10 @@ using System.Text;
 using System.Windows;
 using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
+using FocusWShell.Core.Windows;
 using FocusWShell.Win32.Persistence;
 using FocusWShell.Win32.Scenes;
+using WC = System.Windows.Controls;
 
 namespace FocusWShell.App;
 
@@ -44,7 +46,93 @@ public partial class MainWindow : Window
         LoadScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(LoadScenes);
         _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => BuildCatalog(_controller.Panels()));
+        BuildExclusions();
         Refresh();
+    }
+
+    // --- Lista de exclusión (M2) -------------------------------------------------------------------
+
+    /// <summary>Las reglas, cada una con su botón para quitarla.</summary>
+    private void BuildExclusions()
+    {
+        ExclusionsList.Children.Clear();
+        if (_settings.Exclusions.Count == 0)
+        {
+            ExclusionsList.Children.Add(new WC.TextBlock { Text = "Ninguna.", Foreground = System.Windows.Media.Brushes.Gray, Margin = new Thickness(2) });
+        }
+
+        foreach (var rule in _settings.Exclusions)
+        {
+            var item = new WC.StackPanel { Orientation = WC.Orientation.Horizontal, Margin = new Thickness(0, 0, 12, 4) };
+            item.Children.Add(new WC.TextBlock { Text = rule.Describe(), VerticalAlignment = VerticalAlignment.Center });
+            var remove = new WC.Button { Content = "Quitar", Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(6, 0, 0, 0) };
+            System.Windows.Automation.AutomationProperties.SetName(remove, $"Quitar exclusión {rule.Describe()}");
+            remove.Click += (_, _) => SetExclusions(_settings.Exclusions.Where(r => r != rule).ToList(), $"Ya no se excluye: {rule.Describe()}.");
+            item.Children.Add(remove);
+            ExclusionsList.Children.Add(item);
+        }
+    }
+
+    private void AddExclusion_Click(object sender, RoutedEventArgs e)
+    {
+        var value = ExclusionValueBox.Text.Trim();
+        if (value.Length == 0)
+        {
+            SetStatus("Escribe qué excluir: el ejecutable (NetBird.exe), el AUMID o la clase de ventana.");
+            return;
+        }
+
+        var kind = (ExclusionKind)Math.Max(0, ExclusionKindCombo.SelectedIndex);
+        AddExclusion(new ExclusionRule(kind, value));
+        ExclusionValueBox.Clear();
+    }
+
+    private void AddExclusion(ExclusionRule rule)
+    {
+        if (_settings.Exclusions.Any(r => r.SameAs(rule)))
+        {
+            SetStatus($"Ya estaba excluida: {rule.Describe()}.");
+            return;
+        }
+
+        SetExclusions([.. _settings.Exclusions, rule], $"Excluida: {rule.Describe()}. FocusWShell ya no la gestiona ni la muestra.");
+    }
+
+    private void SetExclusions(List<ExclusionRule> rules, string message)
+    {
+        _settings.Exclusions = rules;
+        _settings.Save();
+        var result = _controller.SetExclusions(rules);
+        BuildExclusions();
+        Refresh();
+        SetStatus(message + (result.Applied is null && result.Restores.Count == 0 ? "" : Environment.NewLine + Describe(result)));
+    }
+
+    /// <summary>En un menú, "_" marca la tecla de acceso: se duplica para que se vea tal cual (Chrome_WidgetWin_1).</summary>
+    private static string NoAccessKey(string text) => text.Replace("_", "__", StringComparison.Ordinal);
+
+    /// <summary>Clic derecho en una ventana de la lista: excluir su app o ese tipo de ventana.</summary>
+    private void WindowList_ContextMenuOpening(object sender, WC.ContextMenuEventArgs e)
+    {
+        var menu = WindowList.ContextMenu!;
+        menu.Items.Clear();
+        if (WindowList.SelectedItem is not WindowRow row)
+        {
+            e.Handled = true; // nada seleccionado: no hay menú
+            return;
+        }
+
+        if (ExclusionRule.ForApp(row.Snapshot) is { } appRule)
+        {
+            var app = new WC.MenuItem { Header = NoAccessKey($"Excluir la app {row.App} ({appRule.Value})") };
+            app.Click += (_, _) => AddExclusion(appRule);
+            menu.Items.Add(app);
+        }
+
+        var classRule = new ExclusionRule(ExclusionKind.WindowClass, row.Snapshot.ClassName);
+        var cls = new WC.MenuItem { Header = NoAccessKey($"Excluir sólo este tipo de ventana (clase {row.Snapshot.ClassName})") };
+        cls.Click += (_, _) => AddExclusion(classRule);
+        menu.Items.Add(cls);
     }
 
     /// <summary>Línea de atajos de la cabecera, con los que están en uso.</summary>
@@ -254,6 +342,16 @@ public partial class MainWindow : Window
             var row = new WindowRow(w, assignment, _controller.AppName(w)) { State = StateOf(m, byId) };
             row.PropertyChanged += Row_PropertyChanged;
             _rows.Add(row);
+        }
+
+        // Las que no se pueden mover (M2), al final y sin elegir panel: así no "desaparecen".
+        foreach (var (w, reason) in _controller.UnmanageableWindows())
+        {
+            _rows.Add(new WindowRow(w, AssignmentOption.Free, _controller.AppName(w))
+            {
+                State = $"No gestionable: {reason}",
+                Manageable = false,
+            });
         }
 
         foreach (var gone in _pending.Keys.Except(windows.Select(w => w.Handle)).ToList())

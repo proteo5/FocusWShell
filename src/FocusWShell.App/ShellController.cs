@@ -81,7 +81,33 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
 public sealed class ShellController : IDisposable
 {
     private readonly Lock _gate = new();
-    private readonly EligibilityFilter _filter = new();
+    private EligibilityFilter? _filterCache;
+
+    /// <summary>Lista de exclusión del usuario (M2), aplicada encima de las reglas de elegibilidad.</summary>
+    private IReadOnlyList<ExclusionRule> _exclusions = [];
+
+    private EligibilityFilter Filter => _filterCache ??= new(userExcluded: w => ExclusionRule.AnyMatches(_exclusions, w));
+
+    /// <summary>Las reglas de exclusión actuales.</summary>
+    public IReadOnlyList<ExclusionRule> Exclusions => _exclusions;
+
+    /// <summary>
+    /// Cambia la lista de exclusión (M2). Las ventanas gestionadas que pasen a estar excluidas se sueltan:
+    /// quedan libres y FocusWShell deja de verlas.
+    /// </summary>
+    public ControllerResult SetExclusions(IEnumerable<ExclusionRule> rules)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        lock (_gate)
+        {
+            _exclusions = [.. rules];
+            var released = _workspace.Windows
+                .Where(m => _snapshots.TryGetValue(m.Handle, out var w) && ExclusionRule.AnyMatches(_exclusions, w))
+                .Select(m => (Command)new Release(m.Handle))
+                .ToList();
+            return released.Count > 0 ? RunLocked(released) : new ControllerResult([], [], null);
+        }
+    }
     private readonly Workspace _workspace = new();
     private readonly ExpectationRegistry _expectations = new();
     private WindowEventWatcher? _watcher;
@@ -1032,12 +1058,20 @@ public sealed class ShellController : IDisposable
     public IReadOnlyList<WindowSnapshot> Refresh()
     {
         var own = WindowEnumerator.CurrentIntegrity();
-        var windows = WindowEnumerator.EnumerateTopLevel()
-            .Where(w => _filter.Evaluate(w, own) is { IsCandidate: true, Manageable: true })
+        var candidates = WindowEnumerator.EnumerateTopLevel()
+            .Select(w => (Window: w, Eligibility: Filter.Evaluate(w, own)))
+            .Where(c => c.Eligibility.IsCandidate)
             .ToList();
+        var windows = candidates.Where(c => c.Eligibility.Manageable).Select(c => c.Window).ToList();
 
         lock (_gate)
         {
+            // Las que se ven pero no se pueden mover (M2): elevadas o del sistema. Se muestran con su motivo.
+            _unmanageable = candidates
+                .Where(c => !c.Eligibility.Manageable)
+                .Select(c => (c.Window, Unmanageable.Reason(c.Window.Integrity, own) ?? "no se puede mover"))
+                .ToList();
+
             foreach (var w in windows)
             {
                 _snapshots[w.Handle] = w;
@@ -1079,15 +1113,38 @@ public sealed class ShellController : IDisposable
     public RestoreReport RestoreAllWindows() =>
         Execute(new RestoreAll()).Restores is [var report, ..] ? report : new RestoreReport([]);
 
+    private List<(WindowSnapshot Window, string Reason)> _unmanageable = [];
+
+    /// <summary>
+    /// Ventanas que se ven pero FocusWShell no puede mover, con el motivo (M2), según el último
+    /// <see cref="Refresh"/>.
+    /// </summary>
+    public IReadOnlyList<(WindowSnapshot Window, string Reason)> UnmanageableWindows()
+    {
+        lock (_gate)
+        {
+            return [.. _unmanageable];
+        }
+    }
+
     /// <summary>Promueve la ventana en primer plano, si está gestionada (atajo).</summary>
     public ControllerResult PromoteForeground()
     {
         var foreground = WindowMover.Foreground();
         lock (_gate)
         {
-            return _workspace.IsManaged(foreground)
-                ? RunLocked([new Promote(foreground)])
-                : new ControllerResult(["La ventana activa no está gestionada por FocusWShell."], [], null);
+            if (_workspace.IsManaged(foreground))
+            {
+                return RunLocked([new Promote(foreground)]);
+            }
+
+            var why = _unmanageable.FirstOrDefault(u => u.Window.Handle == foreground);
+            return new ControllerResult(
+                [why.Window is not null
+                    ? $"{why.Window.Title}: FocusWShell no puede moverla, {why.Reason}."
+                    : "La ventana activa no está gestionada por FocusWShell."],
+                [],
+                null);
         }
     }
 
@@ -1259,32 +1316,37 @@ public sealed class ShellController : IDisposable
     /// </summary>
     private bool ReconcileDisplaysLocked(IReadOnlyList<DisplayInfo> displays)
     {
-        var principal = DisplayTopology.Principal(displays);
         foreach (var d in displays)
         {
             _displayNames[d.Key] = d.FriendlyName ?? d.DeviceName;
         }
 
-        var connected = displays.Where(d => d != principal).Select(d => d.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var plan = DisplayReconcile.Compute([.. _workspace.KnownDisplays], _workspace.IsDisplayMissing, displays, _principalKey);
+        _principalKey = plan.Principal ?? _principalKey;
         bool changed = false;
-        foreach (var known in _workspace.KnownDisplays)
+        foreach (var command in plan.Commands)
         {
-            bool present = connected.Contains(known);
-            bool wasMissing = _workspace.IsDisplayMissing(known);
-            Command command = present ? new DisplayAdded(known) : new DisplayRemoved(known);
             changed |= _workspace.Execute(command).Effects.Count > 0;
-            if (present && wasMissing)
+        }
+
+        foreach (var e in plan.Events)
+        {
+            _displayEvents.Add(e switch
             {
-                _displayEvents.Add($"Volvió {NameOf(known)}: sus ventanas regresan a él.");
-            }
-            else if (!present && !wasMissing)
-            {
-                _displayEvents.Add($"Se desconectó {NameOf(known)}: sus ventanas pasan a los paneles del principal hasta que vuelva.");
-            }
+                DisplayReturned r => $"Volvió {NameOf(r.Display)}: sus ventanas regresan a él.",
+                DisplayLost l => $"Se desconectó {NameOf(l.Display)}: sus ventanas pasan a los paneles del principal hasta que vuelva.",
+                PrincipalChanged { PreviousConnected: false } p =>
+                    $"Se desconectó el principal ({NameOf(p.Previous)}): {NameOf(p.Current)} hace de principal, con el Centro y todas las ventanas, hasta que vuelva.",
+                PrincipalChanged p => $"{NameOf(p.Current)} vuelve a ser el principal; {NameOf(p.Previous)} recupera sus paneles.",
+                _ => e.ToString(),
+            });
         }
 
         return changed;
     }
+
+    /// <summary>El monitor principal de la última reconciliación (M2: si cambia, se avisa).</summary>
+    private string? _principalKey;
 
     private readonly Dictionary<string, string> _displayNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _displayEvents = [];
