@@ -428,6 +428,29 @@ Encontrado aquí y ya corregido:
 
 Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
 
+### Ventanas de tamaño fijo (validación, 2026-11-10)
+
+Encontrado en uso: NetBird no declara borde redimensionable (`WS_THICKFRAME`) ni botón de maximizar, pero el layout la estiraba a su hueco (943×689, cuando la suya es de unos 366×653) y se veía mal. Ya se leía `IsResizable` al enumerar; el layout no lo usaba.
+
+Ahora (`Core.Layout.FixedSize`, con pruebas):
+
+- **Automático:** una ventana sin borde redimensionable se mueve, nunca se redimensiona.
+- **Por app** (en el catálogo, `SizeMode`): «Según la ventana», «Tamaño fijo: sólo moverla» o «Redimensionarla siempre». Se elige con clic derecho en la lista principal. Las gestionadas de tamaño fijo dicen «· tamaño fijo» en su estado.
+- **Su tamaño propio** sale del diario (el rectángulo de antes de que FocusWShell la tocara, menos los bordes invisibles). Así se corrige una que ya se estiró. Entre monitores se escala por DPI.
+- **En el layout:** el motor le reserva al menos ese tamaño, como un mínimo. Después se coloca en su hueco:
+  - en un panel, arriba y centrada en horizontal;
+  - maximizada (template Fill o pantalla completa), centrada en el monitor y sin maximizar;
+  - si no cabe, se queda con su tamaño y una nota lo explica.
+
+Probado con NetBird en Trabajo (columna de 929 px):
+
+| Caso | Resultado |
+| --- | --- |
+| Automático | Conserva sus 380×660, arriba y centrada en la columna. El estado dice «En Trabajo · tamaño fijo» |
+| «Redimensionarla siempre» | Se estira a 943×1371, como antes |
+| Vuelta a «Según la ventana» | Vuelve a 380×660, centrada |
+| Liberarla | Vuelve a su sitio original con su tamaño |
+
 ### Lista de exclusión (M2, 2026-11-10)
 
 Reglas del usuario (`Core.Windows.ExclusionRule`, con pruebas) que se aplican encima de las de elegibilidad. Hay tres tipos:

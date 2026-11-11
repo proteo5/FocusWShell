@@ -25,6 +25,22 @@ public sealed record CatalogApp(
 
     /// <summary>Si el usuario le puso el nombre: entonces el gestor no lo vuelve a cambiar.</summary>
     public bool Renamed { get; init; }
+
+    /// <summary>Si sus ventanas se pueden redimensionar; por defecto lo dicen ellas mismas.</summary>
+    public AppSizeMode SizeMode { get; init; }
+}
+
+/// <summary>Cómo trata el layout el tamaño de las ventanas de una app.</summary>
+public enum AppSizeMode
+{
+    /// <summary>Según la ventana: se redimensiona si tiene borde redimensionable (<c>WS_THICKFRAME</c>).</summary>
+    Auto,
+
+    /// <summary>Tamaño fijo: sólo se mueve, aunque diga que se puede redimensionar.</summary>
+    Fixed,
+
+    /// <summary>Se redimensiona siempre, aunque diga que no.</summary>
+    Resizable,
 }
 
 /// <summary>Catálogo de apps que se llena por detección suave: nunca se escanea lo instalado.</summary>
@@ -122,6 +138,18 @@ public sealed class AppCatalog
         }
 
         _apps[appKey] = app with { Hidden = hidden };
+        return true;
+    }
+
+    /// <summary>Cambia cómo se trata el tamaño de sus ventanas. Devuelve si cambió.</summary>
+    public bool SetSizeMode(string appKey, AppSizeMode mode)
+    {
+        if (!_apps.TryGetValue(appKey, out var app) || app.SizeMode == mode)
+        {
+            return false;
+        }
+
+        _apps[appKey] = app with { SizeMode = mode };
         return true;
     }
 

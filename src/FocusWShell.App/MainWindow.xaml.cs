@@ -129,6 +129,35 @@ public partial class MainWindow : Window
             menu.Items.Add(app);
         }
 
+        // Tamaño: según la ventana, fijo (sólo moverla) o redimensionar siempre.
+        if (row.Manageable)
+        {
+            var (_, mode, appKey) = _controller.SizeInfo(row.Snapshot.Handle);
+            if (appKey.Length > 0)
+            {
+                var size = new WC.MenuItem { Header = NoAccessKey($"Tamaño de {row.App}") };
+                foreach (var (option, label) in new[]
+                {
+                    (AppSizeMode.Auto, $"Según la ventana ({(row.Snapshot.IsResizable ? "se puede redimensionar" : "tamaño fijo")})"),
+                    (AppSizeMode.Fixed, "Tamaño fijo: sólo moverla"),
+                    (AppSizeMode.Resizable, "Redimensionarla siempre"),
+                })
+                {
+                    var item = new WC.MenuItem { Header = NoAccessKey(label), IsCheckable = true, IsChecked = mode == option };
+                    item.Click += (_, _) =>
+                    {
+                        var result = _controller.SetAppSizeMode(appKey, option);
+                        Refresh();
+                        SetStatus($"{row.App}: {label.ToLowerInvariant()}." + (result.Applied is null ? "" : Environment.NewLine + Describe(result)));
+                    };
+                    size.Items.Add(item);
+                }
+
+                menu.Items.Add(size);
+                menu.Items.Add(new WC.Separator());
+            }
+        }
+
         var classRule = new ExclusionRule(ExclusionKind.WindowClass, row.Snapshot.ClassName);
         var cls = new WC.MenuItem { Header = NoAccessKey($"Excluir sólo este tipo de ventana (clase {row.Snapshot.ClassName})") };
         cls.Click += (_, _) => AddExclusion(classRule);
@@ -339,7 +368,13 @@ public partial class MainWindow : Window
         {
             managed.TryGetValue(w.Handle, out var m);
             var assignment = _pending.TryGetValue(w.Handle, out var p) ? p : m is null ? AssignmentOption.Free : AssignmentOf(m);
-            var row = new WindowRow(w, assignment, _controller.AppName(w)) { State = StateOf(m, byId) };
+            var state = StateOf(m, byId);
+            if (m is not null && _controller.SizeInfo(w.Handle).Fixed)
+            {
+                state += " · tamaño fijo";
+            }
+
+            var row = new WindowRow(w, assignment, _controller.AppName(w)) { State = state };
             row.PropertyChanged += Row_PropertyChanged;
             _rows.Add(row);
         }

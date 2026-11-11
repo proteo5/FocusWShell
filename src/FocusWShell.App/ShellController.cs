@@ -1414,6 +1414,64 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>
+    /// Las gestionadas de tamaño fijo y su tamaño propio. Sale del diario (su rectángulo antes de que
+    /// FocusWShell la tocara) para corregir las que ya se estiraron.
+    /// </summary>
+    private Dictionary<nint, PixelSize> FixedSizesLocked()
+    {
+        var originals = Journal.Load().ToDictionary(e => (nint)e.Handle, e => e.NormalPosition);
+        var sizes = new Dictionary<nint, PixelSize>();
+        foreach (var m in _workspace.Windows)
+        {
+            if (_snapshots.TryGetValue(m.Handle, out var w) && FixedSize.IsFixed(w.IsResizable, SizeModeOf(w)))
+            {
+                sizes[m.Handle] = FixedSize.Natural(w.VisibleBounds, w.Bounds, originals.TryGetValue(m.Handle, out var o) ? o : null);
+            }
+        }
+
+        return sizes;
+    }
+
+    private AppSizeMode SizeModeOf(WindowSnapshot w) => _catalog.Find(MinSizeCatalog.KeyFor(w))?.SizeMode ?? AppSizeMode.Auto;
+
+    /// <summary>
+    /// Cómo trata el layout el tamaño de una app: según la ventana, fijo o siempre redimensionable.
+    /// Se guarda en el catálogo y se recoloca al momento.
+    /// </summary>
+    public ControllerResult SetAppSizeMode(string appKey, AppSizeMode mode)
+    {
+        ControllerResult result;
+        lock (_gate)
+        {
+            if (!_catalog.SetSizeMode(appKey, mode))
+            {
+                return new ControllerResult([], [], null);
+            }
+
+            CatalogFile.Save(_catalog);
+            result = RunLocked([], forceLayout: _workspace.Windows.Count > 0);
+        }
+
+        CatalogChanged?.Invoke();
+        return result;
+    }
+
+    /// <summary>Si FocusWShell trata esta ventana como de tamaño fijo, y por qué (para los menús).</summary>
+    public (bool Fixed, AppSizeMode Mode, string AppKey) SizeInfo(nint handle)
+    {
+        lock (_gate)
+        {
+            if (!_snapshots.TryGetValue(handle, out var w))
+            {
+                return (false, AppSizeMode.Auto, "");
+            }
+
+            var mode = SizeModeOf(w);
+            return (FixedSize.IsFixed(w.IsResizable, mode), mode, MinSizeCatalog.KeyFor(w));
+        }
+    }
+
     private SceneApplyReport ApplyLayoutLocked()
     {
         var displays = DisplayEnumerator.Enumerate();
@@ -1442,6 +1500,7 @@ public sealed class ShellController : IDisposable
             WorkLower = Assign(c.RightLower),
             Parked = Map(c.Parked),
             TileSizes = _workspace.Windows.ToDictionary(w => w.Handle, w => w.Size),
+            FixedSizes = FixedSizesLocked(),
             Scroll = new[] { c.Left, c.LeftLower, c.Right, c.RightLower }.OfType<PanelView>().Concat(c.Aux.SelectMany(a => a.Panels))
                 .Where(v => v.ScrollRow > 0 || v.Reveal is not null)
                 .ToDictionary(v => v.Panel.Id, v => (v.ScrollRow, v.Reveal)),
