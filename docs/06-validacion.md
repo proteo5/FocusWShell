@@ -46,6 +46,19 @@ Actividades: código, investigación, …
 - Confianza en el gestor:
 ```
 
+## Pruebas pendientes con el usuario (M2)
+
+Lo que no se pudo probar sin estar delante, o sin hardware que desconectar. Se marca al hacerlo, con la fecha y qué pasó; si algo falla, va al diario como fricción de tipo «fallo».
+
+- [ ] **Suspensión real** con apps en paneles y el deck abierto: al volver, todo en su sitio en unos 4 s y el aviso «Volvió de la suspensión».
+- [ ] **Suspensión con la tablet:** la tablet (Apollo/Artemis) tarda en volver; sus paneles pasan al principal y regresan cuando vuelve.
+- [ ] **Desconectar el monitor principal:** el otro hace de principal, con el Centro y todas las ventanas. Al reconectarlo, cada uno recupera lo suyo. Anotar si Windows lo vuelve a nombrar principal.
+- [ ] **Desconectar la tablet con el deck fijado en ella:** el deck vuelve a la esquina del principal; al reconectarla, vuelve a la tablet.
+- [ ] **«Al foco» con el teclado** sobre una ventana elevada (p. ej. el Administrador de tareas): avisa de que corre como administrador.
+- [ ] **Un juego en pantalla completa** y **una presentación de PowerPoint:** ese monitor queda en pausa (sin tiras ni deck) y todo vuelve al salir.
+- [ ] **Arrastrar el borde de una ventana con el ratón** y **clic en la barra de tareas:** se comportan como en las pruebas automáticas.
+- [ ] **Una semana sin el atajo de emergencia por un fallo** (criterio de salida de M2). Cada uso, con su motivo, al diario.
+
 ## Decisión de continuidad
 
 Después de M2 y al menos tres semanas de uso:

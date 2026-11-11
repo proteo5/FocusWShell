@@ -21,11 +21,26 @@ Una ventana sólo cambia de lugar cuando tú lo decides. Hacer clic en el chat o
 
 ## Estado
 
-Hito M0 (núcleo): primera versión usable con un layout fijo Contexto | Centro | Trabajo en el monitor más ancho. Funciona con varios monitores y escalas distintas, pero la escena vive en un solo monitor. Todavía sin escenas guardadas ni templates por panel.
+Hitos M0, M1, M1b y M2 hechos en código: paneles propios en varios monitores, vistas, escenas, tiles y lista, deck (también en una tablet), y robustez (pantalla completa de las apps, suspensión, monitores que van y vienen, ventanas elevadas, lista de exclusión). Ahora toca usarlo a diario y validar ([06-validacion](docs/06-validacion.md)). El estado de cada hito está en la [hoja de ruta](docs/05-hoja-de-ruta.md).
+
+**Uso diario:** instala una copia estable, fuera del repositorio:
+
+```powershell
+powershell -File build\instalar.ps1 -Abrir
+```
+
+- Se instala en `%LOCALAPPDATA%\Programs\FocusWShell`.
+- Al volver a ejecutarlo, actualiza la copia: cierra la que esté abierta devolviendo las ventanas a su sitio, y la vuelve a abrir.
+- En la bandeja, **Iniciar con Windows** hace que se abra al iniciar sesión.
+- `FocusWShell.exe --salir` cierra la instancia abierta como lo haría **Salir**.
+
+Para desarrollar:
 
 ```bash
 dotnet run --project src/FocusWShell.App
 ```
+
+Lo que sigue describe lo básico; la ventana principal y el deck tienen más.
 
 - La ventana lista las apps que se pueden gestionar. Elige un rol y un monitor para cada una y pulsa **Aplicar roles**.
   - El Centro está siempre en el monitor principal.
