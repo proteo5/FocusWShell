@@ -18,12 +18,26 @@ public sealed record DeckActions(
     Action<string> ApplyScene,
     Action ToggleKeepAwake,
     Func<bool> KeepAwake,
-    Action RestoreAll,
+    Action FreeAll,
+    Func<bool> CanRearrange,
+    Func<Task> RearrangeAll,
+    Action<DeckPower> Power,
     Action Hide,
     Action<DeckDock?> Dock,
     Func<DeckDock?> CurrentDock,
     Func<nint, Task> CloseApp,
-    Func<nint, Task> BringToFront);
+    Func<nint, Task> BringToFront,
+    Action<string, bool> SetPinned);
+
+/// <summary>Lo que hace el panel de energía del deck.</summary>
+public enum DeckPower
+{
+    Lock,
+    Sleep,
+    Restart,
+    ShutDown,
+    SignOut,
+}
 
 /// <summary>
 /// El deck (ADR 0013, fase 2): una superficie de control en una esquina del monitor principal. Muestra el
@@ -38,6 +52,11 @@ public sealed class DeckWindow : Window
     private static readonly Brush ActiveBrush = Frozen(Color.FromRgb(0x28, 0x78, 0xDC));
     private static readonly Brush WarnBrush = Frozen(Color.FromRgb(0xC2, 0x3B, 0x3B));
     private static readonly Brush AwakeBrush = Frozen(Color.FromRgb(0xC8, 0x8A, 0x1E));
+
+    /// <summary>Anclar: índigo, distinto del azul de lo activo. Sólido, anclada; tenue, se puede anclar.</summary>
+    private static readonly Brush PinBrush = Frozen(Color.FromRgb(0x5A, 0x78, 0xC8));
+
+    private static readonly Brush PinFaintBrush = Frozen(Color.FromArgb(0x70, 0x5A, 0x78, 0xC8));
     private static readonly Brush TextBrush = Frozen(Color.FromRgb(0xE6, 0xE9, 0xEF));
     private static readonly Brush DimBrush = Frozen(Color.FromRgb(0x8A, 0x93, 0xA2));
 
@@ -79,6 +98,9 @@ public sealed class DeckWindow : Window
                 _moving = null;
                 _moveApp = null;
                 _closing = false;
+                _pinning = false;
+                _powerOpen = false;
+                _powerArmed = null;
             }
         };
     }
@@ -152,52 +174,63 @@ public sealed class DeckWindow : Window
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // Izquierda: foco, acciones, vista, ancho, escenas y, abajo, pantalla y restaurar.
+        // Izquierda, en tres tarjetas separadas por más aire que sus botones entre sí:
+        //   Foco (la app y qué hacer con ella), Disposición (vista, ancho, escenas) y, abajo, Sistema.
         var left = new Grid();
-        void Row(UIElement e, GridLength height)
+        void Card(Border card, GridLength height)
         {
             left.RowDefinitions.Add(new RowDefinition { Height = height });
-            Grid.SetRow(e, left.RowDefinitions.Count - 1);
-            left.Children.Add(e);
+            Grid.SetRow(card, left.RowDefinitions.Count - 1);
+            left.Children.Add(card);
         }
 
-        Row(FocusHeader(state), GridLength.Auto);
-        Row(Buttons(2, FocusActions(state, shortText: false)), GridLength.Auto);
-        Row(Label(Strings.Deck_SecView), GridLength.Auto);
-        Row(Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto);
-        Row(Buttons(3, WidthButtons(state)), GridLength.Auto);
+        // Mover, anclar y cerrar en una fila de tres: con sus textos cortos, para que quepan.
+        var actions = FocusActions(state, shortText: true);
+        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(2, actions.Take(2)), GridLength.Auto), (Buttons(3, actions.Skip(2)), GridLength.Auto)]), GridLength.Auto);
+
+        var layout = new List<(UIElement, GridLength)>
+        {
+            (Label(Strings.Deck_SecView), GridLength.Auto),
+            (Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto),
+            (Buttons(3, WidthButtons(state)), GridLength.Auto),
+        };
         if (state.Scenes.Count > 0)
         {
-            Row(Label(Strings.Deck_SecScenes), GridLength.Auto);
-            Row(TextGrid(SceneButtons(state)), new GridLength(1, GridUnitType.Star));
-        }
-        else
-        {
-            Row(new Border(), new GridLength(1, GridUnitType.Star));
+            layout.Add((Label(Strings.Deck_SecScenes), GridLength.Auto));
+            layout.Add((TextGrid(SceneButtons(state)), new GridLength(1, GridUnitType.Star)));
         }
 
-        var tabs = MonitorTabs(state);
-        if (tabs.Count > 1)
-        {
-            Row(Label(Strings.Deck_SecMonitors), GridLength.Auto);
-            var tabGrid = new UniformGrid { Columns = 1, Margin = new Thickness(0, 0, 0, 6) };
-            foreach (var tab in tabs)
-            {
-                tabGrid.Children.Add(TabButton(tab));
-            }
-
-            Row(tabGrid, GridLength.Auto);
-        }
-
-        Row(Buttons(2, [AwakeButton(), RestoreButton()]), GridLength.Auto);
+        Card(Group(null, layout), new GridLength(1, GridUnitType.Star));
+        var system = Group(_powerOpen ? Strings.Deck_SecPower : Strings.Deck_SecSystem, [(Buttons(2, SystemButtons()), GridLength.Auto)]);
+        system.Margin = new Thickness(0, 0, 0, 8); // abajo, alineada con LIBRES
+        Card(system, GridLength.Auto);
         Grid.SetColumn(left, 0);
         _root.Children.Add(left);
 
-        // Derecha: paneles en columnas (dos filas si son más de tres) y las libres abajo.
+        // Derecha: arriba las pestañas de los monitores; debajo, sus paneles en columnas (dos filas si son
+        // más de tres) y las libres abajo.
         var right = new Grid();
+        var tabs = MonitorTabs(state);
+        if (tabs.Count > 1)
+        {
+            var tabBar = new UniformGrid { Rows = 1, Margin = new Thickness(0, 0, 0, 2) };
+            foreach (var tab in tabs)
+            {
+                var b = TabButton(tab);
+                StretchOut(b);
+                tabBar.Children.Add(b);
+            }
+
+            right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            right.Children.Add(tabBar);
+        }
+
+        int panelsRow = right.RowDefinitions.Count;
         // LIBRES va siempre, aunque esté vacía: el deck no cambia de forma y se ve que es un destino.
         right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3, GridUnitType.Star) });
-        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(state.Free.Count > 0 ? 1 : 0.5, GridUnitType.Star), MinHeight = 90 });
+        // Con muchas libres, LIBRES crece (hasta un tercio del alto); siempre cabe al menos una fila entera.
+        double freeWeight = state.Free.Count == 0 ? 0.5 : Math.Clamp(0.75 + (state.Free.Count / 16.0), 1, 1.5);
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(freeWeight, GridUnitType.Star), MinHeight = 104 });
 
         var shown = PanelsOnTab(state);
         var panels = new Grid();
@@ -226,9 +259,10 @@ public sealed class DeckWindow : Window
             panels.Children.Add(card);
         }
 
+        Grid.SetRow(panels, panelsRow);
         right.Children.Add(panels);
         var free = FreeCard(state);
-        Grid.SetRow(free, 1);
+        Grid.SetRow(free, panelsRow + 1);
         right.Children.Add(free);
 
         Grid.SetColumn(right, 2);
@@ -245,7 +279,7 @@ public sealed class DeckWindow : Window
         }
 
         Row(FocusHeader(state), GridLength.Auto);
-        Row(Buttons(4, FocusActions(state, shortText: true)), GridLength.Auto);
+        Row(Buttons(5, FocusActions(state, shortText: true)), GridLength.Auto);
         // Vista y ancho en una sola fila de seis.
         Row(Buttons(6, [.. ViewButtons(state, shortText: true), .. WidthButtons(state)]), GridLength.Auto);
 
@@ -275,9 +309,14 @@ public sealed class DeckWindow : Window
 
         Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
 
-        // Abajo: escenas, pantalla encendida y restaurar.
-        int buttons = state.Scenes.Count + 2;
-        Row(TextGrid([.. SceneButtons(state), AwakeButton(), RestoreButton()]), new GridLength(buttons > 3 ? (2 * Touch) + 6 : Touch));
+        // Abajo: las escenas (una fila; si no caben, «+N más») y, aparte, lo del sistema.
+        if (state.Scenes.Count > 0 && !_powerOpen)
+        {
+            Row(TextGrid(SceneButtons(state)), new GridLength(Touch + 8));
+        }
+
+        var system = SystemButtons();
+        Row(Buttons(system.Count > 4 ? 3 : system.Count, system), GridLength.Auto);
     }
 
     // --- Pestañas por monitor -------------------------------------------------------------------------
@@ -292,9 +331,14 @@ public sealed class DeckWindow : Window
 
     private static string TabKey(string? display) => display ?? "";
 
-    /// <summary>Para la vista previa: «mover» (con la primera app de Trabajo elegida) o «cerrar».</summary>
+    /// <summary>Para la vista previa: «mover-elegir», «mover» (con la primera app de Trabajo elegida) o «cerrar».</summary>
     internal void ShowMode(string? mode, DeckState state)
     {
+        if (mode == "mover-elegir")
+        {
+            _moving = MoveStep.PickApp;
+        }
+
         if (mode == "mover")
         {
             _moving = MoveStep.PickPanel;
@@ -302,6 +346,12 @@ public sealed class DeckWindow : Window
         }
 
         _closing = mode == "cerrar";
+        _pinning = mode == "anclar";
+        _powerOpen = mode is "energia" or "energia-seguro";
+        if (mode == "energia-seguro")
+        {
+            _powerArmed = (DeckPower.ShutDown, DateTime.Now.AddHours(1));
+        }
     }
 
     /// <summary>Elige la pestaña de un monitor (<c>null</c>: el principal). Para la vista previa.</summary>
@@ -361,9 +411,21 @@ public sealed class DeckWindow : Window
         {
             b.Background = ActiveBrush;
         }
-        else if (!tab.Connected)
+        else
         {
-            b.Foreground = DimBrush;
+            if (!tab.Connected)
+            {
+                b.Foreground = DimBrush;
+            }
+
+            // Moviendo una app: los otros monitores también son destino. Tocarlo cambia de pestaña sin salir
+            // del modo mover, y ahí se elige el panel.
+            if (_moving == MoveStep.PickPanel)
+            {
+                b.BorderBrush = TargetBrush;
+                b.BorderThickness = new Thickness(3);
+                b.Foreground = TextBrush;
+            }
         }
 
         // Con el ratón: al pasar una app arrastrada por encima, se cambia a ese monitor para soltarla allí.
@@ -408,7 +470,8 @@ public sealed class DeckWindow : Window
         var close = SmallButton("✕", Strings.Deck_Hide, () => _actions.Hide());
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
-        var send = SmallButton("📌", Strings.Deck_SendTo, () => { });
+        // «Enviar a» (no es anclar: el 📌 es de las apps ancladas).
+        var send = SmallButton("⇢", Strings.Deck_SendTo, () => { });
         send.Margin = new Thickness(0, 0, 6, 0);
         send.ContextMenu = SendMenu(state);
         send.Click += (_, _) =>
@@ -468,6 +531,7 @@ public sealed class DeckWindow : Window
             _moving = _moving is null ? MoveStep.PickApp : null;
             _moveApp = null;
             _closing = false;
+            _pinning = false;
             Render();
         });
         System.Windows.Automation.AutomationProperties.SetName(move, "Deck: " + Strings.Deck_Move);
@@ -481,6 +545,7 @@ public sealed class DeckWindow : Window
             _closing = !_closing;
             _moving = null;
             _moveApp = null;
+            _pinning = false;
             Render();
         });
         System.Windows.Automation.AutomationProperties.SetName(close, "Deck: " + Strings.Deck_Close);
@@ -489,8 +554,38 @@ public sealed class DeckWindow : Window
             close.Background = WarnBrush;
         }
 
-        return [previous, back, move, close];
+        // Anclar: se queda encendido para anclar o desanclar varias; se apaga tocándolo otra vez.
+        var pin = WideButton("📌  " + (_pinning ? Strings.Deck_Pinning : Strings.Deck_Pin), true, () =>
+        {
+            _pinning = !_pinning;
+            _moving = null;
+            _moveApp = null;
+            _closing = false;
+            Render();
+        });
+        System.Windows.Automation.AutomationProperties.SetName(pin, "Deck: " + Strings.Deck_Pin);
+        if (_pinning)
+        {
+            pin.Background = PinBrush;
+        }
+
+        return [previous, back, move, pin, close];
     }
+
+    /// <summary>
+    /// Modo anclar: tocar una app de un panel la ancla (cerrada, sigue saliendo en su panel) o la desancla.
+    /// Mientras dura, salen también las cerradas sin anclar, para poder anclarlas.
+    /// </summary>
+    private bool _pinning;
+
+    private static bool IsPinned(DeckApp app) => app.App?.Pinned == true;
+
+    /// <summary>Si se puede anclar: una app del catálogo que está en un panel (las libres no tienen panel).</summary>
+    private static bool CanPin(DeckApp app) => app.App is not null && app.PanelId is not null;
+
+    /// <summary>Las apps que se ven de un panel: las cerradas sólo si están ancladas (o en el modo anclar).</summary>
+    private List<DeckApp> Visible(IEnumerable<DeckApp> apps) =>
+        [.. apps.Where(a => a.Handle is not null || _pinning || IsPinned(a))];
 
     /// <summary>
     /// Modo cerrar: la app que se toque se cierra como con su X (si tiene algo sin guardar, ella pregunta) y
@@ -563,7 +658,7 @@ public sealed class DeckWindow : Window
             if (DateTime.Now - _restoreArmed < TimeSpan.FromSeconds(4))
             {
                 _restoreArmed = DateTime.MinValue;
-                _actions.RestoreAll();
+                _actions.FreeAll();
                 if (!Docked)
                 {
                     _actions.Hide();
@@ -583,6 +678,130 @@ public sealed class DeckWindow : Window
         return restore;
     }
 
+    /// <summary>
+    /// Lo del sistema, que se usa poco y va abajo: pantalla encendida, energía, liberar todas y, sólo si
+    /// hubo un «Liberar todas», reordenarlas como estaban. Con la energía abierta, sus botones grandes.
+    /// </summary>
+    private List<Button> SystemButtons()
+    {
+        if (_powerOpen)
+        {
+            return PowerButtons();
+        }
+
+        var buttons = new List<Button> { AwakeButton(), PowerButton(), RestoreButton() };
+        if (_actions.CanRearrange())
+        {
+            buttons.Add(WideButton("↺  " + Strings.Deck_Rearrange, true, async () =>
+            {
+                await _actions.RearrangeAll();
+                if (!Docked)
+                {
+                    _actions.Hide();
+                }
+            }));
+        }
+
+        return buttons;
+    }
+
+    /// <summary>Si el panel de energía está abierto (en lugar de los botones del sistema).</summary>
+    private bool _powerOpen;
+
+    /// <summary>La acción de energía que pidió confirmación y cuándo (un segundo toque en 4 s la hace).</summary>
+    private (DeckPower Action, DateTime At)? _powerArmed;
+
+    private Button PowerButton() => WideButton("⏻  " + Strings.Deck_Power, true, () =>
+    {
+        _powerOpen = true;
+        _powerArmed = null;
+        Render();
+    });
+
+    /// <summary>
+    /// Bloquear y suspender, con un toque (se deshacen solos al volver). Reiniciar, apagar y cerrar sesión
+    /// piden un segundo toque. Ninguna libera las ventanas: al volver, la sesión las pone en sus paneles.
+    /// </summary>
+    private List<Button> PowerButtons()
+    {
+        Button Make(DeckPower action, string icon, string text, bool confirm)
+        {
+            bool armed = _powerArmed is { } a && a.Action == action && DateTime.Now - a.At < TimeSpan.FromSeconds(4);
+            var b = WideButton(icon + "  " + (armed ? Core.Text.F(Strings.Deck_PowerSure, text) : text), true, () =>
+            {
+                if (confirm && !armed)
+                {
+                    _powerArmed = (action, DateTime.Now);
+                    Render();
+                    return;
+                }
+
+                _powerOpen = false;
+                _powerArmed = null;
+                Render();
+                _actions.Power(action);
+            });
+            System.Windows.Automation.AutomationProperties.SetName(b, "Deck: " + text);
+            if (armed)
+            {
+                b.Background = WarnBrush;
+            }
+
+            return b;
+        }
+
+        var cancel = WideButton("✕  " + Strings.Deck_PowerCancel, true, () =>
+        {
+            _powerOpen = false;
+            _powerArmed = null;
+            Render();
+        });
+        return
+        [
+            Make(DeckPower.Lock, "🔒", Strings.Deck_PowerLock, confirm: false),
+            Make(DeckPower.Sleep, "☾", Strings.Deck_PowerSleep, confirm: false),
+            Make(DeckPower.Restart, "↻", Strings.Deck_PowerRestart, confirm: true),
+            Make(DeckPower.ShutDown, "⏻", Strings.Deck_PowerShutDown, confirm: true),
+            Make(DeckPower.SignOut, "⇥", Strings.Deck_PowerSignOut, confirm: true),
+            cancel,
+        ];
+    }
+
+    /// <summary>
+    /// Una tarjeta de la columna izquierda: sus filas dentro de un borde, con su título si lo tiene. Entre
+    /// tarjetas hay más aire que entre los botones de una misma tarjeta, para que se lean como grupos.
+    /// </summary>
+    private static Border Group(string? title, IEnumerable<(UIElement Element, GridLength Height)> rows)
+    {
+        var grid = new Grid();
+        void Add(UIElement e, GridLength height)
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = height });
+            Grid.SetRow(e, grid.RowDefinitions.Count - 1);
+            grid.Children.Add(e);
+        }
+
+        if (title is not null)
+        {
+            Add(Label(title), GridLength.Auto);
+        }
+
+        foreach (var (element, height) in rows)
+        {
+            Add(element, height);
+        }
+
+        return new Border
+        {
+            Child = grid,
+            BorderBrush = CardBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8, 6, 0, 0),
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+    }
+
     /// <summary>Botones en una fila de columnas iguales que se estiran (sin anchos fijos).</summary>
     private static UniformGrid Buttons(int columns, IEnumerable<Button> buttons)
     {
@@ -596,17 +815,39 @@ public sealed class DeckWindow : Window
         return grid;
     }
 
-    /// <summary>Botones de texto que se reparten el espacio que haya (escenas, la fila de abajo).</summary>
+    /// <summary>
+    /// Botones de texto que se reparten el espacio que haya (escenas, la fila de abajo). Si no caben todos, el
+    /// último hueco es «+N más» y abre un menú con los que faltan (antes, los que no cabían no se veían).
+    /// </summary>
     private static FitGrid TextGrid(IEnumerable<Button> buttons)
     {
         var grid = new FitGrid { MinCellWidth = 120, MaxCellWidth = 400, Aspect = 4, MinCellHeight = Touch, MaxCellHeight = Touch, Gap = 6, Margin = new Thickness(0, 0, 8, 0) };
-        foreach (var b in buttons)
+        var list = buttons.ToList();
+        foreach (var b in list)
         {
             StretchOut(b);
             b.Margin = new Thickness(0);
             grid.Children.Add(b);
         }
 
+        var more = new Button { Focusable = false, BorderThickness = new Thickness(0), Foreground = TextBrush, Background = CardBrush, Cursor = Cursors.Hand, FontSize = 14 };
+        System.Windows.Automation.AutomationProperties.SetName(more, Strings.Deck_MoreName);
+        more.Click += (_, _) =>
+        {
+            var menu = new ContextMenu { PlacementTarget = more };
+            foreach (var hidden in list.Skip(grid.HiddenFrom))
+            {
+                string header = System.Windows.Automation.AutomationProperties.GetName(hidden) is { Length: > 0 } n ? n : hidden.Content?.ToString() ?? "";
+                var item = new MenuItem { Header = header, IsEnabled = hidden.IsEnabled };
+                item.Click += (_, _) => hidden.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                menu.Items.Add(item);
+            }
+
+            menu.IsOpen = true;
+        };
+        grid.More = more;
+        grid.OverflowChanged = hidden => more.Content = Core.Text.F(Strings.Deck_More, hidden);
+        grid.Children.Add(more);
         return grid;
     }
 
@@ -625,13 +866,14 @@ public sealed class DeckWindow : Window
         var header = PanelHeader(panel);
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
-        if (panel.Apps.Count == 0)
+        var apps = Visible(panel.Apps);
+        if (apps.Count == 0)
         {
             body.Children.Add(new TextBlock { Text = Strings.Deck_PanelEmpty, Foreground = DimBrush, Margin = new Thickness(4), VerticalAlignment = VerticalAlignment.Top });
         }
         else
         {
-            body.Children.Add(AppGrid(panel.Apps));
+            body.Children.Add(AppGrid(apps));
         }
 
         // Al mover, los paneles donde puede ir la app elegida se ponen amarillos y todo el panel es el
@@ -851,6 +1093,20 @@ public sealed class DeckWindow : Window
         Grid.SetRow(name, 1);
         content.Children.Add(name);
 
+        // Anclada: un 📌 pequeño en la esquina (en el modo anclar ya lo dice el borde).
+        if (IsPinned(app) && CanPin(app) && !_pinning)
+        {
+            content.Children.Add(new TextBlock
+            {
+                Text = "📌",
+                FontSize = 10,
+                Foreground = app.State == ListItemState.InFocus ? TextBrush : PinBrush, // sobre el azul del foco, blanco
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, -2, -2, 0),
+            });
+        }
+
         var tile = new Button
         {
             // El tamaño lo pone la rejilla.
@@ -865,10 +1121,29 @@ public sealed class DeckWindow : Window
             ToolTip = string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"Deck: {app.Name} ({app.State})");
-        if (_moveApp is { } selected && selected.Handle == app.Handle && app.Handle is not null)
+        // Modo mover (borde = se puede tocar; amarillo = mover): primero todas las que se pueden mover; ya
+        // elegida, sólo ella conserva el borde hasta que se mueve o se cancela.
+        if (_pinning)
         {
-            tile.Background = ActiveBrush;
-            tile.BorderBrush = TextBrush;
+            // Borde = se puede tocar; índigo = anclar. Sólido: anclada; tenue: se puede anclar.
+            if (CanPin(app))
+            {
+                tile.BorderBrush = IsPinned(app) ? PinBrush : PinFaintBrush;
+                tile.BorderThickness = new Thickness(IsPinned(app) ? 3 : 2);
+            }
+            else
+            {
+                tile.Opacity = 0.4;
+            }
+        }
+        else if (_moveApp is { } selected && selected.Handle == app.Handle && app.Handle is not null)
+        {
+            tile.BorderBrush = TargetBrush;
+            tile.BorderThickness = new Thickness(3);
+        }
+        else if (_moving == MoveStep.PickApp && app.Handle is not null)
+        {
+            tile.BorderBrush = TargetBrush;
             tile.BorderThickness = new Thickness(2);
         }
         else if ((_moving is not null || _closing) && app.Handle is null)
@@ -1085,12 +1360,24 @@ public sealed class DeckWindow : Window
             return;
         }
 
+        if (_pinning)
+        {
+            if (CanPin(app))
+            {
+                _actions.SetPinned(app.AppKey, !IsPinned(app));
+            }
+
+            return;
+        }
+
         if (_moving is not null)
         {
             if (app.Handle is not null)
             {
-                _moveApp = app;
-                _moving = MoveStep.PickPanel;
+                // Tocar otra vez la elegida la suelta: se vuelve a elegir qué app mover.
+                bool again = _moveApp?.Handle == app.Handle;
+                _moveApp = again ? null : app;
+                _moving = again ? MoveStep.PickApp : MoveStep.PickPanel;
                 Render();
             }
 
@@ -1113,8 +1400,21 @@ public sealed class DeckWindow : Window
             return;
         }
 
-        if (app.Handle is not { } h || app.State == ListItemState.InFocus)
+        if (app.Handle is not { } h)
         {
+            return;
+        }
+
+        // Ya está en el foco, pero puede tener una libre flotando encima (p. ej. una llamada): se trae al
+        // frente, como con un clic del ratón, y la libre queda detrás, libre y en su sitio.
+        if (app.State == ListItemState.InFocus)
+        {
+            if (!Docked)
+            {
+                _actions.Hide();
+            }
+
+            await _actions.BringToFront(h);
             return;
         }
 
@@ -1144,11 +1444,26 @@ public sealed class DeckWindow : Window
             parent.Items.Add(item);
         }
 
+        void PinItem()
+        {
+            if (CanPin(app))
+            {
+                Item(menu, IsPinned(app) ? Strings.DeckMenu_Unpin : Strings.DeckMenu_Pin, () =>
+                {
+                    _actions.SetPinned(app.AppKey, !IsPinned(app));
+                    return Task.CompletedTask;
+                });
+            }
+        }
+
         if (app.Handle is not { } h)
         {
             Item(menu, Strings.DeckMenu_OpenInPanel, () => Choose(app));
+            PinItem();
             return menu;
         }
+
+        PinItem();
 
         bool free = app.PanelId is null;
         Item(menu, Strings.DeckMenu_ToFocus, () => Choose(app), app.State != ListItemState.InFocus);

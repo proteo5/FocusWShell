@@ -111,6 +111,9 @@ public static class Strings
     /// <summary>Estacionar</summary>
     public static string DeckMenu_Park => ResourceManager.GetString("DeckMenu_Park", Culture)!;
 
+    /// <summary>Anclar a su panel (sale aunque esté cerrada)</summary>
+    public static string DeckMenu_Pin => ResourceManager.GetString("DeckMenu_Pin", Culture)!;
+
     /// <summary>Poner en</summary>
     public static string DeckMenu_PutIn => ResourceManager.GetString("DeckMenu_PutIn", Culture)!;
 
@@ -122,6 +125,9 @@ public static class Strings
 
     /// <summary>Recuperar</summary>
     public static string DeckMenu_Unpark => ResourceManager.GetString("DeckMenu_Unpark", Culture)!;
+
+    /// <summary>Desanclar</summary>
+    public static string DeckMenu_Unpin => ResourceManager.GetString("DeckMenu_Unpin", Culture)!;
 
     /// <summary>Esquina del monitor principal (se oculta solo)</summary>
     public static string DeckSend_Corner => ResourceManager.GetString("DeckSend_Corner", Culture)!;
@@ -201,6 +207,36 @@ public static class Strings
     /// <summary>sin apps (suelta aquí una app)</summary>
     public static string Deck_PanelEmpty => ResourceManager.GetString("Deck_PanelEmpty", Culture)!;
 
+    /// <summary>Anclar</summary>
+    public static string Deck_Pin => ResourceManager.GetString("Deck_Pin", Culture)!;
+
+    /// <summary>Anclando…</summary>
+    public static string Deck_Pinning => ResourceManager.GetString("Deck_Pinning", Culture)!;
+
+    /// <summary>Energía</summary>
+    public static string Deck_Power => ResourceManager.GetString("Deck_Power", Culture)!;
+
+    /// <summary>Cancelar</summary>
+    public static string Deck_PowerCancel => ResourceManager.GetString("Deck_PowerCancel", Culture)!;
+
+    /// <summary>Bloquear</summary>
+    public static string Deck_PowerLock => ResourceManager.GetString("Deck_PowerLock", Culture)!;
+
+    /// <summary>Reiniciar</summary>
+    public static string Deck_PowerRestart => ResourceManager.GetString("Deck_PowerRestart", Culture)!;
+
+    /// <summary>Apagar</summary>
+    public static string Deck_PowerShutDown => ResourceManager.GetString("Deck_PowerShutDown", Culture)!;
+
+    /// <summary>Cerrar sesión</summary>
+    public static string Deck_PowerSignOut => ResourceManager.GetString("Deck_PowerSignOut", Culture)!;
+
+    /// <summary>Suspender</summary>
+    public static string Deck_PowerSleep => ResourceManager.GetString("Deck_PowerSleep", Culture)!;
+
+    /// <summary>{0}: ¿seguro?</summary>
+    public static string Deck_PowerSure => ResourceManager.GetString("Deck_PowerSure", Culture)!;
+
     /// <summary>Presentación de {0}: pasar a {1}</summary>
     public static string Deck_PresentationName => ResourceManager.GetString("Deck_PresentationName", Culture)!;
 
@@ -210,13 +246,16 @@ public static class Strings
     /// <summary>Anterior</summary>
     public static string Deck_Previous => ResourceManager.GetString("Deck_Previous", Culture)!;
 
+    /// <summary>Reordenar todas</summary>
+    public static string Deck_Rearrange => ResourceManager.GetString("Deck_Rearrange", Culture)!;
+
     /// <summary>Liberar aquí</summary>
     public static string Deck_ReleaseHere => ResourceManager.GetString("Deck_ReleaseHere", Culture)!;
 
     /// <summary>Deck: Liberar {0}</summary>
     public static string Deck_ReleaseName => ResourceManager.GetString("Deck_ReleaseName", Culture)!;
 
-    /// <summary>Restaurar todas</summary>
+    /// <summary>Liberar todas</summary>
     public static string Deck_RestoreAll => ResourceManager.GetString("Deck_RestoreAll", Culture)!;
 
     /// <summary>¿Seguro? Otra vez</summary>
@@ -237,8 +276,14 @@ public static class Strings
     /// <summary>MONITORES</summary>
     public static string Deck_SecMonitors => ResourceManager.GetString("Deck_SecMonitors", Culture)!;
 
+    /// <summary>ENERGÍA</summary>
+    public static string Deck_SecPower => ResourceManager.GetString("Deck_SecPower", Culture)!;
+
     /// <summary>ESCENAS</summary>
     public static string Deck_SecScenes => ResourceManager.GetString("Deck_SecScenes", Culture)!;
+
+    /// <summary>SISTEMA</summary>
+    public static string Deck_SecSystem => ResourceManager.GetString("Deck_SecSystem", Culture)!;
 
     /// <summary>VISTA</summary>
     public static string Deck_SecView => ResourceManager.GetString("Deck_SecView", Culture)!;
@@ -408,7 +453,7 @@ public static class Strings
     /// <summary>anterior</summary>
     public static string Hk_Previous => ResourceManager.GetString("Hk_Previous", Culture)!;
 
-    /// <summary>restaurar todas</summary>
+    /// <summary>liberar todas</summary>
     public static string Hk_RestoreAll => ResourceManager.GetString("Hk_RestoreAll", Culture)!;
 
     /// <summary>Guardar</summary>
@@ -423,7 +468,7 @@ public static class Strings
     /// <summary>FocusWShell · atajos</summary>
     public static string Hk_WindowTitle => ResourceManager.GetString("Hk_WindowTitle", Culture)!;
 
-    /// <summary>Otra aplicación ya usa: {0}. «Restaurar todas» sigue en el menú de la bandeja.</summary>
+    /// <summary>Otra aplicación ya usa: {0}. «Liberar todas» sigue en el menú de la bandeja.</summary>
     public static string Hotkeys_InUse => ResourceManager.GetString("Hotkeys_InUse", Culture)!;
 
     /// <summary>cerrada</summary>
@@ -609,7 +654,7 @@ public static class Strings
     /// <summary>Devuelve la ventana seleccionada a su sitio original y deja de gestionarla</summary>
     public static string Main_ReleaseTip => ResourceManager.GetString("Main_ReleaseTip", Culture)!;
 
-    /// <summary>Restaurar todas</summary>
+    /// <summary>Liberar todas</summary>
     public static string Main_RestoreAll => ResourceManager.GetString("Main_RestoreAll", Culture)!;
 
     /// <summary>Centro al panel</summary>
@@ -993,7 +1038,7 @@ public static class Strings
     /// <summary>No había nada que restaurar.</summary>
     public static string Tray_NothingToRestore => ResourceManager.GetString("Tray_NothingToRestore", Culture)!;
 
-    /// <summary>Restaurar todas</summary>
+    /// <summary>Liberar todas</summary>
     public static string Tray_RestoreAll => ResourceManager.GetString("Tray_RestoreAll", Culture)!;
 
     /// <summary>Escena</summary>

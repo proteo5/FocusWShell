@@ -561,6 +561,74 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Deck: volver a la app del foco cuando una libre flota encima (validación, 2026-11-11)
+
+Encontrado en uso. Con una app de panel en el foco, tocar una libre la trae al frente y la deja libre, que es lo correcto. Pero después, tocar en el deck la app del foco no hacía nada: el código ignoraba el toque porque la app ya estaba en el foco. Para volver a ella había que tocar otra app del panel y luego la del foco. Con el ratón bastaba un clic.
+
+Se compararon tres opciones:
+
+- Dejarlo como estaba.
+- Que la libre pase a ser la del foco y la del panel vuelva a su panel. Movía ventanas sin pedirlo, rompía la regla de «una libre sigue libre» y dejaba el foco vacío al cerrarse la ventana flotante.
+- Que tocar la app del foco la traiga al frente. Es la elegida.
+
+Ahora tocar la app del foco la trae al frente con el cursor encima, como un clic del ratón. La libre queda detrás, libre y en su sitio, sin cambiar el layout. Queda pendiente, si hace falta, marcar en el deck qué ventana está realmente al frente: el azul dice qué app ocupa el foco, no cuál se ve encima.
+
+### Deck v2: tarjetas, mover entre monitores, energía y anclar (validación, 2026-11-11)
+
+Objetivo: que el deck sea la forma normal de trabajar y se use mucho menos el ratón. Antes de tocar nada se analizó con el usuario; lo que se decidió y cómo quedó:
+
+**LIBRES y ESCENAS sin nada fuera de la vista.**
+
+- LIBRES crece con la cantidad de apps libres, hasta un tercio del alto, y siempre deja al menos una fila entera. Si aun así no caben, la última celda es «+N más».
+- Las escenas (y la fila de abajo en el deck estrecho) no tenían «+N más»: con cuatro escenas en la tablet sólo se veía la primera, sin aviso. Ahora el último hueco es «+N más» y abre un menú con las que faltan.
+
+**Columna izquierda en tres tarjetas,** con más aire entre tarjetas que entre botones:
+
+- **Foco:** la app, «Anterior», «Al panel» y, en una fila de tres, «Mover», «Anclar» y «Cerrar».
+- **Disposición:** vista, ancho y escenas.
+- **Sistema**, abajo: pantalla encendida, energía, «Liberar todas» y, si procede, «Reordenar todas».
+- Las pestañas de los monitores pasan a una barra encima de los paneles: son de los paneles, no del foco.
+- El botón «Enviar a» de la cabecera cambia su icono de 📌 a ⇢: el 📌 es ahora de las apps ancladas.
+
+**Regla de color del deck:** el borde dice que algo se puede tocar en este modo; el color dice el modo. Amarillo es mover, rojo es cerrar e índigo (#5A78C8) es anclar. El índigo es distinto del azul de lo activo.
+
+**Mover.**
+
+- Al entrar en el modo, las apps que se pueden mover llevan borde amarillo.
+- Al elegir una, sólo ella conserva el borde (ya no se pinta de azul) hasta que se mueve o se cancela. Tocarla otra vez la suelta.
+- Los destinos se ponen amarillos: los paneles, LIBRES y las pestañas de los otros monitores. Tocar una pestaña cambia de monitor sin salir del modo, y ahí se elige el panel. Así se mueve de pantalla a pantalla sin liberar la app antes.
+
+**Energía** (⏻ en Sistema): abre sus botones grandes en lugar de los del sistema.
+
+- Bloquear y Suspender actúan con un toque.
+- Reiniciar, Apagar y Cerrar sesión piden un segundo toque («Apagar: ¿seguro?», en rojo, 4 s).
+- Ninguna libera las ventanas. Antes de reiniciar, apagar o cerrar sesión se guarda la sesión, y al volver FocusWShell pone cada ventana en su panel.
+- Apagar usa `shutdown /s /hybrid`, como el menú Inicio (respeta el inicio rápido). Bloquear usa `LockWorkStation`; suspender, `SetSuspendState`.
+
+**«Restaurar todas» pasa a «Liberar todas»** (en inglés, «Free all»): dice lo que hace, dejar las ventanas libres. En inglés, «Release» pasa a «Free» en todo: Free, Free here, FREE.
+
+**«Reordenar todas»** deshace el último «Liberar todas»:
+
+- Antes de cada «Liberar todas» se guarda cómo estaba todo: qué ventana en qué panel, en el foco o estacionada, y la vista. Pasa desde el deck, la bandeja, la ventana principal y el atajo de emergencia.
+- El botón sólo se ve si hay esa foto, y la foto se borra al usarla. Es un solo nivel, sin historial: el siguiente «Liberar todas» la reemplaza.
+- Vuelve a poner las ventanas que siguen abiertas. Se guarda en memoria, por ventana: tras reiniciar FocusWShell, la sesión ya hace ese trabajo.
+- Al salir de FocusWShell también se liberan las ventanas, pero eso no guarda foto.
+- No se llama «Recuperar» porque ese nombre ya lo usa sacar ventanas del estacionamiento.
+
+**Anclar (📌).**
+
+- En los paneles ya no salen todas las apps que alguna vez estuvieron en ellos. Una app cerrada sólo sale (apagada, para abrirla con un toque) si está anclada.
+- El modo «Anclar» es el tercer modo del deck, junto a mover y cerrar. Las ancladas llevan borde índigo sólido; las demás, borde índigo tenue. Mientras dura el modo salen también las cerradas sin anclar, para poder anclarlas. Tocar ancla o desancla, y el modo sigue encendido hasta tocar otra vez el botón.
+- Las libres no se anclan, porque no tienen panel.
+- Fuera del modo, las ancladas llevan un 📌 pequeño en la esquina. El menú de cada app (clic derecho o pulsación larga) también ancla y desancla.
+- Se guarda en el catálogo (`apps.json`, versión 2, `Pinned`). Al leer un catálogo anterior se anclan las apps de la última sesión, que son las de uso continuo.
+- Pospuesto: las apps de la bandeja del sistema (casi nunca muestran ventana) y abrir las ancladas al iniciar.
+
+**Probado:**
+
+- `--deck-preview` en los tres tamaños y en los dos idiomas. Muestra los modos mover (elegir app y elegir destino), cerrar, anclar y energía (también con la confirmación).
+- 307 pruebas.
+
 ### Español e inglés (2026-11-11)
 
 La app estaba sólo en español. Ahora sus textos están en recursos `.resx`: `Strings.resx` en español, que es el idioma base, y `Strings.en.resx` en inglés. Añadir otro idioma es añadir otro archivo. Hay dos juegos:

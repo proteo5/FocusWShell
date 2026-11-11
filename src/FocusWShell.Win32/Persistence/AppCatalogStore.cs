@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using FocusWShell.Core.Domain;
 
 namespace FocusWShell.Win32.Persistence;
@@ -15,10 +15,20 @@ public sealed class AppCatalogStore(string filePath)
 
     public string FilePath { get; } = filePath;
 
+    /// <summary>
+    /// Versión 2: las apps se anclan (<see cref="CatalogApp.Pinned"/>). Un archivo anterior no tiene
+    /// anclas; quien lo carga decide cuáles anclar (<see cref="LoadedOldVersion"/>).
+    /// </summary>
+    private const int Version = 2;
+
+    /// <summary>Si el último <see cref="Load"/> leyó un archivo de antes de las anclas.</summary>
+    public bool LoadedOldVersion { get; private set; }
+
     private sealed record FileModel(int SchemaVersion, List<CatalogApp> Apps);
 
     public AppCatalog Load()
     {
+        LoadedOldVersion = false;
         if (!File.Exists(FilePath))
         {
             return new AppCatalog();
@@ -26,7 +36,9 @@ public sealed class AppCatalogStore(string filePath)
 
         try
         {
-            return new AppCatalog(JsonSerializer.Deserialize<FileModel>(File.ReadAllText(FilePath), Options)?.Apps ?? []);
+            var model = JsonSerializer.Deserialize<FileModel>(File.ReadAllText(FilePath), Options);
+            LoadedOldVersion = model is not null && model.SchemaVersion < Version;
+            return new AppCatalog(model?.Apps ?? []);
         }
         catch (JsonException)
         {
@@ -40,7 +52,7 @@ public sealed class AppCatalogStore(string filePath)
         ArgumentNullException.ThrowIfNull(catalog);
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         var temp = FilePath + ".tmp";
-        File.WriteAllText(temp, JsonSerializer.Serialize(new FileModel(1, [.. catalog.Apps]), Options));
+        File.WriteAllText(temp, JsonSerializer.Serialize(new FileModel(Version, [.. catalog.Apps]), Options));
         File.Move(temp, FilePath, overwrite: true);
     }
 }

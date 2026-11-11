@@ -112,4 +112,19 @@ public class AppCatalogTests
         Assert.True(c.Find("slack.exe")!.Renamed);
         Assert.False(c.ImproveName("slack.exe", "Chat del trabajo", "Slack"));
     }
+
+    [Fact]
+    public void AnAppCanBePinnedAndUnpinned()
+    {
+        var c = new AppCatalog();
+        c.Observe("slack.exe", "Slack", null, null, T0);
+
+        Assert.False(c.Find("slack.exe")!.Pinned); // nueva: sin anclar
+        Assert.True(c.SetPinned("slack.exe", true));
+        Assert.True(c.Find("slack.exe")!.Pinned);
+        Assert.False(c.SetPinned("slack.exe", true)); // ya lo estaba
+        Assert.True(c.SetPinned("slack.exe", false));
+        Assert.False(c.Find("slack.exe")!.Pinned);
+        Assert.False(c.SetPinned("zoom.exe", true)); // no está en el catálogo
+    }
 }

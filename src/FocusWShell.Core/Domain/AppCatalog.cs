@@ -28,6 +28,12 @@ public sealed record CatalogApp(
 
     /// <summary>Si sus ventanas se pueden redimensionar; por defecto lo dicen ellas mismas.</summary>
     public AppSizeMode SizeMode { get; init; }
+
+    /// <summary>
+    /// Anclada a su panel: cerrada, sigue saliendo en él (apagada) para abrirla con un toque. Las no
+    /// ancladas sólo salen mientras están abiertas.
+    /// </summary>
+    public bool Pinned { get; init; }
 }
 
 /// <summary>Cómo trata el layout el tamaño de las ventanas de una app.</summary>
@@ -140,6 +146,18 @@ public sealed class AppCatalog
         }
 
         _apps[appKey] = app with { Hidden = hidden };
+        return true;
+    }
+
+    /// <summary>La ancla a su panel o la desancla. Devuelve si cambió.</summary>
+    public bool SetPinned(string appKey, bool pinned)
+    {
+        if (!_apps.TryGetValue(appKey, out var app) || app.Pinned == pinned)
+        {
+            return false;
+        }
+
+        _apps[appKey] = app with { Pinned = pinned };
         return true;
     }
 

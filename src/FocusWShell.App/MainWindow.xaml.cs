@@ -900,7 +900,7 @@ public partial class MainWindow : Window
     private async void Restore_Click(object sender, RoutedEventArgs e)
     {
         _pending.Clear();
-        await Run(() => _controller.Execute(new RestoreAll()));
+        await Run(_controller.FreeAll);
         Refresh();
     }
 
