@@ -41,6 +41,12 @@ Para desarrollar:
 dotnet run --project src/FocusWShell.App
 ```
 
+Los textos de la interfaz están en `Strings.resx` (español) y `Strings.en.resx` (inglés). Para añadir uno en los dos idiomas:
+
+```powershell
+powershell -File build	extos.ps1 -Clave Deck_Hola -Es "Hola, {0}" -En "Hello, {0}"
+```
+
 Lo que sigue describe lo básico; la ventana principal y el deck tienen más.
 
 - La ventana lista las apps que se pueden gestionar. Elige un rol y un monitor para cada una y pulsa **Aplicar roles**.

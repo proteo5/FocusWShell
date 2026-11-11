@@ -566,9 +566,11 @@ Probado con clics reales sobre el deck en la tablet:
 La app estaba sólo en español. Ahora sus textos están en recursos `.resx`: `Strings.resx` en español, que es el idioma base, y `Strings.en.resx` en inglés. Añadir otro idioma es añadir otro archivo. Hay dos juegos:
 
 - **`FocusWShell.Core/Strings.resx`** (97 textos): los rechazos del modelo, las notas del layout, los nombres de los atajos y de las teclas, las exclusiones y los motivos de «no gestionable». Win32 los usa también: errores al abrir apps, el resumen de restaurar, los errores al mover. La clase la genera MSBuild.
-- **`FocusWShell.App/Strings.resx`** (341 textos): la ventana principal (XAML con `{x:Static local:Strings.X}`), el deck, la bandeja, las tiras, las listas, la ventana de atajos y los mensajes de estado. `Strings.Designer.cs` lo escribe la herramienta de textos junto al `.resx`, porque el compilador de XAML necesita la clase antes de que MSBuild genere recursos (si se genera en `obj`, falla con MC3050).
+- **`FocusWShell.App/Strings.resx`** (341 textos): la ventana principal (XAML con `{x:Static local:Strings.X}`), el deck, la bandeja, las tiras, las listas, la ventana de atajos y los mensajes de estado. `Strings.Designer.cs` lo escribe `build	extos.ps1` junto al `.resx`, porque el compilador de XAML necesita la clase antes de que MSBuild genere recursos (si se genera en `obj`, falla con MC3050).
 - **Los textos con valores** usan huecos `{0}` y `Text.F(Strings.X, a, b)`. Las frases con «izquierda» o «derecha» van enteras, porque el orden de las palabras cambia de un idioma a otro.
 - **No se traducen los identificadores:** la región «Centro» del layout, los títulos internos de las ventanas propias (las pruebas los buscan), los ids de los paneles y los archivos. Las presets de ancho sí se traducen al mostrarse, porque se guardan los pesos, no el nombre.
+
+**Añadir un texto.** `powershell -File build	extos.ps1 -Clave Deck_Hola -Es "Hola, {0}" -En "Hello, {0}"` lo añade en los dos idiomas (con `-Proyecto Core`, en el núcleo) y regenera la clase. En el código se usa `Strings.Deck_Hola`, o `Core.Text.F(Strings.Deck_Hola, nombre)` si tiene huecos. Si se edita el `.resx` a mano, basta con `powershell -File build	extos.ps1` para regenerar la clase.
 
 **Elegir el idioma.** En la ventana principal, «Idioma: Automático (el de Windows) / Español / English», guardado en `settings.json` (`Language`).
 
