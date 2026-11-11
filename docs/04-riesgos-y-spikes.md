@@ -544,6 +544,12 @@ Probado con clics reales sobre el deck: la ventana de prueba se cerró, el modo 
   - Al elegir la app, sólo los paneles donde puede ir se ponen con borde amarillo y un velo «⬇ Mover aquí»; el suyo no.
   - Tocar en cualquier parte de ese panel la lleva ahí: un blanco mucho más grande que el botón que había en la cabecera.
 - **Cerrar:** las apps abiertas, con borde rojo.
+- **Liberar con el mismo gesto:**
+  - Antes sólo se podía desde el menú de pulsación larga, poco fiable con el dedo.
+  - Ahora LIBRES es un destino más: al mover una app que está en un panel, LIBRES se pone amarillo con «⬇ Liberar aquí», aunque esté vacío, y un toque la libera (vuelve a su sitio original).
+  - Con el ratón, soltarla arrastrada ahí hace lo mismo.
+  - Los textos de destino van en una etiqueta oscura, para que se lean encima de las tarjetas.
+  - Probado con clics reales: la ventana de prueba pasó de «En Trabajo» a libre.
 
 Probado con clics reales sobre el deck en la tablet:
 
