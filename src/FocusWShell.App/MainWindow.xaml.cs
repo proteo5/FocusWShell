@@ -40,6 +40,8 @@ public partial class MainWindow : Window
         GestureTaskbar.IsChecked = settings.FocusOnTaskbar;
         GestureClick.IsChecked = settings.FocusOnClick;
         OpenMissingBox.IsChecked = settings.OpenMissingApps;
+        LanguageCombo.SelectedItem = LanguageCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+            .FirstOrDefault(i => (string)i.Tag == settings.Language) ?? LanguageCombo.Items[0];
         _loadingGestures = false;
         DataContext = this;
         WindowList.ItemsSource = _rows;
@@ -58,16 +60,16 @@ public partial class MainWindow : Window
         ExclusionsList.Children.Clear();
         if (_settings.Exclusions.Count == 0)
         {
-            ExclusionsList.Children.Add(new WC.TextBlock { Text = "Ninguna.", Foreground = System.Windows.Media.Brushes.Gray, Margin = new Thickness(2) });
+            ExclusionsList.Children.Add(new WC.TextBlock { Text = Strings.Excl_None, Foreground = System.Windows.Media.Brushes.Gray, Margin = new Thickness(2) });
         }
 
         foreach (var rule in _settings.Exclusions)
         {
             var item = new WC.StackPanel { Orientation = WC.Orientation.Horizontal, Margin = new Thickness(0, 0, 12, 4) };
             item.Children.Add(new WC.TextBlock { Text = rule.Describe(), VerticalAlignment = VerticalAlignment.Center });
-            var remove = new WC.Button { Content = "Quitar", Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(6, 0, 0, 0) };
-            System.Windows.Automation.AutomationProperties.SetName(remove, $"Quitar exclusión {rule.Describe()}");
-            remove.Click += (_, _) => SetExclusions(_settings.Exclusions.Where(r => r != rule).ToList(), $"Ya no se excluye: {rule.Describe()}.");
+            var remove = new WC.Button { Content = Strings.Excl_Remove, Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(6, 0, 0, 0) };
+            System.Windows.Automation.AutomationProperties.SetName(remove, Core.Text.F(Strings.Excl_RemoveName, rule.Describe()));
+            remove.Click += (_, _) => SetExclusions(_settings.Exclusions.Where(r => r != rule).ToList(), Core.Text.F(Strings.Excl_Removed, rule.Describe()));
             item.Children.Add(remove);
             ExclusionsList.Children.Add(item);
         }
@@ -78,7 +80,7 @@ public partial class MainWindow : Window
         var value = ExclusionValueBox.Text.Trim();
         if (value.Length == 0)
         {
-            SetStatus("Escribe qué excluir: el ejecutable (NetBird.exe), el AUMID o la clase de ventana.");
+            SetStatus(Strings.Excl_TypeWhat);
             return;
         }
 
@@ -91,11 +93,11 @@ public partial class MainWindow : Window
     {
         if (_settings.Exclusions.Any(r => r.SameAs(rule)))
         {
-            SetStatus($"Ya estaba excluida: {rule.Describe()}.");
+            SetStatus(Core.Text.F(Strings.Excl_Already, rule.Describe()));
             return;
         }
 
-        SetExclusions([.. _settings.Exclusions, rule], $"Excluida: {rule.Describe()}. FocusWShell ya no la gestiona ni la muestra.");
+        SetExclusions([.. _settings.Exclusions, rule], Core.Text.F(Strings.Excl_Added, rule.Describe()));
     }
 
     private void SetExclusions(List<ExclusionRule> rules, string message)
@@ -107,6 +109,15 @@ public partial class MainWindow : Window
         Refresh();
         SetStatus(message + (result.Applied is null && result.Restores.Count == 0 ? "" : Environment.NewLine + Describe(result)));
     }
+
+    /// <summary>Nombre de una presentación para mostrarla (en el idioma de la interfaz).</summary>
+    private static string TemplateLabel(PanelTemplate template) => template switch
+    {
+        PanelTemplate.Stack => Strings.Tpl_Stack,
+        PanelTemplate.Fill => Strings.Tpl_Fill,
+        PanelTemplate.List => Strings.Tpl_List,
+        _ => Strings.Tpl_Tiles,
+    };
 
     /// <summary>En un menú, "_" marca la tecla de acceso: se duplica para que se vea tal cual (Chrome_WidgetWin_1).</summary>
     private static string NoAccessKey(string text) => text.Replace("_", "__", StringComparison.Ordinal);
@@ -124,7 +135,7 @@ public partial class MainWindow : Window
 
         if (ExclusionRule.ForApp(row.Snapshot) is { } appRule)
         {
-            var app = new WC.MenuItem { Header = NoAccessKey($"Excluir la app {row.App} ({appRule.Value})") };
+            var app = new WC.MenuItem { Header = NoAccessKey(Core.Text.F(Strings.Menu_ExcludeApp, row.App, appRule.Value)) };
             app.Click += (_, _) => AddExclusion(appRule);
             menu.Items.Add(app);
         }
@@ -135,12 +146,12 @@ public partial class MainWindow : Window
             var (_, mode, appKey) = _controller.SizeInfo(row.Snapshot.Handle);
             if (appKey.Length > 0)
             {
-                var size = new WC.MenuItem { Header = NoAccessKey($"Tamaño de {row.App}") };
+                var size = new WC.MenuItem { Header = NoAccessKey(Core.Text.F(Strings.Menu_SizeOf, row.App)) };
                 foreach (var (option, label) in new[]
                 {
-                    (AppSizeMode.Auto, $"Según la ventana ({(row.Snapshot.IsResizable ? "se puede redimensionar" : "tamaño fijo")})"),
-                    (AppSizeMode.Fixed, "Tamaño fijo: sólo moverla"),
-                    (AppSizeMode.Resizable, "Redimensionarla siempre"),
+                    (AppSizeMode.Auto, row.Snapshot.IsResizable ? Strings.Size_AutoResizable : Strings.Size_AutoFixed),
+                    (AppSizeMode.Fixed, Strings.Size_Fixed),
+                    (AppSizeMode.Resizable, Strings.Size_Resizable),
                 })
                 {
                     var item = new WC.MenuItem { Header = NoAccessKey(label), IsCheckable = true, IsChecked = mode == option };
@@ -148,7 +159,7 @@ public partial class MainWindow : Window
                     {
                         var result = _controller.SetAppSizeMode(appKey, option);
                         Refresh();
-                        SetStatus($"{row.App}: {label.ToLowerInvariant()}." + (result.Applied is null ? "" : Environment.NewLine + Describe(result)));
+                        SetStatus(Core.Text.F(Strings.Size_Set, row.App, label.ToLowerInvariant()) + (result.Applied is null ? "" : Environment.NewLine + Describe(result)));
                     };
                     size.Items.Add(item);
                 }
@@ -159,7 +170,7 @@ public partial class MainWindow : Window
         }
 
         var classRule = new ExclusionRule(ExclusionKind.WindowClass, row.Snapshot.ClassName);
-        var cls = new WC.MenuItem { Header = NoAccessKey($"Excluir sólo este tipo de ventana (clase {row.Snapshot.ClassName})") };
+        var cls = new WC.MenuItem { Header = NoAccessKey(Core.Text.F(Strings.Menu_ExcludeClass, row.Snapshot.ClassName)) };
         cls.Click += (_, _) => AddExclusion(classRule);
         menu.Items.Add(cls);
     }
@@ -170,12 +181,12 @@ public partial class MainWindow : Window
         var app = (App)Application.Current;
         var parts = new[]
         {
-            ("al-foco", "al foco"), ("anterior", "anterior"), ("foco-al-panel", "foco al panel"), ("pantalla-completa", "pantalla completa"),
-            ("vista", "vista"), (Core.Input.Hotkeys.Deck, "deck"), ("pantalla-encendida", "pantalla encendida"), (Core.Input.Hotkeys.Emergency, "restaurar todas"),
+            ("al-foco", Strings.Hk_ToFocus), ("anterior", Strings.Hk_Previous), ("foco-al-panel", Strings.Hk_FocusToPanel), ("pantalla-completa", Strings.Hk_Fullscreen),
+            ("vista", Strings.Hk_View), (Core.Input.Hotkeys.Deck, Strings.Hk_Deck), ("pantalla-encendida", Strings.Hk_KeepAwake), (Core.Input.Hotkeys.Emergency, Strings.Hk_RestoreAll),
         }
             .Where(p => app.ChordOf(p.Item1).Length > 0)
             .Select(p => $"{app.ChordOf(p.Item1)} {p.Item2}");
-        return "Atajos: " + string.Join(" · ", parts);
+        return Strings.Hk_Label + string.Join(" · ", parts);
     }
 
     private void Deck_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ToggleDeck();
@@ -203,7 +214,7 @@ public partial class MainWindow : Window
         int selected = options.FindIndex(o => o.Weights.SameAs(weights));
         if (selected < 0)
         {
-            options.Add(($"Personalizadas · {weights.Describe(view)}", weights));
+            options.Add((Core.Text.F(Strings.Weights_Custom, weights.Describe(view)), weights));
             selected = options.Count - 1;
         }
 
@@ -239,6 +250,26 @@ public partial class MainWindow : Window
         var result = await Task.Run(() => _controller.Execute(new SetView(view)));
         Refresh();
         SetStatus(Describe(result));
+    }
+
+    /// <summary>Cambiar de idioma: se guarda y se ofrece reiniciar (los textos se cargan al arrancar).</summary>
+    private void LanguageCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_loadingGestures || LanguageCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem { Tag: string language } || language == _settings.Language)
+        {
+            return;
+        }
+
+        _settings.Language = language;
+        _settings.Save();
+        if (MessageBox.Show(this, Strings.Main_LanguageRestartAsk, "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+        {
+            ((App)Application.Current).Restart();
+        }
+        else
+        {
+            SetStatus(Strings.Main_LanguageLater);
+        }
     }
 
     private void OpenMissing_Changed(object sender, RoutedEventArgs e)
@@ -291,7 +322,12 @@ public partial class MainWindow : Window
             WindowState = WindowState.Normal;
         }
 
+        // Al frente aunque Windows no nos deje tomar el primer plano (p. ej. si se abre desde el deck o la
+        // bandeja con el toque de la tablet): un instante "siempre encima", y la activación robusta.
+        Topmost = true;
         Activate();
+        FocusWShell.Win32.WindowMover.Activate(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+        Topmost = false;
     }
 
     /// <summary>Destino que el modelo da a una ventana gestionada.</summary>
@@ -306,35 +342,35 @@ public partial class MainWindow : Window
         }
 
         string name = panels.TryGetValue(m.PanelId, out var p) ? p.Name : m.PanelId;
-        string missing = p is not null && _controller.IsDisplayMissing(p.Display) ? " (monitor desconectado)" : "";
+        string missing = p is not null && _controller.IsDisplayMissing(p.Display) ? Strings.State_MonitorMissing : "";
         return m switch
         {
-            { Placement: Placement.Parked } => $"Estacionada en {name}{missing}",
-            { Detached: true } => "Fuera de layout",
-            { Placement: Placement.Center } => $"Foco (vuelve a {name})",
-            { Placement: Placement.Fullscreen } => $"Pantalla completa (vuelve a {name})",
-            _ => $"En {name}{missing}",
+            { Placement: Placement.Parked } => Core.Text.F(Strings.State_Parked, name, missing),
+            { Detached: true } => Strings.State_Detached,
+            { Placement: Placement.Center } => Core.Text.F(Strings.State_Focus, name),
+            { Placement: Placement.Fullscreen } => Core.Text.F(Strings.State_Fullscreen, name),
+            _ => Core.Text.F(Strings.State_In, name, missing),
         };
     }
 
     /// <summary>Nombre de un monitor para la UI.</summary>
     private static string DisplayName(string? key, IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux) =>
-        key is null ? "Principal" : aux.FirstOrDefault(d => d.Key == key) is { } d ? d.FriendlyName ?? d.DeviceName.TrimStart('\\', '.') : "monitor desconectado";
+        key is null ? Strings.Monitor_Principal : aux.FirstOrDefault(d => d.Key == key) is { } d ? d.FriendlyName ?? d.DeviceName.TrimStart('\\', '.') : Strings.Monitor_Missing;
 
     private static string LocationLabel(Panel p, IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux) =>
         p.Display is null
-            ? $"principal, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")} del foco"
-            : $"{DisplayName(p.Display, aux)}, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}";
+            ? (p.Side == PanelSide.Left ? Strings.Where_PrincipalLeft : Strings.Where_PrincipalRight)
+            : Core.Text.F(p.Side == PanelSide.Left ? Strings.Where_AuxLeft : Strings.Where_AuxRight, DisplayName(p.Display, aux));
 
     public void Refresh()
     {
         var display = ShellController.TargetDisplay();
         var aux = ShellController.AuxiliaryDisplays();
         HeaderText.Text =
-            $"Principal {display.FriendlyName ?? display.DeviceName} · {display.WorkArea} · {display.Dpi} DPI" +
-            string.Concat(aux.Select(a => $"   ·   Auxiliar {a.FriendlyName ?? a.DeviceName} · {a.WorkArea} · {a.Dpi} DPI")) + "\n" +
+            Core.Text.F(Strings.Header_Principal, display.FriendlyName ?? display.DeviceName, display.WorkArea, display.Dpi) +
+            string.Concat(aux.Select(a => Core.Text.F(Strings.Header_Aux, a.FriendlyName ?? a.DeviceName, a.WorkArea, a.Dpi))) + "\n" +
             HotkeySummary();
-        var fullscreenTargets = new List<string> { "Principal" };
+        var fullscreenTargets = new List<string> { Strings.Monitor_Principal };
         fullscreenTargets.AddRange(aux.Select(a => a.FriendlyName ?? a.DeviceName));
         int fullscreenIndex = Math.Max(0, FullscreenTarget.SelectedIndex);
         FullscreenTarget.ItemsSource = fullscreenTargets;
@@ -349,8 +385,8 @@ public partial class MainWindow : Window
 
         var panels = _controller.Panels();
         AssignmentOptions.Clear();
-        AssignmentOptions.Add(new AssignmentOption(AssignmentOption.Free, "— libre"));
-        AssignmentOptions.Add(new AssignmentOption(AssignmentOption.Focus, "Al foco"));
+        AssignmentOptions.Add(new AssignmentOption(AssignmentOption.Free, Strings.Assign_Free));
+        AssignmentOptions.Add(new AssignmentOption(AssignmentOption.Focus, Strings.Assign_Focus));
         foreach (var p in panels)
         {
             AssignmentOptions.Add(new AssignmentOption(p.Id, $"{p.Name} ({LocationLabel(p, aux)})"));
@@ -371,7 +407,7 @@ public partial class MainWindow : Window
             var state = StateOf(m, byId);
             if (m is not null && _controller.SizeInfo(w.Handle).Fixed)
             {
-                state += " · tamaño fijo";
+                state += Strings.State_FixedSuffix;
             }
 
             var row = new WindowRow(w, assignment, _controller.AppName(w)) { State = state };
@@ -384,7 +420,7 @@ public partial class MainWindow : Window
         {
             _rows.Add(new WindowRow(w, AssignmentOption.Free, _controller.AppName(w))
             {
-                State = $"No gestionable: {reason}",
+                State = Core.Text.F(Strings.State_Unmanageable, reason),
                 Manageable = false,
             });
         }
@@ -416,7 +452,7 @@ public partial class MainWindow : Window
                 ? $" ({o.Name})"
                 : "";
         string Spot(string where, string? display, PanelSide side, PanelSlot slot) =>
-            $"{where} · {(slot == PanelSlot.Upper ? "arriba" : "abajo")}{Occupant(display, side, slot)}";
+            Core.Text.F(slot == PanelSlot.Upper ? Strings.Spot_Upper : Strings.Spot_Lower, where, Occupant(display, side, slot));
         var locations = new List<Location>();
         void AddColumn(string? display, PanelSide side, string where)
         {
@@ -424,21 +460,21 @@ public partial class MainWindow : Window
             locations.Add(new(display, side, PanelSlot.Lower, Spot(where, display, side, PanelSlot.Lower)));
         }
 
-        AddColumn(null, PanelSide.Left, "Principal · izquierda del foco");
-        AddColumn(null, PanelSide.Right, "Principal · derecha del foco");
+        AddColumn(null, PanelSide.Left, Strings.Col_PrincipalLeft);
+        AddColumn(null, PanelSide.Right, Strings.Col_PrincipalRight);
         foreach (var a in aux)
         {
             string name = DisplayName(a.Key, aux);
-            AddColumn(a.Key, PanelSide.Left, $"{name} · izquierda");
-            AddColumn(a.Key, PanelSide.Right, $"{name} · derecha");
+            AddColumn(a.Key, PanelSide.Left, Core.Text.F(Strings.Col_AuxLeft, name));
+            AddColumn(a.Key, PanelSide.Right, Core.Text.F(Strings.Col_AuxRight, name));
         }
 
         var presentations = new List<(PanelTemplate Template, string Label)>
         {
-            (PanelTemplate.Tiles, "Tiles"),
-            (PanelTemplate.Stack, "Pestañas"),
-            (PanelTemplate.Fill, "Pantalla completa"),
-            (PanelTemplate.List, "Lista (tipo Explorador)"),
+            (PanelTemplate.Tiles, Strings.Tpl_Tiles),
+            (PanelTemplate.Stack, Strings.Tpl_Stack),
+            (PanelTemplate.Fill, Strings.Tpl_Fill),
+            (PanelTemplate.List, Strings.Tpl_ListLong),
         };
 
         System.Windows.Controls.ComboBox LocationCombo(string label, string? display, PanelSide side, PanelSlot slot)
@@ -447,7 +483,7 @@ public partial class MainWindow : Window
             if (display is not null && !options.Any(o => o.Display == display))
             {
                 // Un monitor que ahora no está conectado: se muestra su sitio para no perderlo.
-                options.Add(new(display, side, slot, Spot($"{DisplayName(display, aux)} · {(side == PanelSide.Left ? "izquierda" : "derecha")}", display, side, slot)));
+                options.Add(new(display, side, slot, Spot(Core.Text.F(side == PanelSide.Left ? Strings.Col_AuxLeft : Strings.Col_AuxRight, DisplayName(display, aux)), display, side, slot)));
             }
 
             var combo = new System.Windows.Controls.ComboBox
@@ -466,7 +502,7 @@ public partial class MainWindow : Window
         {
             var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
             var name = new System.Windows.Controls.TextBox { Text = panel.Name, Width = 160, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
-            System.Windows.Automation.AutomationProperties.SetName(name, $"Nombre del panel {panel.Name}");
+            System.Windows.Automation.AutomationProperties.SetName(name, Core.Text.F(Strings.Panel_NameName, panel.Name));
             name.LostFocus += async (_, _) =>
             {
                 if (name.Text.Trim() != panel.Name && name.Text.Trim().Length > 0)
@@ -478,7 +514,7 @@ public partial class MainWindow : Window
                 }
             };
 
-            var location = LocationCombo($"Ubicación del panel {panel.Name}", panel.Display, panel.Side, panel.Slot);
+            var location = LocationCombo(Core.Text.F(Strings.Panel_LocationName, panel.Name), panel.Display, panel.Side, panel.Slot);
             location.SelectionChanged += async (_, _) =>
             {
                 if (_buildingPanels || location.Tag is not List<Location> options || location.SelectedIndex < 0)
@@ -498,7 +534,7 @@ public partial class MainWindow : Window
                 ItemsSource = presentations.Select(o => o.Label).ToList(),
                 SelectedIndex = Math.Max(0, presentations.FindIndex(o => o.Template == panel.Template)),
             };
-            System.Windows.Automation.AutomationProperties.SetName(presentation, $"Presentación del panel {panel.Name}");
+            System.Windows.Automation.AutomationProperties.SetName(presentation, Core.Text.F(Strings.Panel_PresentationName, panel.Name));
             presentation.SelectionChanged += async (_, _) =>
             {
                 if (_buildingPanels || presentation.SelectedIndex < 0)
@@ -511,11 +547,11 @@ public partial class MainWindow : Window
                 Refresh();
             };
 
-            var delete = new System.Windows.Controls.Button { Content = "Borrar", Padding = new Thickness(8, 1, 8, 1) };
-            System.Windows.Automation.AutomationProperties.SetName(delete, $"Borrar el panel {panel.Name}");
+            var delete = new System.Windows.Controls.Button { Content = Strings.Main_Delete, Padding = new Thickness(8, 1, 8, 1) };
+            System.Windows.Automation.AutomationProperties.SetName(delete, Core.Text.F(Strings.Panel_DeleteName, panel.Name));
             delete.Click += async (_, _) =>
             {
-                if (MessageBox.Show($"¿Borrar el panel «{panel.Name}»? Sus ventanas quedan libres, donde estén.", "FocusWShell",
+                if (MessageBox.Show(Core.Text.F(Strings.Panel_DeleteAsk, panel.Name), "FocusWShell",
                         MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     await Run(() => _controller.Execute(new DeletePanel(panel.Id)));
@@ -533,17 +569,17 @@ public partial class MainWindow : Window
         // Fila para crear un panel nuevo.
         var create = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
         var newName = new System.Windows.Controls.TextBox { Width = 160, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
-        System.Windows.Automation.AutomationProperties.SetName(newName, "Nombre del panel nuevo");
+        System.Windows.Automation.AutomationProperties.SetName(newName, Strings.Panel_NewName);
         // Para el panel nuevo se propone el primer puesto libre: de un auxiliar si hay, si no del principal.
         var free = locations.Where(o => Occupant(o.Display, o.Side, o.Slot).Length == 0).ToList();
         var suggested = free.FirstOrDefault(o => o.Display is not null) ?? free.FirstOrDefault() ?? locations[0];
-        var newLocation = LocationCombo("Ubicación del panel nuevo", suggested.Display, suggested.Side, suggested.Slot);
-        var add = new System.Windows.Controls.Button { Content = "Crear panel", Padding = new Thickness(8, 1, 8, 1) };
+        var newLocation = LocationCombo(Strings.Panel_NewLocation, suggested.Display, suggested.Side, suggested.Slot);
+        var add = new System.Windows.Controls.Button { Content = Strings.Panel_Create, Padding = new Thickness(8, 1, 8, 1) };
         add.Click += async (_, _) =>
         {
             if (string.IsNullOrWhiteSpace(newName.Text) || newLocation.Tag is not List<Location> options || newLocation.SelectedIndex < 0)
             {
-                SetStatus("Escribe un nombre y elige dónde va el panel nuevo.");
+                SetStatus(Strings.Panel_NeedNameAndPlace);
                 return;
             }
 
@@ -570,7 +606,7 @@ public partial class MainWindow : Window
         var apps = _controller.CatalogApps(includeHidden: ShowHiddenApps.IsChecked == true);
         if (apps.Count == 0)
         {
-            CatalogList.Children.Add(new System.Windows.Controls.TextBlock { Text = "Todavía no hay apps: aparecerán al detectarlas abiertas.", Foreground = System.Windows.Media.Brushes.DimGray });
+            CatalogList.Children.Add(new System.Windows.Controls.TextBlock { Text = Strings.Apps_None, Foreground = System.Windows.Media.Brushes.DimGray });
             return;
         }
 
@@ -597,7 +633,7 @@ public partial class MainWindow : Window
                 VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = app.ExecutablePath ?? app.Aumid ?? app.AppKey,
             };
-            System.Windows.Automation.AutomationProperties.SetName(name, $"Nombre de la app {app.Name}");
+            System.Windows.Automation.AutomationProperties.SetName(name, Core.Text.F(Strings.Apps_NameName, app.Name));
             name.LostFocus += (_, _) =>
             {
                 if (name.Text.Trim().Length > 0 && name.Text.Trim() != app.Name)
@@ -608,7 +644,7 @@ public partial class MainWindow : Window
             row.Children.Add(name);
             row.Children.Add(new System.Windows.Controls.TextBlock
             {
-                Text = open ? "abierta" : "cerrada",
+                Text = open ? Strings.Apps_Open : Strings.Apps_Closed,
                 Width = 70,
                 Foreground = System.Windows.Media.Brushes.DimGray,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -621,17 +657,17 @@ public partial class MainWindow : Window
                 ItemsSource = panels.Select(p => p.Name).ToList(),
                 SelectedIndex = Math.Max(0, panels.ToList().FindIndex(p => p.Id == (app.LastPanelId ?? DefaultPanel()))),
             };
-            System.Windows.Automation.AutomationProperties.SetName(target, $"Panel para abrir {app.Name}");
+            System.Windows.Automation.AutomationProperties.SetName(target, Core.Text.F(Strings.Apps_TargetName, app.Name));
 
             var launch = new System.Windows.Controls.Button
             {
-                Content = "Abrir",
+                Content = Strings.Apps_Launch,
                 Padding = new Thickness(8, 1, 8, 1),
                 Margin = new Thickness(0, 0, 6, 0),
                 IsEnabled = app.CanLaunch,
-                ToolTip = app.CanLaunch ? "Abre la app y pone su ventana en el panel elegido" : "No se sabe cómo abrirla",
+                ToolTip = app.CanLaunch ? Strings.Apps_LaunchTip : Strings.Apps_CantLaunch,
             };
-            System.Windows.Automation.AutomationProperties.SetName(launch, $"Abrir {app.Name}");
+            System.Windows.Automation.AutomationProperties.SetName(launch, Core.Text.F(Strings.Apps_LaunchName, app.Name));
             launch.Click += async (_, _) =>
             {
                 if (target.SelectedIndex < 0)
@@ -642,23 +678,23 @@ public partial class MainWindow : Window
                 var panelId = panels[target.SelectedIndex].Id;
                 var key = app.AppKey;
                 launch.IsEnabled = false;
-                SetStatus($"Abriendo {app.Name}…");
+                SetStatus(Core.Text.F(Strings.Apps_Opening, app.Name));
                 SetStatus(await Task.Run(() => _controller.OpenApp(key, panelId)));
                 Refresh();
             };
 
             var hide = new System.Windows.Controls.Button
             {
-                Content = app.Hidden ? "Mostrar" : "Ocultar",
+                Content = app.Hidden ? Strings.Apps_Show : Strings.Apps_Hide,
                 Padding = new Thickness(8, 1, 8, 1),
                 Margin = new Thickness(0, 0, 6, 0),
-                ToolTip = app.Hidden ? "Vuelve a mostrarla en la lista" : "La quita de la lista sin olvidarla: no vuelve a aparecer como nueva",
+                ToolTip = app.Hidden ? Strings.Apps_ShowTip : Strings.Apps_HideTip,
             };
-            System.Windows.Automation.AutomationProperties.SetName(hide, $"{(app.Hidden ? "Mostrar" : "Ocultar")} {app.Name}");
+            System.Windows.Automation.AutomationProperties.SetName(hide, Core.Text.F(app.Hidden ? Strings.Apps_ShowName : Strings.Apps_HideName, app.Name));
             hide.Click += (_, _) => _controller.SetAppHidden(app.AppKey, !app.Hidden);
 
-            var forget = new System.Windows.Controls.Button { Content = "Olvidar", Padding = new Thickness(8, 1, 8, 1) };
-            System.Windows.Automation.AutomationProperties.SetName(forget, $"Olvidar {app.Name}");
+            var forget = new System.Windows.Controls.Button { Content = Strings.Apps_Forget, Padding = new Thickness(8, 1, 8, 1) };
+            System.Windows.Automation.AutomationProperties.SetName(forget, Core.Text.F(Strings.Apps_ForgetName, app.Name));
             forget.Click += (_, _) => _controller.ForgetApp(app.AppKey);
 
             row.Children.Add(target);
@@ -762,7 +798,7 @@ public partial class MainWindow : Window
         var commands = PendingCommands();
         if (commands.Count == 0)
         {
-            SetStatus("No hay cambios de rol que aplicar.");
+            SetStatus(Strings.Act_NothingToApply);
             return;
         }
 
@@ -775,7 +811,7 @@ public partial class MainWindow : Window
     {
         if (WindowList.SelectedItem is not WindowRow row)
         {
-            SetStatus("Selecciona una ventana de la lista.");
+            SetStatus(Strings.Act_SelectWindow);
             return;
         }
 
@@ -795,7 +831,7 @@ public partial class MainWindow : Window
     {
         if (WindowList.SelectedItem is not WindowRow row)
         {
-            SetStatus("Selecciona una ventana de la lista.");
+            SetStatus(Strings.Act_SelectWindow);
             return;
         }
 
@@ -839,7 +875,7 @@ public partial class MainWindow : Window
     {
         if (WindowList.SelectedItem is not WindowRow row)
         {
-            SetStatus("Selecciona una ventana de la lista.");
+            SetStatus(Strings.Act_SelectWindow);
             return;
         }
 
@@ -852,7 +888,7 @@ public partial class MainWindow : Window
     {
         if (WindowList.SelectedItem is not WindowRow row)
         {
-            SetStatus("Selecciona una ventana de la lista.");
+            SetStatus(Strings.Act_SelectWindow);
             return;
         }
 
@@ -910,7 +946,7 @@ public partial class MainWindow : Window
     {
         if (SelectedScene() is not { } name)
         {
-            SetStatus("No hay escenas guardadas. Coloca las ventanas, escribe un nombre y pulsa \"Guardar escena actual\".");
+            SetStatus(Strings.Scene_None);
             return;
         }
 
@@ -925,13 +961,13 @@ public partial class MainWindow : Window
         var name = string.IsNullOrWhiteSpace(SceneName.Text) ? SelectedScene() : SceneName.Text.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            SetStatus("Escribe un nombre para la escena.");
+            SetStatus(Strings.Scene_NeedName);
             return;
         }
 
         var scene = _controller.SaveScene(name);
         SceneName.Text = "";
-        SetStatus($"Escena «{scene.Name}» guardada: {scene.Windows.Count} ventanas, {scene.Templates.Count} templates.");
+        SetStatus(Core.Text.F(Strings.Scene_Saved, scene.Name, scene.Windows.Count, scene.Templates.Count));
         LoadScenes();
         SceneCombo.SelectedIndex = Math.Max(0, (SceneCombo.Tag as IReadOnlyList<string>)?.ToList().FindIndex(n => n == scene.Name) ?? 0);
     }
@@ -943,11 +979,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (MessageBox.Show($"¿Borrar la escena «{name}»? Las ventanas no se mueven.", "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question)
+        if (MessageBox.Show(Core.Text.F(Strings.Scene_DeleteAsk, name), "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question)
             == MessageBoxResult.Yes)
         {
             _controller.DeleteScene(name);
-            SetStatus($"Escena «{name}» borrada.");
+            SetStatus(Core.Text.F(Strings.Scene_Deleted, name));
         }
     }
 
@@ -957,7 +993,7 @@ public partial class MainWindow : Window
         var sb = new StringBuilder();
         foreach (var r in result.Rejections)
         {
-            sb.AppendLine(CultureInfo.CurrentCulture, $"No se hizo: {r}");
+            sb.AppendLine(Core.Text.F(Strings.Report_NotDone, r));
         }
 
         foreach (var restore in result.Restores.Where(r => r.Entries.Count > 0))
@@ -970,7 +1006,7 @@ public partial class MainWindow : Window
             sb.Append(Describe(report));
         }
 
-        return sb.Length == 0 ? "Hecho." : sb.ToString();
+        return sb.Length == 0 ? Strings.Report_Done : sb.ToString();
     }
 
     private static string Describe(SceneApplyReport report)
@@ -984,16 +1020,16 @@ public partial class MainWindow : Window
 
         // Columnas del principal en el orden en que se ven.
         var layout = report.Layout.Principal;
-        var columns = new[] { ("izquierda", layout.LeftColumn), ("foco", layout.CenterColumn), ("derecha", layout.RightColumn) }
+        var columns = new[] { (Strings.Report_Left, layout.LeftColumn), (Strings.Report_Focus, layout.CenterColumn), (Strings.Report_Right, layout.RightColumn) }
             .OrderBy(c => c.Item2.Left)
             .Select(c => $"{c.Item1} {c.Item2.Width} px");
-        sb.AppendLine(CultureInfo.CurrentCulture, $"Principal: {string.Join(" · ", columns)}");
+        sb.AppendLine(Core.Text.F(Strings.Report_Principal, string.Join(" · ", columns)));
         var names = FocusWShell.Win32.DisplayEnumerator.Enumerate().ToDictionary(d => d.Key, d => d.FriendlyName ?? d.DeviceName);
         foreach (var aux in report.Layout.Aux)
         {
             sb.AppendLine(
                 CultureInfo.CurrentCulture,
-                $"{names.GetValueOrDefault(aux.Display, aux.Display)}: {string.Join(" · ", aux.Columns.Select(c => $"{aux.Titles.GetValueOrDefault(c.Key, c.Key)} {c.Value.Width} px ({aux.EffectiveTemplates[c.Key]})"))}");
+                $"{names.GetValueOrDefault(aux.Display, aux.Display)}: {string.Join(" · ", aux.Columns.Select(c => $"{aux.Titles.GetValueOrDefault(c.Key, c.Key)} {c.Value.Width} px ({TemplateLabel(aux.EffectiveTemplates[c.Key])})"))}");
         }
 
         foreach (var note in report.Layout.Notes)
@@ -1003,17 +1039,17 @@ public partial class MainWindow : Window
 
         foreach (var pass in report.Passes.Where(p => p.Learned.Count > 0))
         {
-            sb.AppendLine(CultureInfo.CurrentCulture, $"  · Aprendido: {string.Join("; ", pass.Learned)}. Se recolocó.");
+            sb.AppendLine(Core.Text.F(Strings.Report_Learned, string.Join("; ", pass.Learned)));
         }
 
         foreach (var (target, result) in report.Applied.Where(a => a.Result is { IsExact: false }))
         {
-            sb.AppendLine(CultureInfo.CurrentCulture, $"  ! {target.Label}: {result!.Error ?? $"desviación de {result.MaxDeviation} px"}");
+            sb.AppendLine(CultureInfo.CurrentCulture, $"  ! {target.Label}: {result!.Error ?? Core.Text.F(Strings.Report_Deviation, result.MaxDeviation)}");
         }
 
         var invaders = report.CenterInvaders;
-        string center = invaders.Count == 0 ? "Centro protegido." : $"Invaden el Centro: {string.Join(", ", invaders)}.";
-        sb.AppendLine(CultureInfo.CurrentCulture, $"{report.ExactCount}/{report.Applied.Count} ventanas en su sitio. {center}");
+        string center = invaders.Count == 0 ? Strings.Report_CenterSafe : Core.Text.F(Strings.Report_CenterInvaded, string.Join(", ", invaders));
+        sb.AppendLine(Core.Text.F(Strings.Report_InPlace, report.ExactCount, report.Applied.Count, center));
         return sb.ToString();
     }
 
@@ -1021,7 +1057,7 @@ public partial class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(report);
         var sb = new StringBuilder();
-        sb.AppendLine(CultureInfo.CurrentCulture, $"Restauradas: {report.Summary}");
+        sb.AppendLine(Core.Text.F(Strings.Report_Restored, report.Summary));
         foreach (var e in report.Entries.Where(e => e.Outcome is RestoreOutcome.Pending or RestoreOutcome.RestoredWithDifferences))
         {
             sb.AppendLine(CultureInfo.CurrentCulture, $"  ! {e.Entry.ProcessName}: {e.Detail}");

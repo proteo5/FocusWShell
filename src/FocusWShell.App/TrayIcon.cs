@@ -11,7 +11,7 @@ public sealed class TrayIcon : IDisposable
     private readonly Icon _normal;
     private readonly Icon _awake;
     private readonly Forms.ToolStripMenuItem _keepAwakeItem;
-    private readonly Forms.ToolStripMenuItem _scenesItem = new("Escenas");
+    private readonly Forms.ToolStripMenuItem _scenesItem = new(Strings.TrayMenu_Scenes);
     private readonly Forms.ToolStripMenuItem _restoreItem;
     private readonly Forms.ToolStripMenuItem _startupItem;
     private Func<int, string> _sceneChord = n => "";
@@ -21,17 +21,17 @@ public sealed class TrayIcon : IDisposable
         _normal = DrawIcon(Color.FromArgb(40, 120, 220));
         _awake = DrawIcon(Color.FromArgb(235, 160, 30));
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Abrir FocusWShell", null, (_, _) => open());
-        menu.Items.Add("Mostrar u ocultar el deck", null, (_, _) => toggleDeck());
+        menu.Items.Add(Strings.TrayMenu_Open, null, (_, _) => open());
+        menu.Items.Add(Core.Strings.Action_Deck, null, (_, _) => toggleDeck());
         menu.Items.Add(_scenesItem);
-        _keepAwakeItem = new Forms.ToolStripMenuItem("Mantener la pantalla encendida", null, (_, _) => toggleKeepAwake());
+        _keepAwakeItem = new Forms.ToolStripMenuItem(Strings.TrayMenu_KeepAwake, null, (_, _) => toggleKeepAwake());
         menu.Items.Add(_keepAwakeItem);
-        _restoreItem = new Forms.ToolStripMenuItem("Restaurar todas", null, (_, _) => restoreAll());
+        _restoreItem = new Forms.ToolStripMenuItem(Strings.Tray_RestoreAll, null, (_, _) => restoreAll());
         menu.Items.Add(_restoreItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        _startupItem = new Forms.ToolStripMenuItem("Iniciar con Windows", null, (_, _) => toggleStartup());
+        _startupItem = new Forms.ToolStripMenuItem(Strings.Tray_StartWithWindows, null, (_, _) => toggleStartup());
         menu.Items.Add(_startupItem);
-        menu.Items.Add("Salir (devuelve las ventanas a su sitio)", null, (_, _) => exit());
+        menu.Items.Add(Strings.TrayMenu_Exit, null, (_, _) => exit());
 
         _icon = new Forms.NotifyIcon
         {
@@ -46,8 +46,8 @@ public sealed class TrayIcon : IDisposable
     /// <summary>Pone en el menú los atajos en uso (configurables).</summary>
     public void SetHotkeys(string keepAwake, string restoreAll, Func<int, string> scene)
     {
-        _keepAwakeItem.Text = keepAwake.Length > 0 ? $"Mantener la pantalla encendida ({keepAwake})" : "Mantener la pantalla encendida";
-        _restoreItem.Text = restoreAll.Length > 0 ? $"Restaurar todas ({restoreAll})" : "Restaurar todas";
+        _keepAwakeItem.Text = keepAwake.Length > 0 ? $"{Strings.TrayMenu_KeepAwake} ({keepAwake})" : Strings.TrayMenu_KeepAwake;
+        _restoreItem.Text = restoreAll.Length > 0 ? $"{Strings.Tray_RestoreAll} ({restoreAll})" : Strings.Tray_RestoreAll;
         _sceneChord = scene;
     }
 
@@ -58,7 +58,7 @@ public sealed class TrayIcon : IDisposable
         _scenesItem.DropDownItems.Clear();
         if (names.Count == 0)
         {
-            _scenesItem.DropDownItems.Add(new Forms.ToolStripMenuItem("(ninguna guardada)") { Enabled = false });
+            _scenesItem.DropDownItems.Add(new Forms.ToolStripMenuItem(Strings.TrayMenu_NoScenes) { Enabled = false });
             return;
         }
 
@@ -75,9 +75,9 @@ public sealed class TrayIcon : IDisposable
     public void ShowStartup(bool enabled, string? other)
     {
         _startupItem.Checked = enabled;
-        _startupItem.ToolTipText = enabled ? "Se abre al iniciar sesión"
-            : other is not null ? $"Ahora se inicia otra copia: {other}. Márcalo para iniciar ésta."
-            : "No se abre al iniciar sesión";
+        _startupItem.ToolTipText = enabled ? Strings.TrayMenu_StartsOn
+            : other is not null ? Core.Text.F(Strings.TrayMenu_OtherCopy, other)
+            : Strings.TrayMenu_StartsOff;
     }
 
     /// <summary>Refleja en el menú y en el icono si la pantalla se mantiene encendida.</summary>
@@ -85,7 +85,7 @@ public sealed class TrayIcon : IDisposable
     {
         _keepAwakeItem.Checked = active;
         _icon.Icon = active ? _awake : _normal;
-        _icon.Text = active ? "FocusWShell · pantalla siempre encendida" : "FocusWShell";
+        _icon.Text = active ? Strings.TrayIcon_Awake : "FocusWShell";
     }
 
     public void Notify(string title, string text, Forms.ToolTipIcon kind = Forms.ToolTipIcon.Info) =>

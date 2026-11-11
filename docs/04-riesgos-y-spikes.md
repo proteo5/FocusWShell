@@ -549,6 +549,8 @@ Probado con clics reales sobre el deck: la ventana de prueba se cerró, el modo 
   - Ahora LIBRES es un destino más: al mover una app que está en un panel, LIBRES se pone amarillo con «⬇ Liberar aquí», aunque esté vacío, y un toque la libera (vuelve a su sitio original).
   - Con el ratón, soltarla arrastrada ahí hace lo mismo.
   - Los textos de destino van en una etiqueta oscura, para que se lean encima de las tarjetas.
+  - «Mover aquí» y «Liberar aquí» son botones. Por un tiempo fueron un velo que escuchaba el ratón: con el mouse y con toques inyectados (`InjectTouchInput`) funcionaba, pero con el toque de la tablet por Apollo no. En el deck, sólo los botones respondían siempre. Comprobado con toques inyectados: la app se movió.
+  - LIBRES se dibuja siempre, aunque esté vacía («Sin ventanas libres»). Antes sólo salía si había ventanas libres. Con la sesión restaurada todas estaban en paneles, así que desaparecía, y parecía que se había perdido la función de mover.
   - Probado con clics reales: la ventana de prueba pasó de «En Trabajo» a libre.
 
 Probado con clics reales sobre el deck en la tablet:
@@ -558,6 +560,52 @@ Probado con clics reales sobre el deck en la tablet:
 - «Cerrar» se enciende y se apaga igual.
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
+
+### Español e inglés (2026-11-11)
+
+La app estaba sólo en español. Ahora sus textos están en recursos `.resx`: `Strings.resx` en español, que es el idioma base, y `Strings.en.resx` en inglés. Añadir otro idioma es añadir otro archivo. Hay dos juegos:
+
+- **`FocusWShell.Core/Strings.resx`** (97 textos): los rechazos del modelo, las notas del layout, los nombres de los atajos y de las teclas, las exclusiones y los motivos de «no gestionable». Win32 los usa también: errores al abrir apps, el resumen de restaurar, los errores al mover. La clase la genera MSBuild.
+- **`FocusWShell.App/Strings.resx`** (341 textos): la ventana principal (XAML con `{x:Static local:Strings.X}`), el deck, la bandeja, las tiras, las listas, la ventana de atajos y los mensajes de estado. `Strings.Designer.cs` lo escribe `build	extos.ps1` junto al `.resx`, porque el compilador de XAML necesita la clase antes de que MSBuild genere recursos (si se genera en `obj`, falla con MC3050).
+- **Los textos con valores** usan huecos `{0}` y `Text.F(Strings.X, a, b)`. Las frases con «izquierda» o «derecha» van enteras, porque el orden de las palabras cambia de un idioma a otro.
+- **No se traducen los identificadores:** la región «Centro» del layout, los títulos internos de las ventanas propias (las pruebas los buscan), los ids de los paneles y los archivos. Las presets de ancho sí se traducen al mostrarse, porque se guardan los pesos, no el nombre.
+
+**Añadir un texto.** `powershell -File build	extos.ps1 -Clave Deck_Hola -Es "Hola, {0}" -En "Hello, {0}"` lo añade en los dos idiomas (con `-Proyecto Core`, en el núcleo) y regenera la clase. En el código se usa `Strings.Deck_Hola`, o `Core.Text.F(Strings.Deck_Hola, nombre)` si tiene huecos. Si se edita el `.resx` a mano, basta con `powershell -File build	extos.ps1` para regenerar la clase.
+
+**Elegir el idioma.** En la ventana principal, «Idioma: Automático (el de Windows) / Español / English», guardado en `settings.json` (`Language`).
+
+- Se aplica al arrancar, en el constructor estático de `App`, antes de crear ningún texto. Cambiarlo ofrece reiniciar: la instancia nueva (`--reinicio`) espera a que la vieja se cierre, y la sesión devuelve las ventanas a sus paneles.
+- «Automático» da español si Windows está en español, e inglés en otro caso.
+- Una configuración de antes de los idiomas, sin `Language`, sigue en español: con Windows en inglés, «automático» la habría cambiado sin que nadie lo pidiera.
+
+**Pruebas.**
+
+- Fijan la cultura en español (`TestCulture`, un `ModuleInitializer`), porque comprueban mensajes.
+- `TranslationTests` comprueba que el inglés tiene las mismas claves que el español y los mismos huecos en cada texto: un hueco de menos rompería al usar ese texto.
+- `--deck-preview <carpeta> <es|en>` dibuja el deck en cada idioma.
+- Revisado en inglés: el deck (con los modos mover y cerrar, y un monitor sin paneles) y la ventana principal (Ventanas y Paneles). Los guiones de prueba buscan los textos en español, así que se ejecutan con el idioma en español.
+
+### Ventanas libres que siguen libres (validación, 2026-11-11)
+
+Encontrado en uso con una llamada de Zoom:
+
+- **Tocar una app libre en el deck la adoptaba en Trabajo y la llevaba al foco.** Hay ventanas que conviene dejar flotando: las de Zoom, un diálogo. Ahora tocar una libre sólo la trae al frente, con el cursor encima, y sigue libre. Para ponerla en un panel o en el foco está «Mover».
+- **Al terminar la llamada, sus ventanas seguían en LIBRES.** FocusWShell guarda la última foto de cada ventana vista, y sólo olvidaba las gestionadas que se cerraban. Ahora, al refrescar, también se olvidan las libres que ya no aparecen.
+
+Comprobado con toques inyectados y una ventana de prueba libre: al tocarla quedó en primer plano y libre; al cerrarla, salió de LIBRES en menos de 5 s.
+
+### La ventana de configuración quedaba detrás (validación, 2026-11-11)
+
+Encontrado en uso: la ventana principal no se podía poner al frente. Causa: WPF la centra en el monitor del cursor (`CenterScreen`), y usando el deck el cursor está en la tablet. La ventana se abría ahí, debajo del deck, que va siempre encima.
+
+Arreglo:
+
+- Al mostrarla, si cae en el monitor donde está fijado el deck (según la configuración, porque al arrancar el deck aún no se ve), va al centro del principal.
+- Se pone al frente con la activación robusta y un instante «siempre encima».
+- Al arrancar, tras restaurar la sesión, que activa la app del foco, se vuelve a poner delante.
+- Abrir `FocusWShell.exe` con uno ya abierto muestra su ventana en lugar del aviso «ya se está ejecutando».
+
+Comprobado arrancando con el cursor en la tablet: la ventana quedó en el principal, encima y en primer plano. Tapada por otra ventana, abrir el ejecutable otra vez la trajo al frente.
 
 ### Iconos que faltaban (validación, 2026-11-10)
 

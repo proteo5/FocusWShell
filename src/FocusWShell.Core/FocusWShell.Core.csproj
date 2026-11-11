@@ -3,7 +3,14 @@
   <!-- El núcleo no depende de Windows: se prueba sin ventanas reales. Ver docs/03-arquitectura.md -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Idioma de los textos base (Strings.resx); el inglés va en Strings.en.resx. -->
+    <NeutralLanguage>es</NeutralLanguage>
   </PropertyGroup>
+
+  <!-- Textos que ve el usuario (mensajes del modelo y notas del layout), en español e inglés. -->
+  <ItemGroup>
+    <EmbeddedResource Update="Strings.resx" StronglyTypedLanguage="CSharp" StronglyTypedClassName="Strings" StronglyTypedNamespace="FocusWShell.Core" StronglyTypedFileName="$(IntermediateOutputPath)Strings.Designer.cs" PublicClass="true" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="FocusWShell.Core.Tests" />

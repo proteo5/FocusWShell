@@ -83,7 +83,7 @@ public static class SceneLayoutEngine
             wr -= fromRight;
             missing -= fromRight;
             wc = needC - missing;
-            notes.Add($"El Centro se amplió a {wc} px para que quepa {input.Center!.Label} (mínimo {needC} px).");
+            notes.Add(Text.F(Strings.Note_CenterGrew, wc, input.Center!.Label, needC));
         }
 
         // 4. Un panel cuyo borde exterior da a otro monitor no puede desbordar: saca del layout las
@@ -114,8 +114,7 @@ public static class SceneLayoutEngine
         if (focus != FocusPosition.Center)
         {
             right.ExcludeTooWide(wr, excluded, notes, (w, panel, limit) =>
-                $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.DisplayTitle} tiene {limit} entre el foco y el otro panel; " +
-                "se minimiza y queda fuera del layout.");
+                Text.F(Strings.Note_TooWideBetween, w.Label, w.MinSize!.Value.Width, panel.DisplayTitle, limit));
         }
 
         // 7. Columnas definitivas (contiguas, con separación), en el orden de la vista. La última se queda
@@ -191,8 +190,7 @@ public static class SceneLayoutEngine
         second is null ? [first] : [first, second];
 
     private static string SharedEdgeNote(LayoutWindow w, PanelInput panel, int maxWidth) =>
-        $"{w.Label} necesita {w.MinSize!.Value.Width} px de ancho y {panel.Name} puede tener como mucho {maxWidth} " +
-        "sin invadir el Centro ni el otro monitor; se minimiza y queda fuera del layout.";
+        Text.F(Strings.Note_TooWideShared, w.Label, w.MinSize!.Value.Width, panel.Name, maxWidth);
 
     /// <param name="Panel">El panel con las ventanas que siguen en el layout.</param>
     internal sealed record ResolvedPanel(PanelInput Panel, PanelTemplate Template, IReadOnlyList<LayoutWindow> Visible, int RequiredWidth);
@@ -234,7 +232,7 @@ public static class SceneLayoutEngine
 
         centerWidth -= take;
         var widest = resolved.Visible.MaxBy(w => w.MinSize?.Width ?? 0)!;
-        notes.Add($"{resolved.Panel.DisplayTitle} se amplió {take} px (el Centro queda en {centerWidth} px) porque {widest.Label} necesita {needed} px de ancho.");
+        notes.Add(Text.F(Strings.Note_PanelGrew, resolved.Panel.DisplayTitle, take, centerWidth, widest.Label, needed));
         return width + take;
     }
 
@@ -246,13 +244,12 @@ public static class SceneLayoutEngine
         if (width > cell.Width)
         {
             notes.Add(
-                $"{w.Label} necesita {width} px de ancho y {panelName} tiene {cell.Width}; " +
-                $"se ancla al borde {(side == PanelSide.Left ? "izquierdo" : "derecho")} y {width - cell.Width} px quedan fuera de pantalla.");
+                Text.F(side == PanelSide.Left ? Strings.Note_OverflowLeft : Strings.Note_OverflowRight, w.Label, width, panelName, cell.Width, width - cell.Width));
         }
 
         if (height > cell.Height)
         {
-            notes.Add($"{w.Label} necesita {height} px de alto y su celda tiene {cell.Height}; {height - cell.Height} px quedan por debajo.");
+            notes.Add(Text.F(Strings.Note_TooTallCell, w.Label, height, cell.Height, height - cell.Height));
         }
 
         int left = side == PanelSide.Left ? cell.Right - width : cell.Left;
@@ -279,8 +276,8 @@ public static class SceneLayoutEngine
             _ => column.Left - ((width - column.Width) / 2),
         };
         notes.Add(focus == FocusPosition.Center
-            ? $"{center.Label} no cabe en el Centro ({width}x{height} contra {column.Width}x{column.Height}); se centra sobre los paneles."
-            : $"{center.Label} no cabe en el foco ({width}x{height} contra {column.Width}x{column.Height}); se ancla al borde del monitor y tapa parte del panel de al lado.");
+            ? Text.F(Strings.Note_CenterTooBig, center.Label, width, height, column.Width, column.Height)
+            : Text.F(Strings.Note_FocusTooBigEdge, center.Label, width, height, column.Width, column.Height));
         return PixelRect.FromSize(left, column.Top, width, height);
     }
 

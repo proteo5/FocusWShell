@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 
 namespace FocusWShell.Core.Layout;
@@ -67,7 +67,7 @@ public static class FixedSize
             var slot = t.Rect;
             if (size.Width > slot.Width || size.Height > slot.Height)
             {
-                notes.Add($"{t.Label} es de tamaño fijo ({size}) y no cabe entera en su sitio ({slot.Width}x{slot.Height}); se deja con su tamaño.");
+                notes.Add(Text.F(Strings.Note_FixedTooBig, t.Label, size, slot.Width, slot.Height));
             }
 
             int left = slot.Left + Math.Max(0, (slot.Width - size.Width) / 2);

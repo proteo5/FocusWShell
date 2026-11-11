@@ -21,6 +21,9 @@ public sealed class AppSettings
 
     public int SchemaVersion { get; set; } = 1;
 
+    /// <summary>Idioma de la interfaz: <c>auto</c> (el de Windows), <c>es</c> o <c>en</c>. Se aplica al arrancar.</summary>
+    public string Language { get; set; } = Localization.Auto;
+
     /// <summary>Mantener la pantalla encendida (ADR 0010). Se recuerda entre sesiones.</summary>
     public bool KeepDisplayOn { get; set; }
 
@@ -60,9 +63,22 @@ public sealed class AppSettings
     {
         try
         {
-            return File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings()
-                : new AppSettings();
+            if (!File.Exists(FilePath))
+            {
+                return new AppSettings(); // instalación nueva: el idioma de Windows
+            }
+
+            var json = File.ReadAllText(FilePath);
+            var settings = JsonSerializer.Deserialize<AppSettings>(json, Options) ?? new AppSettings();
+
+            // Una configuración de antes de los idiomas: la app siempre fue en español, así que sigue en español
+            // (si Windows está en inglés, "automático" la cambiaría de golpe sin que nadie lo pidiera).
+            if (!json.Contains("\"Language\"", StringComparison.Ordinal))
+            {
+                settings.Language = Localization.Spanish;
+            }
+
+            return settings;
         }
         catch (JsonException)
         {

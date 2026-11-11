@@ -10,6 +10,8 @@
     <RootNamespace>FocusWShell.App</RootNamespace>
     <!-- Icono del ejecutable (Explorador, barra de tareas). Se genera con build\icono.ps1. -->
     <ApplicationIcon>Assets\FocusWShell.ico</ApplicationIcon>
+    <!-- Idioma de los textos base (Strings.resx); el inglés va en Strings.en.resx. -->
+    <NeutralLanguage>es</NeutralLanguage>
     <!-- WPF fija el DPI con el manifiesto compartido; WinForms sólo aporta el NotifyIcon. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
@@ -23,6 +25,9 @@
   <ItemGroup>
     <Resource Include="Assets\FocusWShell.ico" />
   </ItemGroup>
+
+  <!-- Textos de la interfaz, en español (Strings.resx) e inglés (Strings.en.resx). Strings.Designer.cs lo
+       escribe la herramienta de textos: el compilador de XAML necesita la clase antes de generar recursos. -->
 
   <ItemGroup>
     <ProjectReference Include="..\FocusWShell.Core\FocusWShell.Core.csproj" />

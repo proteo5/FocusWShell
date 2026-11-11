@@ -39,7 +39,7 @@ public sealed class ListPanelWindow : Window
     /// <summary>Texto cuando no hay ninguna app que mostrar.</summary>
     private static TextBlock EmptyText() => new()
     {
-        Text = "Todavía no hay apps en este panel. Asigna ventanas a él, o ábrelas desde el catálogo eligiéndolo: luego aparecerán aquí aunque estén cerradas.",
+        Text = Strings.List_Empty,
         Foreground = DimBrush,
         TextWrapping = TextWrapping.Wrap,
         Margin = new Thickness(16),
@@ -145,7 +145,7 @@ public sealed class ListPanelWindow : Window
     private void RenderModes()
     {
         _modes.Children.Clear();
-        foreach (var (layout, label) in new[] { (ListLayout.LargeIcons, "▦ Iconos grandes"), (ListLayout.List, "≡ Lista"), (ListLayout.Details, "☰ Detalles") })
+        foreach (var (layout, label) in new[] { (ListLayout.LargeIcons, "▦ " + Strings.List_LargeIcons), (ListLayout.List, "≡ " + Strings.Tpl_List), (ListLayout.Details, "☰ " + Strings.List_Details) })
         {
             var button = new Button
             {
@@ -158,7 +158,7 @@ public sealed class ListPanelWindow : Window
                 Background = _view.Layout == layout ? ActiveBrush : CardBrush,
                 Cursor = Cursors.Hand,
             };
-            System.Windows.Automation.AutomationProperties.SetName(button, $"Lista {_view.Title}: {label[2..]}");
+            System.Windows.Automation.AutomationProperties.SetName(button, Core.Text.F(Strings.List_ModeName, _view.Title, label[2..]));
             button.Click += async (_, _) => await _run(new SetListLayout(_view.PanelId, layout));
             _modes.Children.Add(button);
         }
@@ -223,7 +223,7 @@ public sealed class ListPanelWindow : Window
     private StackPanel RenderDetails()
     {
         var list = new StackPanel { Margin = new Thickness(8) };
-        var header = DetailRow("Nombre", "Título", "Estado", DimBrush);
+        var header = DetailRow(Strings.List_ColName, Strings.Main_ColTitle, Strings.Main_ColState, DimBrush);
         list.Children.Add(header);
         foreach (var item in _view.Items)
         {
@@ -257,11 +257,11 @@ public sealed class ListPanelWindow : Window
         card.Cursor = Cursors.Hand;
         card.ToolTip = item.State switch
         {
-            ListItemState.Closed => $"{item.Name} · cerrada. Clic: abrirla en este panel.",
-            ListItemState.InFocus => $"{item.Name} · está en el foco.",
-            _ => $"{item.Name} · {item.Title}. Clic: al foco.",
+            ListItemState.Closed => Core.Text.F(Strings.List_TipClosed, item.Name),
+            ListItemState.InFocus => Core.Text.F(Strings.List_TipInFocus, item.Name),
+            _ => Core.Text.F(Strings.List_TipOpen, item.Name, item.Title),
         };
-        System.Windows.Automation.AutomationProperties.SetName(card, $"Lista {_view.Title}: {item.Name} ({StateText(item.State)})");
+        System.Windows.Automation.AutomationProperties.SetName(card, Core.Text.F(Strings.List_CardName, _view.Title, item.Name, StateText(item.State)));
         card.MouseEnter += (_, _) => card.Background = CardHover;
         card.MouseLeave += (_, _) => card.Background = CardBrush;
         card.MouseLeftButtonUp += async (_, _) =>
@@ -291,11 +291,11 @@ public sealed class ListPanelWindow : Window
 
     private static string StateText(ListItemState state) => state switch
     {
-        ListItemState.InPanel => "en el panel",
-        ListItemState.InFocus => "en el foco",
-        ListItemState.Parked => "estacionada",
-        ListItemState.Detached => "fuera de layout",
-        ListItemState.Closed => "cerrada",
+        ListItemState.InPanel => Strings.ListState_InPanel,
+        ListItemState.InFocus => Strings.ListState_InFocus,
+        ListItemState.Parked => Strings.ListState_Parked,
+        ListItemState.Detached => Strings.ListState_Detached,
+        ListItemState.Closed => Strings.ListState_Closed,
         _ => "",
     };
 

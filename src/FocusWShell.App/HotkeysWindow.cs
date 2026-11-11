@@ -20,7 +20,7 @@ public sealed class HotkeysWindow : Window
     {
         _settings = settings;
         _pending = new Dictionary<string, string>(settings.Hotkeys);
-        Title = "FocusWShell · atajos";
+        Title = Strings.Hk_WindowTitle;
         Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/FocusWShell.ico"));
         Width = 620;
         SizeToContent = SizeToContent.Height;
@@ -30,7 +30,7 @@ public sealed class HotkeysWindow : Window
         var root = new StackPanel { Margin = new Thickness(14) };
         root.Children.Add(new TextBlock
         {
-            Text = "Haz clic en un atajo y pulsa la combinación nueva. Hace falta Ctrl, Alt o Win. Mientras esta ventana está abierta, los atajos no funcionan; \"Restaurar todas\" sigue en el menú de la bandeja.",
+            Text = Strings.Hk_Help,
             TextWrapping = TextWrapping.Wrap,
             Foreground = System.Windows.Media.Brushes.DimGray,
             Margin = new Thickness(0, 0, 0, 10),
@@ -46,10 +46,10 @@ public sealed class HotkeysWindow : Window
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var label = new TextBlock { Text = action.Name, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 3, 8, 3) };
             var box = new TextBox { IsReadOnly = true, Margin = new Thickness(0, 3, 8, 3), Padding = new Thickness(4, 2, 4, 2), IsReadOnlyCaretVisible = false };
-            System.Windows.Automation.AutomationProperties.SetName(box, $"Atajo de {action.Name}");
+            System.Windows.Automation.AutomationProperties.SetName(box, Core.Text.F(Strings.Hk_BoxName, action.Name));
             box.PreviewKeyDown += (_, e) => Capture(action, e);
-            var reset = new Button { Content = "Por defecto", Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(0, 3, 0, 3) };
-            System.Windows.Automation.AutomationProperties.SetName(reset, $"Atajo por defecto de {action.Name}");
+            var reset = new Button { Content = Strings.Hk_Default, Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(0, 3, 0, 3) };
+            System.Windows.Automation.AutomationProperties.SetName(reset, Core.Text.F(Strings.Hk_DefaultName, action.Name));
             reset.Click += (_, _) =>
             {
                 _pending.Remove(action.Id);
@@ -71,8 +71,8 @@ public sealed class HotkeysWindow : Window
         root.Children.Add(_problems);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
-        var save = new Button { Content = "Guardar", Padding = new Thickness(14, 3, 14, 3), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var cancel = new Button { Content = "Cancelar", Padding = new Thickness(14, 3, 14, 3), IsCancel = true };
+        var save = new Button { Content = Strings.Hk_Save, Padding = new Thickness(14, 3, 14, 3), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        var cancel = new Button { Content = Strings.Hk_Cancel, Padding = new Thickness(14, 3, 14, 3), IsCancel = true };
         save.Click += (_, _) => Save();
         buttons.Children.Add(save);
         buttons.Children.Add(cancel);
@@ -100,7 +100,7 @@ public sealed class HotkeysWindow : Window
         foreach (var action in Hotkeys.Actions)
         {
             var box = _boxes[action.Id];
-            box.Text = map.Chords.TryGetValue(action.Id, out var chord) ? chord.Display() : "(sin atajo)";
+            box.Text = map.Chords.TryGetValue(action.Id, out var chord) ? chord.Display() : Strings.Hk_None;
             box.FontWeight = _pending.ContainsKey(action.Id) ? FontWeights.SemiBold : FontWeights.Normal;
         }
 
@@ -140,7 +140,7 @@ public sealed class HotkeysWindow : Window
         var chord = new KeyChord(mods, (uint)KeyInterop.VirtualKeyFromKey(key));
         if (!chord.IsValid)
         {
-            _problems.Text = $"{chord.Display()} no vale para {action.Name}: hace falta Ctrl, Alt o Win y una letra, un número, F1–F24, una flecha u otra tecla de edición.";
+            _problems.Text = Core.Text.F(Strings.Hk_Invalid, chord.Display(), action.Name);
             return;
         }
 
@@ -164,7 +164,7 @@ public sealed class HotkeysWindow : Window
         var warnings = ((App)Application.Current).StartHotkeys(announce: false);
         if (warnings.Count > 0)
         {
-            MessageBox.Show(this, string.Join(Environment.NewLine + Environment.NewLine, warnings), "FocusWShell · atajos", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, string.Join(Environment.NewLine + Environment.NewLine, warnings), Strings.Hk_WindowTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         Close();

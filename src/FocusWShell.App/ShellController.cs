@@ -28,16 +28,16 @@ public sealed record SceneResult(string Name, ControllerResult Result, IReadOnly
     {
         get
         {
-            var lines = new List<string> { $"Escena «{Name}» aplicada." };
+            var lines = new List<string> { Core.Text.F(Strings.Scene_Applied, Name) };
             if (Opening.Count > 0)
             {
-                lines.Add($"Abriendo las que faltaban: {string.Join(", ", Opening)}…");
+                lines.Add(Core.Text.F(Strings.Scene_OpeningMissing, string.Join(", ", Opening)));
             }
 
             var notOpening = Missing.Where(m => !Opening.Contains(m.Label)).ToList();
             if (notOpening.Count > 0)
             {
-                lines.Add($"No están abiertas: {string.Join(", ", notOpening.Select(m => m.Label))}.");
+                lines.Add(Core.Text.F(Strings.Scene_NotOpen, string.Join(", ", notOpening.Select(m => m.Label))));
             }
 
             lines.AddRange(Notes);
@@ -51,21 +51,21 @@ public sealed record ExternalChangeHandled(string Label, ExternalChange Change, 
 {
     public string Describe() => (Change, Commands) switch
     {
-        (ExternalChange.Minimized, [Park]) => $"{Label}: la minimizaste; queda estacionada en su panel.",
-        (ExternalChange.Shown, [Restore]) => $"{Label}: la abriste desde la barra de tareas; vuelve a su panel.",
-        (ExternalChange.Shown, [MakeActiveInPanel]) => $"{Label}: la abriste; pasa a ser la visible de su panel.",
-        (ExternalChange.Maximized, [SetPresentation, MakeActiveInPanel]) => $"{Label}: la maximizaste en el monitor auxiliar; su panel pasa a Fill.",
-        (ExternalChange.Unmaximized, [SetPresentation]) => $"{Label}: dejó de estar maximizada; su panel vuelve a Tiles.",
-        (ExternalChange.Closed, _) => $"{Label}: se cerró; deja de gestionarse.",
-        (ExternalChange.MovedOrResized, [Detach]) => $"{Label}: se puso en pantalla completa; queda fuera de layout y vuelve a su sitio al salir.",
-        (_, [Detach]) => $"{Label}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.",
-        (_, [SnapBack]) => $"{Label}: la moviste; vuelve a su sitio.",
-        (_, [ExitFullscreen]) => $"{Label}: dejó de estar maximizada; sale de pantalla completa y vuelve al foco.",
-        (_, [SplitColumn s, SnapBack]) => $"{Label}: moviste el separador entre los dos paneles de su columna; quedan {Math.Round(100 * s.UpperHeight / (s.UpperHeight + s.LowerHeight))} % arriba y {Math.Round(100 * s.LowerHeight / (s.UpperHeight + s.LowerHeight))} % abajo.",
-        (_, [SetProportions p, SnapBack]) => $"{Label}: moviste el separador; esta vista queda en {p.Weights!.Describe(p.View)}.",
-        (_, [Promote]) => $"{Label}: la soltaste sobre el foco; pasa al foco.",
-        (_, [SendTo s]) => $"{Label}: la soltaste sobre otro panel; se queda en él.",
-        (_, [ReturnToPanel, SendTo]) => $"{Label}: la sacaste del foco a otro panel.",
+        (ExternalChange.Minimized, [Park]) => Core.Text.F(Strings.Ext_Minimized, Label),
+        (ExternalChange.Shown, [Restore]) => Core.Text.F(Strings.Ext_ShownRestore, Label),
+        (ExternalChange.Shown, [MakeActiveInPanel]) => Core.Text.F(Strings.Ext_ShownActive, Label),
+        (ExternalChange.Maximized, [SetPresentation, MakeActiveInPanel]) => Core.Text.F(Strings.Ext_MaximizedAux, Label),
+        (ExternalChange.Unmaximized, [SetPresentation]) => Core.Text.F(Strings.Ext_UnmaximizedAux, Label),
+        (ExternalChange.Closed, _) => Core.Text.F(Strings.Ext_Closed, Label),
+        (ExternalChange.MovedOrResized, [Detach]) => Core.Text.F(Strings.Ext_AppFullscreen, Label),
+        (_, [Detach]) => Core.Text.F(Strings.Ext_Maximized, Label),
+        (_, [SnapBack]) => Core.Text.F(Strings.Ext_Moved, Label),
+        (_, [ExitFullscreen]) => Core.Text.F(Strings.Ext_ExitFullscreen, Label),
+        (_, [SplitColumn s, SnapBack]) => Core.Text.F(Strings.Ext_SplitMoved, Label, Math.Round(100 * s.UpperHeight / (s.UpperHeight + s.LowerHeight)), Math.Round(100 * s.LowerHeight / (s.UpperHeight + s.LowerHeight))),
+        (_, [SetProportions p, SnapBack]) => Core.Text.F(Strings.Ext_ProportionsMoved, Label, p.Weights!.Describe(p.View)),
+        (_, [Promote]) => Core.Text.F(Strings.Ext_DroppedOnFocus, Label),
+        (_, [SendTo s]) => Core.Text.F(Strings.Ext_DroppedOnPanel, Label),
+        (_, [ReturnToPanel, SendTo]) => Core.Text.F(Strings.Ext_FocusToOtherPanel, Label),
         _ => $"{Label}: {Change}.",
     };
 }
@@ -252,8 +252,8 @@ public sealed class ShellController : IDisposable
 
             var openKeys = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
             string Where(Panel p) => p.Display is null
-                ? $"principal, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}{(p.Slot == PanelSlot.Lower ? " abajo" : "")}"
-                : $"{aux.FirstOrDefault(d => d.Key == p.Display)?.FriendlyName ?? "monitor desconectado"}, {(p.Side == PanelSide.Left ? "izquierda" : "derecha")}";
+                ? (p.Side == PanelSide.Left ? Strings.Where_PrincipalLeftShort : Strings.Where_PrincipalRightShort) + (p.Slot == PanelSlot.Lower ? Strings.Where_LowerSuffix : "")
+                : Core.Text.F(p.Side == PanelSide.Left ? Strings.Where_AuxLeft : Strings.Where_AuxRight, aux.FirstOrDefault(d => d.Key == p.Display)?.FriendlyName ?? Strings.Monitor_Missing);
 
             var panels = _workspace.Panels.Select(p =>
             {
@@ -276,7 +276,7 @@ public sealed class ShellController : IDisposable
             var focused = _workspace.Focused is { } f && _snapshots.TryGetValue(f.Handle, out var fs) ? Managed(f, fs) : null;
             var current = focused?.Handle;
             bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h));
-            var displays = new List<(string?, string)> { (null, "Principal") };
+            var displays = new List<(string?, string)> { (null, Strings.Monitor_Principal) };
             displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
             return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays)
             {
@@ -378,10 +378,10 @@ public sealed class ShellController : IDisposable
             result = RunLocked([new Promote(hwnd)]);
             message = gesture switch
             {
-                SwitchGesture.AltTab => $"{w.Label}: elegida con Alt+Tab; pasa al foco.",
-                SwitchGesture.TaskView => $"{w.Label}: elegida en la vista de tareas; pasa al foco.",
-                SwitchGesture.Taskbar => $"{w.Label}: elegida en la barra de tareas; pasa al foco.",
-                _ => $"{w.Label}: clic; pasa al foco.",
+                SwitchGesture.AltTab => Core.Text.F(Strings.Gesture_AltTab, w.Label),
+                SwitchGesture.TaskView => Core.Text.F(Strings.Gesture_TaskView, w.Label),
+                SwitchGesture.Taskbar => Core.Text.F(Strings.Gesture_Taskbar, w.Label),
+                _ => Core.Text.F(Strings.Gesture_Click, w.Label),
             };
         }
 
@@ -717,7 +717,7 @@ public sealed class ShellController : IDisposable
 
         if (app is null)
         {
-            return "Esa app ya no está en el catálogo.";
+            return Strings.Open_NotInCatalog;
         }
 
         if (AppLauncher.Launch(app) is { } error)
@@ -743,12 +743,12 @@ public sealed class ShellController : IDisposable
 
                 var result = RunLocked([new Adopt(pick.Handle, app.Name, panelId)]);
                 return result.Rejections.Count == 0
-                    ? $"{app.Name} abierta en {panelName}."
+                    ? Core.Text.F(Strings.Open_Done, app.Name, panelName)
                     : string.Join(" ", result.Rejections);
             }
         }
 
-        return $"{app.Name} se abrió, pero no apareció ninguna ventana suya en 20 s; queda libre.";
+        return Core.Text.F(Strings.Open_NoWindow20, app.Name);
     }
 
     /// <summary>Lo último que se guardó en panels.json, para escribir sólo cuando cambia.</summary>
@@ -999,7 +999,7 @@ public sealed class ShellController : IDisposable
         var scene = Scenes.Load().FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))?.Upgrade();
         if (scene is null)
         {
-            return new SceneResult(name, new ControllerResult([$"No existe la escena \"{name}\"."], [], null), [], []);
+            return new SceneResult(name, new ControllerResult([Core.Text.F(Strings.Scene_NotFound, name)], [], null), [], []);
         }
 
         var open = Refresh()
@@ -1020,7 +1020,7 @@ public sealed class ShellController : IDisposable
                 return aux[index.Value - 1].Key;
             }
 
-            notes.Add($"El monitor auxiliar {index} no está conectado: sus paneles van al principal.");
+            notes.Add(Core.Text.F(Strings.Scene_AuxMissing, index));
             return null;
         }
 
@@ -1116,7 +1116,7 @@ public sealed class ShellController : IDisposable
                     pending.Remove(o);
                     if (o.PanelId is null)
                     {
-                        lines.Add($"{o.Entry.Label} se abrió; su panel no existe, así que queda libre.");
+                        lines.Add(Core.Text.F(Strings.Scene_OpenedNoPanel, o.Entry.Label));
                         continue;
                     }
 
@@ -1131,15 +1131,15 @@ public sealed class ShellController : IDisposable
                     }
 
                     results.Add(RunLocked(place));
-                    lines.Add($"{o.Entry.Label} se abrió y está en {(o.Entry.Placement == ScenePlacement.Center ? "el foco" : _workspace.FindPanel(o.PanelId)?.Name ?? o.PanelId)}.");
+                    lines.Add(Core.Text.F(Strings.Scene_OpenedIn, o.Entry.Label, (o.Entry.Placement == ScenePlacement.Center ? Strings.Scene_TheFocus : _workspace.FindPanel(o.PanelId)?.Name ?? o.PanelId)));
                 }
             }
         }
 
-        lines.AddRange(pending.Select(o => $"{o.Entry.Label} se abrió, pero no apareció ninguna ventana suya en 30 s; queda libre."));
+        lines.AddRange(pending.Select(o => Core.Text.F(Strings.Open_NoWindow30, o.Entry.Label)));
         var last = results.LastOrDefault() ?? new ControllerResult([], [], null);
         var summary = new ControllerResult([.. results.SelectMany(r => r.Rejections)], [.. results.SelectMany(r => r.Restores)], last.Applied);
-        SceneAppsOpened?.Invoke($"Escena «{sceneName}»: " + string.Join(" ", lines), summary);
+        SceneAppsOpened?.Invoke(Core.Text.F(Strings.Scene_Prefix, sceneName) + string.Join(" ", lines), summary);
     }
 
     /// <summary>Monitor del Centro: el principal de Windows (ADR 0008).</summary>
@@ -1182,7 +1182,7 @@ public sealed class ShellController : IDisposable
             // Las que se ven pero no se pueden mover (M2): elevadas o del sistema. Se muestran con su motivo.
             _unmanageable = candidates
                 .Where(c => !c.Eligibility.Manageable)
-                .Select(c => (c.Window, Unmanageable.Reason(c.Window.Integrity, own) ?? "no se puede mover"))
+                .Select(c => (c.Window, Unmanageable.Reason(c.Window.Integrity, own) ?? Strings.Unmanageable_Generic))
                 .ToList();
 
             foreach (var w in windows)
@@ -1201,6 +1201,13 @@ public sealed class ShellController : IDisposable
             if (closed.Count > 0)
             {
                 RunLocked(closed);
+            }
+
+            // Las libres que ya no aparecen (cerradas, como las ventanas de una llamada de Zoom) se olvidan: si no,
+            // seguían saliendo en LIBRES del deck. Las gestionadas conservan su foto (ver arriba).
+            foreach (var gone in _snapshots.Keys.Where(h => !alive.Contains(h) && !_workspace.IsManaged(h)).ToList())
+            {
+                _snapshots.Remove(gone);
             }
 
             // Las gestionadas que siguen vivas pero no son elegibles ahora siguen en la lista, con su última foto.
@@ -1254,8 +1261,8 @@ public sealed class ShellController : IDisposable
             var why = _unmanageable.FirstOrDefault(u => u.Window.Handle == foreground);
             return new ControllerResult(
                 [why.Window is not null
-                    ? $"{why.Window.Title}: FocusWShell no puede moverla, {why.Reason}."
-                    : "La ventana activa no está gestionada por FocusWShell."],
+                    ? Core.Text.F(Strings.Promote_CantMove, why.Window.Title, why.Reason)
+                    : Strings.Promote_NotManaged],
                 [],
                 null);
         }
@@ -1271,7 +1278,7 @@ public sealed class ShellController : IDisposable
         {
             if (_workspace.Focused is not { } focused)
             {
-                return new ControllerResult(["No hay ninguna ventana en el foco."], [], null);
+                return new ControllerResult([Strings.Focus_Empty], [], null);
             }
 
             return focused.Placement == Placement.Fullscreen && display is null
@@ -1298,7 +1305,7 @@ public sealed class ShellController : IDisposable
         {
             return _workspace.Focused is { } c
                 ? RunLocked([new ReturnToPanel(c.Handle)])
-                : new ControllerResult(["El Centro está vacío."], [], null);
+                : new ControllerResult([Strings.Focus_CenterEmpty], [], null);
         }
     }
 
@@ -1456,11 +1463,11 @@ public sealed class ShellController : IDisposable
         {
             _displayEvents.Add(e switch
             {
-                DisplayReturned r => $"Volvió {NameOf(r.Display)}: sus ventanas regresan a él.",
-                DisplayLost l => $"Se desconectó {NameOf(l.Display)}: sus ventanas pasan a los paneles del principal hasta que vuelva.",
+                DisplayReturned r => Core.Text.F(Strings.Display_Returned, NameOf(r.Display)),
+                DisplayLost l => Core.Text.F(Strings.Display_Lost, NameOf(l.Display)),
                 PrincipalChanged { PreviousConnected: false } p =>
-                    $"Se desconectó el principal ({NameOf(p.Previous)}): {NameOf(p.Current)} hace de principal, con el Centro y todas las ventanas, hasta que vuelva.",
-                PrincipalChanged p => $"{NameOf(p.Current)} vuelve a ser el principal; {NameOf(p.Previous)} recupera sus paneles.",
+                    Core.Text.F(Strings.Display_PrincipalLost, NameOf(p.Previous), NameOf(p.Current)),
+                PrincipalChanged p => Core.Text.F(Strings.Display_PrincipalBack, NameOf(p.Current), NameOf(p.Previous)),
                 _ => e.ToString(),
             });
         }
@@ -1475,7 +1482,7 @@ public sealed class ShellController : IDisposable
     private readonly List<string> _displayEvents = [];
     private IDisposable? _displayChange;
 
-    private string NameOf(string key) => _displayNames.GetValueOrDefault(key, "un monitor");
+    private string NameOf(string key) => _displayNames.GetValueOrDefault(key, Strings.Display_AMonitor);
 
     public bool IsDisplayMissing(string? display)
     {
@@ -1614,9 +1621,9 @@ public sealed class ShellController : IDisposable
             Map(c.Work))
         {
             ContextId = c.Left?.Panel.Id ?? Workspace.ContextPanel,
-            ContextTitle = c.Left?.Panel.Name ?? "Contexto",
+            ContextTitle = c.Left?.Panel.Name ?? Core.Strings.Panel_Context,
             WorkId = c.Right?.Panel.Id ?? Workspace.WorkPanel,
-            WorkTitle = c.Right?.Panel.Name ?? "Trabajo",
+            WorkTitle = c.Right?.Panel.Name ?? Core.Strings.Panel_Work,
             ContextHeight = c.Left?.Panel.Height ?? 1,
             WorkHeight = c.Right?.Panel.Height ?? 1,
             ContextLower = Assign(c.LeftLower),

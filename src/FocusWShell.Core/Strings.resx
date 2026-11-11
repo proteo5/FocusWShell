@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Action_Deck" xml:space="preserve"><value>Mostrar u ocultar el deck</value></data>
+  <data name="Action_FocusToPanel" xml:space="preserve"><value>Foco al panel</value></data>
+  <data name="Action_Fullscreen" xml:space="preserve"><value>Pantalla completa</value></data>
+  <data name="Action_KeepAwake" xml:space="preserve"><value>Pantalla encendida</value></data>
+  <data name="Action_Previous" xml:space="preserve"><value>Volver a la anterior</value></data>
+  <data name="Action_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Action_Scene" xml:space="preserve"><value>Escena {0}</value></data>
+  <data name="Action_ToFocus" xml:space="preserve"><value>Al foco (la ventana activa)</value></data>
+  <data name="Action_View" xml:space="preserve"><value>Cambiar de vista</value></data>
+  <data name="And" xml:space="preserve"><value> y </value></data>
+  <data name="Apply_CaptureFailed" xml:space="preserve"><value>No se pudo capturar el estado original de todas las ventanas; no se movió nada.</value></data>
+  <data name="Apply_LearnedMin" xml:space="preserve"><value>{0} → mínimo {1}</value></data>
+  <data name="Excl_App" xml:space="preserve"><value>App {0}</value></data>
+  <data name="Excl_Class" xml:space="preserve"><value>Ventanas de clase {0}</value></data>
+  <data name="Excl_Packaged" xml:space="preserve"><value>App empaquetada {0}</value></data>
+  <data name="Hotkey_Invalid" xml:space="preserve"><value>«{0}» no vale para {1} (hace falta Ctrl, Alt o Win y una tecla conocida); se usa {2}.</value></data>
+  <data name="Hotkey_TakenFallback" xml:space="preserve"><value>{0} ya es de {1}; {2} usa {3}.</value></data>
+  <data name="Hotkey_TakenNone" xml:space="preserve"><value>{0} ya es de {1}; {2} se queda sin atajo.</value></data>
+  <data name="Key_Back" xml:space="preserve"><value>Retroceso</value></data>
+  <data name="Key_Delete" xml:space="preserve"><value>Supr</value></data>
+  <data name="Key_End" xml:space="preserve"><value>Fin</value></data>
+  <data name="Key_Home" xml:space="preserve"><value>Inicio</value></data>
+  <data name="Key_PageDown" xml:space="preserve"><value>AvPág</value></data>
+  <data name="Key_PageUp" xml:space="preserve"><value>RePág</value></data>
+  <data name="Key_Shift" xml:space="preserve"><value>Mayús</value></data>
+  <data name="Key_Space" xml:space="preserve"><value>Espacio</value></data>
+  <data name="Launch_Failed" xml:space="preserve"><value>No se pudo abrir {0}: {1}</value></data>
+  <data name="Launch_Unknown" xml:space="preserve"><value>No se sabe cómo abrir {0}: no hay ejecutable ni AUMID.</value></data>
+  <data name="Move_ApiFailed" xml:space="preserve"><value>{0} falló ({1})</value></data>
+  <data name="Move_Gone" xml:space="preserve"><value>la ventana ya no existe</value></data>
+  <data name="Move_Hung" xml:space="preserve"><value>la aplicación no responde</value></data>
+  <data name="Note_AuxPanelGrew" xml:space="preserve"><value>{0} se amplió a {1} px porque {2} necesita {3} px de ancho.</value></data>
+  <data name="Note_CenterGrew" xml:space="preserve"><value>El foco se amplió a {0} px para que quepa {1} (mínimo {2} px).</value></data>
+  <data name="Note_CenterTooBig" xml:space="preserve"><value>{0} no cabe en el foco ({1}x{2} contra {3}x{4}); se centra sobre los paneles.</value></data>
+  <data name="Note_ColumnSplit" xml:space="preserve"><value>{0} necesita {1} px de alto en su columna; el reparto con el otro panel se lleva a ese límite.</value></data>
+  <data name="Note_FillHides" xml:space="preserve"><value>{0} ocupa el monitor ({1} en pantalla completa); {2} se minimiza.</value></data>
+  <data name="Note_FixedTooBig" xml:space="preserve"><value>{0} es de tamaño fijo ({1}) y no cabe entera en su sitio ({2}x{3}); se deja con su tamaño.</value></data>
+  <data name="Note_FocusTooBigEdge" xml:space="preserve"><value>{0} no cabe en el foco ({1}x{2} contra {3}x{4}); se ancla al borde del monitor y tapa parte del panel de al lado.</value></data>
+  <data name="Note_NotBehindList" xml:space="preserve"><value>{0} no cabe detrás de la lista de {1}; se minimiza y su miniatura se ve con su última imagen.</value></data>
+  <data name="Note_OverflowLeft" xml:space="preserve"><value>{0} necesita {1} px de ancho y {2} tiene {3}; se ancla al borde izquierdo y {4} px quedan fuera de pantalla.</value></data>
+  <data name="Note_OverflowRight" xml:space="preserve"><value>{0} necesita {1} px de ancho y {2} tiene {3}; se ancla al borde derecho y {4} px quedan fuera de pantalla.</value></data>
+  <data name="Note_PanelGrew" xml:space="preserve"><value>{0} se amplió {1} px (el foco queda en {2} px) porque {3} necesita {4} px de ancho.</value></data>
+  <data name="Note_TilePages" xml:space="preserve"><value>{0}: sus ventanas ocupan {1} filas y caben {2}; se ven las filas {3}–{4} (▲ ▼ en su tira).</value></data>
+  <data name="Note_TooTallCell" xml:space="preserve"><value>{0} necesita {1} px de alto y su celda tiene {2}; {3} px quedan por debajo.</value></data>
+  <data name="Note_TooTallShared" xml:space="preserve"><value>{0} necesita {1} px de alto y {2} tiene {3} porque comparte la columna; se minimiza y queda fuera del layout.</value></data>
+  <data name="Note_TooWideAux" xml:space="preserve"><value>{0} necesita {1} px de ancho y {2} puede tener como mucho {3} en este monitor; se minimiza y queda fuera del layout.</value></data>
+  <data name="Note_TooWideBetween" xml:space="preserve"><value>{0} necesita {1} px de ancho y {2} tiene {3} entre el foco y el otro panel; se minimiza y queda fuera del layout.</value></data>
+  <data name="Note_TooWideShared" xml:space="preserve"><value>{0} necesita {1} px de ancho y {2} puede tener como mucho {3} sin invadir el foco ni el otro monitor; se minimiza y queda fuera del layout.</value></data>
+  <data name="Panel_Context" xml:space="preserve"><value>Contexto</value></data>
+  <data name="Panel_Work" xml:space="preserve"><value>Trabajo</value></data>
+  <data name="Preset_HalfAndHalf" xml:space="preserve"><value>Mitad y mitad</value></data>
+  <data name="Preset_Normal" xml:space="preserve"><value>Normal</value></data>
+  <data name="Preset_WideFocus" xml:space="preserve"><value>Foco ancho</value></data>
+  <data name="Rej_AlreadyCenter" xml:space="preserve"><value>{0} ya está en el Centro.</value></data>
+  <data name="Rej_AlreadyManaged" xml:space="preserve"><value>{0} ya está gestionada.</value></data>
+  <data name="Rej_CantFullscreen" xml:space="preserve"><value>{0} no puede pasar a pantalla completa desde {1}.</value></data>
+  <data name="Rej_CantPark" xml:space="preserve"><value>{0} no se puede estacionar desde {1}.</value></data>
+  <data name="Rej_CantPromote" xml:space="preserve"><value>{0} no se puede llevar al foco desde {1}.</value></data>
+  <data name="Rej_EmptyName" xml:space="preserve"><value>El nombre no puede estar vacío.</value></data>
+  <data name="Rej_FillOnlyAux" xml:space="preserve"><value>Pantalla completa sólo vale en monitores auxiliares: en el principal manda el foco.</value></data>
+  <data name="Rej_HeightsPositive" xml:space="preserve"><value>Los altos tienen que ser positivos.</value></data>
+  <data name="Rej_IsFullscreen" xml:space="preserve"><value>{0} está en pantalla completa.</value></data>
+  <data name="Rej_KeepOnePanel" xml:space="preserve"><value>Tiene que quedar al menos un panel en el monitor principal.</value></data>
+  <data name="Rej_NoPanel" xml:space="preserve"><value>No existe el panel «{0}».</value></data>
+  <data name="Rej_NoPrevious" xml:space="preserve"><value>No hay una ventana anterior en el foco.</value></data>
+  <data name="Rej_NotDetached" xml:space="preserve"><value>La ventana no está fuera de layout.</value></data>
+  <data name="Rej_NotFullscreen" xml:space="preserve"><value>La ventana no está en pantalla completa.</value></data>
+  <data name="Rej_NotManaged" xml:space="preserve"><value>La ventana no está gestionada.</value></data>
+  <data name="Rej_NotSameColumn" xml:space="preserve"><value>«{0}» y «{1}» no comparten columna.</value></data>
+  <data name="Rej_OnlyCenterReturns" xml:space="preserve"><value>Sólo se puede devolver al panel la ventana del foco.</value></data>
+  <data name="Rej_OnlyParkedRestores" xml:space="preserve"><value>Sólo se puede recuperar una ventana estacionada.</value></data>
+  <data name="Rej_PanelExists" xml:space="preserve"><value>Ya existe un panel «{0}».</value></data>
+  <data name="Rej_PanelNeedsName" xml:space="preserve"><value>El panel necesita un identificador y un nombre.</value></data>
+  <data name="Rej_ReplacePanelsBusy" xml:space="preserve"><value>Los paneles sólo se sustituyen sin ventanas gestionadas.</value></data>
+  <data name="Rej_SlotTaken" xml:space="preserve"><value>«{0}» ya ocupa ese puesto ({1}, {2}).</value></data>
+  <data name="Rej_SomePanelMissing" xml:space="preserve"><value>No existe alguno de los paneles.</value></data>
+  <data name="Rej_UnknownListLayout" xml:space="preserve"><value>Modo de lista desconocido: {0}.</value></data>
+  <data name="Rej_UnknownTileSize" xml:space="preserve"><value>Tamaño de tile desconocido: {0}.</value></data>
+  <data name="Rej_UnknownView" xml:space="preserve"><value>Vista desconocida: {0}.</value></data>
+  <data name="Rej_WeightsPositive" xml:space="preserve"><value>Las proporciones tienen que ser positivas.</value></data>
+  <data name="Restore_Differs" xml:space="preserve"><value>quedó en {0} show {1} (original {2} show {3}); se conserva en el diario</value></data>
+  <data name="Restore_Done" xml:space="preserve"><value>restaurada</value></data>
+  <data name="Restore_DoneTwice" xml:space="preserve"><value>restaurada (2 pasadas)</value></data>
+  <data name="Restore_Gone" xml:space="preserve"><value>ya no existe</value></data>
+  <data name="Restore_Summary" xml:space="preserve"><value>{0} restauradas · {1} ya cerradas · {2} pendientes · {3} con diferencias</value></data>
+  <data name="Side_LeftOfFocus" xml:space="preserve"><value>a la izquierda del foco</value></data>
+  <data name="Side_LeftOfMonitor" xml:space="preserve"><value>a la izquierda de su monitor</value></data>
+  <data name="Side_RightOfFocus" xml:space="preserve"><value>a la derecha del foco</value></data>
+  <data name="Side_RightOfMonitor" xml:space="preserve"><value>a la derecha de su monitor</value></data>
+  <data name="Slot_Lower" xml:space="preserve"><value>abajo</value></data>
+  <data name="Slot_Upper" xml:space="preserve"><value>arriba</value></data>
+  <data name="Unmanageable_Admin" xml:space="preserve"><value>corre como administrador</value></data>
+  <data name="Unmanageable_System" xml:space="preserve"><value>es del sistema</value></data>
+  <data name="Unmanageable_Unknown" xml:space="preserve"><value>no se pudo leer su nivel de permisos (protegida o como administrador)</value></data>
+  <data name="Weights_FocusCenter" xml:space="preserve"><value>izquierda {0} · foco {1} · derecha {2} %</value></data>
+  <data name="Weights_FocusLeft" xml:space="preserve"><value>foco {0} · derecha {1} · izquierda {2} %</value></data>
+  <data name="Weights_FocusRight" xml:space="preserve"><value>izquierda {0} · derecha {1} · foco {2} %</value></data>
+</root>

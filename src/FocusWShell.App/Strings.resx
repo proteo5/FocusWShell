@@ -1,0 +1,356 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Act_NothingToApply" xml:space="preserve"><value>No hay cambios de rol que aplicar.</value></data>
+  <data name="Act_SelectWindow" xml:space="preserve"><value>Selecciona una ventana de la lista.</value></data>
+  <data name="App_AlreadyRunning" xml:space="preserve"><value>FocusWShell ya se está ejecutando. Búscalo en el área de notificación.</value></data>
+  <data name="App_UnexpectedError" xml:space="preserve"><value>Error inesperado. Las ventanas se han devuelto a su sitio.
+
+{0}</value></data>
+  <data name="Apps_CantLaunch" xml:space="preserve"><value>No se sabe cómo abrirla</value></data>
+  <data name="Apps_Closed" xml:space="preserve"><value>cerrada</value></data>
+  <data name="Apps_Forget" xml:space="preserve"><value>Olvidar</value></data>
+  <data name="Apps_ForgetName" xml:space="preserve"><value>Olvidar {0}</value></data>
+  <data name="Apps_Hide" xml:space="preserve"><value>Ocultar</value></data>
+  <data name="Apps_HideName" xml:space="preserve"><value>Ocultar {0}</value></data>
+  <data name="Apps_HideTip" xml:space="preserve"><value>La quita de la lista sin olvidarla: no vuelve a aparecer como nueva</value></data>
+  <data name="Apps_Launch" xml:space="preserve"><value>Abrir</value></data>
+  <data name="Apps_LaunchName" xml:space="preserve"><value>Abrir {0}</value></data>
+  <data name="Apps_LaunchTip" xml:space="preserve"><value>Abre la app y pone su ventana en el panel elegido</value></data>
+  <data name="Apps_NameName" xml:space="preserve"><value>Nombre de la app {0}</value></data>
+  <data name="Apps_None" xml:space="preserve"><value>Todavía no hay apps: aparecerán al detectarlas abiertas.</value></data>
+  <data name="Apps_Open" xml:space="preserve"><value>abierta</value></data>
+  <data name="Apps_Opening" xml:space="preserve"><value>Abriendo {0}…</value></data>
+  <data name="Apps_Show" xml:space="preserve"><value>Mostrar</value></data>
+  <data name="Apps_ShowName" xml:space="preserve"><value>Mostrar {0}</value></data>
+  <data name="Apps_ShowTip" xml:space="preserve"><value>Vuelve a mostrarla en la lista</value></data>
+  <data name="Apps_TargetName" xml:space="preserve"><value>Panel para abrir {0}</value></data>
+  <data name="Assign_Focus" xml:space="preserve"><value>Al foco</value></data>
+  <data name="Assign_Free" xml:space="preserve"><value>— libre</value></data>
+  <data name="Col_AuxLeft" xml:space="preserve"><value>{0} · izquierda</value></data>
+  <data name="Col_AuxRight" xml:space="preserve"><value>{0} · derecha</value></data>
+  <data name="Col_PrincipalLeft" xml:space="preserve"><value>Principal · izquierda del foco</value></data>
+  <data name="Col_PrincipalRight" xml:space="preserve"><value>Principal · derecha del foco</value></data>
+  <data name="DeckMenu_FullscreenOn" xml:space="preserve"><value>Pantalla completa en</value></data>
+  <data name="DeckMenu_MoveTo" xml:space="preserve"><value>Mover a</value></data>
+  <data name="DeckMenu_OpenInPanel" xml:space="preserve"><value>Abrir en su panel</value></data>
+  <data name="DeckMenu_Park" xml:space="preserve"><value>Estacionar</value></data>
+  <data name="DeckMenu_PutIn" xml:space="preserve"><value>Poner en</value></data>
+  <data name="DeckMenu_Release" xml:space="preserve"><value>Liberar (devolverla a su sitio original)</value></data>
+  <data name="DeckMenu_ToFocus" xml:space="preserve"><value>Al foco</value></data>
+  <data name="DeckMenu_Unpark" xml:space="preserve"><value>Recuperar</value></data>
+  <data name="DeckSend_Corner" xml:space="preserve"><value>Esquina del monitor principal (se oculta solo)</value></data>
+  <data name="DeckSend_LeftHalf" xml:space="preserve"><value>{0}: mitad izquierda</value></data>
+  <data name="DeckSend_RightHalf" xml:space="preserve"><value>{0}: mitad derecha</value></data>
+  <data name="DeckSend_Whole" xml:space="preserve"><value>{0}: entero</value></data>
+  <data name="DeckSend_WholeHasPanels" xml:space="preserve"><value>{0}: entero (tiene paneles)</value></data>
+  <data name="Deck_AwakeOff" xml:space="preserve"><value>Pantalla encendida: no</value></data>
+  <data name="Deck_AwakeOn" xml:space="preserve"><value>Pantalla encendida: sí</value></data>
+  <data name="Deck_Center" xml:space="preserve"><value>Centro</value></data>
+  <data name="Deck_Close" xml:space="preserve"><value>Cerrar una app</value></data>
+  <data name="Deck_CloseShort" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="Deck_Closing" xml:space="preserve"><value>Cerrando…</value></data>
+  <data name="Deck_FocusEmpty" xml:space="preserve"><value>vacío</value></data>
+  <data name="Deck_Hide" xml:space="preserve"><value>Ocultar el deck</value></data>
+  <data name="Deck_Left" xml:space="preserve"><value>Izquierda</value></data>
+  <data name="Deck_LeftShort" xml:space="preserve"><value>Izq.</value></data>
+  <data name="Deck_More" xml:space="preserve"><value>+{0} más</value></data>
+  <data name="Deck_MoreName" xml:space="preserve"><value>Deck: más apps</value></data>
+  <data name="Deck_Move" xml:space="preserve"><value>Mover una app</value></data>
+  <data name="Deck_MoveHere" xml:space="preserve"><value>Mover aquí</value></data>
+  <data name="Deck_MoveHereName" xml:space="preserve"><value>Deck: Mover {0} a {1}</value></data>
+  <data name="Deck_MoveShort" xml:space="preserve"><value>Mover</value></data>
+  <data name="Deck_Moving" xml:space="preserve"><value>Moviendo…</value></data>
+  <data name="Deck_NextTab" xml:space="preserve"><value>Pestaña siguiente de {0}</value></data>
+  <data name="Deck_NoFree" xml:space="preserve"><value>Sin ventanas libres.</value></data>
+  <data name="Deck_NoPanels" xml:space="preserve"><value>{0} no tiene paneles. Créalos en la ventana de FocusWShell, pestaña Paneles: escribe un nombre, elige «{0}, izquierda» o «derecha» y pulsa Crear panel.</value></data>
+  <data name="Deck_PanelEmpty" xml:space="preserve"><value>sin apps (suelta aquí una app)</value></data>
+  <data name="Deck_PresentationName" xml:space="preserve"><value>Presentación de {0}: pasar a {1}</value></data>
+  <data name="Deck_PrevTab" xml:space="preserve"><value>Pestaña anterior de {0}</value></data>
+  <data name="Deck_Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Deck_ReleaseHere" xml:space="preserve"><value>Liberar aquí</value></data>
+  <data name="Deck_ReleaseName" xml:space="preserve"><value>Deck: Liberar {0}</value></data>
+  <data name="Deck_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Deck_RestoreSure" xml:space="preserve"><value>¿Seguro? Otra vez</value></data>
+  <data name="Deck_Right" xml:space="preserve"><value>Derecha</value></data>
+  <data name="Deck_RightShort" xml:space="preserve"><value>Der.</value></data>
+  <data name="Deck_SecFocus" xml:space="preserve"><value>FOCO</value></data>
+  <data name="Deck_SecFree" xml:space="preserve"><value>LIBRES</value></data>
+  <data name="Deck_SecMonitors" xml:space="preserve"><value>MONITORES</value></data>
+  <data name="Deck_SecScenes" xml:space="preserve"><value>ESCENAS</value></data>
+  <data name="Deck_SecView" xml:space="preserve"><value>VISTA</value></data>
+  <data name="Deck_SendTo" xml:space="preserve"><value>Mandar el deck a</value></data>
+  <data name="Deck_SwitchTo" xml:space="preserve"><value>Pasar a {0}</value></data>
+  <data name="Deck_TabDisconnected" xml:space="preserve"><value>{0} (desconectado)</value></data>
+  <data name="Deck_TabName" xml:space="preserve"><value>Deck: monitor {0}</value></data>
+  <data name="Deck_ThisMonitor" xml:space="preserve"><value>Este monitor</value></data>
+  <data name="Deck_ToPanel" xml:space="preserve"><value>Foco al panel</value></data>
+  <data name="Deck_ToPanelShort" xml:space="preserve"><value>Al panel</value></data>
+  <data name="Display_AMonitor" xml:space="preserve"><value>un monitor</value></data>
+  <data name="Display_Lost" xml:space="preserve"><value>Se desconectó {0}: sus ventanas pasan a los paneles del principal hasta que vuelva.</value></data>
+  <data name="Display_PrincipalBack" xml:space="preserve"><value>{0} vuelve a ser el principal; {1} recupera sus paneles.</value></data>
+  <data name="Display_PrincipalLost" xml:space="preserve"><value>Se desconectó el principal ({0}): {1} hace de principal, con el foco y todas las ventanas, hasta que vuelva.</value></data>
+  <data name="Display_Returned" xml:space="preserve"><value>Volvió {0}: sus ventanas regresan a él.</value></data>
+  <data name="Excl_Added" xml:space="preserve"><value>Excluida: {0}. FocusWShell ya no la gestiona ni la muestra.</value></data>
+  <data name="Excl_Already" xml:space="preserve"><value>Ya estaba excluida: {0}.</value></data>
+  <data name="Excl_None" xml:space="preserve"><value>Ninguna.</value></data>
+  <data name="Excl_Remove" xml:space="preserve"><value>Quitar</value></data>
+  <data name="Excl_RemoveName" xml:space="preserve"><value>Quitar exclusión {0}</value></data>
+  <data name="Excl_Removed" xml:space="preserve"><value>Ya no se excluye: {0}.</value></data>
+  <data name="Excl_TypeWhat" xml:space="preserve"><value>Escribe qué excluir: el ejecutable (NetBird.exe), el AUMID o la clase de ventana.</value></data>
+  <data name="Ext_AppFullscreen" xml:space="preserve"><value>{0}: se puso en pantalla completa; queda fuera de layout y vuelve a su sitio al salir.</value></data>
+  <data name="Ext_Closed" xml:space="preserve"><value>{0}: se cerró; deja de gestionarse.</value></data>
+  <data name="Ext_DroppedOnFocus" xml:space="preserve"><value>{0}: la soltaste sobre el foco; pasa al foco.</value></data>
+  <data name="Ext_DroppedOnPanel" xml:space="preserve"><value>{0}: la soltaste sobre otro panel; se queda en él.</value></data>
+  <data name="Ext_ExitFullscreen" xml:space="preserve"><value>{0}: dejó de estar maximizada; sale de pantalla completa y vuelve al foco.</value></data>
+  <data name="Ext_FocusToOtherPanel" xml:space="preserve"><value>{0}: la sacaste del foco a otro panel.</value></data>
+  <data name="Ext_Maximized" xml:space="preserve"><value>{0}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.</value></data>
+  <data name="Ext_MaximizedAux" xml:space="preserve"><value>{0}: la maximizaste en el monitor auxiliar; su panel pasa a pantalla completa.</value></data>
+  <data name="Ext_Minimized" xml:space="preserve"><value>{0}: la minimizaste; queda estacionada en su panel.</value></data>
+  <data name="Ext_Moved" xml:space="preserve"><value>{0}: la moviste; vuelve a su sitio.</value></data>
+  <data name="Ext_ProportionsMoved" xml:space="preserve"><value>{0}: moviste el separador; esta vista queda en {1}.</value></data>
+  <data name="Ext_ShownActive" xml:space="preserve"><value>{0}: la abriste; pasa a ser la visible de su panel.</value></data>
+  <data name="Ext_ShownRestore" xml:space="preserve"><value>{0}: la abriste desde la barra de tareas; vuelve a su panel.</value></data>
+  <data name="Ext_SplitMoved" xml:space="preserve"><value>{0}: moviste el separador entre los dos paneles de su columna; quedan {1} % arriba y {2} % abajo.</value></data>
+  <data name="Ext_UnmaximizedAux" xml:space="preserve"><value>{0}: dejó de estar maximizada; su panel vuelve a Tiles.</value></data>
+  <data name="Focus_CenterEmpty" xml:space="preserve"><value>El foco está vacío.</value></data>
+  <data name="Focus_Empty" xml:space="preserve"><value>No hay ninguna ventana en el foco.</value></data>
+  <data name="Gesture_AltTab" xml:space="preserve"><value>{0}: elegida con Alt+Tab; pasa al foco.</value></data>
+  <data name="Gesture_Click" xml:space="preserve"><value>{0}: clic; pasa al foco.</value></data>
+  <data name="Gesture_TaskView" xml:space="preserve"><value>{0}: elegida en la vista de tareas; pasa al foco.</value></data>
+  <data name="Gesture_Taskbar" xml:space="preserve"><value>{0}: elegida en la barra de tareas; pasa al foco.</value></data>
+  <data name="Header_Aux" xml:space="preserve"><value>   ·   Auxiliar {0} · {1} · {2} DPI</value></data>
+  <data name="Header_Principal" xml:space="preserve"><value>Principal {0} · {1} · {2} DPI</value></data>
+  <data name="Hk_BoxName" xml:space="preserve"><value>Atajo de {0}</value></data>
+  <data name="Hk_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Hk_Deck" xml:space="preserve"><value>deck</value></data>
+  <data name="Hk_Default" xml:space="preserve"><value>Por defecto</value></data>
+  <data name="Hk_DefaultName" xml:space="preserve"><value>Atajo por defecto de {0}</value></data>
+  <data name="Hk_FocusToPanel" xml:space="preserve"><value>foco al panel</value></data>
+  <data name="Hk_Fullscreen" xml:space="preserve"><value>pantalla completa</value></data>
+  <data name="Hk_Help" xml:space="preserve"><value>Haz clic en un atajo y pulsa la combinación nueva. Hace falta Ctrl, Alt o Win. Mientras esta ventana está abierta, los atajos no funcionan; «Restaurar todas» sigue en el menú de la bandeja.</value></data>
+  <data name="Hk_Invalid" xml:space="preserve"><value>{0} no vale para {1}: hace falta Ctrl, Alt o Win y una letra, un número, F1–F24, una flecha u otra tecla de edición.</value></data>
+  <data name="Hk_KeepAwake" xml:space="preserve"><value>pantalla encendida</value></data>
+  <data name="Hk_Label" xml:space="preserve"><value>Atajos: </value></data>
+  <data name="Hk_None" xml:space="preserve"><value>(sin atajo)</value></data>
+  <data name="Hk_Previous" xml:space="preserve"><value>anterior</value></data>
+  <data name="Hk_RestoreAll" xml:space="preserve"><value>restaurar todas</value></data>
+  <data name="Hk_Save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="Hk_ToFocus" xml:space="preserve"><value>al foco</value></data>
+  <data name="Hk_View" xml:space="preserve"><value>vista</value></data>
+  <data name="Hk_WindowTitle" xml:space="preserve"><value>FocusWShell · atajos</value></data>
+  <data name="Hotkeys_InUse" xml:space="preserve"><value>Otra aplicación ya usa: {0}. «Restaurar todas» sigue en el menú de la bandeja.</value></data>
+  <data name="ListState_Closed" xml:space="preserve"><value>cerrada</value></data>
+  <data name="ListState_Detached" xml:space="preserve"><value>fuera de layout</value></data>
+  <data name="ListState_InFocus" xml:space="preserve"><value>en el foco</value></data>
+  <data name="ListState_InPanel" xml:space="preserve"><value>en el panel</value></data>
+  <data name="ListState_Parked" xml:space="preserve"><value>estacionada</value></data>
+  <data name="List_CardName" xml:space="preserve"><value>Lista {0}: {1} ({2})</value></data>
+  <data name="List_ColName" xml:space="preserve"><value>Nombre</value></data>
+  <data name="List_Details" xml:space="preserve"><value>Detalles</value></data>
+  <data name="List_Empty" xml:space="preserve"><value>Todavía no hay apps en este panel. Asigna ventanas a él, o ábrelas desde el catálogo eligiéndolo: luego aparecerán aquí aunque estén cerradas.</value></data>
+  <data name="List_LargeIcons" xml:space="preserve"><value>Iconos grandes</value></data>
+  <data name="List_ModeName" xml:space="preserve"><value>Lista {0}: {1}</value></data>
+  <data name="List_TipClosed" xml:space="preserve"><value>{0} · cerrada. Clic: abrirla en este panel.</value></data>
+  <data name="List_TipInFocus" xml:space="preserve"><value>{0} · está en el foco.</value></data>
+  <data name="List_TipOpen" xml:space="preserve"><value>{0} · {1}. Clic: al foco.</value></data>
+  <data name="Main_Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Main_ApplyScene" xml:space="preserve"><value>Aplicar escena</value></data>
+  <data name="Main_AppsHelp" xml:space="preserve"><value>Apps conocidas (se añaden solas al verlas abiertas)</value></data>
+  <data name="Main_ColState" xml:space="preserve"><value>Estado</value></data>
+  <data name="Main_ColTitle" xml:space="preserve"><value>Título</value></data>
+  <data name="Main_DeckTip" xml:space="preserve"><value>Mostrar u ocultar el deck en la esquina del monitor principal</value></data>
+  <data name="Main_Delete" xml:space="preserve"><value>Borrar</value></data>
+  <data name="Main_ExclClass" xml:space="preserve"><value>Clase de ventana</value></data>
+  <data name="Main_ExclExecutable" xml:space="preserve"><value>Ejecutable</value></data>
+  <data name="Main_ExclValueName" xml:space="preserve"><value>Qué excluir</value></data>
+  <data name="Main_ExclValueTip" xml:space="preserve"><value>Por ejemplo NetBird.exe</value></data>
+  <data name="Main_Exclude" xml:space="preserve"><value>Excluir</value></data>
+  <data name="Main_ExcludeName" xml:space="preserve"><value>Agregar exclusión</value></data>
+  <data name="Main_ExcludedHelp" xml:space="preserve"><value>FocusWShell no gestiona ni muestra estas ventanas. También puedes excluir una con clic derecho en la pestaña Ventanas.</value></data>
+  <data name="Main_ExclusionKindName" xml:space="preserve"><value>Tipo de exclusión</value></data>
+  <data name="Main_Fullscreen" xml:space="preserve"><value>Pantalla completa</value></data>
+  <data name="Main_FullscreenMonitorName" xml:space="preserve"><value>Monitor de pantalla completa</value></data>
+  <data name="Main_FullscreenTip" xml:space="preserve"><value>Maximiza la ventana seleccionada en el monitor elegido; si ya lo está, vuelve al foco</value></data>
+  <data name="Main_GestureClick" xml:space="preserve"><value>Clic en la ventana</value></data>
+  <data name="Main_GestureClickTip" xml:space="preserve"><value>Desactivado por defecto: con él, cada clic en un panel movería ventanas bajo el cursor.</value></data>
+  <data name="Main_GestureTaskView" xml:space="preserve"><value>Vista de tareas (Win+Tab)</value></data>
+  <data name="Main_GestureTaskbar" xml:space="preserve"><value>Barra de tareas</value></data>
+  <data name="Main_GesturesLabel" xml:space="preserve"><value>Llevar al foco la ventana de un panel que elijas con:</value></data>
+  <data name="Main_Help" xml:space="preserve"><value>Elige el panel de cada ventana (o déjala libre) y pulsa Aplicar. El foco está siempre en el monitor principal. En la pestaña Paneles puedes renombrarlos, moverlos a otro monitor, cambiar su presentación, borrarlos o crear nuevos; borrar un panel deja sus ventanas libres, donde estén.</value></data>
+  <data name="Main_Hotkeys" xml:space="preserve"><value>Atajos…</value></data>
+  <data name="Main_HotkeysTip" xml:space="preserve"><value>Ver y cambiar los atajos globales</value></data>
+  <data name="Main_LanguageAuto" xml:space="preserve"><value>Automático (el de Windows)</value></data>
+  <data name="Main_LanguageLabel" xml:space="preserve"><value>Idioma:</value></data>
+  <data name="Main_LanguageLater" xml:space="preserve"><value>El idioma cambiará la próxima vez que se abra FocusWShell.</value></data>
+  <data name="Main_LanguageName" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Main_LanguageRestartAsk" xml:space="preserve"><value>El idioma cambia al reiniciar FocusWShell. Las ventanas vuelven a su sitio y, al abrirse, a sus paneles.
+
+¿Reiniciar ahora?</value></data>
+  <data name="Main_LanguageTip" xml:space="preserve"><value>Idioma de FocusWShell. Se aplica al reiniciar.</value></data>
+  <data name="Main_OpenMissing" xml:space="preserve"><value>Abrir las que falten</value></data>
+  <data name="Main_OpenMissingTip" xml:space="preserve"><value>Al aplicar una escena, abre las apps que no estén abiertas (si el catálogo sabe cómo) y pone su ventana en su panel.</value></data>
+  <data name="Main_PanelsHelp" xml:space="preserve"><value>Cada monitor tiene dos columnas (izquierda y derecha) y cada una puede partirse arriba y abajo. Para crear un panel, escribe su nombre en la última fila, elige dónde va y pulsa Crear panel.</value></data>
+  <data name="Main_Park" xml:space="preserve"><value>Estacionar</value></data>
+  <data name="Main_ParkTip" xml:space="preserve"><value>Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa si la minimizas tú.</value></data>
+  <data name="Main_Promote" xml:space="preserve"><value>Al Centro</value></data>
+  <data name="Main_PromoteTip" xml:space="preserve"><value>Lleva la ventana seleccionada al Centro</value></data>
+  <data name="Main_ProportionsLabel" xml:space="preserve"><value>Proporciones:</value></data>
+  <data name="Main_ProportionsName" xml:space="preserve"><value>Proporciones</value></data>
+  <data name="Main_ProportionsTip" xml:space="preserve"><value>Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ventana que da a la columna vecina: se guarda.</value></data>
+  <data name="Main_Reattach" xml:space="preserve"><value>Reencajar</value></data>
+  <data name="Main_ReattachTip" xml:space="preserve"><value>Devuelve al layout una ventana que maximizaste tú</value></data>
+  <data name="Main_Refresh" xml:space="preserve"><value>Actualizar lista</value></data>
+  <data name="Main_Release" xml:space="preserve"><value>Liberar</value></data>
+  <data name="Main_ReleaseTip" xml:space="preserve"><value>Devuelve la ventana seleccionada a su sitio original y deja de gestionarla</value></data>
+  <data name="Main_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Main_Return" xml:space="preserve"><value>Centro al panel</value></data>
+  <data name="Main_ReturnTip" xml:space="preserve"><value>Devuelve la ventana del Centro a su panel</value></data>
+  <data name="Main_SaveScene" xml:space="preserve"><value>Guardar escena actual</value></data>
+  <data name="Main_SaveSceneTip" xml:space="preserve"><value>Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza.</value></data>
+  <data name="Main_SceneLabel" xml:space="preserve"><value>Escena:</value></data>
+  <data name="Main_SceneNameName" xml:space="preserve"><value>Nombre de la escena</value></data>
+  <data name="Main_ScenesName" xml:space="preserve"><value>Escenas guardadas</value></data>
+  <data name="Main_ShowHidden" xml:space="preserve"><value>Ver ocultas</value></data>
+  <data name="Main_Swap" xml:space="preserve"><value>Volver a la anterior</value></data>
+  <data name="Main_SwapTip" xml:space="preserve"><value>Devuelve al Centro la ventana que estaba antes</value></data>
+  <data name="Main_TabAppsName" xml:space="preserve"><value>Pestaña Apps</value></data>
+  <data name="Main_TabExcluded" xml:space="preserve"><value>Excluidas</value></data>
+  <data name="Main_TabExcludedName" xml:space="preserve"><value>Pestaña Excluidas</value></data>
+  <data name="Main_TabPanels" xml:space="preserve"><value>Paneles</value></data>
+  <data name="Main_TabPanelsName" xml:space="preserve"><value>Pestaña Paneles</value></data>
+  <data name="Main_TabWindows" xml:space="preserve"><value>Ventanas</value></data>
+  <data name="Main_TabWindowsName" xml:space="preserve"><value>Pestaña Ventanas</value></data>
+  <data name="Main_Unpark" xml:space="preserve"><value>Recuperar</value></data>
+  <data name="Main_UnparkTip" xml:space="preserve"><value>Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pasa si la abres desde la barra de tareas.</value></data>
+  <data name="Main_ViewCenter" xml:space="preserve"><value>Foco al centro</value></data>
+  <data name="Main_ViewLabel" xml:space="preserve"><value>Vista:</value></data>
+  <data name="Main_ViewLeft" xml:space="preserve"><value>Foco a la izquierda</value></data>
+  <data name="Main_ViewName" xml:space="preserve"><value>Vista</value></data>
+  <data name="Main_ViewRight" xml:space="preserve"><value>Foco a la derecha</value></data>
+  <data name="Main_ViewTip" xml:space="preserve"><value>Dónde va el foco en el monitor principal</value></data>
+  <data name="Menu_ExcludeApp" xml:space="preserve"><value>Excluir la app {0} ({1})</value></data>
+  <data name="Menu_ExcludeClass" xml:space="preserve"><value>Excluir sólo este tipo de ventana (clase {0})</value></data>
+  <data name="Menu_SizeOf" xml:space="preserve"><value>Tamaño de {0}</value></data>
+  <data name="Monitor_Missing" xml:space="preserve"><value>monitor desconectado</value></data>
+  <data name="Monitor_Principal" xml:space="preserve"><value>Principal</value></data>
+  <data name="Open_Done" xml:space="preserve"><value>{0} abierta en {1}.</value></data>
+  <data name="Open_NoWindow20" xml:space="preserve"><value>{0} se abrió, pero no apareció ninguna ventana suya en 20 s; queda libre.</value></data>
+  <data name="Open_NoWindow30" xml:space="preserve"><value>{0} se abrió, pero no apareció ninguna ventana suya en 30 s; queda libre.</value></data>
+  <data name="Open_NotInCatalog" xml:space="preserve"><value>Esa app ya no está en el catálogo.</value></data>
+  <data name="Panel_Create" xml:space="preserve"><value>Crear panel</value></data>
+  <data name="Panel_DeleteAsk" xml:space="preserve"><value>¿Borrar el panel «{0}»? Sus ventanas quedan libres, donde estén.</value></data>
+  <data name="Panel_DeleteName" xml:space="preserve"><value>Borrar el panel {0}</value></data>
+  <data name="Panel_LocationName" xml:space="preserve"><value>Ubicación del panel {0}</value></data>
+  <data name="Panel_NameName" xml:space="preserve"><value>Nombre del panel {0}</value></data>
+  <data name="Panel_NeedNameAndPlace" xml:space="preserve"><value>Escribe un nombre y elige dónde va el panel nuevo.</value></data>
+  <data name="Panel_NewLocation" xml:space="preserve"><value>Ubicación del panel nuevo</value></data>
+  <data name="Panel_NewName" xml:space="preserve"><value>Nombre del panel nuevo</value></data>
+  <data name="Panel_PresentationName" xml:space="preserve"><value>Presentación del panel {0}</value></data>
+  <data name="Promote_CantMove" xml:space="preserve"><value>{0}: FocusWShell no puede moverla, {1}.</value></data>
+  <data name="Promote_NotManaged" xml:space="preserve"><value>La ventana activa no está gestionada por FocusWShell.</value></data>
+  <data name="Recovery_Ask" xml:space="preserve"><value>FocusWShell no se cerró bien la última vez y {0} ventana(s) siguen fuera de su sitio original.
+
+¿Restaurarlas ahora?
+
+(Si eliges No, se quedan donde están y podrás restaurarlas más tarde.)</value></data>
+  <data name="Recovery_Title" xml:space="preserve"><value>FocusWShell — recuperación</value></data>
+  <data name="Report_CenterInvaded" xml:space="preserve"><value>Invaden el foco: {0}.</value></data>
+  <data name="Report_CenterSafe" xml:space="preserve"><value>Foco protegido.</value></data>
+  <data name="Report_Deviation" xml:space="preserve"><value>desviación de {0} px</value></data>
+  <data name="Report_Done" xml:space="preserve"><value>Hecho.</value></data>
+  <data name="Report_Focus" xml:space="preserve"><value>foco</value></data>
+  <data name="Report_InPlace" xml:space="preserve"><value>{0}/{1} ventanas en su sitio. {2}</value></data>
+  <data name="Report_Learned" xml:space="preserve"><value>  · Aprendido: {0}. Se recolocó.</value></data>
+  <data name="Report_Left" xml:space="preserve"><value>izquierda</value></data>
+  <data name="Report_NotDone" xml:space="preserve"><value>No se hizo: {0}</value></data>
+  <data name="Report_Principal" xml:space="preserve"><value>Principal: {0}</value></data>
+  <data name="Report_Restored" xml:space="preserve"><value>Restauradas: {0}</value></data>
+  <data name="Report_Right" xml:space="preserve"><value>derecha</value></data>
+  <data name="Scene_Applied" xml:space="preserve"><value>Escena «{0}» aplicada.</value></data>
+  <data name="Scene_AuxMissing" xml:space="preserve"><value>El monitor auxiliar {0} no está conectado: sus paneles van al principal.</value></data>
+  <data name="Scene_DeleteAsk" xml:space="preserve"><value>¿Borrar la escena «{0}»? Las ventanas no se mueven.</value></data>
+  <data name="Scene_Deleted" xml:space="preserve"><value>Escena «{0}» borrada.</value></data>
+  <data name="Scene_NeedName" xml:space="preserve"><value>Escribe un nombre para la escena.</value></data>
+  <data name="Scene_None" xml:space="preserve"><value>No hay escenas guardadas. Coloca las ventanas, escribe un nombre y pulsa «Guardar escena actual».</value></data>
+  <data name="Scene_NotFound" xml:space="preserve"><value>No existe la escena «{0}».</value></data>
+  <data name="Scene_NotOpen" xml:space="preserve"><value>No están abiertas: {0}.</value></data>
+  <data name="Scene_OpenedIn" xml:space="preserve"><value>{0} se abrió y está en {1}.</value></data>
+  <data name="Scene_OpenedNoPanel" xml:space="preserve"><value>{0} se abrió; su panel no existe, así que queda libre.</value></data>
+  <data name="Scene_OpeningMissing" xml:space="preserve"><value>Abriendo las que faltaban: {0}…</value></data>
+  <data name="Scene_Prefix" xml:space="preserve"><value>Escena «{0}»: </value></data>
+  <data name="Scene_Saved" xml:space="preserve"><value>Escena «{0}» guardada: {1} ventanas, {2} presentaciones.</value></data>
+  <data name="Scene_TheFocus" xml:space="preserve"><value>el foco</value></data>
+  <data name="Size_AutoFixed" xml:space="preserve"><value>Según la ventana (tamaño fijo)</value></data>
+  <data name="Size_AutoResizable" xml:space="preserve"><value>Según la ventana (se puede redimensionar)</value></data>
+  <data name="Size_Fixed" xml:space="preserve"><value>Tamaño fijo: sólo moverla</value></data>
+  <data name="Size_Resizable" xml:space="preserve"><value>Redimensionarla siempre</value></data>
+  <data name="Size_Set" xml:space="preserve"><value>{0}: {1}.</value></data>
+  <data name="Spot_Lower" xml:space="preserve"><value>{0} · abajo{1}</value></data>
+  <data name="Spot_Upper" xml:space="preserve"><value>{0} · arriba{1}</value></data>
+  <data name="State_Detached" xml:space="preserve"><value>Fuera de layout</value></data>
+  <data name="State_FixedSuffix" xml:space="preserve"><value> · tamaño fijo</value></data>
+  <data name="State_Focus" xml:space="preserve"><value>Foco (vuelve a {0})</value></data>
+  <data name="State_Fullscreen" xml:space="preserve"><value>Pantalla completa (vuelve a {0})</value></data>
+  <data name="State_In" xml:space="preserve"><value>En {0}{1}</value></data>
+  <data name="State_MonitorMissing" xml:space="preserve"><value> (monitor desconectado)</value></data>
+  <data name="State_Parked" xml:space="preserve"><value>Estacionada en {0}{1}</value></data>
+  <data name="State_Unmanageable" xml:space="preserve"><value>No gestionable: {0}</value></data>
+  <data name="Status_Resumed" xml:space="preserve"><value>Volvió de la suspensión: se revisaron ventanas y monitores.</value></data>
+  <data name="Strip_RowsDown" xml:space="preserve"><value>Filas de abajo</value></data>
+  <data name="Strip_RowsUp" xml:space="preserve"><value>Filas de arriba</value></data>
+  <data name="Strip_TipActive" xml:space="preserve"><value>{0} · visible. Doble clic: al foco.</value></data>
+  <data name="Strip_TipDetached" xml:space="preserve"><value>{0} · fuera de layout. Clic: reencajarla.</value></data>
+  <data name="Strip_TipHidden" xml:space="preserve"><value>{0} · oculta (otra pestaña o fila). Clic: mostrarla. Doble clic: al foco.</value></data>
+  <data name="Strip_TipInFocus" xml:space="preserve"><value>{0} · está en el foco y volverá aquí. Clic: devolverla.</value></data>
+  <data name="Strip_TipParked" xml:space="preserve"><value>{0} · estacionada. Clic: recuperarla. Doble clic: al foco.</value></data>
+  <data name="Strip_ToFocus" xml:space="preserve"><value>Al foco</value></data>
+  <data name="Tile_Large" xml:space="preserve"><value>Grande (3 columnas)</value></data>
+  <data name="Tile_Medium" xml:space="preserve"><value>Mediano (2 columnas)</value></data>
+  <data name="Tile_SizeItem" xml:space="preserve"><value>Tamaño: {0}</value></data>
+  <data name="Tile_Small" xml:space="preserve"><value>Pequeño (1 columna)</value></data>
+  <data name="Tpl_Fill" xml:space="preserve"><value>Pantalla completa</value></data>
+  <data name="Tpl_List" xml:space="preserve"><value>Lista</value></data>
+  <data name="Tpl_ListLong" xml:space="preserve"><value>Lista (tipo Explorador)</value></data>
+  <data name="Tpl_Stack" xml:space="preserve"><value>Pestañas</value></data>
+  <data name="Tpl_Tiles" xml:space="preserve"><value>Tiles</value></data>
+  <data name="TrayIcon_Awake" xml:space="preserve"><value>FocusWShell · pantalla siempre encendida</value></data>
+  <data name="TrayMenu_Exit" xml:space="preserve"><value>Salir (devuelve las ventanas a su sitio)</value></data>
+  <data name="TrayMenu_KeepAwake" xml:space="preserve"><value>Mantener la pantalla encendida</value></data>
+  <data name="TrayMenu_NoScenes" xml:space="preserve"><value>(ninguna guardada)</value></data>
+  <data name="TrayMenu_Open" xml:space="preserve"><value>Abrir FocusWShell</value></data>
+  <data name="TrayMenu_OtherCopy" xml:space="preserve"><value>Ahora se inicia otra copia: {0}. Márcalo para iniciar ésta.</value></data>
+  <data name="TrayMenu_Scenes" xml:space="preserve"><value>Escenas</value></data>
+  <data name="TrayMenu_StartsOff" xml:space="preserve"><value>No se abre al iniciar sesión</value></data>
+  <data name="TrayMenu_StartsOn" xml:space="preserve"><value>Se abre al iniciar sesión</value></data>
+  <data name="Tray_AfterSleep" xml:space="preserve"><value>Tras la suspensión</value></data>
+  <data name="Tray_Applied" xml:space="preserve"><value>Aplicada.</value></data>
+  <data name="Tray_AwakeOff" xml:space="preserve"><value>Pantalla con ahorro normal</value></data>
+  <data name="Tray_AwakeOffText" xml:space="preserve"><value>Windows vuelve a apagar la pantalla por inactividad como siempre.</value></data>
+  <data name="Tray_AwakeOn" xml:space="preserve"><value>Pantalla siempre encendida</value></data>
+  <data name="Tray_AwakeOnText" xml:space="preserve"><value>Ni la pantalla se apagará ni saltará el protector de pantalla mientras esté activo.</value></data>
+  <data name="Tray_Emergency" xml:space="preserve"><value>Emergencia: ventanas restauradas</value></data>
+  <data name="Tray_Hotkeys" xml:space="preserve"><value>Atajos</value></data>
+  <data name="Tray_KeepAwake" xml:space="preserve"><value>Pantalla encendida</value></data>
+  <data name="Tray_KeepAwakeFailed" xml:space="preserve"><value>Windows no aceptó la petición de energía.</value></data>
+  <data name="Tray_Monitors" xml:space="preserve"><value>Monitores</value></data>
+  <data name="Tray_NothingToRestore" xml:space="preserve"><value>No había nada que restaurar.</value></data>
+  <data name="Tray_RestoreAll" xml:space="preserve"><value>Restaurar todas</value></data>
+  <data name="Tray_Scene" xml:space="preserve"><value>Escena</value></data>
+  <data name="Tray_SceneName" xml:space="preserve"><value>Escena «{0}»</value></data>
+  <data name="Tray_StartOff" xml:space="preserve"><value>FocusWShell ya no se abrirá al iniciar sesión.</value></data>
+  <data name="Tray_StartOn" xml:space="preserve"><value>FocusWShell se abrirá al iniciar sesión ({0}).</value></data>
+  <data name="Tray_StartWithWindows" xml:space="preserve"><value>Iniciar con Windows</value></data>
+  <data name="Unmanageable_Generic" xml:space="preserve"><value>no se puede mover</value></data>
+  <data name="Weights_Custom" xml:space="preserve"><value>Personalizadas · {0}</value></data>
+  <data name="Where_AuxLeft" xml:space="preserve"><value>{0}, izquierda</value></data>
+  <data name="Where_AuxRight" xml:space="preserve"><value>{0}, derecha</value></data>
+  <data name="Where_LowerSuffix" xml:space="preserve"><value> abajo</value></data>
+  <data name="Where_PrincipalLeft" xml:space="preserve"><value>principal, izquierda del foco</value></data>
+  <data name="Where_PrincipalLeftShort" xml:space="preserve"><value>principal, izquierda</value></data>
+  <data name="Where_PrincipalRight" xml:space="preserve"><value>principal, derecha del foco</value></data>
+  <data name="Where_PrincipalRightShort" xml:space="preserve"><value>principal, derecha</value></data>
+</root>

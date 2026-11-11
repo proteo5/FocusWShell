@@ -109,7 +109,7 @@ public sealed class PanelStripWindow : Window
         _pager.Children.Clear();
         if (_strip.Pages is { } pages)
         {
-            _pager.Children.Add(PagerButton("▲", "Filas de arriba", pages.First > 0, pages.First - 1));
+            _pager.Children.Add(PagerButton("▲", Strings.Strip_RowsUp, pages.First > 0, pages.First - 1));
             _pager.Children.Add(new TextBlock
             {
                 Text = $"{pages.First + 1}–{pages.First + pages.Visible} / {pages.Total}",
@@ -118,7 +118,7 @@ public sealed class PanelStripWindow : Window
                 Margin = new Thickness(4, 0, 4, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             });
-            _pager.Children.Add(PagerButton("▼", "Filas de abajo", pages.First + pages.Visible < pages.Total, pages.First + 1));
+            _pager.Children.Add(PagerButton("▼", Strings.Strip_RowsDown, pages.First + pages.Visible < pages.Total, pages.First + 1));
         }
 
         _tabs.Children.Clear();
@@ -179,11 +179,11 @@ public sealed class PanelStripWindow : Window
             Cursor = Cursors.Hand,
             ToolTip = tab.State switch
             {
-                TabState.Active => $"{tab.Label} · visible. Doble clic: al Centro.",
-                TabState.Hidden => $"{tab.Label} · oculta (otra pestaña o fila). Clic: mostrarla. Doble clic: al Centro.",
-                TabState.Parked => $"{tab.Label} · estacionada. Clic: recuperarla. Doble clic: al Centro.",
-                TabState.InCenter => $"{tab.Label} · está en el Centro y volverá aquí. Clic: devolverla.",
-                TabState.Detached => $"{tab.Label} · fuera de layout. Clic: reencajarla.",
+                TabState.Active => Core.Text.F(Strings.Strip_TipActive, tab.Label),
+                TabState.Hidden => Core.Text.F(Strings.Strip_TipHidden, tab.Label),
+                TabState.Parked => Core.Text.F(Strings.Strip_TipParked, tab.Label),
+                TabState.InCenter => Core.Text.F(Strings.Strip_TipInFocus, tab.Label),
+                TabState.Detached => Core.Text.F(Strings.Strip_TipDetached, tab.Label),
                 _ => tab.Label,
             },
         };
@@ -229,23 +229,23 @@ public sealed class PanelStripWindow : Window
             menu.Items.Add(item);
         }
 
-        Item("Al Centro", new Promote(tab.Handle), tab.State != TabState.InCenter);
-        Item("Estacionar", new Park(tab.Handle), tab.State != TabState.Parked);
-        Item("Recuperar", new Restore(tab.Handle), tab.State == TabState.Parked);
-        Item("Reencajar", new Reattach(tab.Handle), tab.State == TabState.Detached);
+        Item(Strings.Strip_ToFocus, new Promote(tab.Handle), tab.State != TabState.InCenter);
+        Item(Strings.DeckMenu_Park, new Park(tab.Handle), tab.State != TabState.Parked);
+        Item(Strings.DeckMenu_Unpark, new Restore(tab.Handle), tab.State == TabState.Parked);
+        Item(Strings.Main_Reattach, new Reattach(tab.Handle), tab.State == TabState.Detached);
         if (_strip.Template == PanelTemplate.Tiles)
         {
             menu.Items.Add(new Separator());
-            foreach (var (size, label) in new[] { (TileSize.Small, "Pequeño (1 columna)"), (TileSize.Medium, "Mediano (2 columnas)"), (TileSize.Large, "Grande (3 columnas)") })
+            foreach (var (size, label) in new[] { (TileSize.Small, Strings.Tile_Small), (TileSize.Medium, Strings.Tile_Medium), (TileSize.Large, Strings.Tile_Large) })
             {
-                var item = new MenuItem { Header = $"Tamaño: {label}", IsCheckable = true, IsChecked = tab.Size == size };
+                var item = new MenuItem { Header = Core.Text.F(Strings.Tile_SizeItem, label), IsCheckable = true, IsChecked = tab.Size == size };
                 item.Click += async (_, _) => await _run(new SetTileSize(tab.Handle, size));
                 menu.Items.Add(item);
             }
         }
 
         menu.Items.Add(new Separator());
-        Item("Liberar (devolverla a su sitio original)", new Release(tab.Handle));
+        Item(Strings.DeckMenu_Release, new Release(tab.Handle));
         button.ContextMenu = menu;
         return button;
     }

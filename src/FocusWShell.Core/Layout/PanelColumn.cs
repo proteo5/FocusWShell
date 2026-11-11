@@ -72,7 +72,7 @@ internal sealed class PanelColumn
                 if (split != spans[0].Bottom)
                 {
                     var (short_, needed) = split > spans[0].Bottom ? (active[0], need0) : (active[1], need1);
-                    notes.Add($"{short_.DisplayTitle} necesita {needed} px de alto en su columna; el reparto con el otro panel se lleva a ese límite.");
+                    notes.Add(Text.F(Strings.Note_ColumnSplit, short_.DisplayTitle, needed));
                     spans = [new PixelRect(0, top, 1, split), new PixelRect(0, split + gap, 1, bottom)];
                 }
             }
@@ -90,8 +90,7 @@ internal sealed class PanelColumn
                 {
                     excluded.Add(new WindowTarget(w.Handle, w.Label, panel.Name, TargetKind.Minimized, default));
                     notes.Add(
-                        $"{w.Label} necesita {w.MinSize!.Value.Height} px de alto y {panel.DisplayTitle} tiene {height} " +
-                        "porque comparte la columna; se minimiza y queda fuera del layout.");
+                        Text.F(Strings.Note_TooTallShared, w.Label, w.MinSize!.Value.Height, panel.DisplayTitle, height));
                 }
 
                 panel = panel with { Windows = panel.Windows.Except(tooTall).ToList() };
@@ -227,8 +226,7 @@ internal sealed class PanelColumn
         {
             pages[panel.Name] = arranged.Pages;
             notes.Add(
-                $"{panel.DisplayTitle}: sus ventanas ocupan {arranged.Pages.Total} filas y caben {arranged.Pages.Visible}; " +
-                $"se ven las filas {arranged.Pages.First + 1}–{arranged.Pages.First + arranged.Pages.Visible} (▲ ▼ en su tira).");
+                Text.F(Strings.Note_TilePages, panel.DisplayTitle, arranged.Pages.Total, arranged.Pages.Visible, arranged.Pages.First + 1, arranged.Pages.First + arranged.Pages.Visible));
         }
     }
 
@@ -243,7 +241,7 @@ internal sealed class PanelColumn
             bool fits = (w.MinSize?.Width ?? 0) <= area.Width && (w.MinSize?.Height ?? 0) <= area.Height;
             if (!fits)
             {
-                notes.Add($"{w.Label} no cabe detrás de la lista de {panel.DisplayTitle}; se minimiza y su miniatura se ve con su última imagen.");
+                notes.Add(Text.F(Strings.Note_NotBehindList, w.Label, panel.DisplayTitle));
             }
 
             targets.Add(new WindowTarget(w.Handle, w.Label, panel.Name, fits ? TargetKind.Visible : TargetKind.Minimized, fits ? area : default));

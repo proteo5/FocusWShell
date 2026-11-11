@@ -14,8 +14,13 @@ namespace FocusWShell.App;
 /// </summary>
 public static class DeckPreview
 {
-    public static void Run(string folder)
+    public static void Run(string folder, string? language = null)
     {
+        if (language is not null)
+        {
+            Localization.Apply(language);
+        }
+
         Directory.CreateDirectory(folder);
         var sizes = new[] { ("tablet-entera", 1280, 672), ("media-tablet", 640, 672), ("esquina", 640, 980) };
         foreach (var (name, width, height) in sizes)
@@ -25,6 +30,7 @@ public static class DeckPreview
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-hp.png"), "hp");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-tablet.png"), "tablet");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-mover.png"), mode: "mover");
+            Save(Sample(manyApps: false) with { Free = [] }, width, height, Path.Combine(folder, $"deck-{name}-sin-libres.png"));
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-cerrar.png"), mode: "cerrar");
         }
     }
@@ -41,6 +47,7 @@ public static class DeckPreview
             () => { },
             _ => { },
             () => null,
+            _ => Task.CompletedTask,
             _ => Task.CompletedTask);
         var deck = new DeckWindow(actions) { Left = -20000, Top = -20000 };
         deck.ShowTab(tab);
