@@ -428,6 +428,19 @@ Encontrado aquí y ya corregido:
 
 Pendiente: un juego en pantalla completa exclusiva y una presentación de PowerPoint.
 
+### Deck: mover apps con toques (validación, 2026-11-11)
+
+Encontrado en uso con la tablet: con el ratón, arrastrar una app a otro panel funciona; con el dedo, el deck desplaza la lista en lugar de arrastrar. El `ScrollViewer` del deck (`PanningMode.VerticalOnly`) se queda el gesto, y WPF no convierte el toque en arrastre. El menú «Mover a» de cada app existe, pero se abre con clic derecho o pulsación larga, que con el dedo no es fiable.
+
+Arreglo: un botón **«⇆ Mover una app»** junto a «Anterior» y «Foco al panel». Se mueve en dos toques:
+
+1. Se toca la app. Queda resaltada y un aviso dice qué hacer.
+2. Cada panel que no es el suyo muestra **«⬇ Mover aquí»**. Al tocarlo se mueve (`SendTo`, o `Adopt` si era libre).
+
+«Cancelar», volver a tocar el botón u ocultar el deck salen del modo. Con el ratón, arrastrar sigue funcionando igual.
+
+Pendiente: probarlo en la tablet.
+
 ### Iconos que faltaban (validación, 2026-11-10)
 
 Encontrado en uso: faltaban iconos en el deck y en la ventana principal. `focus-probe icons` muestra de dónde sale el de cada app. Había tres causas:

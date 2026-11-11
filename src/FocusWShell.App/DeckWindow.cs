@@ -60,6 +60,16 @@ public sealed class DeckWindow : Window
         Title = "FocusWShell · deck";
         Content = new ScrollViewer { Content = _root, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, PanningMode = PanningMode.VerticalOnly };
         SourceInitialized += (_, _) => OwnWindows.MakeToolNoActivate(new WindowInteropHelper(this).Handle);
+
+        // Al ocultarse, se olvida si se estaba moviendo una app: al volver, el deck empieza limpio.
+        IsVisibleChanged += (_, e) =>
+        {
+            if (e.NewValue is false)
+            {
+                _moving = null;
+                _moveApp = null;
+            }
+        };
     }
 
     /// <summary>Lo muestra (o lo actualiza) en el rectángulo dado, en píxeles físicos.</summary>
@@ -126,7 +136,51 @@ public sealed class DeckWindow : Window
         var focusButtons = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
         focusButtons.Children.Add(WideButton("⇄  Anterior", state.HasPrevious, () => Run(true, new SwapWithPrevious())));
         focusButtons.Children.Add(WideButton("↓  Foco al panel", state.Focus is not null, () => Run(false, new ReturnToPanel(state.Focus!.Handle!.Value))));
+        var moveButton = WideButton("⇆  Mover una app", true, () =>
+        {
+            _moving = _moving is null ? MoveStep.PickApp : null;
+            _moveApp = null;
+            Render();
+        });
+        if (_moving is not null)
+        {
+            moveButton.Background = ActiveBrush;
+        }
+
+        focusButtons.Children.Add(moveButton);
         _root.Children.Add(focusButtons);
+
+        // Mover con toques (para la tablet, donde arrastrar desplaza la lista): la app y luego su panel.
+        if (_moving is not null)
+        {
+            // Si la app elegida ya no está (se cerró), se vuelve a elegir.
+            if (_moveApp is { Handle: { } chosen } && !state.Panels.SelectMany(p => p.Apps).Concat(state.Free).Any(a => a.Handle == chosen))
+            {
+                _moveApp = null;
+                _moving = MoveStep.PickApp;
+            }
+
+            var banner = new DockPanel { Margin = new Thickness(0, 0, 0, 10), Background = DropBrush };
+            var cancel = WideButton("Cancelar", true, () =>
+            {
+                _moving = null;
+                _moveApp = null;
+                Render();
+            });
+            cancel.Margin = new Thickness(6);
+            DockPanel.SetDock(cancel, Dock.Right);
+            banner.Children.Add(cancel);
+            banner.Children.Add(new TextBlock
+            {
+                Text = _moveApp is null ? "Toca la app que quieres mover." : $"Mover {_moveApp.Name}: toca «Mover aquí» en su nuevo panel.",
+                Foreground = TextBrush,
+                FontSize = 14,
+                Margin = new Thickness(10, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+            });
+            _root.Children.Add(banner);
+        }
 
         // Vistas.
         _root.Children.Add(Label("VISTA"));
@@ -294,11 +348,34 @@ public sealed class DeckWindow : Window
             ToolTip = string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"Deck: {app.Name} ({app.State})");
+        if (_moveApp is { } selected && selected.Handle == app.Handle && app.Handle is not null)
+        {
+            tile.Background = ActiveBrush;
+            tile.BorderBrush = TextBrush;
+            tile.BorderThickness = new Thickness(2);
+        }
+        else if (_moving is not null && app.Handle is null)
+        {
+            tile.Opacity = 0.4; // una app cerrada no se mueve: se abre en su panel
+        }
+
         tile.Click += async (_, _) =>
         {
             if (_dragged)
             {
                 _dragged = false; // fue un arrastre, no un toque
+                return;
+            }
+
+            if (_moving is not null)
+            {
+                if (app.Handle is not null)
+                {
+                    _moveApp = app;
+                    _moving = MoveStep.PickPanel;
+                    Render();
+                }
+
                 return;
             }
 
@@ -310,6 +387,31 @@ public sealed class DeckWindow : Window
     }
 
     private static readonly Brush DropBrush = Frozen(Color.FromRgb(0x1F, 0x3A, 0x5F));
+
+    private enum MoveStep
+    {
+        PickApp,
+        PickPanel,
+    }
+
+    /// <summary>Mover con toques: <c>null</c> si no se está moviendo; si no, en qué paso va.</summary>
+    private MoveStep? _moving;
+
+    /// <summary>La app elegida para mover.</summary>
+    private DeckApp? _moveApp;
+
+    /// <summary>Mueve la app elegida a un panel (como al soltarla arrastrada) y sale del modo mover.</summary>
+    private async Task MoveChosenTo(DeckPanel panel)
+    {
+        if (_moveApp is not { Handle: { } h } app)
+        {
+            return;
+        }
+
+        _moving = null;
+        _moveApp = null;
+        await Run(false, app.PanelId is null ? new Adopt(h, app.Name, panel.Id) : new SendTo(h, panel.Id));
+    }
     private const string DragFormat = "FocusWShell.DeckApp";
     private Point? _dragStart;
     private bool _dragged;
@@ -395,6 +497,16 @@ public sealed class DeckWindow : Window
         var tabs = panel.Apps.Where(a => a.State == ListItemState.InPanel && a.Handle is not null).ToList();
         bool cycles = panel.Template is PanelTemplate.Stack or PanelTemplate.Fill && tabs.Count > 1;
         var controls = new StackPanel { Orientation = Orientation.Horizontal };
+        if (_moving == MoveStep.PickPanel && _moveApp is { } moving && moving.PanelId != panel.Id)
+        {
+            var here = NavButton("⬇  Mover aquí", $"Mover {moving.Name} a {panel.Name}", () => MoveChosenTo(panel));
+            here.Width = double.NaN;
+            here.Padding = new Thickness(14, 0, 14, 0);
+            here.Background = ActiveBrush;
+            here.FontSize = 13;
+            controls.Children.Add(here);
+        }
+
         if (cycles)
         {
             // En pestañas, la visible es la primera: ▶ pone la segunda; ◀, la última.
