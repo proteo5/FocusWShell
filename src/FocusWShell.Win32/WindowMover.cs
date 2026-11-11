@@ -376,7 +376,81 @@ public static class WindowMover
     }
 
     /// <summary>Da el foco a la ventana. Sólo funciona justo después de input del usuario al gestor (atajo o clic).</summary>
-    public static unsafe bool Activate(nint handle) => PInvoke.SetForegroundWindow(new HWND((void*)handle));
+    /// <summary>
+    /// Pone la ventana en primer plano. Windows sólo lo permite a quien recibió la última entrada; desde el
+    /// deck (que no se activa, S8) y con el toque de una tablet por Apollo a veces no cuenta como nuestra,
+    /// y la ventana se queda detrás. Entonces se engancha un momento a la cola de entrada del hilo que
+    /// tiene el primer plano, que sí puede cederlo.
+    /// </summary>
+    public static unsafe bool Activate(nint handle)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (PInvoke.SetForegroundWindow(hwnd) && PInvoke.GetForegroundWindow() == hwnd)
+        {
+            return true;
+        }
+
+        var foreground = PInvoke.GetForegroundWindow();
+        uint foregroundThread = foreground.IsNull ? 0 : PInvoke.GetWindowThreadProcessId(foreground, null);
+        uint me = PInvoke.GetCurrentThreadId();
+        bool attached = foregroundThread != 0 && foregroundThread != me && PInvoke.AttachThreadInput(me, foregroundThread, true);
+        try
+        {
+            PInvoke.BringWindowToTop(hwnd);
+            PInvoke.SetForegroundWindow(hwnd);
+        }
+        finally
+        {
+            if (attached)
+            {
+                PInvoke.AttachThreadInput(me, foregroundThread, false);
+            }
+        }
+
+        return PInvoke.GetForegroundWindow() == hwnd;
+    }
+
+    /// <summary>
+    /// Manda la ventana al fondo del orden Z sin moverla ni activarla. Las ventanas que viven detrás de
+    /// una lista (ADR 0015) no tienen por qué tapar nada: se ven por sus miniaturas. Si el usuario la
+    /// activa, Windows la vuelve a traer al frente.
+    /// </summary>
+    public static unsafe void SendToBack(nint handle)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (PInvoke.IsWindow(hwnd))
+        {
+            PInvoke.SetWindowPos(hwnd, new HWND((void*)1), // HWND_BOTTOM
+                0, 0, 0, 0,
+                SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_NOOWNERZORDER);
+        }
+    }
+
+    /// <summary>
+    /// Cierra la ventana como su botón X (<c>WM_SYSCOMMAND</c> + <c>SC_CLOSE</c>): la app decide, y si tiene
+    /// algo sin guardar, pregunta. No espera a que se cierre.
+    /// </summary>
+    public static unsafe bool Close(nint handle)
+    {
+        var hwnd = new HWND((void*)handle);
+        return PInvoke.IsWindow(hwnd) && PInvoke.PostMessage(hwnd, 0x0112 /* WM_SYSCOMMAND */, new WPARAM(0xF060 /* SC_CLOSE */), default);
+    }
+
+    /// <summary>Lleva el cursor al centro de la ventana (al elegirla en el deck, para seguir trabajando en ella).</summary>
+    public static unsafe void PointAt(nint handle)
+    {
+        var hwnd = new HWND((void*)handle);
+        if (!PInvoke.IsWindow(hwnd) || PInvoke.IsIconic(hwnd))
+        {
+            return;
+        }
+
+        var visible = ReadRects(hwnd).Visible;
+        if (!visible.IsEmpty)
+        {
+            PInvoke.SetCursorPos(visible.Left + (visible.Width / 2), visible.Top + (visible.Height / 2));
+        }
+    }
 
     /// <summary>Estado actual de la ventana, para compararlo con lo que el gestor espera (S4).</summary>
     public static unsafe FocusWShell.Core.Domain.ObservedWindow Observe(nint handle)

@@ -24,6 +24,11 @@ public sealed class ListManager(ShellController controller, Action<ControllerRes
                 _windows[view.Key] = window;
             }
 
+            // Tras un cambio de layout (una app fue al foco o volvió), la lista vuelve a quedar encima: si una
+            // ventana del panel se estaba dejando ver, eso era por haberla activado el usuario, no ahora. Sin
+            // esto, desde el deck (que nunca se activa) la lista se quedaba debajo hasta otro cambio de primer
+            // plano, y el panel parecía de pestañas.
+            window.Peeking = 0;
             window.Update(view);
         }
     }

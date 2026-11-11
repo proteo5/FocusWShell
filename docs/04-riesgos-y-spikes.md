@@ -439,7 +439,119 @@ Arreglo: un botón **«⇆ Mover una app»** junto a «Anterior» y «Foco al pa
 
 «Cancelar», volver a tocar el botón u ocultar el deck salen del modo. Con el ratón, arrastrar sigue funcionando igual.
 
-Pendiente: probarlo en la tablet.
+Probado en la tablet: funciona.
+
+### Deck sin scroll (validación, 2026-11-11)
+
+Encontrado en uso con la tablet: el scroll del deck estorbaba al tocar los botones. Además, todo iba en una columna a la izquierda: la mitad derecha de la tablet quedaba vacía, y las escenas, «Pantalla encendida» y «Restaurar» quedaban abajo, fuera de la vista.
+
+Rediseño: el deck ya no tiene `ScrollViewer`; todo cabe en su espacio. Elige la disposición según su ancho:
+
+- **Ancho ≥ 900 DIP** (la tablet entera, 1280×672):
+  - a la izquierda, una columna de 320 con el foco, las acciones, la vista, el ancho, las escenas y, abajo, «Pantalla» y «Restaurar»;
+  - a la derecha, los paneles en columnas (en dos filas si son más de tres) y las libres en una franja abajo.
+- **Estrecho** (media tablet, 640×672; esquina del principal, 640×980): filas compactas.
+  - Vista y ancho comparten una fila de seis.
+  - Los paneles se reparten el alto según cuántas apps tienen.
+  - Escenas, «Pantalla» y «Restaurar» van en la última fila.
+
+Los botones van en rejillas que se estiran, sin anchos fijos. Las apps de cada panel van en una `FitGrid`:
+
+- da a cada app la celda más grande que cabe (de 64×48 a 132 de ancho) y, a igualdad, más columnas;
+- si ni con celdas mínimas caben, la última celda es «+N más», que abre las demás en un menú;
+- el icono crece con la celda y el nombre se recorta con «…».
+
+`FocusWShell.exe --deck-preview <carpeta>` dibuja el deck con datos de ejemplo en los tres tamaños, con pocas y con muchas apps, y guarda los PNG. No toca ventanas ni cierra la instancia abierta. Con él se revisó:
+
+- la tablet entera, con 18 apps en Trabajo: caben todas en 4 columnas;
+- la media tablet, con 18 apps: 15 a la vista y «+3 más»;
+- la esquina: cabe todo.
+
+Probado en la tablet: funciona. Después se añadió el icono de la app del foco a la izquierda de su nombre.
+
+### Deck: una pestaña por monitor, y la ventana principal en pestañas (validación, 2026-11-11)
+
+Encontrado en uso, al querer crear paneles en el monitor HP:
+
+- **La ventana principal se quedaba sin alto.** Sus secciones se apilaban desde abajo (estado, apps conocidas, excluidas, paneles) y la lista de ventanas ocupaba lo que sobrara. A 620 px de alto, «Paneles» y la lista de ventanas quedaban a cero: no había forma de ver dónde se crea un panel. La sección «Excluidas» de M2 fue la que la desbordó.
+  - Arreglo: las secciones van en pestañas (**Ventanas**, **Paneles**, **Apps**, **Excluidas**), cada una con todo el alto, y las barras de arriba pasan a `WrapPanel` (antes se cortaban a la derecha).
+  - La pestaña Paneles explica cómo crear uno.
+- **En el deck, con más monitores, los paneles se apretaban.** Ahora hay una pestaña por monitor («Principal · 6», «HP 24fw · 3»), con el número de apps abiertas en sus paneles. Sólo se ven los paneles del monitor elegido.
+  - Ancho: van bajo las escenas. Estrecho: en una fila sobre los paneles.
+  - El foco, las acciones, la vista, el ancho y las libres siempre se ven.
+  - Sale cada monitor conectado, menos el que el deck ocupa entero. Uno desconectado con paneles sale apagado, «(desconectado)».
+  - Un monitor sin paneles dice cómo crearlos.
+  - La pestaña elegida se recuerda en la sesión; al principio, el principal.
+  - «⇆ Mover» funciona entre pestañas: se toca la app, se cambia de pestaña y se toca «Mover aquí». Con el ratón, pasar una app arrastrada por una pestaña cambia a ese monitor para soltarla allí.
+
+Revisado con `--deck-preview`, que ahora incluye un HP con dos paneles y la vista de cada pestaña.
+
+### Deck: la lista se quedaba debajo, y el foco no iba a la app elegida (validación, 2026-11-11)
+
+Encontrado en uso, siempre desde el deck:
+
+- **Un panel en Lista parecía de pestañas** (con el deck aún diciendo «Lista») después de llevar apps al foco.
+  - Causa: una ventana del panel en primer plano se deja ver sobre la lista, y la lista vuelve a taparla sólo cuando cambia el primer plano. El deck nunca se activa (S8) y la activación fallaba (abajo), así que una ventana de Trabajo se quedaba en primer plano y la lista debajo hasta otro cambio.
+  - Reproducido: con B, del panel, en primer plano, la lista quedaba debajo de B.
+  - Arreglo: tras cada cambio de layout la lista vuelve a quedar encima. «Dejarse ver» sólo dura mientras el usuario sigue en esa ventana. Comprobado: un cambio de vista desde el deck, sin cambiar el primer plano, la pone encima otra vez.
+- **Al elegir en el deck la app del foco, el teclado y el ratón se quedaban donde estaban.**
+  - Causa: `SetForegroundWindow` sólo funciona si Windows cree que FocusWShell recibió la última entrada. Con el deck, que no se activa, y el toque de la tablet por Apollo, a menudo no lo cree.
+  - Arreglo: `WindowMover.Activate` reintenta enganchándose un momento a la cola de entrada del hilo que tiene el primer plano (`AttachThreadInput`), que sí puede cederlo. Además, al llevar una app al foco desde el deck (una app, «Anterior» o pantalla completa), el cursor va al centro de esa ventana.
+  - Comprobado con toques simulados por UI Automation (que no dan derechos de entrada): la app elegida queda en primer plano y el cursor en el centro del foco.
+- **Seguía pareciendo de pestañas: las ventanas del panel quedaban encima de la lista sin estar activas.**
+  - Causa: en la copia del usuario, Outlook (de Trabajo) tapaba la lista con Claude en primer plano. Al colocar las ventanas, Windows trae alguna al frente (p. ej. al restaurar una minimizada) después de que la lista se pusiera encima.
+  - Arreglo: tras cada layout, todas las ventanas de un panel en lista van al fondo del orden Z (`WindowMover.SendToBack`, `HWND_BOTTOM`). Se siguen viendo por sus miniaturas, y si el usuario activa una, Windows la trae al frente.
+  - Primer intento: se dejaba fuera la ventana en primer plano, pensando en la que el usuario estuviera usando. Falló con el dedo: la app que vuelve del foco aún tiene el primer plano (el deck nunca se activa y nadie se lo quita), y quedaba encima. Las pruebas con UI Automation no lo veían, porque ese «toque» sí activa el deck. Por eso se reprodujo con clics reales del ratón sobre el deck en la tablet, que no lo activan, como el dedo.
+  - Comprobado con clics reales, tres apps llevadas al foco una tras otra:
+    - sin el arreglo, la que vuelve del foco (C, luego B) quedaba encima de la lista;
+    - con él, la lista queda encima en todos los pasos, y la app elegida queda en primer plano.
+
+### Sesión entre reinicios y cerrar apps desde el deck (validación, 2026-11-11)
+
+**La sesión.** Los paneles se guardaban, pero qué app estaba en cuál no, y al abrir FocusWShell todas empezaban libres. Ahora la sesión es una escena automática en `session.json`, que no sale en la lista de escenas:
+
+- **Al guardar:**
+  - se guarda 3 s después de cada cambio de layout;
+  - y al salir, antes de devolver las ventanas a su sitio. Así, «Salir» y volver a abrir las devuelve a sus paneles.
+- **Al arrancar:**
+  - vuelve a poner en su panel cada ventana de la sesión que esté abierta, con la vista de entonces;
+  - no toca los paneles ni abre apps;
+  - las que falten se adoptan si aparecen en los 3 minutos siguientes (cada 10 s): las apps que se abren al iniciar Windows suelen llegar después que FocusWShell;
+  - sólo se adoptan ventanas libres: nada que el usuario ya haya puesto.
+- **Emparejado estricto** (`SceneMatcher.Match(..., strict: true)`, con pruebas).
+  - En las escenas, si no hay una ventana con el mismo título, se toma cualquiera de la misma app. Al arrancar eso es peligroso: probándolo, el sitio de una ventana de prueba cerrada se lo llevó otra ventana de Edge que no tenía nada que ver.
+  - En la sesión, una ventana con otro título sólo se toma si ninguna de esa app casó por título y cuadran uno a uno. Es lo que pasa tras reiniciar Windows, cuando los títulos cambian.
+- **Probado:**
+  - Con A y B en Trabajo se salió con `--salir` y se cerró B.
+  - Al volver a abrir FocusWShell, A volvió sola a Trabajo.
+  - Al abrir B, se adoptó en Trabajo en segundos.
+  - Las otras ventanas de Edge del usuario siguieron libres.
+
+**Cerrar apps desde el deck.** Hay un botón «✕ Cerrar una app», junto a «Mover», que activa un modo:
+
+- cada app que se toca se cierra como con su X (`WM_SYSCOMMAND` + `SC_CLOSE`); si tiene algo sin guardar, la app pregunta;
+- primero se trae la app al frente, para que su pregunta (si tiene algo sin guardar) se vea;
+- el modo se apaga solo al cerrar una, como «Mover». Al principio seguía activo para cerrar varias, y en uso parecía que el deck se había quedado parado: seguía en rojo sin que cambiara nada;
+- la tarjeta dice «Cerrando…» al momento. Si la app sigue abierta a los 5 s (preguntó y se canceló), vuelve a ser normal;
+- las apps a punto de cerrarse se marcan en rojo, y las cerradas no se pueden elegir.
+
+Probado con clics reales sobre el deck: la ventana de prueba se cerró, el modo siguió activo y «Listo» lo apagó. El guion sólo podía tocar la tarjeta cuyo título fuera el de la ventana de prueba: una primera versión tomaba la primera tarjeta de Edge, que podía ser una ventana del usuario, y la comprobación de seguridad la bloqueó antes de ejecutarse.
+
+**Modos más claros.** Los avisos de los modos (franjas con «Cancelar» y «Listo») ocupaban sitio y empujaban todo el deck hacia abajo al entrar y salir. Ahora:
+
+- **Botones:** el mismo botón enciende y apaga el modo, y mientras está activo lo dice: «⇆ Moviendo…» (azul) o «✕ Cerrando…» (rojo). Encender uno apaga el otro.
+- **Mover:**
+  - Al elegir la app, sólo los paneles donde puede ir se ponen con borde amarillo y un velo «⬇ Mover aquí»; el suyo no.
+  - Tocar en cualquier parte de ese panel la lleva ahí: un blanco mucho más grande que el botón que había en la cabecera.
+- **Cerrar:** las apps abiertas, con borde rojo.
+
+Probado con clics reales sobre el deck en la tablet:
+
+- «Mover» se enciende («Moviendo…») y se apaga con el mismo botón;
+- con la app de Trabajo elegida, sólo Contexto queda marcado, y un toque en el panel la mueve y apaga el modo;
+- «Cerrar» se enciende y se apaga igual.
+
+**El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
 ### Iconos que faltaban (validación, 2026-11-10)
 

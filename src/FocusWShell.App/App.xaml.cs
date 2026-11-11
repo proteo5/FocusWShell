@@ -36,6 +36,15 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // "FocusWShell.exe --deck-preview <carpeta>": PNGs del deck con datos de ejemplo, sin tocar nada más.
+        int preview = Array.IndexOf(e.Args, "--deck-preview");
+        if (preview >= 0)
+        {
+            DeckPreview.Run(preview + 1 < e.Args.Length ? e.Args[preview + 1] : System.IO.Path.GetTempPath());
+            Shutdown();
+            return;
+        }
+
         // "FocusWShell.exe --salir": pide a la instancia abierta que salga devolviendo las ventanas (lo usa
         // build\instalar.ps1 antes de reemplazar la copia instalada).
         bool exitRequest = e.Args.Any(a => a is "--salir" or "--exit");
@@ -189,7 +198,24 @@ public partial class App : Application
         StartHotkeys(announce: true);
 
         ShowMain();
-        Task.Run(_controller.ShowLists);
+        // La última sesión: cada ventana a su panel, como estaba. Las apps que se abran después (al iniciar
+        // Windows suelen tardar) se adoptan durante unos minutos.
+        Task.Run(() =>
+        {
+            var restored = _controller.RestoreSession();
+            _controller.ShowLists();
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (restored is not null)
+                {
+                    RefreshAfter(restored);
+                }
+
+                _sessionReady = true;
+                StartLateAdoption();
+            });
+        });
+        _controller.LayoutChanged += () => Dispatcher.BeginInvoke(ScheduleSessionSave);
 
         // El deck fijado en un monitor (ADR 0013, fase 4) vuelve a su sitio al arrancar, si el monitor está.
         if (_settings.DeckDisplay is { } deckDisplay && Enum.TryParse<DeckZone>(_settings.DeckZone, out var zone))
@@ -275,7 +301,20 @@ public partial class App : Application
         _deck ??= new DeckWindow(new DeckActions(
             Run: async commands =>
             {
-                var result = await Task.Run(() => _controller.Execute(commands));
+                var result = await Task.Run(() =>
+                {
+                    var r = _controller.Execute(commands);
+
+                    // Elegir en el deck qué va al foco es para trabajar en ello: la app queda en primer
+                    // plano y el cursor, encima, aunque el toque viniera de la tablet.
+                    if (commands.Any(c => c is Promote or SwapWithPrevious or EnterFullscreen) && _controller.FocusedWindow() is { } focused)
+                    {
+                        WindowMover.Activate(focused);
+                        WindowMover.PointAt(focused);
+                    }
+
+                    return r;
+                });
                 if (result.Rejections.Count > 0)
                 {
                     _tray?.Notify("Deck", string.Join(" ", result.Rejections), Forms.ToolTipIcon.None);
@@ -295,9 +334,22 @@ public partial class App : Application
             RestoreAll: RestoreFromTray,
             Hide: () => _deck?.Hide(),
             Dock: dock => DockDeck(dock),
-            CurrentDock: () => _controller.DeckDock));
+            CurrentDock: () => _controller.DeckDock,
+            CloseApp: async handle =>
+            {
+                // Como su X: la app decide (y pregunta si tiene algo sin guardar). Primero se trae al frente, para
+                // que esa pregunta, si la hay, se vea. Al cerrarse, el observador lo ve y el deck se actualiza.
+                await Task.Run(() =>
+                {
+                    WindowMover.Activate(handle);
+                    WindowMover.Close(handle);
+                });
+                await Task.Delay(1500);
+                PresentDeck();
+            }));
 
         PresentDeck();
+        StartDeckPolling();
     }
 
     /// <summary>Lo muestra donde toca: fijado en su monitor si está conectado; si no, en la esquina del principal.</summary>
@@ -409,6 +461,45 @@ public partial class App : Application
         int width = Math.Min((int)(640 * scale), area.Width - (2 * margin));
         int height = Math.Min((int)(980 * scale), area.Height - (2 * margin));
         return Core.Geometry.PixelRect.FromSize(area.Right - width - margin, area.Bottom - height - margin, width, height);
+    }
+
+    private DispatcherTimer? _deckPoll;
+    private string? _deckSignature;
+
+    /// <summary>
+    /// Mientras el deck está a la vista, cada 3 s mira si se abrió o cerró alguna app y, sólo entonces, lo
+    /// redibuja. Sin esto, una app recién abierta no salía entre las libres hasta otro cambio de layout.
+    /// </summary>
+    private void StartDeckPolling()
+    {
+        _deckPoll ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _deckPoll.Tick -= PollDeck;
+        _deckPoll.Tick += PollDeck;
+        _deckPoll.Start();
+    }
+
+    private void PollDeck(object? sender, EventArgs e)
+    {
+        if (_deck?.IsVisible != true || IsExiting)
+        {
+            return;
+        }
+
+        Task.Run(() =>
+        {
+            _controller.Refresh();
+            var state = _controller.DeckState();
+            var signature = string.Join("|", state.Panels.SelectMany(p => p.Apps).Concat(state.Free)
+                .Select(a => $"{a.AppKey}:{a.Handle}:{a.State}:{a.PanelId}")) + $"|{state.Focus?.Handle}";
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (signature != _deckSignature)
+                {
+                    _deckSignature = signature;
+                    _deck?.Update(state);
+                }
+            });
+        });
     }
 
     /// <summary>Si el deck está a la vista, lo pone al día (otro panel, otra app abierta…).</summary>
@@ -597,8 +688,64 @@ public partial class App : Application
         _tray?.Notify("Iniciar con Windows", enable ? $"FocusWShell se abrirá al iniciar sesión ({ExePath})." : "FocusWShell ya no se abrirá al iniciar sesión.");
     }
 
+    /// <summary>La sesión se guarda sólo después de restaurarla al arrancar (si no, se guardaría vacía).</summary>
+    private bool _sessionReady;
+    private DispatcherTimer? _sessionSave;
+
+    /// <summary>Guarda la sesión unos segundos después del último cambio.</summary>
+    private void ScheduleSessionSave()
+    {
+        if (!_sessionReady || IsExiting)
+        {
+            return;
+        }
+
+        _sessionSave ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _sessionSave.Stop();
+        _sessionSave.Tick -= SaveSessionTick;
+        _sessionSave.Tick += SaveSessionTick;
+        _sessionSave.Start();
+    }
+
+    private void SaveSessionTick(object? sender, EventArgs e)
+    {
+        _sessionSave?.Stop();
+        Task.Run(_controller.SaveSession);
+    }
+
+    /// <summary>Cada 10 s durante 3 min, adopta las ventanas de la última sesión que aparezcan.</summary>
+    private void StartLateAdoption()
+    {
+        var until = DateTime.Now.AddMinutes(3);
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        timer.Tick += (_, _) =>
+        {
+            if (DateTime.Now > until || IsExiting)
+            {
+                timer.Stop();
+                return;
+            }
+
+            Task.Run(() =>
+            {
+                if (_controller.AdoptLateSessionWindows() is { } result)
+                {
+                    Dispatcher.BeginInvoke(() => RefreshAfter(result));
+                }
+            });
+        };
+        timer.Start();
+    }
+
     private void ExitAndRestore()
     {
+        // Antes de devolver las ventanas a su sitio: así, al volver a abrir FocusWShell, vuelven a sus paneles.
+        if (_sessionReady)
+        {
+            _sessionSave?.Stop();
+            _controller.SaveSession();
+        }
+
         IsExiting = true;
         TryRestoreAll();
         Shutdown();

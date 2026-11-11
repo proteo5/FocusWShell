@@ -121,7 +121,13 @@ public static class SceneMatcher
     /// mismo título, luego uno que contenga la pista (o al revés) y, si no, la primera en orden Z.
     /// Cada ventana abierta se usa una sola vez.
     /// </summary>
-    public static SceneMatch Match(SavedScene scene, IReadOnlyList<OpenWindow> open)
+    /// <param name="strict">
+    /// Para la sesión, que se aplica sola al arrancar (no la elige el usuario): una ventana de la misma app
+    /// con otro título sólo se toma si ninguna de esa app casó por título (tras reiniciar cambian todos) y
+    /// cuadran uno a uno (tantas entradas como ventanas libres de esa app). Así una ventana cualquiera no
+    /// ocupa el sitio de otra que aún no se abrió; y tras reiniciar, cada una vuelve a su panel.
+    /// </param>
+    public static SceneMatch Match(SavedScene scene, IReadOnlyList<OpenWindow> open, bool strict = false)
     {
         ArgumentNullException.ThrowIfNull(scene);
         ArgumentNullException.ThrowIfNull(open);
@@ -140,7 +146,7 @@ public static class SceneMatcher
             var candidates = open.Where(o => !used.Contains(o.Handle) && SameApp(o, entry)).ToList();
             var pick = candidates.FirstOrDefault(o => Same(o.Title, entry.TitleHint))
                 ?? candidates.FirstOrDefault(o => Overlaps(o.Title, entry.TitleHint))
-                ?? candidates.FirstOrDefault();
+                ?? (strict ? null : candidates.FirstOrDefault());
             if (pick is null)
             {
                 continue;
@@ -148,6 +154,26 @@ public static class SceneMatcher
 
             used.Add(pick.Handle);
             byEntry[index] = pick;
+        }
+
+        if (strict)
+        {
+            var pending = Enumerable.Range(0, scene.Windows.Count).Where(i => !byEntry.ContainsKey(i)).ToList();
+            foreach (var app in pending.GroupBy(i => scene.Windows[i].AppKey, StringComparer.OrdinalIgnoreCase))
+            {
+                // Si alguna ventana de esa app sí casó por título, los títulos no cambiaron: las que faltan
+                // de verdad no están abiertas.
+                bool someMatchedByTitle = byEntry.Keys.Any(i => string.Equals(scene.Windows[i].AppKey, app.Key, StringComparison.OrdinalIgnoreCase));
+                var free = open.Where(o => !used.Contains(o.Handle) && SameApp(o, scene.Windows[app.First()])).ToList();
+                if (!someMatchedByTitle && free.Count == app.Count())
+                {
+                    foreach (var (index, window) in app.Zip(free))
+                    {
+                        used.Add(window.Handle);
+                        byEntry[index] = window;
+                    }
+                }
+            }
         }
 
         for (int i = 0; i < scene.Windows.Count; i++)
