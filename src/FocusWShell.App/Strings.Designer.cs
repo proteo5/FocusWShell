@@ -183,6 +183,15 @@ public static class Strings
     /// <summary>Deck: más apps</summary>
     public static string Deck_MoreName => ResourceManager.GetString("Deck_MoreName", Culture)!;
 
+    /// <summary>Ratón al foco</summary>
+    public static string Deck_Mouse => ResourceManager.GetString("Deck_Mouse", Culture)!;
+
+    /// <summary>Ratón</summary>
+    public static string Deck_MouseShort => ResourceManager.GetString("Deck_MouseShort", Culture)!;
+
+    /// <summary>Lleva el cursor del ratón al centro de la app del foco (o, si no hay, al centro </summary>
+    public static string Deck_MouseTip => ResourceManager.GetString("Deck_MouseTip", Culture)!;
+
     /// <summary>Mover una app</summary>
     public static string Deck_Move => ResourceManager.GetString("Deck_Move", Culture)!;
 
@@ -288,7 +297,7 @@ public static class Strings
     /// <summary>SISTEMA</summary>
     public static string Deck_SecSystem => ResourceManager.GetString("Deck_SecSystem", Culture)!;
 
-    /// <summary>VISTA</summary>
+    /// <summary>DISPOSICIÓN DEL PRINCIPAL</summary>
     public static string Deck_SecView => ResourceManager.GetString("Deck_SecView", Culture)!;
 
     /// <summary>Mandar el deck a</summary>
@@ -311,6 +320,15 @@ public static class Strings
 
     /// <summary>Al panel</summary>
     public static string Deck_ToPanelShort => ResourceManager.GetString("Deck_ToPanelShort", Culture)!;
+
+    /// <summary>A medida</summary>
+    public static string Deck_ViewCustom => ResourceManager.GetString("Deck_ViewCustom", Culture)!;
+
+    /// <summary>Listo</summary>
+    public static string Deck_ViewDone => ResourceManager.GetString("Deck_ViewDone", Culture)!;
+
+    /// <summary>Disposición del principal: dónde va el foco y qué ancho tiene. Toca para cambiar</summary>
+    public static string Deck_ViewTip => ResourceManager.GetString("Deck_ViewTip", Culture)!;
 
     /// <summary>un monitor</summary>
     public static string Display_AMonitor => ResourceManager.GetString("Display_AMonitor", Culture)!;

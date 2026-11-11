@@ -27,6 +27,7 @@ public sealed record DeckActions(
     Func<DeckDock?> CurrentDock,
     Func<nint, Task> CloseApp,
     Func<nint, Task> BringToFront,
+    Func<Task> MouseToFocus,
     Action<string, bool> SetPinned);
 
 /// <summary>Lo que hace el panel de energía del deck.</summary>
@@ -99,6 +100,7 @@ public sealed class DeckWindow : Window
                 _moveApp = null;
                 _closing = false;
                 _pinning = false;
+                _viewOpen = false;
                 _powerOpen = false;
                 _powerArmed = null;
             }
@@ -218,14 +220,22 @@ public sealed class DeckWindow : Window
 
         // Mover, anclar y cerrar en una fila de tres: con sus textos cortos, para que quepan.
         var actions = FocusActions(state, shortText: true);
-        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(2, actions.Take(2)), GridLength.Auto), (Buttons(3, actions.Skip(2)), GridLength.Auto)]), GridLength.Auto);
+        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (Buttons(3, actions.Skip(3)), GridLength.Auto)]), GridLength.Auto);
 
-        var layout = new List<(UIElement, GridLength)>
+        // La disposición del principal casi no se cambia: se ve resumida en un botón, que abre aquí mismo
+        // sus botones (vista y ancho) hasta tocar «Listo». Así las escenas tienen más sitio.
+        var layout = new List<(UIElement, GridLength)> { (Label(Strings.Deck_SecView), GridLength.Auto) };
+        if (_viewOpen)
         {
-            (Label(Strings.Deck_SecView), GridLength.Auto),
-            (Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto),
-            (Buttons(3, WidthButtons(state)), GridLength.Auto),
-        };
+            layout.Add((Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto));
+            layout.Add((Buttons(3, WidthButtons(state)), GridLength.Auto));
+            layout.Add((Buttons(1, [ViewDoneButton()]), GridLength.Auto));
+        }
+        else
+        {
+            layout.Add((Buttons(1, [ViewSummary(state, full: true)]), GridLength.Auto));
+        }
+
         if (state.Scenes.Count > 0)
         {
             layout.Add((Label(Strings.Deck_SecScenes), GridLength.Auto));
@@ -310,10 +320,14 @@ public sealed class DeckWindow : Window
             _root.Children.Add(e);
         }
 
-        Row(FocusHeader(state), GridLength.Auto);
-        Row(Buttons(5, FocusActions(state, shortText: true)), GridLength.Auto);
-        // Vista y ancho en una sola fila de seis.
-        Row(Buttons(6, [.. ViewButtons(state, shortText: true), .. WidthButtons(state)]), GridLength.Auto);
+        Row(FocusHeader(state, viewSummary: true), GridLength.Auto);
+        Row(Buttons(6, FocusActions(state, shortText: true)), GridLength.Auto);
+        // Vista y ancho: resumidos en la cabecera; abiertos, en una fila de seis y «Listo» debajo.
+        if (_viewOpen)
+        {
+            Row(Buttons(6, [.. ViewButtons(state, shortText: true), .. WidthButtons(state)]), GridLength.Auto);
+            Row(Buttons(1, [ViewDoneButton()]), GridLength.Auto);
+        }
 
         // Pestañas por monitor y, debajo, sus paneles uno debajo de otro, con alto según cuántas apps tienen.
         var tabs = MonitorTabs(state);
@@ -342,7 +356,8 @@ public sealed class DeckWindow : Window
         Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
 
         // Abajo: las escenas (una fila; si no caben, «+N más») y, aparte, lo del sistema.
-        if (state.Scenes.Count > 0 && !_powerOpen)
+        // Con la energía o la disposición abiertas, sin escenas: así cabe todo sin scroll.
+        if (state.Scenes.Count > 0 && !_powerOpen && !_viewOpen)
         {
             Row(TextGrid(SceneButtons(state)), new GridLength(Touch + 8));
         }
@@ -379,6 +394,7 @@ public sealed class DeckWindow : Window
 
         _closing = mode == "cerrar";
         _pinning = mode == "anclar";
+        _viewOpen = mode == "vista";
         _powerOpen = mode is "energia" or "energia-seguro";
         if (mode == "energia-seguro")
         {
@@ -503,7 +519,7 @@ public sealed class DeckWindow : Window
 
     // --- Piezas ----------------------------------------------------------------------------------------
 
-    private DockPanel FocusHeader(DeckState state)
+    private DockPanel FocusHeader(DeckState state, bool viewSummary = false)
     {
         var header = new DockPanel { Margin = new Thickness(0, 0, 8, 8) };
         var close = SmallButton("✕", Strings.Deck_Hide, () => _actions.Hide());
@@ -520,6 +536,14 @@ public sealed class DeckWindow : Window
         };
         DockPanel.SetDock(send, Dock.Right);
         header.Children.Add(send);
+        if (viewSummary)
+        {
+            var summary = ViewSummary(state, full: false);
+            summary.Margin = new Thickness(0, 0, 6, 0);
+            summary.VerticalAlignment = VerticalAlignment.Top;
+            DockPanel.SetDock(summary, Dock.Right);
+            header.Children.Add(summary);
+        }
         var focus = new StackPanel();
         focus.Children.Add(Label(Strings.Deck_SecFocus));
 
@@ -608,7 +632,12 @@ public sealed class DeckWindow : Window
             pin.Background = PinBrush;
         }
 
-        return [previous, back, move, pin, close];
+        // El ratón al foco: tras tocar el deck, el cursor queda en la tablet; así vuelve a donde se trabaja.
+        var mouse = WideButton("🖱  " + (shortText ? Strings.Deck_MouseShort : Strings.Deck_Mouse), true, () => _actions.MouseToFocus());
+        mouse.ToolTip = Strings.Deck_MouseTip;
+        System.Windows.Automation.AutomationProperties.SetName(mouse, "Deck: " + Strings.Deck_Mouse);
+
+        return [previous, back, mouse, move, pin, close];
     }
 
     /// <summary>
@@ -634,6 +663,45 @@ public sealed class DeckWindow : Window
 
     /// <summary>La app que se acaba de mandar cerrar: su tarjeta dice «Cerrando…» hasta que desaparece.</summary>
     private nint? _closingNow;
+
+    /// <summary>Si están abiertos los botones de la disposición del principal (vista y ancho).</summary>
+    private bool _viewOpen;
+
+    /// <summary>
+    /// La disposición del principal, para leerla de un vistazo («▣ Centro · Normal»); tocarla abre sus
+    /// botones. Con <paramref name="full"/> en falso, sólo el icono de la vista y el ancho (para la cabecera).
+    /// </summary>
+    private Button ViewSummary(DeckState state, bool full)
+    {
+        var (icon, where) = state.View switch
+        {
+            FocusPosition.Left => ("◧", Strings.Deck_Left),
+            FocusPosition.Right => ("◨", Strings.Deck_Right),
+            _ => ("▣", Strings.Deck_Center),
+        };
+        var width = ViewProportions.Presets(state.View).Where(p => p.Weights.SameAs(state.Weights)).Select(p => p.Name).FirstOrDefault() ?? Strings.Deck_ViewCustom;
+        var b = WideButton(full ? $"{icon}  {where} · {width}   ⚙" : $"{icon}  {width}", true, () =>
+        {
+            _viewOpen = !_viewOpen;
+            Render();
+        });
+        b.MinWidth = 0;
+        b.Padding = new Thickness(10, 0, 10, 0);
+        b.ToolTip = Strings.Deck_ViewTip;
+        System.Windows.Automation.AutomationProperties.SetName(b, "Deck: " + Strings.Deck_ViewTip);
+        if (_viewOpen)
+        {
+            b.Background = ActiveBrush;
+        }
+
+        return b;
+    }
+
+    private Button ViewDoneButton() => WideButton("✓  " + Strings.Deck_ViewDone, true, () =>
+    {
+        _viewOpen = false;
+        Render();
+    });
 
     private List<Button> ViewButtons(DeckState state, bool shortText)
     {

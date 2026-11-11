@@ -412,6 +412,18 @@ public partial class App : Application
                 WindowMover.Activate(handle);
                 WindowMover.PointAt(handle);
             }),
+            MouseToFocus: () => Task.Run(() =>
+            {
+                // Al centro de la app del foco (donde se va a trabajar) o, si no hay, al del principal: tras
+                // usar el deck con el dedo, el cursor se queda en la tablet.
+                if (_controller.FocusedWindow() is { } focus && WindowMover.PointAt(focus))
+                {
+                    return;
+                }
+
+                var area = ShellController.TargetDisplay().WorkArea;
+                WindowMover.MoveCursorTo(area.Left + (area.Width / 2), area.Top + (area.Height / 2));
+            }),
             SetPinned: (appKey, pinned) =>
             {
                 _controller.SetAppPinned(appKey, pinned);

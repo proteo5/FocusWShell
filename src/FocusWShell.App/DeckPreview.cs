@@ -35,6 +35,7 @@ public static class DeckPreview
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-cerrar.png"), mode: "cerrar");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia.png"), mode: "energia");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-anclar.png"), mode: "anclar");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-vista.png"), mode: "vista");
             // Al frente sin ser la del foco: una libre (Docker) y una de otro monitor (Grafana, en el HP).
             Save(Sample(manyApps: false) with { Foreground = 50 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-libre.png"));
             Save(Sample(manyApps: false) with { Foreground = 7 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-hp.png"));
@@ -59,6 +60,7 @@ public static class DeckPreview
             () => null,
             _ => Task.CompletedTask,
             _ => Task.CompletedTask,
+            () => Task.CompletedTask,
             (_, _) => { });
         var deck = new DeckWindow(actions) { Left = -20000, Top = -20000 };
         deck.ShowTab(tab);

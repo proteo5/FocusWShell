@@ -437,19 +437,20 @@ public static class WindowMover
     }
 
     /// <summary>Lleva el cursor al centro de la ventana (al elegirla en el deck, para seguir trabajando en ella).</summary>
-    public static unsafe void PointAt(nint handle)
+    /// <summary>Pone el cursor del ratón en un punto de la pantalla (en píxeles físicos).</summary>
+    public static void MoveCursorTo(int x, int y) => PInvoke.SetCursorPos(x, y);
+
+    /// <summary>Pone el cursor en el centro de la ventana. Devuelve si pudo (no si está cerrada o minimizada).</summary>
+    public static unsafe bool PointAt(nint handle)
     {
         var hwnd = new HWND((void*)handle);
         if (!PInvoke.IsWindow(hwnd) || PInvoke.IsIconic(hwnd))
         {
-            return;
+            return false;
         }
 
         var visible = ReadRects(hwnd).Visible;
-        if (!visible.IsEmpty)
-        {
-            PInvoke.SetCursorPos(visible.Left + (visible.Width / 2), visible.Top + (visible.Height / 2));
-        }
+        return !visible.IsEmpty && PInvoke.SetCursorPos(visible.Left + (visible.Width / 2), visible.Top + (visible.Height / 2));
     }
 
     /// <summary>Estado actual de la ventana, para compararlo con lo que el gestor espera (S4).</summary>

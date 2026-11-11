@@ -561,6 +561,19 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Deck: la disposición del principal, resumida (validación, 2026-11-11)
+
+Los botones de «Vista» (dónde va el foco y su ancho) casi no se cambian, pero ocupaban dos filas fijas. Además, «Vista» no decía qué controla: no toca los paneles, sino dónde va el foco en el principal y qué ancho tiene.
+
+- **Nuevo nombre:** «Disposición del principal» («Main screen layout»). En la documentación se sigue llamando «vista» (ADR 0012).
+- **Resumen de un vistazo**, que se toca para cambiarla. Muestra el icono de la vista y el ancho (o «A medida» si no es un preset). En el deck ancho es una fila en la tarjeta Disposición («▣ Centro · Normal ⚙»), porque la cabecera del foco no tiene sitio sin recortar el nombre de la app. En el estrecho va en la cabecera («▣ Normal»).
+- **Tocarlo abre los botones aquí mismo,** como Energía, y «✓ Listo» los cierra. No se usa una ventana aparte, porque el deck va siempre encima y no toma el foco. En el deck estrecho, mientras están abiertos, se ocultan las escenas para que todo quepa sin scroll.
+- Las escenas ganan una fila en el deck ancho.
+
+### Deck: el ratón al foco (validación, 2026-11-11)
+
+Al tocar la tablet, Windows lleva el cursor al punto tocado, así que después de usar el deck el ratón queda en la tablet. «🖱 Ratón» (en la tarjeta Foco, junto a Anterior y Al panel) lo lleva al centro de la app del foco, que es donde se va a trabajar. Si no hay app en el foco, o está minimizada, lo lleva al centro del monitor principal. Sólo mueve el cursor: no cambia qué ventana está al frente.
+
 ### Deck: indicador de la ventana al frente (validación, 2026-11-11)
 
 El usuario a veces hace clic con el ratón en apps que no están en el foco, sobre todo en las del segundo monitor, para hacer algo rápido sin cambiar el foco. Con el clic al foco desactivado, esa app recibe el teclado sin entrar en el foco. El deck seguía marcando sólo la del foco y no decía dónde iba lo que se escribía.
