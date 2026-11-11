@@ -561,6 +561,16 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Deck: botones de modo frente a botones de acción (validación, 2026-11-11)
+
+Mover, Anclar y Cerrar no actúan al tocarlos: se quedan encendidos esperando el siguiente toque, como Shift. Anterior, Al panel y Ratón actúan al momento. Antes, esa diferencia sólo se veía después de tocarlos. Ahora se ve de antemano con tres señales:
+
+- **«…» al final del texto** («Mover…», «Anclar…», «Cerrar…»), la convención de Windows para «este botón te pedirá algo más». Encendidos, el texto ya acaba en «…» («Moviendo…»).
+- **Una barra abajo en el color de su modo:** amarilla en Mover, índigo en Anclar y roja tenue en Cerrar. Sigue la regla de color del deck: es el color que tomarán las ventanas tocables en ese modo. Encendido, el botón se rellena con ese color y la barra desaparece.
+- **Un hueco entre los dos grupos:** en el deck ancho, entre sus dos filas; en el estrecho, tras «Ratón» en la fila de seis.
+
+No se usa una flechita (▾), porque promete un menú, ni un aspecto de interruptor, porque ocupa sitio que el deck no tiene.
+
 ### Deck: la disposición del principal, resumida (validación, 2026-11-11)
 
 Los botones de «Vista» (dónde va el foco y su ancho) casi no se cambian, pero ocupaban dos filas fijas. Además, «Vista» no decía qué controla: no toca los paneles, sino dónde va el foco en el principal y qué ancho tiene.

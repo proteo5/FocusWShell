@@ -220,7 +220,10 @@ public sealed class DeckWindow : Window
 
         // Mover, anclar y cerrar en una fila de tres: con sus textos cortos, para que quepan.
         var actions = FocusActions(state, shortText: true);
-        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (Buttons(3, actions.Skip(3)), GridLength.Auto)]), GridLength.Auto);
+        // Arriba las de acción inmediata, abajo las de modo, con un hueco que separa los dos tipos.
+        var modes = Buttons(3, actions.Skip(3));
+        modes.Margin = new Thickness(0, 8, 0, 2);
+        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
 
         // La disposición del principal casi no se cambia: se ve resumida en un botón, que abre aquí mismo
         // sus botones (vista y ancho) hasta tocar «Listo». Así las escenas tienen más sitio.
@@ -321,7 +324,11 @@ public sealed class DeckWindow : Window
         }
 
         Row(FocusHeader(state, viewSummary: true), GridLength.Auto);
-        Row(Buttons(6, FocusActions(state, shortText: true)), GridLength.Auto);
+        // Las seis en una fila: un hueco tras «Ratón» separa las de acción inmediata de las de modo.
+        var focusActions = FocusActions(state, shortText: true);
+        var focusRow = Buttons(6, focusActions);
+        focusActions[2].Margin = new Thickness(0, 0, 20, 8);
+        Row(focusRow, GridLength.Auto);
         // Vista y ancho: resumidos en la cabecera; abiertos, en una fila de seis y «Listo» debajo.
         if (_viewOpen)
         {
@@ -637,7 +644,33 @@ public sealed class DeckWindow : Window
         mouse.ToolTip = Strings.Deck_MouseTip;
         System.Windows.Automation.AutomationProperties.SetName(mouse, "Deck: " + Strings.Deck_Mouse);
 
+        Sticky(move, _moving is not null, TargetBrush);
+        Sticky(pin, _pinning, PinBrush);
+        Sticky(close, _closing, WarnFaintBrush);
         return [previous, back, mouse, move, pin, close];
+    }
+
+    private static readonly Brush WarnFaintBrush = Frozen(Color.FromArgb(0x90, 0xC2, 0x3B, 0x3B));
+
+    /// <summary>
+    /// Un botón de modo (se queda encendido esperando el siguiente toque, como Shift) se distingue de uno de
+    /// acción inmediata antes de tocarlo: «…» al final, como en Windows («pide algo más»), y una barra abajo en
+    /// el color que tomarán las ventanas en ese modo. Encendido, el relleno ya lo dice y el texto ya acaba en «…».
+    /// </summary>
+    private static void Sticky(Button b, bool on, Brush mode)
+    {
+        if (on)
+        {
+            return;
+        }
+
+        if (b.Content is string text && !text.EndsWith('…'))
+        {
+            b.Content = text + "…";
+        }
+
+        b.BorderBrush = mode;
+        b.BorderThickness = new Thickness(0, 0, 0, 3);
     }
 
     /// <summary>
