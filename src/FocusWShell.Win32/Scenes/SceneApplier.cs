@@ -72,6 +72,12 @@ public sealed record SceneAssignment(
 
     public string WorkTitle { get; init; } = "Trabajo";
 
+    /// <summary>
+    /// Ventanas de tamaño fijo y su tamaño propio (rectángulo visible, a la escala de su monitor actual):
+    /// se mueven, no se redimensionan (<see cref="FixedSize"/>).
+    /// </summary>
+    public IReadOnlyDictionary<nint, PixelSize> FixedSizes { get; init; } = new Dictionary<nint, PixelSize>();
+
     /// <summary>Tamaño de tile de cada ventana (ADR 0015); las que no están, Pequeño.</summary>
     public IReadOnlyDictionary<nint, TileSize> TileSizes { get; init; } = new Dictionary<nint, TileSize>();
 
@@ -226,11 +232,33 @@ public sealed class SceneApplier
 
     public ScenePlan Plan()
     {
-        LayoutWindow ToLayout(WindowSnapshot w, int dpi) =>
-            new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), Catalog.Get(MinSizeCatalog.KeyFor(w), dpi))
+        // Tamaño fijo: el motor le reserva al menos su tamaño, y después se coloca dentro de su hueco.
+        var fixedSizes = new Dictionary<nint, PixelSize>();
+        PixelSize? FixedAt(WindowSnapshot w, int dpi)
+        {
+            if (!_assignment.FixedSizes.TryGetValue(w.Handle, out var own))
+            {
+                return null;
+            }
+
+            var size = FixedSize.Scale(own, w.Dpi, dpi);
+            fixedSizes[w.Handle] = size;
+            return size;
+        }
+
+        LayoutWindow ToLayout(WindowSnapshot w, int dpi)
+        {
+            var min = Catalog.Get(MinSizeCatalog.KeyFor(w), dpi);
+            if (FixedAt(w, dpi) is { } own)
+            {
+                min = min is { } m ? new PixelSize(Math.Max(m.Width, own.Width), Math.Max(m.Height, own.Height)) : own;
+            }
+
+            return new(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), min)
             {
                 TileSize = _assignment.TileSizes.GetValueOrDefault(w.Handle, TileSize.Small),
             };
+        }
         PanelInput Scrolled(PanelInput p) => _assignment.Scroll.TryGetValue(p.Name, out var s) ? p with { ScrollRow = s.Row, Reveal = s.Reveal } : p;
 
         // Un panel cuyo borde exterior da a otro monitor no puede desbordar hacia fuera. Qué borde toca cada
@@ -297,14 +325,31 @@ public sealed class SceneApplier
             }))
             .ToList();
 
+        IReadOnlyList<WindowTarget> fullscreen = [];
+        if (_assignment.Fullscreen is { } full)
+        {
+            _ = FixedAt(full.Window, full.Display.Dpi);
+            fullscreen = [new WindowTarget(full.Window.Handle, Path.GetFileNameWithoutExtension(full.Window.ProcessName), "Pantalla completa", TargetKind.Maximized, full.Display.WorkArea)];
+        }
+
+        if (fixedSizes.Count > 0)
+        {
+            var (principalTargets, principalNotes) = FixedSize.Fit(principal.Targets, fixedSizes);
+            principal = principal with { Targets = principalTargets, Notes = [.. principal.Notes, .. principalNotes] };
+            aux = aux.Select(a =>
+            {
+                var (targets, notes) = FixedSize.Fit(a.Targets, fixedSizes);
+                return a with { Targets = targets, Notes = [.. a.Notes, .. notes] };
+            }).ToList();
+            fullscreen = FixedSize.Fit(fullscreen, fixedSizes).Targets;
+        }
+
         return new ScenePlan(principal, aux)
         {
             Parked = _assignment.Parked
                 .Select(w => new WindowTarget(w.Handle, Path.GetFileNameWithoutExtension(w.ProcessName), "Estacionada", TargetKind.Minimized, default))
                 .ToList(),
-            Fullscreen = _assignment.Fullscreen is { } full
-                ? [new WindowTarget(full.Window.Handle, Path.GetFileNameWithoutExtension(full.Window.ProcessName), "Pantalla completa", TargetKind.Maximized, full.Display.WorkArea)]
-                : [],
+            Fullscreen = fullscreen,
         };
     }
 

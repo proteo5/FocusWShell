@@ -1,4 +1,4 @@
-// Ventanas
+﻿// Ventanas
 EnumWindows
 GetWindowText
 GetWindowTextLength
@@ -114,3 +114,24 @@ DwmRegisterThumbnail
 DwmUnregisterThumbnail
 DwmUpdateThumbnailProperties
 DWM_THUMBNAIL_PROPERTIES
+
+// Iconos de apps por el shell (AUMID o ruta): IShellItemImageFactory
+SHCreateItemFromParsingName
+IShellItemImageFactory
+SIIGBF
+DeleteObject
+GetDIBits
+CreateCompatibleDC
+DeleteDC
+BITMAPINFO
+BITMAPINFOHEADER
+DIB_USAGE
+BI_COMPRESSION
+
+// Dar el foco a la app elegida en el deck aunque Windows no nos considere dueños de la última entrada
+AttachThreadInput
+BringWindowToTop
+SetCursorPos
+
+// Cerrar una app desde el deck
+PostMessage

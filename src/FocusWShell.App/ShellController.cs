@@ -285,6 +285,15 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>La ventana en el foco (o en pantalla completa), si hay.</summary>
+    public nint? FocusedWindow()
+    {
+        lock (_gate)
+        {
+            return _workspace.Focused?.Handle;
+        }
+    }
+
     /// <summary>El deck fijado en un monitor (ADR 0013, fase 4), o <c>null</c> si vive en la esquina del principal.</summary>
     public DeckDock? DeckDock { get; private set; }
 
@@ -840,6 +849,112 @@ public sealed class ShellController : IDisposable
     public SavedScene SaveScene(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var scene = CaptureScene(name);
+        Scenes.Upsert(scene);
+        ScenesChanged?.Invoke();
+        return scene;
+    }
+
+    // --- Sesión: qué app estaba en qué panel, para recuperarlo al volver a abrir FocusWShell -------------
+
+    private const string SessionName = "Última sesión";
+
+    /// <summary>La última sesión: <c>%LOCALAPPDATA%\FocusWShell\session.json</c>, una escena que no sale en la lista.</summary>
+    public SceneStore Session { get; } = new(Path.Combine(Path.GetDirectoryName(SceneStore.DefaultPath)!, "session.json"));
+
+    /// <summary>Ventanas de la sesión que aún no han aparecido (la app tarda en abrirse al iniciar Windows).</summary>
+    private List<SceneWindow> _sessionPending = [];
+
+    /// <summary>Guarda qué ventana está en qué panel (se llama tras los cambios y al salir).</summary>
+    public void SaveSession() => Session.Save([CaptureScene(SessionName)]);
+
+    /// <summary>
+    /// Al arrancar: vuelve a poner en sus paneles las ventanas de la última sesión que estén abiertas, con
+    /// la vista de entonces. No toca los paneles (ya se guardan aparte) ni abre apps. Las que falten se
+    /// adoptan si aparecen en los próximos minutos (<see cref="AdoptLateSessionWindows"/>).
+    /// </summary>
+    public ControllerResult? RestoreSession()
+    {
+        if (Session.Load().FirstOrDefault()?.Upgrade() is not { Windows.Count: > 0 } scene)
+        {
+            return null;
+        }
+
+        var open = Refresh().Select(w => new OpenWindow(w.Handle, MinSizeCatalog.KeyFor(w), w.Title)).ToList();
+        var match = SceneMatcher.Match(scene, open, strict: true);
+        lock (_gate)
+        {
+            _sessionPending = [.. match.Missing];
+        }
+
+        if (match.Matched.Count == 0)
+        {
+            return null;
+        }
+
+        var entries = match.Matched
+            .Select(m => new SceneEntry(m.Window.Handle, m.Entry.Label, m.Entry.PanelId ?? Workspace.WorkPanel, m.Entry.Placement) { Size = m.Entry.Size })
+            .ToList();
+        return Execute(new ApplyScene(entries, []) { View = scene.View, Weights = scene.Weights });
+    }
+
+    /// <summary>
+    /// Adopta las ventanas de la última sesión que aparecen tarde (p. ej. apps que se abren al iniciar
+    /// Windows después que FocusWShell). Sólo ventanas libres: no mueve nada de lo que el usuario ya puso.
+    /// </summary>
+    public ControllerResult? AdoptLateSessionWindows()
+    {
+        List<SceneWindow> pending;
+        lock (_gate)
+        {
+            pending = [.. _sessionPending];
+        }
+
+        if (pending.Count == 0)
+        {
+            return null;
+        }
+
+        var windows = Refresh();
+        lock (_gate)
+        {
+            var free = windows.Where(w => !_workspace.IsManaged(w.Handle))
+                .Select(w => new OpenWindow(w.Handle, MinSizeCatalog.KeyFor(w), w.Title))
+                .ToList();
+            var match = SceneMatcher.Match(new SavedScene(SessionName, pending), free, strict: true);
+            if (match.Matched.Count == 0)
+            {
+                return null;
+            }
+
+            _sessionPending = [.. match.Missing];
+            var commands = new List<Command>();
+            foreach (var (entry, window) in match.Matched)
+            {
+                var panel = _workspace.FindPanel(entry.PanelId ?? Workspace.WorkPanel);
+                if (panel is null)
+                {
+                    continue; // su panel ya no existe: queda libre
+                }
+
+                commands.Add(new Adopt(window.Handle, entry.Label, panel.Id));
+                if (entry.Placement == ScenePlacement.Parked)
+                {
+                    commands.Add(new Park(window.Handle));
+                }
+                else if (entry.Placement == ScenePlacement.Center && _workspace.Focused is null)
+                {
+                    commands.Add(new Promote(window.Handle));
+                }
+            }
+
+            return commands.Count > 0 ? RunLocked(commands) : null;
+        }
+    }
+
+    /// <summary>La escena actual (ventanas gestionadas, paneles, vista), sin guardarla.</summary>
+    private SavedScene CaptureScene(string name)
+    {
         Refresh();
         var aux = OrderedAux();
         int? AuxIndex(string? display) => display is null ? null : aux.FindIndex(d => d.Key == display) is int i and >= 0 ? i + 1 : null;
@@ -872,8 +987,6 @@ public sealed class ShellController : IDisposable
             };
         }
 
-        Scenes.Upsert(scene);
-        ScenesChanged?.Invoke();
         return scene;
     }
 
@@ -1300,6 +1413,16 @@ public sealed class ShellController : IDisposable
             && (_workspace.Windows.Count > 0 || _workspace.Panels.Any(p => p.Template == PanelTemplate.List)))
         {
             applied = ApplyLayoutLocked();
+
+            // Las de un panel en lista van detrás de la lista. Al colocarlas, Windows puede traer alguna al
+            // frente (p. ej. al restaurar una minimizada) después de que la lista se pusiera encima, y la que
+            // vuelve del foco aún tiene el primer plano (desde el deck, que nunca se activa, nadie se lo
+            // quita). Al fondo del orden Z no tapan nada, y la lista sigue viendo sus miniaturas.
+            foreach (var w in _workspace.Windows.Where(w => w is { Placement: Placement.InPanel, Detached: false }
+                && _workspace.EffectivePanel(w).Template == PanelTemplate.List))
+            {
+                WindowMover.SendToBack(w.Handle);
+            }
         }
 
         foreach (var activate in effects.OfType<Activate>())
@@ -1414,6 +1537,64 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>
+    /// Las gestionadas de tamaño fijo y su tamaño propio. Sale del diario (su rectángulo antes de que
+    /// FocusWShell la tocara) para corregir las que ya se estiraron.
+    /// </summary>
+    private Dictionary<nint, PixelSize> FixedSizesLocked()
+    {
+        var originals = Journal.Load().ToDictionary(e => (nint)e.Handle, e => e.NormalPosition);
+        var sizes = new Dictionary<nint, PixelSize>();
+        foreach (var m in _workspace.Windows)
+        {
+            if (_snapshots.TryGetValue(m.Handle, out var w) && FixedSize.IsFixed(w.IsResizable, SizeModeOf(w)))
+            {
+                sizes[m.Handle] = FixedSize.Natural(w.VisibleBounds, w.Bounds, originals.TryGetValue(m.Handle, out var o) ? o : null);
+            }
+        }
+
+        return sizes;
+    }
+
+    private AppSizeMode SizeModeOf(WindowSnapshot w) => _catalog.Find(MinSizeCatalog.KeyFor(w))?.SizeMode ?? AppSizeMode.Auto;
+
+    /// <summary>
+    /// Cómo trata el layout el tamaño de una app: según la ventana, fijo o siempre redimensionable.
+    /// Se guarda en el catálogo y se recoloca al momento.
+    /// </summary>
+    public ControllerResult SetAppSizeMode(string appKey, AppSizeMode mode)
+    {
+        ControllerResult result;
+        lock (_gate)
+        {
+            if (!_catalog.SetSizeMode(appKey, mode))
+            {
+                return new ControllerResult([], [], null);
+            }
+
+            CatalogFile.Save(_catalog);
+            result = RunLocked([], forceLayout: _workspace.Windows.Count > 0);
+        }
+
+        CatalogChanged?.Invoke();
+        return result;
+    }
+
+    /// <summary>Si FocusWShell trata esta ventana como de tamaño fijo, y por qué (para los menús).</summary>
+    public (bool Fixed, AppSizeMode Mode, string AppKey) SizeInfo(nint handle)
+    {
+        lock (_gate)
+        {
+            if (!_snapshots.TryGetValue(handle, out var w))
+            {
+                return (false, AppSizeMode.Auto, "");
+            }
+
+            var mode = SizeModeOf(w);
+            return (FixedSize.IsFixed(w.IsResizable, mode), mode, MinSizeCatalog.KeyFor(w));
+        }
+    }
+
     private SceneApplyReport ApplyLayoutLocked()
     {
         var displays = DisplayEnumerator.Enumerate();
@@ -1442,6 +1623,7 @@ public sealed class ShellController : IDisposable
             WorkLower = Assign(c.RightLower),
             Parked = Map(c.Parked),
             TileSizes = _workspace.Windows.ToDictionary(w => w.Handle, w => w.Size),
+            FixedSizes = FixedSizesLocked(),
             Scroll = new[] { c.Left, c.LeftLower, c.Right, c.RightLower }.OfType<PanelView>().Concat(c.Aux.SelectMany(a => a.Panels))
                 .Where(v => v.ScrollRow > 0 || v.Reveal is not null)
                 .ToDictionary(v => v.Panel.Id, v => (v.ScrollRow, v.Reveal)),

@@ -242,4 +242,40 @@ public class SceneTests
         Assert.Equal(1, ws.Composition.Center);
         Assert.Equal([2], ws.Composition.Work);
     }
+
+    // --- Sesión (emparejado estricto) -------------------------------------------------------------------
+
+    private static readonly SavedScene TwoEdges = new("Última sesión",
+    [
+        new SceneWindow("msedge", "Edge", "Correo - Outlook", "trabajo", ScenePlacement.InPanel),
+        new SceneWindow("msedge", "Edge", "Jira - Tablero", "trabajo", ScenePlacement.InPanel),
+    ]);
+
+    [Fact]
+    public void StrictDoesNotGiveAMissingWindowsPlaceToAnotherWindowOfTheSameApp()
+    {
+        // Jira aún no se abre; hay otra ventana de Edge cualquiera.
+        var m = SceneMatcher.Match(TwoEdges, [new OpenWindow(1, "msedge", "Correo - Outlook"), new OpenWindow(2, "msedge", "Noticias")], strict: true);
+
+        Assert.Equal([1], m.Matched.Select(x => x.Window.Handle));
+        Assert.Equal("Jira - Tablero", Assert.Single(m.Missing).TitleHint);
+    }
+
+    [Fact]
+    public void StrictMatchesOneToOneWhenTitlesChangedButCountsAgree()
+    {
+        // Tras reiniciar, los títulos cambiaron, pero hay dos ventanas de Edge para dos entradas.
+        var m = SceneMatcher.Match(TwoEdges, [new OpenWindow(1, "msedge", "Bandeja - Outlook"), new OpenWindow(2, "msedge", "Nueva pestaña")], strict: true);
+
+        Assert.Equal(2, m.Matched.Count);
+        Assert.Empty(m.Missing);
+    }
+
+    [Fact]
+    public void NotStrictKeepsTheOldBehaviourForSavedScenes()
+    {
+        var m = SceneMatcher.Match(TwoEdges, [new OpenWindow(1, "msedge", "Correo - Outlook"), new OpenWindow(2, "msedge", "Noticias")]);
+
+        Assert.Equal(2, m.Matched.Count);
+    }
 }

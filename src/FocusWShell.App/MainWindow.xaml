@@ -7,7 +7,7 @@
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
             <TextBlock x:Name="HeaderText" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+            <WrapPanel Margin="0,8,0,0">
                 <TextBlock Text="Vista:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox x:Name="ViewCombo" Width="170" Margin="0,0,24,0" AutomationProperties.Name="Vista"
                           SelectionChanged="ViewCombo_SelectionChanged"
@@ -34,17 +34,17 @@
                 <TextBox x:Name="SceneName" Width="200" VerticalContentAlignment="Center" AutomationProperties.Name="Nombre de la escena" />
                 <Button x:Name="SaveSceneButton" Content="Guardar escena actual" Padding="10,2" Margin="6,0,0,0" Click="SaveScene_Click"
                         ToolTip="Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza." />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+            </WrapPanel>
+            <WrapPanel Margin="0,8,0,0">
                 <TextBlock Text="Llevar al foco la ventana de un panel que elijas con:" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <CheckBox x:Name="GestureAltTab" Content="Alt+Tab" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
                 <CheckBox x:Name="GestureTaskView" Content="Vista de tareas (Win+Tab)" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
                 <CheckBox x:Name="GestureTaskbar" Content="Barra de tareas" Margin="0,0,12,0" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed" />
                 <CheckBox x:Name="GestureClick" Content="Clic en la ventana" VerticalAlignment="Center" Checked="Gesture_Changed" Unchecked="Gesture_Changed"
                           ToolTip="Desactivado por defecto: con él, cada clic en un panel movería ventanas bajo el cursor." />
-            </StackPanel>
+            </WrapPanel>
             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="DimGray"
-                       Text="Elige el panel de cada ventana (o déjala libre) y pulsa Aplicar. El foco está siempre en el monitor principal. En la sección Paneles puedes renombrarlos, moverlos a otro monitor, cambiar su presentación, borrarlos o crear nuevos; borrar un panel deja sus ventanas libres, donde estén." />
+                       Text="Elige el panel de cada ventana (o déjala libre) y pulsa Aplicar. El foco está siempre en el monitor principal. En la pestaña Paneles puedes renombrarlos, moverlos a otro monitor, cambiar su presentación, borrarlos o crear nuevos; borrar un panel deja sus ventanas libres, donde estén." />
         </StackPanel>
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
@@ -70,67 +70,80 @@
             <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="Actualizar lista" Padding="12,4" Margin="0,0,8,0" Click="Refresh_Click" />
         </DockPanel>
 
-        <TextBox x:Name="StatusText" DockPanel.Dock="Bottom" Height="150" Margin="0,8,0,0"
+        <TextBox x:Name="StatusText" DockPanel.Dock="Bottom" Height="110" Margin="0,8,0,0"
                  IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                  FontFamily="Consolas" FontSize="12" />
 
-        <GroupBox DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="6">
-            <GroupBox.Header>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Apps conocidas (se añaden solas al verlas abiertas)" VerticalAlignment="Center" />
-                    <CheckBox x:Name="ShowHiddenApps" Content="Ver ocultas" Margin="16,0,0,0" VerticalAlignment="Center"
-                              Checked="ShowHiddenApps_Changed" Unchecked="ShowHiddenApps_Changed" />
+        <!-- Cada sección en su pestaña: así ninguna se queda sin alto en una ventana pequeña. -->
+        <TabControl x:Name="Sections">
+            <TabItem Header="Ventanas" AutomationProperties.Name="Pestaña Ventanas">
+                <ListView x:Name="WindowList" SelectionMode="Single" ContextMenuOpening="WindowList_ContextMenuOpening">
+                    <ListView.ContextMenu>
+                        <ContextMenu />
+                    </ListView.ContextMenu>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Panel" Width="300">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox Width="280"
+                                                  AutomationProperties.Name="{Binding App, StringFormat=Panel de {0}}"
+                                                  ItemsSource="{Binding DataContext.AssignmentOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  DisplayMemberPath="Label"
+                                                  SelectedValuePath="Key"
+                                                  SelectedValue="{Binding Assignment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsEnabled="{Binding Manageable}" />
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Estado" Width="220" DisplayMemberBinding="{Binding State}" />
+                            <GridViewColumn Header="App" Width="150" DisplayMemberBinding="{Binding App}" />
+                            <GridViewColumn Header="Título" Width="360" DisplayMemberBinding="{Binding Title}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </TabItem>
+
+            <TabItem Header="Paneles" AutomationProperties.Name="Pestaña Paneles">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="6">
+                    <StackPanel>
+                        <TextBlock TextWrapping="Wrap" Foreground="DimGray" Margin="0,0,0,8"
+                                   Text="Cada monitor tiene dos columnas (izquierda y derecha) y cada una puede partirse arriba y abajo. Para crear un panel, escribe su nombre en la última fila, elige dónde va y pulsa Crear panel." />
+                        <StackPanel x:Name="PanelsList" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Apps" AutomationProperties.Name="Pestaña Apps">
+                <DockPanel Margin="6">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="Apps conocidas (se añaden solas al verlas abiertas)" VerticalAlignment="Center" />
+                        <CheckBox x:Name="ShowHiddenApps" Content="Ver ocultas" Margin="16,0,0,0" VerticalAlignment="Center"
+                                  Checked="ShowHiddenApps_Changed" Unchecked="ShowHiddenApps_Changed" />
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="CatalogList" />
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Excluidas" AutomationProperties.Name="Pestaña Excluidas">
+                <StackPanel Margin="6">
+                    <TextBlock TextWrapping="Wrap" Foreground="DimGray" Margin="0,0,0,8"
+                               Text="FocusWShell no gestiona ni muestra estas ventanas. También puedes excluir una con clic derecho en la pestaña Ventanas." />
+                    <WrapPanel x:Name="ExclusionsList" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <ComboBox x:Name="ExclusionKindCombo" Width="150" SelectedIndex="0" AutomationProperties.Name="Tipo de exclusión">
+                            <ComboBoxItem Content="Ejecutable" />
+                            <ComboBoxItem Content="AUMID" />
+                            <ComboBoxItem Content="Clase de ventana" />
+                        </ComboBox>
+                        <TextBox x:Name="ExclusionValueBox" Width="260" Margin="6,0" VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Qué excluir" ToolTip="Por ejemplo NetBird.exe" />
+                        <Button Content="Excluir" Padding="12,2" Click="AddExclusion_Click" AutomationProperties.Name="Agregar exclusión" />
+                    </StackPanel>
                 </StackPanel>
-            </GroupBox.Header>
-            <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="CatalogList" />
-            </ScrollViewer>
-        </GroupBox>
-
-        <GroupBox DockPanel.Dock="Bottom" Header="Excluidas: FocusWShell no las gestiona ni las muestra (clic derecho en una ventana para excluirla)" Margin="0,8,0,0" Padding="6">
-            <StackPanel>
-                <WrapPanel x:Name="ExclusionsList" />
-                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                    <ComboBox x:Name="ExclusionKindCombo" Width="150" SelectedIndex="0" AutomationProperties.Name="Tipo de exclusión">
-                        <ComboBoxItem Content="Ejecutable" />
-                        <ComboBoxItem Content="AUMID" />
-                        <ComboBoxItem Content="Clase de ventana" />
-                    </ComboBox>
-                    <TextBox x:Name="ExclusionValueBox" Width="260" Margin="6,0" VerticalContentAlignment="Center"
-                             AutomationProperties.Name="Qué excluir" ToolTip="Por ejemplo NetBird.exe" />
-                    <Button Content="Excluir" Padding="12,2" Click="AddExclusion_Click" AutomationProperties.Name="Agregar exclusión" />
-                </StackPanel>
-            </StackPanel>
-        </GroupBox>
-
-        <GroupBox DockPanel.Dock="Bottom" Header="Paneles" Margin="0,8,0,0" Padding="6">
-            <StackPanel x:Name="PanelsList" />
-        </GroupBox>
-
-        <ListView x:Name="WindowList" SelectionMode="Single" ContextMenuOpening="WindowList_ContextMenuOpening">
-            <ListView.ContextMenu>
-                <ContextMenu />
-            </ListView.ContextMenu>
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Panel" Width="300">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <ComboBox Width="280"
-                                          AutomationProperties.Name="{Binding App, StringFormat=Panel de {0}}"
-                                          ItemsSource="{Binding DataContext.AssignmentOptions, RelativeSource={RelativeSource AncestorType=Window}}"
-                                          DisplayMemberPath="Label"
-                                          SelectedValuePath="Key"
-                                          SelectedValue="{Binding Assignment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          IsEnabled="{Binding Manageable}" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Estado" Width="220" DisplayMemberBinding="{Binding State}" />
-                    <GridViewColumn Header="App" Width="150" DisplayMemberBinding="{Binding App}" />
-                    <GridViewColumn Header="Título" Width="360" DisplayMemberBinding="{Binding Title}" />
-                </GridView>
-            </ListView.View>
-        </ListView>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </Window>
