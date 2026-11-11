@@ -102,7 +102,6 @@
   <data name="Deck_SecSystem" xml:space="preserve"><value>SYSTEM</value></data>
   <data name="Deck_SecView" xml:space="preserve"><value>MAIN SCREEN LAYOUT</value></data>
   <data name="Deck_SendTo" xml:space="preserve"><value>Send the deck to</value></data>
-  <data name="Deck_SwitchTo" xml:space="preserve"><value>Switch to {0}</value></data>
   <data name="Deck_TabDisconnected" xml:space="preserve"><value>{0} (disconnected)</value></data>
   <data name="Deck_TabName" xml:space="preserve"><value>Deck: monitor {0}</value></data>
   <data name="Deck_ThisMonitor" xml:space="preserve"><value>This monitor</value></data>

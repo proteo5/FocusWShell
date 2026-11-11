@@ -303,9 +303,6 @@ public static class Strings
     /// <summary>Mandar el deck a</summary>
     public static string Deck_SendTo => ResourceManager.GetString("Deck_SendTo", Culture)!;
 
-    /// <summary>Pasar a {0}</summary>
-    public static string Deck_SwitchTo => ResourceManager.GetString("Deck_SwitchTo", Culture)!;
-
     /// <summary>{0} (desconectado)</summary>
     public static string Deck_TabDisconnected => ResourceManager.GetString("Deck_TabDisconnected", Culture)!;
 

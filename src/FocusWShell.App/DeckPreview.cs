@@ -117,7 +117,7 @@ public static class DeckPreview
             new("contexto", "Contexto", "principal, izquierda", [App("Google Chrome", 3, ListItemState.InPanel, "contexto")]) { Template = PanelTemplate.Tiles },
             new("trabajo", "Trabajo", "principal, derecha", work) { Template = PanelTemplate.Tiles },
             new("monitoreo", "Monitoreo", "HP 24fw, izquierda", [App("Grafana", 7, ListItemState.InPanel, "monitoreo"), App("Logs", 8, ListItemState.InPanel, "monitoreo")]) { Display = "hp", Template = PanelTemplate.Tiles },
-            new("chat", "Chat", "HP 24fw, derecha", [App("Slack", 9, ListItemState.InPanel, "chat")]) { Display = "hp", Template = PanelTemplate.Stack },
+            new("chat", "Chat", "HP 24fw, derecha", [App("Slack", 9, ListItemState.InPanel, "chat"), App("Teams", 10, ListItemState.InPanel, "chat")]) { Display = "hp", Template = PanelTemplate.Stack },
         };
         return new DeckState(
             App("Claude", 2, ListItemState.InFocus, "trabajo"),

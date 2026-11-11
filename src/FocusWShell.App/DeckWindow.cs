@@ -1437,15 +1437,29 @@ public sealed class DeckWindow : Window
             controls.Children.Add(NavButton("▶", Core.Text.F(Strings.Deck_NextTab, panel.Name), () => Run(false, new MakeActiveInPanel(tabs[1].Handle!.Value))));
         }
 
+        // La presentación, como botones pegados: se ven todas, la activa en azul, y un toque basta para
+        // cualquiera (antes, un botón mostraba la actual y al tocarlo pasaba a la siguiente).
         var order = panel.Display is null
             ? new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List }
             : new[] { PanelTemplate.Tiles, PanelTemplate.Stack, PanelTemplate.List, PanelTemplate.Fill };
-        var next = order[(Array.IndexOf(order, panel.Template) + 1) % order.Length];
-        var template = NavButton(TemplateName(panel.Template), Core.Text.F(Strings.Deck_PresentationName, panel.Name, TemplateName(next)), () => Run(false, new SetPresentation(panel.Id, next)));
-        template.Width = double.NaN;
-        template.Padding = new Thickness(10, 0, 10, 0);
-        template.ToolTip = Core.Text.F(Strings.Deck_SwitchTo, TemplateName(next));
-        controls.Children.Add(template);
+        var segments = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(cycles ? 10 : 0, 0, 0, 0) };
+        foreach (var t in order)
+        {
+            bool on = t == panel.Template;
+            var segment = NavButton(TemplateIcon(t), Core.Text.F(Strings.Deck_PresentationName, panel.Name, TemplateName(t)),
+                () => on ? Task.CompletedTask : Run(false, new SetPresentation(panel.Id, t)));
+            segment.Margin = new Thickness(2, 0, 0, 0);
+            segment.FontSize = 20;
+            segment.ToolTip = TemplateName(t);
+            if (on)
+            {
+                segment.Background = ActiveBrush;
+            }
+
+            segments.Children.Add(segment);
+        }
+
+        controls.Children.Add(segments);
         DockPanel.SetDock(controls, Dock.Right);
         header.Children.Add(controls);
         var title = Label($"{panel.Name.ToUpperInvariant()} · {panel.Where}");
@@ -1462,20 +1476,29 @@ public sealed class DeckWindow : Window
         _ => Strings.Tpl_Tiles,
     };
 
+    private static string TemplateIcon(PanelTemplate template) => template switch
+    {
+        PanelTemplate.Stack => "⧉",
+        PanelTemplate.Fill => "⛶",
+        PanelTemplate.List => "☰",
+        _ => "▦",
+    };
+
+    /// <summary>Botón de la cabecera de un panel: del tamaño del dedo, como el resto del deck.</summary>
     private static Button NavButton(string text, string name, Func<Task> click)
     {
         var b = new Button
         {
             Content = text,
-            Width = 40,
-            Height = 36,
+            Width = Touch,
+            Height = Touch,
             Margin = new Thickness(4, 0, 0, 0),
             Focusable = false,
             BorderThickness = new Thickness(0),
             Foreground = TextBrush,
             Background = CardBrush,
             Cursor = Cursors.Hand,
-            FontSize = 11,
+            FontSize = 16,
         };
         System.Windows.Automation.AutomationProperties.SetName(b, $"Deck: {name}");
         b.Click += async (_, _) => await click();

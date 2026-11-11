@@ -561,6 +561,14 @@ Probado con clics reales sobre el deck en la tablet:
 
 **El deck se pone al día solo.** Una app recién abierta no salía entre las libres hasta otro cambio de layout. Ahora, mientras el deck está a la vista, cada 3 s se vuelven a leer las ventanas, y sólo se redibuja si cambió algo.
 
+### Deck: la presentación del panel, en segmentos (validación, 2026-11-11)
+
+La cabecera de cada panel tenía un solo botón que mostraba la presentación actual («Tiles») pero, al tocarlo, pasaba a la siguiente: lo que se leía no era lo que se obtenía, y para llegar a «Lista» había que tocar varias veces sabiendo el orden. Además medía 40×36, chico para el dedo en una tablet de 8 pulgadas.
+
+- **Ahora son botones pegados, uno por presentación,** con la activa en azul. Se ven todas y un toque basta para cualquiera. Los paneles del principal tienen 3 (Tiles, Pestañas, Lista); los de otros monitores suman Pantalla completa.
+- **Con iconos** (▦ Tiles, ⧉ Pestañas, ☰ Lista, ⛶ Pantalla completa) y el nombre en el tooltip. Con texto no cabrían cuatro junto al nombre del panel.
+- **Todos los botones de la cabecera miden 48×48,** el tamaño táctil del resto del deck, incluidos ◀ ▶ de las pestañas. La cabecera crece 12 px, que sale del sitio que dejaron libre las apps cerradas sin anclar. Si falta ancho, se recorta el nombre del panel, nunca los botones.
+
 ### Deck: botones de modo frente a botones de acción (validación, 2026-11-11)
 
 Mover, Anclar y Cerrar no actúan al tocarlos: se quedan encendidos esperando el siguiente toque, como Shift. Anterior, Al panel y Ratón actúan al momento. Antes, esa diferencia sólo se veía después de tocarlos. Ahora se ve de antemano con tres señales:
