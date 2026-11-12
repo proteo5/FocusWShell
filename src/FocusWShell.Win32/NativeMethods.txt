@@ -139,3 +139,7 @@ PostMessage
 // Energía (deck)
 LockWorkStation
 SetSuspendState
+
+// Pestañas de navegadores (S12)
+ScreenToClient
+PostMessage

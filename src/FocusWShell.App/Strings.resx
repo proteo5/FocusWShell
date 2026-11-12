@@ -380,4 +380,23 @@
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>en otro escritorio</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · en otro escritorio. Clic: ir allí.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Ir a su escritorio</value></data>
+  <data name="Pages_InFocus" xml:space="preserve"><value>en el foco</value></data>
+  <data name="Pages_Free" xml:space="preserve"><value>libre</value></data>
+  <data name="Pages_OtherDesktop" xml:space="preserve"><value>⧉ en otro escritorio</value></data>
+  <data name="Deck_PagesTab" xml:space="preserve"><value>Páginas</value></data>
+  <data name="Deck_PagesTabCount" xml:space="preserve"><value>Páginas · {0}</value></data>
+  <data name="Deck_PagesTabName" xml:space="preserve"><value>Páginas de los navegadores</value></data>
+  <data name="Deck_PagesLoading" xml:space="preserve"><value>Leyendo las páginas…</value></data>
+  <data name="Deck_PagesNone" xml:space="preserve"><value>No hay pestañas que leer en Chrome ni en Edge.</value></data>
+  <data name="Deck_PageName" xml:space="preserve"><value>Ir a la página {0}</value></data>
+  <data name="Deck_PageCloseName" xml:space="preserve"><value>Cerrar la página {0}</value></data>
+  <data name="DeckMenu_Pages" xml:space="preserve"><value>Páginas…</value></data>
+  <data name="Deck_PagesSites" xml:space="preserve"><value>SITIOS</value></data>
+  <data name="Deck_PagesLoose" xml:space="preserve"><value>PÁGINAS SUELTAS</value></data>
+  <data name="Deck_PagesBack" xml:space="preserve"><value>‹ Sitios</value></data>
+  <data name="Deck_PagesSite" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Deck_PagesCloseAll" xml:space="preserve"><value>Cerrar todas</value></data>
+  <data name="Deck_PagesCloseAllConfirm" xml:space="preserve"><value>¿Cerrar {0}? Toca otra vez</value></data>
+  <data name="Deck_SiteName" xml:space="preserve"><value>Sitio {0}, {1} páginas</value></data>
+  <data name="Deck_PageWhere" xml:space="preserve"><value>{0} · {1}</value></data>
 </root>

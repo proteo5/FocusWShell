@@ -1,10 +1,10 @@
 ﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
+using FocusWShell.Win32;
 
 namespace FocusWShell.App;
 
 /// <summary>Una app en el deck: abierta (con su ventana) o cerrada (del catálogo).</summary>
-/// <param name="Handle">Su ventana, o <c>null</c> si está cerrada.</param>
 /// <param name="PanelId">Su panel; <c>null</c> si es una ventana libre.</param>
 /// <param name="Handle">Su ventana, o <c>null</c> si está cerrada o en otro escritorio (no se puede mover aquí).</param>
 public sealed record DeckApp(string Name, string AppKey, nint? Handle, ListItemState State, string Title, string? PanelId, CatalogApp? App);
@@ -40,4 +40,13 @@ public sealed record DeckState(
 
     /// <summary>La ventana al frente (la que recibe el teclado), sea o no de FocusWShell.</summary>
     public nint? Foreground { get; init; }
+
+    /// <summary>Las ventanas de Chrome y Edge (aquí o en otro escritorio): con alguna, el deck ofrece «Páginas».</summary>
+    public IReadOnlySet<nint> Browsers { get; init; } = new HashSet<nint>();
 }
+
+/// <summary>Una ventana de navegador con sus pestañas, para la lista de páginas del deck (spike S12).</summary>
+/// <param name="Browser">Nombre del navegador («Microsoft Edge»).</param>
+/// <param name="Where">Dónde está, para la UI: en el foco, su panel, libre u otro escritorio.</param>
+/// <param name="Managed">Si está en un panel (tocar una página la lleva al foco) o es libre (sólo al frente).</param>
+public sealed record PageWindow(nint Handle, string Browser, string Where, bool InFocus, bool Managed, bool OtherDesktop, CatalogApp? App, IReadOnlyList<BrowserTab> Tabs);

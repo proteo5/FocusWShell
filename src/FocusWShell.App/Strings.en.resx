@@ -380,4 +380,23 @@ Restore them now?
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>on another desktop</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · on another desktop. Click: go there.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Go to its desktop</value></data>
+  <data name="Pages_InFocus" xml:space="preserve"><value>in focus</value></data>
+  <data name="Pages_Free" xml:space="preserve"><value>free</value></data>
+  <data name="Pages_OtherDesktop" xml:space="preserve"><value>⧉ on another desktop</value></data>
+  <data name="Deck_PagesTab" xml:space="preserve"><value>Pages</value></data>
+  <data name="Deck_PagesTabCount" xml:space="preserve"><value>Pages · {0}</value></data>
+  <data name="Deck_PagesTabName" xml:space="preserve"><value>Browser pages</value></data>
+  <data name="Deck_PagesLoading" xml:space="preserve"><value>Reading the pages…</value></data>
+  <data name="Deck_PagesNone" xml:space="preserve"><value>No Chrome or Edge tabs to read.</value></data>
+  <data name="Deck_PageName" xml:space="preserve"><value>Go to page {0}</value></data>
+  <data name="Deck_PageCloseName" xml:space="preserve"><value>Close page {0}</value></data>
+  <data name="DeckMenu_Pages" xml:space="preserve"><value>Pages…</value></data>
+  <data name="Deck_PagesSites" xml:space="preserve"><value>SITES</value></data>
+  <data name="Deck_PagesLoose" xml:space="preserve"><value>SINGLE PAGES</value></data>
+  <data name="Deck_PagesBack" xml:space="preserve"><value>‹ Sites</value></data>
+  <data name="Deck_PagesSite" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Deck_PagesCloseAll" xml:space="preserve"><value>Close all</value></data>
+  <data name="Deck_PagesCloseAllConfirm" xml:space="preserve"><value>Close {0}? Tap again</value></data>
+  <data name="Deck_SiteName" xml:space="preserve"><value>Site {0}, {1} pages</value></data>
+  <data name="Deck_PageWhere" xml:space="preserve"><value>{0} · {1}</value></data>
 </root>

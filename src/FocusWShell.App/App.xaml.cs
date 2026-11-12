@@ -428,7 +428,10 @@ public partial class App : Application
             {
                 _controller.SetAppPinned(appKey, pinned);
                 PresentDeck();
-            }));
+            },
+            ReadPages: () => Task.Run(_controller.BrowserPages),
+            SelectPage: (handle, tab) => Task.Run(() => ShellController.SelectPage(handle, tab)),
+            ClosePage: (handle, tab) => Task.Run(() => _controller.ClosePage(handle, tab))));
 
         PresentDeck();
         StartDeckPolling();

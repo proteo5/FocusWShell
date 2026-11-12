@@ -1112,4 +1112,43 @@ public static class Strings
     public static string List_TipOtherDesktop => ResourceManager.GetString("List_TipOtherDesktop", Culture)!;
 
     public static string DeckMenu_GoToDesktop => ResourceManager.GetString("DeckMenu_GoToDesktop", Culture)!;
+
+    public static string Pages_InFocus => ResourceManager.GetString("Pages_InFocus", Culture)!;
+
+    public static string Pages_Free => ResourceManager.GetString("Pages_Free", Culture)!;
+
+    public static string Pages_OtherDesktop => ResourceManager.GetString("Pages_OtherDesktop", Culture)!;
+
+    public static string Deck_PagesTab => ResourceManager.GetString("Deck_PagesTab", Culture)!;
+
+    public static string Deck_PagesTabCount => ResourceManager.GetString("Deck_PagesTabCount", Culture)!;
+
+    public static string Deck_PagesTabName => ResourceManager.GetString("Deck_PagesTabName", Culture)!;
+
+    public static string Deck_PagesLoading => ResourceManager.GetString("Deck_PagesLoading", Culture)!;
+
+    public static string Deck_PagesNone => ResourceManager.GetString("Deck_PagesNone", Culture)!;
+
+
+    public static string Deck_PageName => ResourceManager.GetString("Deck_PageName", Culture)!;
+
+    public static string Deck_PageCloseName => ResourceManager.GetString("Deck_PageCloseName", Culture)!;
+
+    public static string DeckMenu_Pages => ResourceManager.GetString("DeckMenu_Pages", Culture)!;
+
+    public static string Deck_PagesSites => ResourceManager.GetString("Deck_PagesSites", Culture)!;
+
+    public static string Deck_PagesLoose => ResourceManager.GetString("Deck_PagesLoose", Culture)!;
+
+    public static string Deck_PagesBack => ResourceManager.GetString("Deck_PagesBack", Culture)!;
+
+    public static string Deck_PagesSite => ResourceManager.GetString("Deck_PagesSite", Culture)!;
+
+    public static string Deck_PagesCloseAll => ResourceManager.GetString("Deck_PagesCloseAll", Culture)!;
+
+    public static string Deck_PagesCloseAllConfirm => ResourceManager.GetString("Deck_PagesCloseAllConfirm", Culture)!;
+
+    public static string Deck_SiteName => ResourceManager.GetString("Deck_SiteName", Culture)!;
+
+    public static string Deck_PageWhere => ResourceManager.GetString("Deck_PageWhere", Culture)!;
 }

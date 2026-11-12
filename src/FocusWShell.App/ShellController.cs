@@ -303,8 +303,68 @@ public sealed class ShellController : IDisposable
             {
                 Weights = _workspace.ProportionsOf(_workspace.View),
                 Foreground = WindowMover.Foreground(),
+                Browsers = BrowserWindowsLocked().Select(b => b.Window.Handle).ToHashSet(),
             };
         }
+    }
+
+    // --- Páginas de los navegadores (spike S12) -----------------------------------------------------
+
+    /// <summary>Las ventanas de Chrome y Edge que se conocen: las de aquí y las de otro escritorio.</summary>
+    private IEnumerable<(WindowSnapshot Window, bool Elsewhere)> BrowserWindowsLocked() =>
+        _snapshots.Values.Where(s => !_elsewhere.ContainsKey(s.Handle)).Select(s => (s, false))
+            .Concat(_elsewhere.Values.Select(s => (s, true)))
+            .Where(x => BrowserTabs.IsBrowser(x.Item1.ProcessName, x.Item1.ClassName));
+
+    /// <summary>
+    /// Las pestañas de todas las ventanas de navegador: primero la del foco, luego las de los paneles en su
+    /// orden, las libres y las de otro escritorio. Lee los navegadores (unos 50 ms por ventana): se llama al
+    /// abrir la lista, nunca en el repaso del deck. Las ventanas sin barra de pestañas (apps web) no salen.
+    /// </summary>
+    public IReadOnlyList<PageWindow> BrowserPages()
+    {
+        List<(nint Handle, string Browser, string Where, bool InFocus, bool Managed, bool Elsewhere, CatalogApp? App, int Order)> windows;
+        lock (_gate)
+        {
+            var focus = _workspace.Focused?.Handle;
+            var order = _workspace.Panels.Select((p, i) => (p.Id, i)).ToDictionary(x => x.Id, x => x.i);
+            windows = [.. BrowserWindowsLocked().Select(x =>
+            {
+                var managed = _workspace.Find(x.Window.Handle);
+                bool inFocus = !x.Elsewhere && managed is not null && managed.Handle == focus;
+                var panel = managed is null ? null : _workspace.EffectivePanel(managed);
+                string where = x.Elsewhere ? Strings.Pages_OtherDesktop
+                    : inFocus ? Strings.Pages_InFocus
+                    : panel?.Name ?? Strings.Pages_Free;
+                int rank = inFocus ? 0 : x.Elsewhere ? 2000 : panel is null ? 1000 : 1 + order.GetValueOrDefault(panel.Id);
+                var app = _catalog.Find(MinSizeCatalog.KeyFor(x.Window));
+                return (x.Window.Handle, app?.Name ?? Path.GetFileNameWithoutExtension(x.Window.ProcessName), where, inFocus, managed is not null, x.Elsewhere, app, rank);
+            }).OrderBy(w => w.rank)];
+        }
+
+        var pages = new List<PageWindow>();
+        foreach (var w in windows)
+        {
+            if (BrowserTabs.Read(w.Handle) is { Count: > 0 } tabs)
+            {
+                pages.Add(new PageWindow(w.Handle, w.Browser, w.Where, w.InFocus, w.Managed, w.Elsewhere, w.App, tabs));
+            }
+        }
+
+        return pages;
+    }
+
+    /// <summary>Hace visible la pestaña en su ventana (no mueve la ventana).</summary>
+    public static bool SelectPage(nint handle, BrowserTab tab) => BrowserTabs.Select(handle, tab);
+
+    /// <summary>
+    /// Cierra la pestaña. Si su ventana está minimizada (p. ej. oculta en una pila), se muestra un instante:
+    /// el observador calla mientras tanto, para no tomarlo por un cambio del usuario.
+    /// </summary>
+    public bool ClosePage(nint handle, BrowserTab tab)
+    {
+        using var own = _watcher?.OwnChange();
+        return BrowserTabs.Close(handle, tab);
     }
 
     /// <summary>La ventana en el foco (o en pantalla completa), si hay.</summary>

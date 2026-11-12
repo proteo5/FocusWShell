@@ -53,6 +53,8 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 3. **Spike S8:** que el toque desde una tablet (Apollo/Artemis) y desde un monitor táctil físico no robe el foco (R12). **Hecho:** con toques inyectados, con ratón y con la tablet por Apollo/Artemis (como monitor extendido), el deck no roba el foco y responde al momento.
 4. **"Mandar el deck a…"** otro monitor, con paneles de pantalla completa con pestañas para tablets. **Hecho** el deck fijado en un monitor (en una mitad o entero), con los paneles de ese monitor en el resto, y un panel en pantalla completa a su lado con sus pestañas; falta probar la desconexión real.
 
+5. **Páginas de los navegadores** en el deck: las pestañas de todas las ventanas de Chrome y Edge agrupadas por sitio, para llevar una al frente o cerrarla (spike S12, ver [riesgos](04-riesgos-y-spikes.md)). **Hecho.**
+
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.
 
 ## M2 — Pantalla completa y robustez

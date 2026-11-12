@@ -6,6 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- UI Automation (cliente) para leer las pestañas de los navegadores (spike S12). -->
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FocusWShell.Core\FocusWShell.Core.csproj" />
   </ItemGroup>
 

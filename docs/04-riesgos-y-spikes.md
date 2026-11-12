@@ -35,6 +35,8 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S8 — Toque sin robar el foco | ¿Un toque en una ventana propia con `WS_EX_NOACTIVATE`, en una tablet (Apollo/Artemis) o en un monitor táctil físico, llega como toque o como clic, y deja el foco en la app del Centro? | Ventana de prueba con botones en la tablet y en un monitor táctil; tocar 50 veces mientras se escribe en la app del Centro. | El toque se registra siempre; la app del Centro conserva el foco y el teclado; respuesta percibida < 100 ms. | R12 · **Hecho** (toques inyectados y tablet con Artemis) |
 | S9 — Apuntar desde el deck | ¿Se puede apuntar con precisión en la app del foco desde el deck? | Miniatura DWM en vivo con cuadrícula y zoom en la tablet; scroll por franja lateral en Edge; lectura de controles con UI Automation en Edge, Slack, SSMS y VS Code. | El toque cae a ±1 control del objetivo con zoom; el scroll mueve la zona tocada; lectura de controles < 300 ms en apps nativas y < 1 s en Chromium. | — |
 | S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — · **Hecho** (opción B confirmada) |
+| S11 — Escritorios virtuales | Lo que falta saber de Windows para seguir los escritorios ([ADR 0016](adr/0016-escritorios-virtuales.md#comprobaciones-pendientes-spike-s11)). | Ver el ADR. | Ver el ADR. | — |
+| S12 — Pestañas de navegadores | ¿Se pueden listar, seleccionar y cerrar las pestañas de Chrome y Edge desde fuera, sin extensión? | UI Automation sobre ventanas reales (sólo lectura) y sobre ventanas de prueba propias (seleccionar y cerrar), con la ventana al frente y al fondo. | Lista en < 200 ms con 30 pestañas; seleccionar trae la pestaña y su ventana; cerrar no cambia la pestaña activa ni mueve el ratón. | — · **Hecho** |
 
 S1–S5 forman el hito M0. S6 y S7 se pueden posponer a M1, pero deben resolverse antes de dar por bueno el MVP.
 
@@ -581,6 +583,93 @@ Probado con clics reales sobre el deck en la tablet:
 **Riesgo:** hoy, mover una app gestionada a otro escritorio deja al deck con información falsa y puede duplicar apps. Mientras no haya soporte de escritorios, conviene no usarlos con FocusWShell. **Mitigado** con la fase 1 del [ADR 0016](adr/0016-escritorios-virtuales.md#implementación-de-la-fase-1-2026-11-11): la app de otro escritorio se ve apagada con «⧉» y tocarla lleva a ella, sin abrir otra copia.
 
 **Conclusión:** los escritorios son viables como reemplazo de las escenas sin API no documentada, si FocusWShell **los sigue en vez de manejarlos**: un espacio de trabajo por escritorio, que el deck muestra según el escritorio actual. El usuario cambia de escritorio con los gestos de Windows.
+
+### Spike S12: pestañas de Chrome y Edge (2026-11-11)
+
+**Pregunta:** desde el deck, ¿se puede ver la lista de pestañas de un navegador, llevar una al frente o cerrarla? Sólo eso: sin URLs, sin mover pestañas entre ventanas.
+
+**Opciones:**
+- **UI Automation:** la barra de pestañas es accesible, como para un lector de pantalla. No pide nada al usuario.
+- **Una extensión con *native messaging*:** daría además URLs, iconos y avisos al momento, pero hay que instalarla en cada navegador.
+- **El protocolo de depuración:** descartado. Desde Chrome 136 no funciona con el perfil normal del usuario.
+
+Se probó la primera.
+
+**Método:**
+- Script de PowerShell con `System.Windows.Automation`, sobre Chrome y Edge con pestañas verticales.
+- Sobre las ventanas reales del usuario, sólo lectura: una de Chrome con 30 pestañas y dos de Edge con 2 y 26, con grupos.
+- Para seleccionar y cerrar, ventanas de prueba propias con 3 o 4 pestañas, que se cerraron al terminar.
+
+**Resultados:**
+- **Encontrar la barra:** se baja por el árbol de la ventana (clase `Chrome_WidgetWin_1`) sin entrar en el contenido web (`Document`) hasta el primer control `Tab`.
+  - Chrome: `VerticalTabStripRegionView`.
+  - Edge: `EdgeVerticalTabContainerView`.
+  - Las pestañas son `TabItem` dentro de ella. Las fijadas, en Chrome, van en su propio contenedor.
+- **Rápido:** 45–55 ms para encontrar la barra y 1–10 ms para leer todas las pestañas, también con 30.
+- **Cada pestaña admite `SelectionItem`:**
+  - `IsSelected` dice cuál es la activa.
+  - `Select()` la activa en unos 50 ms y el navegador trae su ventana al frente, también desde el fondo.
+- **El nombre trae añadidos** que no son el título: «Memory usage - 153 MB», «Sleeping», «Network error», «Part of tab group IA».
+  - Hay que limpiarlos con una lista de sufijos conocidos.
+  - Están en el idioma del navegador, hoy inglés; si cambia, falla la limpieza, no la lista.
+  - El nombre sin limpiar puede ir en el tooltip.
+- **Grupos (Edge):** cada grupo es un botón («Pink tab group ("DeepSeek" and 1 other tab)») delante de sus pestañas, y el nombre de cada pestaña dice su grupo. No se probó un grupo plegado, para no tocar los del usuario.
+- **Cerrar:**
+  - **No hay botón ✕ accesible**: Edge no lo expone en ninguna pestaña, y Chrome sólo en la activa.
+  - Lo que funciona es el **clic central enviado como mensaje** (`WM_MBUTTONDOWN`/`UP` con `PostMessage`) en el centro de la pestaña. La cierra con la ventana al frente o al fondo, sea la activa o no.
+  - **No cambia la pestaña activa, no trae la ventana al frente y no mueve el ratón.** Probado en Chrome y en Edge.
+  - Seleccionar + Ctrl+W + volver a la anterior también funciona, pero cambia de pestaña un momento y necesita la ventana al frente.
+  - Ojo: Chrome no abre URLs `data:` desde la línea de comandos (Edge sí); para las pruebas se usaron archivos locales.
+
+**Riesgo:** depende de cómo dibujan su barra Chrome y Edge, que no es un contrato. Si cambia, la lista sale vacía y el deck no ofrece pestañas; nada más se rompe.
+
+**Pendiente:**
+- Una pestaña fuera de la vista de la barra (con muchas pestañas): habría que hacer `ScrollIntoView` (`ScrollItem`, que la pestaña admite) antes del clic central.
+- Un grupo plegado.
+- Las pestañas horizontales.
+
+**Conclusión:** UI Automation basta para lo que se pide: títulos, llevar al frente y cerrar. No hace falta extensión.
+
+### Deck: las páginas de los navegadores (validación, 2026-11-11)
+
+Con el spike S12. Quien busca una página no tiene por qué saber en qué ventana ni en qué navegador está, así que la lista es **una sola para todas las ventanas de Chrome y Edge**.
+
+**Dónde está**
+- **Una pestaña más en la fila de los monitores, a la derecha y aparte:** «🗂 Páginas · 58» (en el deck estrecho, sólo «🗂»). Elige qué se ve en la zona de los paneles, como los monitores: tocar un monitor vuelve a sus paneles, y tocarla otra vez también.
+- Sale sólo si hay Chrome o Edge abiertos. Con un solo monitor, la fila aparece sólo por ella.
+- En el deck estrecho, mientras está elegida, se ocultan LIBRES y las escenas para darle sitio.
+- «Páginas…» en el menú de un navegador (dejar apretado) también la abre.
+- **El número es el de la última lectura.** Los navegadores se leen al elegir «Páginas» y tras cerrar, nunca en el repaso del deck.
+
+**Primera versión: una sección por ventana.** Con las 60 pestañas del usuario no servía: en la tablet cabían unas 8 filas, y para llegar a una página había que pasar por todas las de antes. Además, la lista no se desplazaba con el dedo, sólo con la barra.
+
+**Versión actual: en dos pasos, por sitio.** El usuario suele tener muchas páginas del mismo sitio (Jira, Cloudflare, YouTube), así que la línea entre navegadores desaparece:
+1. **Sitios y páginas sueltas.**
+   - Primero los sitios con varias páginas («Jira · 9 ›»), de más a menos.
+   - Después las páginas sueltas con su título, por orden alfabético, en una columna menos que los sitios (3 en el deck ancho). Tocar una la abre directo, y su ✕ la cierra. Al principio, cerrar estaba en la pulsación larga, y en la tablet no se encontraba.
+   - Con las 58 pestañas del usuario: 8 sitios y 16 sueltas, 24 botones en lugar de 58 filas.
+2. **Las páginas de un sitio.**
+   - Arriba, «‹ Sitios», el sitio con su número y «Cerrar todas», que pide un segundo toque en 4 s.
+   - Cada fila va sin el nombre del sitio («Board - RM board», no «… - Jira») y con su ventana al lado («Google Chrome · en el foco»). La activa de su ventana lleva la barra azul, y hay ✕ en cada fila.
+   - Si se cierran todas, se vuelve al paso 1.
+
+**El sitio sale del título** (`PageSites`, en Core), porque el navegador no expone la dirección ni el icono de cada pestaña. Un trozo del título cuenta como sitio sólo si se repite en varias páginas:
+1. Patrones conocidos: una parte `dueño/repo` es GitHub; un correo con final «Gmail» o «… Mail», Gmail.
+2. El final del título se repite («… - Jira»).
+3. El principio se repite.
+4. El título entero es un sitio ya detectado: la portada de YouTube se llama «YouTube».
+5. El final empieza por un sitio ya detectado: «OVHcloud Documentation» → OVHcloud.
+6. El título es sólo una dirección cuyo nombre coincide con un sitio.
+7. Una dirección y un final comparten nombre: `www.hikvision.com` y «Hikvision Global».
+
+Un sitio con una sola página no cuenta: queda suelta. Si una regla falla, la página queda suelta o en el grupo de su final; nunca se mezcla con otro sitio a propósito. La única regla que nombra sitios concretos es la 1.
+
+**Comportamiento**
+- **Tocar una página** hace lo mismo que tocar su app: la ventana de un panel va al foco; una libre o de otro escritorio sólo se trae al frente. Después se hace visible esa pestaña.
+- **Cerrar** no cambia la pestaña activa ni mueve el ratón. Si la ventana está minimizada (oculta en una pila), se muestra un instante sin activarla.
+- **Se desplaza arrastrando con el dedo.** Los toques de la tablet llegan como ratón, y el desplazamiento táctil de WPF no responde a eso, así que el arrastre se hace a mano: pasados 10 px, la lista se lleva el arrastre y no se pulsa lo que había debajo. No hay búsqueda, porque escribir obligaría al deck a tomar el foco.
+
+Los títulos sólo se leen mientras la lista está a la vista. No se guardan ni se registran.
 
 ### Deck: la presentación del panel, en segmentos (validación, 2026-11-11)
 

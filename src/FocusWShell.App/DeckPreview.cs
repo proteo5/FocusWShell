@@ -40,6 +40,10 @@ public static class DeckPreview
             Save(Sample(manyApps: false) with { Foreground = 50 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-libre.png"));
             Save(Sample(manyApps: false) with { Foreground = 7 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-hp.png"));
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia-seguro.png"), mode: "energia-seguro");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-paginas.png"), mode: "paginas");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-paginas-sitio.png"), mode: "paginas-sitio");
+            // Un solo monitor: la fila de pestañas sale sólo por «Páginas».
+            Save(Sample(manyApps: false) with { Displays = [(null, "Principal")] }, width, height, Path.Combine(folder, $"deck-{name}-un-monitor.png"));
         }
     }
 
@@ -61,10 +65,18 @@ public static class DeckPreview
             _ => Task.CompletedTask,
             _ => Task.CompletedTask,
             () => Task.CompletedTask,
-            (_, _) => { });
+            (_, _) => { },
+            ReadPages: () => Task.FromResult(SamplePages()),
+            SelectPage: (_, _) => Task.FromResult(true),
+            ClosePage: (_, _) => Task.FromResult(true));
         var deck = new DeckWindow(actions) { Left = -20000, Top = -20000 };
         deck.ShowTab(tab);
         deck.ShowMode(mode, state);
+        if (mode is "paginas" or "paginas-sitio")
+        {
+            deck.ShowPages(SamplePages(), mode == "paginas-sitio" ? "Jira" : null);
+        }
+
         deck.Present(state, new PixelRect(-20000, -20000, -20000 + width, -20000 + height));
         deck.Width = width;
         deck.Height = height;
@@ -127,6 +139,45 @@ public static class DeckPreview
             panels,
             free,
             manyApps ? ["Código", "Lectura", "Reuniones", "Correo"] : ["Código", "Lectura"],
-            [(null, "Principal"), ("hp", "HP 24fw"), ("tablet", "Lenovo tablet")]);
+            [(null, "Principal"), ("hp", "HP 24fw"), ("tablet", "Lenovo tablet")])
+        {
+            Browsers = new HashSet<nint> { 1, 3 },
+        };
+    }
+
+    /// <summary>Páginas de ejemplo: un Chrome en el foco y dos Edge, uno con grupos.</summary>
+    private static IReadOnlyList<PageWindow> SamplePages()
+    {
+        Win32.BrowserTab Tab(int i, string title, string? group = null, bool active = false) => new(i, title, title, group, active);
+        Core.Domain.CatalogApp Browser(string name) =>
+            new(name.ToLowerInvariant() + ".exe", name, SampleExe, null, "trabajo", false, DateTimeOffset.Now, DateTimeOffset.Now);
+        return
+        [
+            new PageWindow(1, "Google Chrome", "en el foco", true, true, false, Browser("Google Chrome"),
+            [
+                Tab(0, "Inbox (2) - ana@ejemplo.com - ejemplo.com Mail"),
+                Tab(1, "Board - RM board - Jira"),
+                Tab(2, "Innovate - Backlog - Jira"),
+                Tab(3, "Board - SIEM board - Jira", active: true),
+                Tab(4, "DNS | Records | ejemplo.com | Cloudflare"),
+                Tab(5, "Security | Security rules | ejemplo.com | Cloudflare"),
+                Tab(6, "Valimail"),
+                Tab(7, "Free SPF Checker & SPF Record Lookup - Instant Results"),
+            ]),
+            new PageWindow(3, "Microsoft Edge", "Contexto", false, true, false, Browser("Microsoft Edge"),
+            [
+                Tab(0, "DeepSeek", "IA"),
+                Tab(1, "Outlook", "Email"),
+                Tab(2, "I Did This Every Morning - YouTube", "Youtube", active: true),
+                Tab(3, "Lo-fi beats to code to - YouTube", "Youtube"),
+                Tab(4, "YouTube", "Youtube"),
+                Tab(5, "Raid - List - Jira"),
+            ]),
+            new PageWindow(50, "Microsoft Edge", "libre", false, false, false, Browser("Microsoft Edge"),
+            [
+                Tab(0, "Fix login by ana · Pull Request #15 · acme/web", active: true),
+                Tab(1, "acme/api: The API server"),
+            ]),
+        ];
     }
 }
