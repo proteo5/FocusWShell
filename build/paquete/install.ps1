@@ -33,7 +33,9 @@ if ($running.Count -gt 0) {
 
 Write-Host "Installing to $Target / Instalando en $Target ..."
 if (Test-Path $exe) {
-    Remove-Item $Target -Recurse -Force # an older version: replace it completely
+    # An older version: replace it completely. Its contents, not the folder, which may be open in a
+    # console or an Explorer window (Windows does not delete a folder that is in use).
+    Get-ChildItem $Target -Force | Remove-Item -Recurse -Force
 }
 
 New-Item -ItemType Directory -Force $Target | Out-Null

@@ -38,9 +38,15 @@ if (Test-Path $shortcut) {
 }
 
 if (Test-Path $exe) {
-    # Lo normal es ejecutarlo desde su propia carpeta, y PowerShell no borra la carpeta en la que está.
+    # Its contents first: that works even if the folder is open in a console or an Explorer window
+    # (it usually is: this script lives there). Then the folder, if Windows lets go of it.
     Set-Location $env:USERPROFILE
-    Remove-Item $Target -Recurse -Force
+    Get-ChildItem $Target -Force | Remove-Item -Recurse -Force
+    Remove-Item $Target -Force -ErrorAction SilentlyContinue
+    if (Test-Path $Target) {
+        Write-Host "The empty folder $Target is still open in a window; you can delete it later."
+        Write-Host "La carpeta vacía $Target sigue abierta en una ventana; puedes borrarla después."
+    }
 }
 
 $settings = Join-Path $env:LOCALAPPDATA 'FocusWShell'
