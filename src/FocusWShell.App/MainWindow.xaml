@@ -12,15 +12,10 @@
                 <TextBlock Text="{x:Static local:Strings.Main_ViewLabel}" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox x:Name="ViewCombo" Width="170" Margin="0,0,24,0" AutomationProperties.Name="{x:Static local:Strings.Main_ViewName}"
                           SelectionChanged="ViewCombo_SelectionChanged"
-                          ToolTip="{x:Static local:Strings.Main_ViewTip}">
-                    <ComboBoxItem Content="{x:Static local:Strings.Main_ViewLeft}" />
-                    <ComboBoxItem Content="{x:Static local:Strings.Main_ViewCenter}" />
-                    <ComboBoxItem Content="{x:Static local:Strings.Main_ViewRight}" />
-                </ComboBox>
-                <TextBlock Text="{x:Static local:Strings.Main_ProportionsLabel}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                <ComboBox x:Name="ProportionsCombo" Width="260" Margin="0,0,24,0" AutomationProperties.Name="{x:Static local:Strings.Main_ProportionsName}"
-                          SelectionChanged="ProportionsCombo_SelectionChanged"
-                          ToolTip="{x:Static local:Strings.Main_ProportionsTip}" />
+                          ToolTip="{x:Static local:Strings.Main_ViewTip}" />
+                <TextBlock x:Name="ProportionsText" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <Button x:Name="ResetWidthButton" Content="{x:Static local:Strings.Deck_ResetWidth}" Padding="10,2" Margin="0,0,24,0" Click="ResetWidth_Click"
+                        ToolTip="{x:Static local:Strings.Main_ResetWidthTip}" />
                 <Button x:Name="DeckButton" Content="Deck" Padding="10,2" Margin="0,0,8,0" Click="Deck_Click"
                         ToolTip="{x:Static local:Strings.Main_DeckTip}" />
                 <Button x:Name="HotkeysButton" Content="{x:Static local:Strings.Main_Hotkeys}" Padding="10,2" Margin="0,0,24,0" Click="Hotkeys_Click"

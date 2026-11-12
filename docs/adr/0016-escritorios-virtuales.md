@@ -68,7 +68,7 @@ Antes de abrir una app anclada, FocusWShell busca **en todos los escritorios** u
 - **Muestra sólo lo del escritorio actual**: su foco, las apps de cada panel y sus libres. Al cambiar de escritorio, el deck se actualiza solo.
 - **Las ancladas abiertas en otro escritorio** se ven como un tile atenuado con la marca **"⧉ Escritorio 2"** (o su nombre). Tocarlo lleva a ese escritorio, en vez de abrir otra copia.
 - **Pestañas de escritorios**, como las de monitores, para cambiar de actividad sin teclado ni ratón. Ver [Pestañas de escritorios](#pestañas-de-escritorios-en-el-deck).
-- **Las escenas salen del deck.** Los escritorios las reemplazan. Las escenas siguen en la ventana principal, la bandeja y los atajos mientras se valida el uso; si los escritorios cubren la necesidad, se retiran en una versión posterior.
+- **Las escenas salen del deck.** Los escritorios las reemplazan. Las escenas siguen en la ventana principal, la bandeja y los atajos mientras se valida el uso; si los escritorios cubren la necesidad, se retiran en una versión posterior. **Hecho el 2026-11-12**, antes que el resto de la fase 3: con los interruptores de columnas del principal ([ADR 0012, enmienda](0012-vistas-posicion-del-foco.md#enmienda-2026-11-12-la-disposición-del-principal-son-columnas-que-se-prenden-y-apagan)) ya no aportaban en el deck. Se descartó convertirlas en presets de la disposición: los interruptores ya lo son, y cada disposición recuerda su ancho. Se verá con el uso si hace falta algo más.
 
 ### Pestañas de escritorios en el deck
 
@@ -107,7 +107,7 @@ Antes de programar las fases 2 y 3:
 
 1. **Seguridad (pequeña, ya):** no abrir otra copia si la app existe en otro escritorio (punto 4), y no mostrar en el deck como "en su panel" una app que está en otro escritorio. Arregla lo que la prueba encontró, sin el resto del diseño.
 2. **Un foco y unas apps por escritorio:** modelo (punto 2), detección (punto 3) y persistencia (punto 6).
-3. **Deck:** pestañas de escritorios con «+» y cerrar, y escenas fuera del deck (punto 5). Los tiles de otros escritorios (apagados con «⧉») ya llegaron con la fase 1.
+3. **Deck:** pestañas de escritorios con «+» y cerrar (punto 5). Las escenas ya salieron del deck. Los tiles de otros escritorios (apagados con «⧉») ya llegaron con la fase 1.
 
 ## Implementación de la fase 1 (2026-11-11)
 

@@ -200,53 +200,51 @@ public partial class MainWindow : Window
 
     private bool _showingView;
 
-    /// <summary>Orden de las opciones de <c>ViewCombo</c>.</summary>
-    private static readonly FocusPosition[] Views = [FocusPosition.Left, FocusPosition.Center, FocusPosition.Right];
+    /// <summary>Las disposiciones de <c>ViewCombo</c>, en su orden: las que ofrece el principal (ADR 0012, enmienda).</summary>
+    private List<FocusPosition> _views = [];
 
-    private void ShowView(FocusPosition view)
+    internal static string ArrangementName(FocusPosition view) => view switch
+    {
+        FocusPosition.Right => Strings.Arr_Right,
+        FocusPosition.Left => Strings.Arr_Left,
+        FocusPosition.ContextOnly => Strings.Arr_ContextOnly,
+        FocusPosition.WorkOnly => Strings.Arr_WorkOnly,
+        FocusPosition.FocusOnly => Strings.Arr_FocusOnly,
+        _ => Strings.Arr_Center,
+    };
+
+    private void ShowView(FocusPosition stored)
     {
         _showingView = true;
-        ViewCombo.SelectedIndex = Array.IndexOf(Views, view);
+        bool ultrawide = ShellController.UltrawideNow();
+        var view = MainArrangement.Effective(stored, ultrawide);
+        _views = [.. MainArrangement.Available(ultrawide)];
+        ViewCombo.ItemsSource = _views.Select(ArrangementName).ToList();
+        ViewCombo.SelectedIndex = _views.IndexOf(view);
 
-        // Presets de la vista y, si las proporciones son otras (separador arrastrado), "Personalizadas".
-        var weights = _controller.Proportions;
-        var options = ViewProportions.Presets(view).Select(p => (Label: $"{p.Name} · {p.Weights.Describe(view)}", p.Weights)).ToList();
-        int selected = options.FindIndex(o => o.Weights.SameAs(weights));
-        if (selected < 0)
-        {
-            options.Add((Core.Text.F(Strings.Weights_Custom, weights.Describe(view)), weights));
-            selected = options.Count - 1;
-        }
-
-        ProportionsCombo.ItemsSource = options.Select(o => o.Label).ToList();
-        ProportionsCombo.Tag = options.Select(o => o.Weights).ToList();
-        ProportionsCombo.SelectedIndex = selected;
+        // El ancho se ajusta arrastrando el borde entre columnas; aquí se ve y se puede restablecer.
+        ProportionsText.Text = _controller.Proportions.Describe(view);
+        ResetWidthButton.IsEnabled = view != FocusPosition.FocusOnly;
         _showingView = false;
     }
 
-    private async void ProportionsCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private async void ResetWidth_Click(object sender, RoutedEventArgs e)
     {
-        if (_showingView || ProportionsCombo.SelectedIndex < 0 || ProportionsCombo.Tag is not List<ViewWeights> options)
-        {
-            return;
-        }
-
-        var weights = options[ProportionsCombo.SelectedIndex];
-        var view = _controller.View;
-        var result = await Task.Run(() => _controller.Execute(new SetProportions(view, weights)));
+        var view = _controller.EffectiveView;
+        var result = await Task.Run(() => _controller.Execute(new SetProportions(view, null)));
         Refresh();
         SetStatus(Describe(result));
     }
 
-    /// <summary>Cambiar de vista mueve el foco de sitio sin cambiar qué ventana hay en él (ADR 0012).</summary>
+    /// <summary>Cambiar de disposición mueve el foco de sitio sin cambiar qué ventana hay en él (ADR 0012).</summary>
     private async void ViewCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (_showingView || ViewCombo.SelectedIndex < 0 || _controller is null)
+        if (_showingView || ViewCombo.SelectedIndex < 0 || ViewCombo.SelectedIndex >= _views.Count || _controller is null)
         {
             return;
         }
 
-        var view = Views[ViewCombo.SelectedIndex];
+        var view = _views[ViewCombo.SelectedIndex];
         var result = await Task.Run(() => _controller.Execute(new SetView(view)));
         Refresh();
         SetStatus(Describe(result));

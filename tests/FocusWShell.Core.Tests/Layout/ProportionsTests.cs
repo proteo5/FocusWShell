@@ -75,14 +75,6 @@ public class ProportionsTests
     }
 
     [Fact]
-    public void PresetsAreRecognisedByTheirProportions()
-    {
-        Assert.Equal(ViewProportions.WideFocus, ViewProportions.PresetName(FocusPosition.Center, new ViewWeights(24, 140, 36)));
-        Assert.Equal(ViewProportions.Normal, ViewProportions.PresetName(FocusPosition.Left, new ViewWeights(15, 55, 30)));
-        Assert.Null(ViewProportions.PresetName(FocusPosition.Center, new ViewWeights(619, 1681, 1140)));
-    }
-
-    [Fact]
     public void ProportionsAreRememberedPerView()
     {
         var ws = new Workspace();
@@ -119,6 +111,6 @@ public class ProportionsTests
         ws.Execute(new ApplyScene([], []) { View = FocusPosition.Right, Weights = new ViewWeights(10, 45, 45) });
 
         Assert.Equal(new ViewWeights(10, 45, 45), ws.ProportionsOf(FocusPosition.Right));
-        Assert.Equal(ViewProportions.HalfAndHalf, ViewProportions.PresetName(FocusPosition.Right, ws.Composition.Weights));
+        Assert.True(new ViewWeights(10, 45, 45).SameAs(ws.Composition.Weights));
     }
 }

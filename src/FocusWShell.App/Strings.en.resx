@@ -51,15 +51,12 @@
   <data name="DeckSend_WholeHasPanels" xml:space="preserve"><value>{0}: whole (it has panels)</value></data>
   <data name="Deck_AwakeOff" xml:space="preserve"><value>Screen on: no</value></data>
   <data name="Deck_AwakeOn" xml:space="preserve"><value>Screen on: yes</value></data>
-  <data name="Deck_Center" xml:space="preserve"><value>Center</value></data>
   <data name="Deck_Close" xml:space="preserve"><value>Close an app</value></data>
   <data name="Deck_CloseShort" xml:space="preserve"><value>Close</value></data>
   <data name="Deck_Closing" xml:space="preserve"><value>Closing…</value></data>
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>empty</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Hide the deck</value></data>
   <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} is in front (it gets the keyboard), but it isn't the focus app</value></data>
-  <data name="Deck_Left" xml:space="preserve"><value>Left</value></data>
-  <data name="Deck_LeftShort" xml:space="preserve"><value>Left</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} more</value></data>
   <data name="Deck_MoreName" xml:space="preserve"><value>Deck: more apps</value></data>
   <data name="Deck_Mouse" xml:space="preserve"><value>Mouse to focus</value></data>
@@ -92,13 +89,10 @@
   <data name="Deck_ReleaseName" xml:space="preserve"><value>Deck: Free {0}</value></data>
   <data name="Deck_RestoreAll" xml:space="preserve"><value>Free all</value></data>
   <data name="Deck_RestoreSure" xml:space="preserve"><value>Sure? Tap again</value></data>
-  <data name="Deck_Right" xml:space="preserve"><value>Right</value></data>
-  <data name="Deck_RightShort" xml:space="preserve"><value>Right</value></data>
   <data name="Deck_SecFocus" xml:space="preserve"><value>FOCUS</value></data>
   <data name="Deck_SecFree" xml:space="preserve"><value>FREE</value></data>
   <data name="Deck_SecMonitors" xml:space="preserve"><value>MONITORS</value></data>
   <data name="Deck_SecPower" xml:space="preserve"><value>POWER</value></data>
-  <data name="Deck_SecScenes" xml:space="preserve"><value>SCENES</value></data>
   <data name="Deck_SecSystem" xml:space="preserve"><value>SYSTEM</value></data>
   <data name="Deck_SecView" xml:space="preserve"><value>MAIN SCREEN LAYOUT</value></data>
   <data name="Deck_SendTo" xml:space="preserve"><value>Send the deck to</value></data>
@@ -107,9 +101,6 @@
   <data name="Deck_ThisMonitor" xml:space="preserve"><value>This monitor</value></data>
   <data name="Deck_ToPanel" xml:space="preserve"><value>Focus to panel</value></data>
   <data name="Deck_ToPanelShort" xml:space="preserve"><value>To panel</value></data>
-  <data name="Deck_ViewCustom" xml:space="preserve"><value>Custom</value></data>
-  <data name="Deck_ViewDone" xml:space="preserve"><value>Done</value></data>
-  <data name="Deck_ViewTip" xml:space="preserve"><value>Main screen layout: where the focus goes and how wide it is. Tap to change it.</value></data>
   <data name="Display_AMonitor" xml:space="preserve"><value>a monitor</value></data>
   <data name="Display_Lost" xml:space="preserve"><value>{0} disconnected: its windows move to the principal monitor's panels until it's back.</value></data>
   <data name="Display_PrincipalBack" xml:space="preserve"><value>{0} is the principal monitor again; {1} gets its panels back.</value></data>
@@ -219,9 +210,6 @@ Restart now?</value></data>
   <data name="Main_ParkTip" xml:space="preserve"><value>Sets the selected window aside (minimized) without removing its panel. It also happens if you minimize it.</value></data>
   <data name="Main_Promote" xml:space="preserve"><value>To focus</value></data>
   <data name="Main_PromoteTip" xml:space="preserve"><value>Brings the selected window to the focus</value></data>
-  <data name="Main_ProportionsLabel" xml:space="preserve"><value>Proportions:</value></data>
-  <data name="Main_ProportionsName" xml:space="preserve"><value>Proportions</value></data>
-  <data name="Main_ProportionsTip" xml:space="preserve"><value>Column widths in this view. You can also drag the edge of a window that faces the next column: it is saved.</value></data>
   <data name="Main_Reattach" xml:space="preserve"><value>Re-fit</value></data>
   <data name="Main_ReattachTip" xml:space="preserve"><value>Puts back into the layout a window you maximized</value></data>
   <data name="Main_Refresh" xml:space="preserve"><value>Refresh list</value></data>
@@ -247,11 +235,8 @@ Restart now?</value></data>
   <data name="Main_TabWindowsName" xml:space="preserve"><value>Windows tab</value></data>
   <data name="Main_Unpark" xml:space="preserve"><value>Bring back</value></data>
   <data name="Main_UnparkTip" xml:space="preserve"><value>Brings a parked window back to its panel, in the spot it had. It also happens if you open it from the taskbar.</value></data>
-  <data name="Main_ViewCenter" xml:space="preserve"><value>Focus in the center</value></data>
   <data name="Main_ViewLabel" xml:space="preserve"><value>View:</value></data>
-  <data name="Main_ViewLeft" xml:space="preserve"><value>Focus on the left</value></data>
   <data name="Main_ViewName" xml:space="preserve"><value>View</value></data>
-  <data name="Main_ViewRight" xml:space="preserve"><value>Focus on the right</value></data>
   <data name="Main_ViewTip" xml:space="preserve"><value>Where the focus goes on the principal monitor</value></data>
   <data name="Menu_ExcludeApp" xml:space="preserve"><value>Exclude the app {0} ({1})</value></data>
   <data name="Menu_ExcludeClass" xml:space="preserve"><value>Exclude only this kind of window (class {0})</value></data>
@@ -366,7 +351,6 @@ Restore them now?
   <data name="Tray_StartOn" xml:space="preserve"><value>FocusWShell will open when you sign in ({0}).</value></data>
   <data name="Tray_StartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
   <data name="Unmanageable_Generic" xml:space="preserve"><value>it can't be moved</value></data>
-  <data name="Weights_Custom" xml:space="preserve"><value>Custom · {0}</value></data>
   <data name="Where_AuxLeft" xml:space="preserve"><value>{0}, left</value></data>
   <data name="Where_AuxRight" xml:space="preserve"><value>{0}, right</value></data>
   <data name="Where_LowerSuffix" xml:space="preserve"><value> bottom</value></data>
@@ -380,4 +364,36 @@ Restore them now?
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>on another desktop</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · on another desktop. Click: go there.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Go to its desktop</value></data>
+  <data name="Pages_InFocus" xml:space="preserve"><value>in focus</value></data>
+  <data name="Pages_Free" xml:space="preserve"><value>free</value></data>
+  <data name="Pages_OtherDesktop" xml:space="preserve"><value>⧉ on another desktop</value></data>
+  <data name="Deck_PagesTab" xml:space="preserve"><value>Pages</value></data>
+  <data name="Deck_PagesTabCount" xml:space="preserve"><value>Pages · {0}</value></data>
+  <data name="Deck_PagesTabName" xml:space="preserve"><value>Browser pages</value></data>
+  <data name="Deck_PagesLoading" xml:space="preserve"><value>Reading the pages…</value></data>
+  <data name="Deck_PagesNone" xml:space="preserve"><value>No Chrome or Edge tabs to read.</value></data>
+  <data name="Deck_PageName" xml:space="preserve"><value>Go to page {0}</value></data>
+  <data name="Deck_PageCloseName" xml:space="preserve"><value>Close page {0}</value></data>
+  <data name="DeckMenu_Pages" xml:space="preserve"><value>Pages…</value></data>
+  <data name="Deck_PagesSites" xml:space="preserve"><value>SITES</value></data>
+  <data name="Deck_PagesLoose" xml:space="preserve"><value>SINGLE PAGES</value></data>
+  <data name="Deck_PagesBack" xml:space="preserve"><value>‹ Sites</value></data>
+  <data name="Deck_PagesSite" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Deck_PagesCloseAll" xml:space="preserve"><value>Close all</value></data>
+  <data name="Deck_PagesCloseAllConfirm" xml:space="preserve"><value>Close {0}? Tap again</value></data>
+  <data name="Deck_SiteName" xml:space="preserve"><value>Site {0}, {1} pages</value></data>
+  <data name="Deck_PageWhere" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Deck_PanelOff" xml:space="preserve"><value>off</value></data>
+  <data name="Deck_LeftColumn" xml:space="preserve"><value>Left</value></data>
+  <data name="Deck_RightColumn" xml:space="preserve"><value>Right</value></data>
+  <data name="Deck_ColumnTip" xml:space="preserve"><value>Turn {0} on or off on the main screen</value></data>
+  <data name="Deck_BorrowTip" xml:space="preserve"><value>Bring {0} to this side</value></data>
+  <data name="Deck_ResetWidth" xml:space="preserve"><value>Reset width</value></data>
+  <data name="Arr_Center" xml:space="preserve"><value>Panels on both sides</value></data>
+  <data name="Arr_Right" xml:space="preserve"><value>Panels on the left</value></data>
+  <data name="Arr_Left" xml:space="preserve"><value>Panels on the right</value></data>
+  <data name="Arr_ContextOnly" xml:space="preserve"><value>Left column only</value></data>
+  <data name="Arr_WorkOnly" xml:space="preserve"><value>Right column only</value></data>
+  <data name="Arr_FocusOnly" xml:space="preserve"><value>Focus only</value></data>
+  <data name="Main_ResetWidthTip" xml:space="preserve"><value>Back to the default width for this layout (drag the border between columns to adjust it)</value></data>
 </root>

@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using FocusWShell.Core.Browsers;
 using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
@@ -15,7 +16,6 @@ namespace FocusWShell.App;
 public sealed record DeckActions(
     Func<Command[], Task> Run,
     Func<string, string, Task> OpenApp,
-    Action<string> ApplyScene,
     Action ToggleKeepAwake,
     Func<bool> KeepAwake,
     Action FreeAll,
@@ -28,7 +28,10 @@ public sealed record DeckActions(
     Func<nint, Task> CloseApp,
     Func<nint, Task> BringToFront,
     Func<Task> MouseToFocus,
-    Action<string, bool> SetPinned);
+    Action<string, bool> SetPinned,
+    Func<Task<IReadOnlyList<PageWindow>>>? ReadPages = null,
+    Func<nint, BrowserTab, Task<bool>>? SelectPage = null,
+    Func<nint, BrowserTab, Task<bool>>? ClosePage = null);
 
 /// <summary>Lo que hace el panel de energía del deck.</summary>
 public enum DeckPower
@@ -100,7 +103,6 @@ public sealed class DeckWindow : Window
                 _moveApp = null;
                 _closing = false;
                 _pinning = false;
-                _viewOpen = false;
                 _powerOpen = false;
                 _powerArmed = null;
             }
@@ -209,7 +211,7 @@ public sealed class DeckWindow : Window
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         // Izquierda, en tres tarjetas separadas por más aire que sus botones entre sí:
-        //   Foco (la app y qué hacer con ella), Disposición (vista, ancho, escenas) y, abajo, Sistema.
+        //   Foco (la app y qué hacer con ella), Disposición (las columnas del principal) y, abajo, Sistema.
         var left = new Grid();
         void Card(Border card, GridLength height)
         {
@@ -225,27 +227,17 @@ public sealed class DeckWindow : Window
         modes.Margin = new Thickness(0, 8, 0, 2);
         Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
 
-        // La disposición del principal casi no se cambia: se ve resumida en un botón, que abre aquí mismo
-        // sus botones (vista y ancho) hasta tocar «Listo». Así las escenas tienen más sitio.
-        var layout = new List<(UIElement, GridLength)> { (Label(Strings.Deck_SecView), GridLength.Auto) };
-        if (_viewOpen)
+        // La disposición del principal: las columnas de paneles que se prenden y apagan, como un mapa del
+        // monitor (ADR 0012, enmienda). El foco ocupa lo que dejan.
+        var arrangement = ArrangementButtons(state, compact: false);
+        var layout = new List<(UIElement, GridLength)>
         {
-            layout.Add((Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto));
-            layout.Add((Buttons(3, WidthButtons(state)), GridLength.Auto));
-            layout.Add((Buttons(1, [ViewDoneButton()]), GridLength.Auto));
-        }
-        else
-        {
-            layout.Add((Buttons(1, [ViewSummary(state, full: true)]), GridLength.Auto));
-        }
+            (Label(Strings.Deck_SecView), GridLength.Auto),
+            (Buttons(arrangement.Count, arrangement), GridLength.Auto),
+        };
 
-        if (state.Scenes.Count > 0)
-        {
-            layout.Add((Label(Strings.Deck_SecScenes), GridLength.Auto));
-            layout.Add((TextGrid(SceneButtons(state)), new GridLength(1, GridUnitType.Star)));
-        }
-
-        Card(Group(null, layout), new GridLength(1, GridUnitType.Star));
+        Card(Group(null, layout), GridLength.Auto);
+        left.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // aire hasta Sistema
         var system = Group(_powerOpen ? Strings.Deck_SecPower : Strings.Deck_SecSystem, [(Buttons(2, SystemButtons()), GridLength.Auto)]);
         system.Margin = new Thickness(0, 0, 0, 8); // abajo, alineada con LIBRES
         Card(system, GridLength.Auto);
@@ -255,17 +247,8 @@ public sealed class DeckWindow : Window
         // Derecha: arriba las pestañas de los monitores; debajo, sus paneles en columnas (dos filas si son
         // más de tres) y las libres abajo.
         var right = new Grid();
-        var tabs = MonitorTabs(state);
-        if (tabs.Count > 1)
+        if (TabRow(state, wide: true) is { } tabBar)
         {
-            var tabBar = new UniformGrid { Rows = 1, Margin = new Thickness(0, 0, 0, 2) };
-            foreach (var tab in tabs)
-            {
-                var b = TabButton(tab);
-                StretchOut(b);
-                tabBar.Children.Add(b);
-            }
-
             right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             right.Children.Add(tabBar);
         }
@@ -304,8 +287,10 @@ public sealed class DeckWindow : Window
             panels.Children.Add(card);
         }
 
-        Grid.SetRow(panels, panelsRow);
-        right.Children.Add(panels);
+        // Con «Páginas» elegida, la lista de páginas ocupa la zona de los paneles.
+        UIElement area = _pagesOpen ? PagesView() : panels;
+        Grid.SetRow(area, panelsRow);
+        right.Children.Add(area);
         var free = FreeCard(state);
         Grid.SetRow(free, panelsRow + 1);
         right.Children.Add(free);
@@ -323,52 +308,45 @@ public sealed class DeckWindow : Window
             _root.Children.Add(e);
         }
 
-        Row(FocusHeader(state, viewSummary: true), GridLength.Auto);
+        Row(FocusHeader(state, arrangement: true), GridLength.Auto);
         // Las seis en una fila: un hueco tras «Ratón» separa las de acción inmediata de las de modo.
         var focusActions = FocusActions(state, shortText: true);
         var focusRow = Buttons(6, focusActions);
         focusActions[2].Margin = new Thickness(0, 0, 20, 8);
         Row(focusRow, GridLength.Auto);
-        // Vista y ancho: resumidos en la cabecera; abiertos, en una fila de seis y «Listo» debajo.
-        if (_viewOpen)
-        {
-            Row(Buttons(6, [.. ViewButtons(state, shortText: true), .. WidthButtons(state)]), GridLength.Auto);
-            Row(Buttons(1, [ViewDoneButton()]), GridLength.Auto);
-        }
 
         // Pestañas por monitor y, debajo, sus paneles uno debajo de otro, con alto según cuántas apps tienen.
-        var tabs = MonitorTabs(state);
-        if (tabs.Count > 1)
+        if (TabRow(state, wide: false) is { } tabRow)
         {
-            var tabRow = new UniformGrid { Columns = tabs.Count, Margin = new Thickness(0, 0, 0, 2) };
-            foreach (var tab in tabs)
-            {
-                tabRow.Children.Add(TabButton(tab));
-            }
-
             Row(tabRow, GridLength.Auto);
         }
 
         var shown = PanelsOnTab(state);
-        if (shown.Count == 0)
+        if (_pagesOpen)
         {
-            Row(NoPanelsCard(state), new GridLength(1, GridUnitType.Star), 116);
+            // Ocupa lo que ocuparían los paneles de ese monitor.
+            Row(PagesView(), new GridLength(Math.Max(2, shown.Sum(p => 1 + p.Apps.Count)), GridUnitType.Star), 116);
+        }
+        else
+        {
+            if (shown.Count == 0)
+            {
+                Row(NoPanelsCard(state), new GridLength(1, GridUnitType.Star), 116);
+            }
+
+            foreach (var panel in shown)
+            {
+                Row(PanelCard(panel), new GridLength(1 + panel.Apps.Count, GridUnitType.Star), 116);
+            }
         }
 
-        foreach (var panel in shown)
+        // Con «Páginas» elegida, la lista se queda con el sitio de LIBRES y de las escenas: aquí no sobra.
+        if (!_pagesOpen)
         {
-            Row(PanelCard(panel), new GridLength(1 + panel.Apps.Count, GridUnitType.Star), 116);
+            Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
         }
 
-        Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
-
-        // Abajo: las escenas (una fila; si no caben, «+N más») y, aparte, lo del sistema.
-        // Con la energía o la disposición abiertas, sin escenas: así cabe todo sin scroll.
-        if (state.Scenes.Count > 0 && !_powerOpen && !_viewOpen)
-        {
-            Row(TextGrid(SceneButtons(state)), new GridLength(Touch + 8));
-        }
-
+        // Abajo, lo del sistema.
         var system = SystemButtons();
         Row(Buttons(system.Count > 4 ? 3 : system.Count, system), GridLength.Auto);
     }
@@ -401,7 +379,6 @@ public sealed class DeckWindow : Window
 
         _closing = mode == "cerrar";
         _pinning = mode == "anclar";
-        _viewOpen = mode == "vista";
         _powerOpen = mode is "energia" or "energia-seguro";
         if (mode == "energia-seguro")
         {
@@ -459,10 +436,11 @@ public sealed class DeckWindow : Window
         var b = WideButton("🖵  " + text, true, () =>
         {
             _tab = TabKey(tab.Display);
+            _pagesOpen = false;
             Render();
         });
         System.Windows.Automation.AutomationProperties.SetName(b, Core.Text.F(Strings.Deck_TabName, tab.Name));
-        if (OnTab(tab.Display))
+        if (OnTab(tab.Display) && !_pagesOpen)
         {
             b.Background = ActiveBrush;
         }
@@ -494,13 +472,551 @@ public sealed class DeckWindow : Window
         b.AllowDrop = true;
         b.DragEnter += (_, e) =>
         {
-            if (e.Data.GetDataPresent(DragFormat) && !OnTab(tab.Display))
+            if (e.Data.GetDataPresent(DragFormat) && (!OnTab(tab.Display) || _pagesOpen))
             {
                 _tab = TabKey(tab.Display);
+                _pagesOpen = false;
                 Dispatcher.BeginInvoke(Render);
             }
         };
         return b;
+    }
+
+    /// <summary>
+    /// La fila de pestañas: los monitores (si hay más de uno) y, a la derecha y aparte, «Páginas» si hay
+    /// Chrome o Edge abiertos. Las dos eligen qué se ve en la zona de los paneles.
+    /// </summary>
+    private DockPanel? TabRow(DeckState state, bool wide)
+    {
+        var tabs = MonitorTabs(state);
+        bool pages = _actions.ReadPages is not null && (state.Browsers.Count > 0 || _pagesOpen);
+        if (tabs.Count <= 1 && !pages)
+        {
+            return null;
+        }
+
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 2), LastChildFill = true };
+        if (pages)
+        {
+            var button = PagesTabButton(wide);
+            DockPanel.SetDock(button, Dock.Right);
+            row.Children.Add(button);
+        }
+
+        var monitors = new UniformGrid { Rows = 1 };
+        foreach (var tab in tabs)
+        {
+            var b = TabButton(tab);
+            if (wide)
+            {
+                StretchOut(b);
+            }
+
+            monitors.Children.Add(b);
+        }
+
+        row.Children.Add(monitors);
+        return row;
+    }
+
+    // --- Páginas de los navegadores (spike S12) -----------------------------------------------------
+
+    /// <summary>«Páginas» elegida: la zona de los paneles muestra las pestañas de todos los navegadores.</summary>
+    private bool _pagesOpen;
+
+    /// <summary>Lo último leído (<c>null</c>: leyendo por primera vez).</summary>
+    private IReadOnlyList<PageWindow>? _pages;
+
+    /// <summary>Cuántas páginas había la última vez que se leyeron (para la pestaña, sin leer en cada repaso).</summary>
+    private int? _pagesCount;
+
+    /// <summary>Dónde estaba el desplazamiento, para conservarlo cuando el deck se redibuja.</summary>
+    private double _pagesOffset;
+
+    private Button PagesTabButton(bool wide)
+    {
+        string text = _pagesCount is { } count ? Core.Text.F(Strings.Deck_PagesTabCount, count) : Strings.Deck_PagesTab;
+        var b = WideButton(wide ? "🗂  " + text : "🗂", true, () => _pagesOpen ? ClosePages() : OpenPages());
+        b.MinWidth = wide ? 150 : Touch;
+        b.Width = wide ? double.NaN : Touch;
+        b.Padding = new Thickness(wide ? 12 : 0, 0, wide ? 12 : 0, 0);
+        // Un hueco la separa de los monitores: no es un monitor.
+        b.Margin = new Thickness(wide ? 12 : 10, 0, 0, wide ? 8 : 6);
+        b.ToolTip = Strings.Deck_PagesTabName;
+        System.Windows.Automation.AutomationProperties.SetName(b, Strings.Deck_PagesTabName);
+        if (_pagesOpen)
+        {
+            b.Background = ActiveBrush;
+        }
+
+        return b;
+    }
+
+    /// <summary>Elige «Páginas» (en sus sitios) y lee los navegadores.</summary>
+    private async Task OpenPages()
+    {
+        _pagesOpen = true;
+        _pagesSite = null;
+        _closeAllArmed = null;
+        _pagesOffset = 0;
+        Render();
+        await LoadPages();
+    }
+
+    private Task ClosePages()
+    {
+        _pagesOpen = false;
+        Render();
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadPages()
+    {
+        if (_actions.ReadPages is not { } read)
+        {
+            return;
+        }
+
+        var pages = await read();
+        _pages = pages;
+        _pagesCount = pages.Sum(w => w.Tabs.Count);
+        if (_pagesOpen)
+        {
+            Render();
+        }
+    }
+
+    /// <summary>Para la vista previa: «Páginas» elegida, con estas páginas.</summary>
+    internal void ShowPages(IReadOnlyList<PageWindow> pages, string? site = null)
+    {
+        _pagesOpen = true;
+        _pagesSite = site;
+        _pages = pages;
+        _pagesCount = pages.Sum(w => w.Tabs.Count);
+    }
+
+    /// <summary>Una página con su ventana y el sitio al que pertenece (<c>null</c>: suelta).</summary>
+    private sealed record PageEntry(PageWindow Window, BrowserTab Tab, string? Site);
+
+    /// <summary>Sitio elegido en el segundo paso; <c>null</c>: el primero (sitios y sueltas).</summary>
+    private string? _pagesSite;
+
+    /// <summary>«Cerrar todas» armado: un segundo toque antes de esta hora las cierra.</summary>
+    private DateTime? _closeAllArmed;
+
+    private List<PageEntry> PageEntries()
+    {
+        var all = (_pages ?? []).SelectMany(w => w.Tabs.Select(t => (Window: w, Tab: t))).ToList();
+        var sites = PageSites.Assign([.. all.Select(x => x.Tab.Title)]);
+        return [.. all.Select((x, i) => new PageEntry(x.Window, x.Tab, sites[i]))];
+    }
+
+    /// <summary>
+    /// Las páginas de todos los navegadores en dos pasos: primero los sitios con varias páginas y las páginas
+    /// sueltas; tocar un sitio muestra sus páginas, y tocar una suelta la abre directo. Sin búsqueda: se
+    /// desplaza con el dedo.
+    /// </summary>
+    private Border PagesView()
+    {
+        var card = new Border
+        {
+            BorderBrush = CardBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(6),
+            Margin = new Thickness(0, 0, 8, 8),
+        };
+        var entries = PageEntries();
+        if (entries.Count == 0)
+        {
+            card.Child = new TextBlock
+            {
+                Text = _pages is null ? Strings.Deck_PagesLoading : Strings.Deck_PagesNone,
+                Foreground = DimBrush,
+                Margin = new Thickness(6),
+                TextWrapping = TextWrapping.Wrap,
+            };
+            return card;
+        }
+
+        var inSite = _pagesSite is { } site ? entries.Where(e => e.Site == site).ToList() : [];
+        if (_pagesSite is not null && inSite.Count == 0)
+        {
+            _pagesSite = null; // se cerraron todas: de vuelta a los sitios
+        }
+
+        var body = new DockPanel();
+        if (_pagesSite is not null)
+        {
+            var header = SiteHeader(_pagesSite, inSite);
+            DockPanel.SetDock(header, Dock.Top);
+            body.Children.Add(header);
+        }
+
+        var list = new StackPanel();
+        if (_pagesSite is null)
+        {
+            SitesAndLoose(list, entries);
+        }
+        else
+        {
+            foreach (var entry in inSite)
+            {
+                list.Children.Add(PageRow(entry.Window, entry.Tab, PageSites.ShortTitle(entry.Tab.Title, _pagesSite)));
+            }
+        }
+
+        var scroller = new ScrollViewer
+        {
+            Content = list,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Focusable = false,
+        };
+        DragToScroll(scroller);
+        scroller.Loaded += (_, _) => scroller.ScrollToVerticalOffset(_pagesOffset);
+        scroller.ScrollChanged += (_, e) => _pagesOffset = e.VerticalOffset;
+        body.Children.Add(scroller);
+        card.Child = body;
+        return card;
+    }
+
+    /// <summary>Paso 1: los sitios con varias páginas (de más a menos) y, debajo, las sueltas por título.</summary>
+    private void SitesAndLoose(StackPanel list, List<PageEntry> entries)
+    {
+        int columns = IsWide ? 4 : 2;
+        var sites = entries.Where(e => e.Site is not null).GroupBy(e => e.Site!)
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase).ToList();
+        if (sites.Count > 0)
+        {
+            list.Children.Add(Label(Strings.Deck_PagesSites));
+            var grid = new UniformGrid { Columns = columns };
+            foreach (var group in sites)
+            {
+                grid.Children.Add(SiteTile(group.Key, group.Count()));
+            }
+
+            list.Children.Add(grid);
+        }
+
+        var loose = entries.Where(e => e.Site is null).OrderBy(e => e.Tab.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
+        if (loose.Count > 0)
+        {
+            list.Children.Add(Label(Strings.Deck_PagesLoose));
+            // Una columna menos que los sitios: cada suelta lleva su ✕ y el título necesita sitio.
+            var grid = new UniformGrid { Columns = IsWide ? 3 : 2 };
+            foreach (var entry in loose)
+            {
+                grid.Children.Add(LooseTile(entry));
+            }
+
+            list.Children.Add(grid);
+        }
+    }
+
+    /// <summary>Un sitio: su nombre y cuántas páginas tiene. Tocarlo muestra sus páginas.</summary>
+    private Button SiteTile(string site, int count)
+    {
+        var content = new DockPanel();
+        var number = new TextBlock { Text = $"{count} ›", Foreground = DimBrush, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(number, Dock.Right);
+        content.Children.Add(number);
+        content.Children.Add(new TextBlock { Text = site, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+        var tile = PageButton(content);
+        System.Windows.Automation.AutomationProperties.SetName(tile, Core.Text.F(Strings.Deck_SiteName, site, count));
+        tile.Click += (_, _) =>
+        {
+            _pagesSite = site;
+            _pagesOffset = 0;
+            _closeAllArmed = null;
+            Render();
+        };
+        return tile;
+    }
+
+    /// <summary>Una página suelta: su título (tocarlo la abre) y ✕ para cerrarla.</summary>
+    private Grid LooseTile(PageEntry entry)
+    {
+        var tile = new Grid { Margin = new Thickness(0, 0, 4, 4) };
+        tile.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        tile.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Touch + 2) });
+        var go = PageButton(new TextBlock { Text = entry.Tab.Title, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+        go.Margin = new Thickness(0);
+        Mark(go, entry.Window, entry.Tab);
+        go.ToolTip = entry.Tab.Title + Environment.NewLine + Core.Text.F(Strings.Deck_PageWhere, entry.Window.Browser, entry.Window.Where);
+        System.Windows.Automation.AutomationProperties.SetName(go, Core.Text.F(Strings.Deck_PageName, entry.Tab.Title));
+        go.Click += async (_, _) => await ChoosePage(entry.Window, entry.Tab);
+        tile.Children.Add(go);
+        var close = CloseButton(entry.Tab.Title, () => ClosePages([entry]));
+        Grid.SetColumn(close, 1);
+        tile.Children.Add(close);
+        return tile;
+    }
+
+    /// <summary>✕ de 48 para cerrar una página. Rojo: cerrar, como el resto del deck.</summary>
+    private static Button CloseButton(string title, Func<Task> close)
+    {
+        var button = new Button
+        {
+            Content = "✕",
+            Width = Touch,
+            Height = Touch,
+            Margin = new Thickness(2, 0, 0, 0),
+            Focusable = false,
+            Foreground = WarnBrush,
+            Background = CardBrush,
+            BorderThickness = new Thickness(0),
+            Cursor = Cursors.Hand,
+            FontSize = 14,
+        };
+        System.Windows.Automation.AutomationProperties.SetName(button, Core.Text.F(Strings.Deck_PageCloseName, title));
+        button.Click += async (_, _) => await close();
+        return button;
+    }
+
+    /// <summary>Paso 2, arriba: volver a los sitios, cuál es, y «Cerrar todas» (con un segundo toque).</summary>
+    private DockPanel SiteHeader(string site, List<PageEntry> pages)
+    {
+        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 6), LastChildFill = true };
+        var back = WideButton(Strings.Deck_PagesBack, true, () =>
+        {
+            _pagesSite = null;
+            _pagesOffset = 0;
+            _closeAllArmed = null;
+            Render();
+        });
+        back.MinWidth = 0;
+        back.Margin = new Thickness(0, 0, 8, 0);
+        DockPanel.SetDock(back, Dock.Left);
+        header.Children.Add(back);
+
+        bool armed = _closeAllArmed is { } until && until > DateTime.Now;
+        var closeAll = WideButton(armed ? Core.Text.F(Strings.Deck_PagesCloseAllConfirm, pages.Count) : Strings.Deck_PagesCloseAll, true, async () =>
+        {
+            if (_closeAllArmed is { } deadline && deadline > DateTime.Now)
+            {
+                _closeAllArmed = null;
+                await ClosePages(pages);
+                return;
+            }
+
+            // Primer toque: se arma y, si no se confirma en 4 s, vuelve a su texto.
+            _closeAllArmed = DateTime.Now.AddSeconds(4);
+            Render();
+            await Task.Delay(4100);
+            if (_closeAllArmed is { } still && still <= DateTime.Now)
+            {
+                _closeAllArmed = null;
+                Render();
+            }
+        });
+        closeAll.MinWidth = 0;
+        closeAll.Margin = new Thickness(8, 0, 0, 0);
+        closeAll.Foreground = armed ? TextBrush : WarnBrush;
+        closeAll.Background = armed ? WarnBrush : CardBrush;
+        DockPanel.SetDock(closeAll, Dock.Right);
+        header.Children.Add(closeAll);
+
+        header.Children.Add(new TextBlock
+        {
+            Text = Core.Text.F(Strings.Deck_PagesSite, site, pages.Count),
+            Foreground = TextBrush,
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 14,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        return header;
+    }
+
+    /// <summary>Un botón de página o sitio: 48 de alto, texto a la izquierda.</summary>
+    private static Button PageButton(UIElement content) => new()
+    {
+        Content = content,
+        Height = Touch,
+        Margin = new Thickness(0, 0, 4, 4),
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        Padding = new Thickness(12, 0, 10, 0),
+        Focusable = false,
+        Foreground = TextBrush,
+        Background = CardBrush,
+        BorderBrush = ActiveBrush,
+        BorderThickness = new Thickness(0),
+        Cursor = Cursors.Hand,
+    };
+
+    /// <summary>La activa de su ventana, con la barra azul; las de otro escritorio, apagadas.</summary>
+    private static void Mark(Button button, PageWindow window, BrowserTab tab)
+    {
+        if (tab.Active)
+        {
+            button.BorderThickness = new Thickness(4, 0, 0, 0);
+            button.Padding = new Thickness(8, 0, 10, 0);
+        }
+
+        if (window.OtherDesktop)
+        {
+            button.Foreground = DimBrush;
+        }
+    }
+
+    /// <summary>
+    /// Arrastrar con el dedo desplaza la lista. Los toques de la tablet llegan como ratón, y el desplazamiento
+    /// táctil de WPF no responde a eso; además cada fila es un botón y se quedaba con el arrastre. Así que se
+    /// hace a mano: pasados 10 px, la lista se lleva el arrastre y el botón donde empezó no se pulsa. Un
+    /// toque corto sigue siendo un toque. La barra de desplazamiento funciona como siempre.
+    /// </summary>
+    private static void DragToScroll(ScrollViewer scroller)
+    {
+        Point? start = null;
+        double startOffset = 0;
+        bool dragging = false;
+        scroller.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            start = IsInScrollBar(e.OriginalSource as DependencyObject) ? null : e.GetPosition(scroller);
+            startOffset = scroller.VerticalOffset;
+            dragging = false;
+        };
+        scroller.PreviewMouseMove += (_, e) =>
+        {
+            if (start is not { } origin || e.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            double dy = e.GetPosition(scroller).Y - origin.Y;
+            if (!dragging && Math.Abs(dy) > 10)
+            {
+                dragging = true;
+                scroller.CaptureMouse(); // el botón pierde la captura: no habrá clic
+            }
+
+            if (dragging)
+            {
+                scroller.ScrollToVerticalOffset(startOffset - dy);
+                e.Handled = true;
+            }
+        };
+        scroller.PreviewMouseLeftButtonUp += (_, e) =>
+        {
+            if (dragging)
+            {
+                e.Handled = true;
+                scroller.ReleaseMouseCapture();
+            }
+
+            start = null;
+            dragging = false;
+        };
+        scroller.LostMouseCapture += (_, _) =>
+        {
+            if (dragging)
+            {
+                start = null;
+                dragging = false;
+            }
+        };
+    }
+
+    private static bool IsInScrollBar(DependencyObject? element)
+    {
+        for (var e = element; e is not null; e = e is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(e) : LogicalTreeHelper.GetParent(e))
+        {
+            if (e is System.Windows.Controls.Primitives.ScrollBar)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Paso 2: una página del sitio, sin el nombre del sitio, con su ventana al lado y ✕ para cerrarla.</summary>
+    private Grid PageRow(PageWindow window, BrowserTab tab, string title)
+    {
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Touch + 2) });
+        var content = new DockPanel();
+        var where = new TextBlock
+        {
+            Text = Core.Text.F(Strings.Deck_PageWhere, window.Browser, window.Where),
+            Foreground = DimBrush,
+            FontSize = 11,
+            Margin = new Thickness(10, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        DockPanel.SetDock(where, Dock.Right);
+        content.Children.Add(where);
+        content.Children.Add(new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+        var go = PageButton(content);
+        go.Margin = new Thickness(0);
+        Mark(go, window, tab);
+        go.ToolTip = tab.Title;
+        System.Windows.Automation.AutomationProperties.SetName(go, Core.Text.F(Strings.Deck_PageName, tab.Title));
+        go.Click += async (_, _) => await ChoosePage(window, tab);
+        row.Children.Add(go);
+
+        var close = CloseButton(tab.Title, () => ClosePages([new PageEntry(window, tab, _pagesSite)]));
+        Grid.SetColumn(close, 1);
+        row.Children.Add(close);
+        return row;
+    }
+
+    /// <summary>
+    /// Lleva la página al frente, como tocar su app: una ventana de un panel va al foco; una libre (o de otro
+    /// escritorio) sólo se trae al frente. Después se hace visible la pestaña.
+    /// </summary>
+    private async Task ChoosePage(PageWindow window, BrowserTab tab)
+    {
+        _pagesOpen = false;
+        if (window.Managed && !window.InFocus && !window.OtherDesktop)
+        {
+            await Run(true, new Promote(window.Handle));
+        }
+        else
+        {
+            if (!Docked)
+            {
+                _actions.Hide();
+            }
+
+            await _actions.BringToFront(window.Handle);
+        }
+
+        if (_actions.SelectPage is { } select)
+        {
+            await select(window.Handle, tab);
+        }
+
+        Render();
+    }
+
+    /// <summary>
+    /// Cierra páginas (una, o todas las de un sitio): desaparecen de la lista al momento y, al terminar, se
+    /// vuelven a leer los navegadores. Una a una, para que cada navegador las procese en orden.
+    /// </summary>
+    private async Task ClosePages(IReadOnlyList<PageEntry> entries)
+    {
+        if (_actions.ClosePage is not { } close || _pages is null || entries.Count == 0)
+        {
+            return;
+        }
+
+        var closing = entries.Select(e => (e.Window.Handle, e.Tab)).ToHashSet();
+        _pages = [.. _pages
+            .Select(w => w with { Tabs = [.. w.Tabs.Where(t => !closing.Contains((w.Handle, t)))] })
+            .Where(w => w.Tabs.Count > 0)];
+        _pagesCount = _pages.Sum(w => w.Tabs.Count);
+        Render();
+        foreach (var entry in entries)
+        {
+            await close(entry.Window.Handle, entry.Tab);
+            await Task.Delay(120);
+        }
+
+        await Task.Delay(300);
+        await LoadPages();
     }
 
     /// <summary>Un monitor sin paneles: cómo crearlos.</summary>
@@ -526,7 +1042,7 @@ public sealed class DeckWindow : Window
 
     // --- Piezas ----------------------------------------------------------------------------------------
 
-    private DockPanel FocusHeader(DeckState state, bool viewSummary = false)
+    private DockPanel FocusHeader(DeckState state, bool arrangement = false)
     {
         var header = new DockPanel { Margin = new Thickness(0, 0, 8, 8) };
         var close = SmallButton("✕", Strings.Deck_Hide, () => _actions.Hide());
@@ -543,13 +1059,18 @@ public sealed class DeckWindow : Window
         };
         DockPanel.SetDock(send, Dock.Right);
         header.Children.Add(send);
-        if (viewSummary)
+        if (arrangement)
         {
-            var summary = ViewSummary(state, full: false);
-            summary.Margin = new Thickness(0, 0, 6, 0);
-            summary.VerticalAlignment = VerticalAlignment.Top;
-            DockPanel.SetDock(summary, Dock.Right);
-            header.Children.Add(summary);
+            // En el deck estrecho, los interruptores de columnas van en la cabecera, sólo con su icono.
+            var toggles = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Top };
+            foreach (var b in ArrangementButtons(state, compact: true))
+            {
+                b.Margin = new Thickness(0, 0, 2, 0);
+                toggles.Children.Add(b);
+            }
+
+            DockPanel.SetDock(toggles, Dock.Right);
+            header.Children.Add(toggles);
         }
         var focus = new StackPanel();
         focus.Children.Add(Label(Strings.Deck_SecFocus));
@@ -703,83 +1224,70 @@ public sealed class DeckWindow : Window
     /// <summary>La app que se acaba de mandar cerrar: su tarjeta dice «Cerrando…» hasta que desaparece.</summary>
     private nint? _closingNow;
 
-    /// <summary>Si están abiertos los botones de la disposición del principal (vista y ancho).</summary>
-    private bool _viewOpen;
-
     /// <summary>
-    /// La disposición del principal, para leerla de un vistazo («▣ Centro · Normal»); tocarla abre sus
-    /// botones. Con <paramref name="full"/> en falso, sólo el icono de la vista y el ancho (para la cabecera).
+    /// Los interruptores de la disposición del principal, de izquierda a derecha como en el monitor: el extra de
+    /// la izquierda (traer Trabajo, sólo en un ultrawide), Contexto, Trabajo y el extra de la derecha (traer
+    /// Contexto). Azul: prendido. Su menú (pulsación larga) restablece el ancho de esta disposición.
     /// </summary>
-    private Button ViewSummary(DeckState state, bool full)
+    private List<Button> ArrangementButtons(DeckState state, bool compact)
     {
-        var (icon, where) = state.View switch
+        var view = state.View;
+        string left = ColumnName(state, PanelSide.Left) ?? Strings.Deck_LeftColumn;
+        string right = ColumnName(state, PanelSide.Right) ?? Strings.Deck_RightColumn;
+        var buttons = new List<Button>();
+        if (MainArrangement.CanBorrowToLeft(view, state.Ultrawide))
         {
-            FocusPosition.Left => ("◧", Strings.Deck_Left),
-            FocusPosition.Right => ("◨", Strings.Deck_Right),
-            _ => ("▣", Strings.Deck_Center),
-        };
-        var width = ViewProportions.Presets(state.View).Where(p => p.Weights.SameAs(state.Weights)).Select(p => p.Name).FirstOrDefault() ?? Strings.Deck_ViewCustom;
-        var b = WideButton(full ? $"{icon}  {where} · {width}   ⚙" : $"{icon}  {width}", true, () =>
+            buttons.Add(ArrangementToggle(compact ? "⇠" : "⇠  " + right, Core.Text.F(Strings.Deck_BorrowTip, right),
+                MainArrangement.RightBorrowedLeft(view), MainArrangement.ToggleBorrowToLeft(view), state, compact));
+        }
+
+        buttons.Add(ArrangementToggle(compact ? "◧" : "◧  " + left, Core.Text.F(Strings.Deck_ColumnTip, left),
+            MainArrangement.LeftOn(view), MainArrangement.ToggleLeft(view), state, compact));
+        buttons.Add(ArrangementToggle(compact ? "◨" : right + "  ◨", Core.Text.F(Strings.Deck_ColumnTip, right),
+            MainArrangement.RightOn(view), MainArrangement.ToggleRight(view), state, compact));
+        if (MainArrangement.CanBorrowToRight(view, state.Ultrawide))
         {
-            _viewOpen = !_viewOpen;
-            Render();
-        });
-        b.MinWidth = 0;
-        b.Padding = new Thickness(10, 0, 10, 0);
-        b.ToolTip = Strings.Deck_ViewTip;
-        System.Windows.Automation.AutomationProperties.SetName(b, "Deck: " + Strings.Deck_ViewTip);
-        if (_viewOpen)
+            buttons.Add(ArrangementToggle(compact ? "⇢" : left + "  ⇢", Core.Text.F(Strings.Deck_BorrowTip, left),
+                MainArrangement.LeftBorrowedRight(view), MainArrangement.ToggleBorrowToRight(view), state, compact));
+        }
+
+        return buttons;
+    }
+
+    private Button ArrangementToggle(string text, string tip, bool on, FocusPosition next, DeckState state, bool compact)
+    {
+        var b = WideButton(text, true, () => Run(false, new SetView(next)));
+        if (compact)
+        {
+            b.MinWidth = Touch;
+            b.Width = Touch;
+            b.Padding = new Thickness(0);
+            b.FontSize = 16;
+        }
+        else
+        {
+            b.MinWidth = 0;
+            b.Padding = new Thickness(8, 0, 8, 0);
+        }
+
+        b.ToolTip = tip;
+        System.Windows.Automation.AutomationProperties.SetName(b, "Deck: " + tip);
+        if (on)
         {
             b.Background = ActiveBrush;
         }
 
+        var menu = new ContextMenu();
+        var reset = new MenuItem { Header = Strings.Deck_ResetWidth };
+        reset.Click += async (_, _) => await Run(false, new SetProportions(state.View, null));
+        menu.Items.Add(reset);
+        b.ContextMenu = menu;
         return b;
     }
 
-    private Button ViewDoneButton() => WideButton("✓  " + Strings.Deck_ViewDone, true, () =>
-    {
-        _viewOpen = false;
-        Render();
-    });
-
-    private List<Button> ViewButtons(DeckState state, bool shortText)
-    {
-        var views = shortText
-            ? new[] { (FocusPosition.Left, "◧  " + Strings.Deck_LeftShort), (FocusPosition.Center, "▣  " + Strings.Deck_Center), (FocusPosition.Right, "◨  " + Strings.Deck_RightShort) }
-            : new[] { (FocusPosition.Left, "◧  " + Strings.Deck_Left), (FocusPosition.Center, "▣  " + Strings.Deck_Center), (FocusPosition.Right, "◨  " + Strings.Deck_Right) };
-        return views.Select(v =>
-        {
-            var b = WideButton(v.Item2, true, () => Run(false, new SetView(v.Item1)));
-            if (state.View == v.Item1)
-            {
-                b.Background = ActiveBrush;
-            }
-
-            return b;
-        }).ToList();
-    }
-
-    private List<Button> WidthButtons(DeckState state) =>
-        ViewProportions.Presets(state.View).Select(p =>
-        {
-            var b = WideButton(p.Name, true, () => Run(false, new SetProportions(state.View, p.Weights)));
-            if (p.Weights.SameAs(state.Weights))
-            {
-                b.Background = ActiveBrush;
-            }
-
-            return b;
-        }).ToList();
-
-    private List<Button> SceneButtons(DeckState state) =>
-        state.Scenes.Select(name => WideButton(name, true, () =>
-        {
-            _actions.ApplyScene(name);
-            if (!Docked)
-            {
-                _actions.Hide();
-            }
-        })).ToList();
+    /// <summary>El nombre de la columna de ese lado en el principal: el de su primer panel.</summary>
+    private static string? ColumnName(DeckState state, PanelSide side) =>
+        state.Panels.Where(p => p.Display is null && p.Side == side).OrderBy(p => p.Slot).FirstOrDefault()?.Name;
 
     private Button AwakeButton()
     {
@@ -961,42 +1469,6 @@ public sealed class DeckWindow : Window
         return grid;
     }
 
-    /// <summary>
-    /// Botones de texto que se reparten el espacio que haya (escenas, la fila de abajo). Si no caben todos, el
-    /// último hueco es «+N más» y abre un menú con los que faltan (antes, los que no cabían no se veían).
-    /// </summary>
-    private static FitGrid TextGrid(IEnumerable<Button> buttons)
-    {
-        var grid = new FitGrid { MinCellWidth = 120, MaxCellWidth = 400, Aspect = 4, MinCellHeight = Touch, MaxCellHeight = Touch, Gap = 6, Margin = new Thickness(0, 0, 8, 0) };
-        var list = buttons.ToList();
-        foreach (var b in list)
-        {
-            StretchOut(b);
-            b.Margin = new Thickness(0);
-            grid.Children.Add(b);
-        }
-
-        var more = new Button { Focusable = false, BorderThickness = new Thickness(0), Foreground = TextBrush, Background = CardBrush, Cursor = Cursors.Hand, FontSize = 14 };
-        System.Windows.Automation.AutomationProperties.SetName(more, Strings.Deck_MoreName);
-        more.Click += (_, _) =>
-        {
-            var menu = new ContextMenu { PlacementTarget = more };
-            foreach (var hidden in list.Skip(grid.HiddenFrom))
-            {
-                string header = System.Windows.Automation.AutomationProperties.GetName(hidden) is { Length: > 0 } n ? n : hidden.Content?.ToString() ?? "";
-                var item = new MenuItem { Header = header, IsEnabled = hidden.IsEnabled };
-                item.Click += (_, _) => hidden.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                menu.Items.Add(item);
-            }
-
-            menu.IsOpen = true;
-        };
-        grid.More = more;
-        grid.OverflowChanged = hidden => more.Content = Core.Text.F(Strings.Deck_More, hidden);
-        grid.Children.Add(more);
-        return grid;
-    }
-
     private static void StretchOut(Button b)
     {
         b.MinWidth = 0;
@@ -1032,6 +1504,11 @@ public sealed class DeckWindow : Window
         }
 
         var zone = DropZone(content, panel);
+        if (panel.Off)
+        {
+            zone.Opacity = 0.55; // su columna está apagada: sus apps, minimizadas (tocarlas las lleva al foco)
+        }
+
         zone.Margin = new Thickness(0, 0, 8, 8);
         zone.BorderBrush = target ? TargetBrush : CardBrush;
         zone.BorderThickness = new Thickness(target ? 3 : 1);
@@ -1641,6 +2118,12 @@ public sealed class DeckWindow : Window
             Item(menu, app.State == ListItemState.OtherDesktop ? Strings.DeckMenu_GoToDesktop : Strings.DeckMenu_OpenInPanel, () => Choose(app));
             PinItem();
             return menu;
+        }
+
+        // Un navegador: las páginas de todos.
+        if (_state?.Browsers.Contains(h) == true && _actions.ReadPages is not null)
+        {
+            Item(menu, Strings.DeckMenu_Pages, OpenPages);
         }
 
         PinItem();

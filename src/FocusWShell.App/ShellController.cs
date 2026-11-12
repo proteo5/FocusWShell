@@ -240,10 +240,11 @@ public sealed class ShellController : IDisposable
     /// </summary>
     public DeckState DeckState()
     {
-        var scenes = SceneNames();
         var aux = AuxiliaryDisplays();
+        bool ultrawide = UltrawideNow();
         lock (_gate)
         {
+            var view = MainArrangement.Effective(_workspace.View, ultrawide);
             string NameOf(WindowSnapshot s, string fallback) => _catalog.Find(MinSizeCatalog.KeyFor(s))?.Name ?? fallback;
             // En otro escritorio, sin ventana: el deck la trata como una cerrada, y abrirla lleva a ella.
             DeckApp Managed(ManagedWindow w, WindowSnapshot s) => new(
@@ -284,7 +285,15 @@ public sealed class ShellController : IDisposable
                     .Select(a => (App: a, There: ElsewhereFree(a.AppKey)))
                     .Where(x => x.There is not null)
                     .Select(x => new DeckApp(x.App.Name, x.App.AppKey, null, ListItemState.OtherDesktop, x.There!.Title, p.Id, x.App)));
-                return new DeckPanel(p.Id, p.Name, Where(p), apps) { Display = p.Display, Template = p.Template };
+                bool off = p.Display is null && ColumnOff(view, p.Side);
+                return new DeckPanel(p.Id, p.Name, off ? Where(p) + " · " + Strings.Deck_PanelOff : Where(p), apps)
+                {
+                    Display = p.Display,
+                    Template = p.Template,
+                    Side = p.Side,
+                    Slot = p.Slot,
+                    Off = off,
+                };
             }).ToList();
 
             var free = _snapshots.Values
@@ -299,12 +308,73 @@ public sealed class ShellController : IDisposable
             bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h) && !_elsewhere.ContainsKey(h));
             var displays = new List<(string?, string)> { (null, Strings.Monitor_Principal) };
             displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
-            return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays)
+            return new DeckState(focused, hasPrevious, view, panels, free, displays)
             {
-                Weights = _workspace.ProportionsOf(_workspace.View),
+                Weights = _workspace.ProportionsOf(view),
+                Ultrawide = ultrawide,
                 Foreground = WindowMover.Foreground(),
+                Browsers = BrowserWindowsLocked().Select(b => b.Window.Handle).ToHashSet(),
             };
         }
+    }
+
+    // --- Páginas de los navegadores (spike S12) -----------------------------------------------------
+
+    /// <summary>Las ventanas de Chrome y Edge que se conocen: las de aquí y las de otro escritorio.</summary>
+    private IEnumerable<(WindowSnapshot Window, bool Elsewhere)> BrowserWindowsLocked() =>
+        _snapshots.Values.Where(s => !_elsewhere.ContainsKey(s.Handle)).Select(s => (s, false))
+            .Concat(_elsewhere.Values.Select(s => (s, true)))
+            .Where(x => BrowserTabs.IsBrowser(x.Item1.ProcessName, x.Item1.ClassName));
+
+    /// <summary>
+    /// Las pestañas de todas las ventanas de navegador: primero la del foco, luego las de los paneles en su
+    /// orden, las libres y las de otro escritorio. Lee los navegadores (unos 50 ms por ventana): se llama al
+    /// abrir la lista, nunca en el repaso del deck. Las ventanas sin barra de pestañas (apps web) no salen.
+    /// </summary>
+    public IReadOnlyList<PageWindow> BrowserPages()
+    {
+        List<(nint Handle, string Browser, string Where, bool InFocus, bool Managed, bool Elsewhere, CatalogApp? App, int Order)> windows;
+        lock (_gate)
+        {
+            var focus = _workspace.Focused?.Handle;
+            var order = _workspace.Panels.Select((p, i) => (p.Id, i)).ToDictionary(x => x.Id, x => x.i);
+            windows = [.. BrowserWindowsLocked().Select(x =>
+            {
+                var managed = _workspace.Find(x.Window.Handle);
+                bool inFocus = !x.Elsewhere && managed is not null && managed.Handle == focus;
+                var panel = managed is null ? null : _workspace.EffectivePanel(managed);
+                string where = x.Elsewhere ? Strings.Pages_OtherDesktop
+                    : inFocus ? Strings.Pages_InFocus
+                    : panel?.Name ?? Strings.Pages_Free;
+                int rank = inFocus ? 0 : x.Elsewhere ? 2000 : panel is null ? 1000 : 1 + order.GetValueOrDefault(panel.Id);
+                var app = _catalog.Find(MinSizeCatalog.KeyFor(x.Window));
+                return (x.Window.Handle, app?.Name ?? Path.GetFileNameWithoutExtension(x.Window.ProcessName), where, inFocus, managed is not null, x.Elsewhere, app, rank);
+            }).OrderBy(w => w.rank)];
+        }
+
+        var pages = new List<PageWindow>();
+        foreach (var w in windows)
+        {
+            if (BrowserTabs.Read(w.Handle) is { Count: > 0 } tabs)
+            {
+                pages.Add(new PageWindow(w.Handle, w.Browser, w.Where, w.InFocus, w.Managed, w.Elsewhere, w.App, tabs));
+            }
+        }
+
+        return pages;
+    }
+
+    /// <summary>Hace visible la pestaña en su ventana (no mueve la ventana).</summary>
+    public static bool SelectPage(nint handle, BrowserTab tab) => BrowserTabs.Select(handle, tab);
+
+    /// <summary>
+    /// Cierra la pestaña. Si su ventana está minimizada (p. ej. oculta en una pila), se muestra un instante:
+    /// el observador calla mientras tanto, para no tomarlo por un cambio del usuario.
+    /// </summary>
+    public bool ClosePage(nint handle, BrowserTab tab)
+    {
+        using var own = _watcher?.OwnChange();
+        return BrowserTabs.Close(handle, tab);
     }
 
     /// <summary>La ventana en el foco (o en pantalla completa), si hay.</summary>
@@ -531,7 +601,7 @@ public sealed class ShellController : IDisposable
                 && (moved.Placement == Placement.Center || _workspace.EffectivePanel(moved).Display is null)
                 && ColumnSeparator.Detect(before, observed.Visible, report.Layout.Principal) is { } weights)
             {
-                commands = [new SetProportions(_workspace.View, weights), new SnapBack(handle)];
+                commands = [new SetProportions(MainArrangement.Effective(_workspace.View, _ultrawide), weights), new SnapBack(handle)];
             }
 
             // Arrastrada y soltada: sobre el foco va al foco; sobre otro panel, a ese panel; si no, vuelve.
@@ -887,14 +957,15 @@ public sealed class ShellController : IDisposable
     private FocusPosition _savedView;
     private Dictionary<FocusPosition, ViewWeights> _savedProportions = [];
 
-    /// <summary>Proporciones de la vista actual.</summary>
+    /// <summary>Proporciones de la disposición que se ve.</summary>
     public ViewWeights Proportions
     {
         get
         {
+            bool ultrawide = UltrawideNow();
             lock (_gate)
             {
-                return _workspace.ProportionsOf(_workspace.View);
+                return _workspace.ProportionsOf(MainArrangement.Effective(_workspace.View, ultrawide));
             }
         }
     }
@@ -911,7 +982,7 @@ public sealed class ShellController : IDisposable
         }
     }
 
-    /// <summary>Vista actual del principal (ADR 0012).</summary>
+    /// <summary>Disposición guardada del principal (ADR 0012).</summary>
     public FocusPosition View
     {
         get
@@ -922,6 +993,21 @@ public sealed class ShellController : IDisposable
             }
         }
     }
+
+    /// <summary>La disposición que se ve: fuera de un ultrawide, sin columnas prestadas (ADR 0012, enmienda).</summary>
+    public FocusPosition EffectiveView => MainArrangement.Effective(View, UltrawideNow());
+
+    /// <summary>Si el principal es ultrawide (por la proporción de su área de trabajo).</summary>
+    public static bool UltrawideNow() =>
+        DisplayTopology.Principal(DisplayEnumerator.Enumerate()) is { } principal && MainArrangement.IsUltrawide(principal.WorkArea);
+
+    /// <summary>Si la columna de ese lado está apagada en esa disposición.</summary>
+    private static bool ColumnOff(FocusPosition view, PanelSide side) => side == PanelSide.Left
+        ? view is FocusPosition.WorkOnly or FocusPosition.FocusOnly
+        : view is FocusPosition.ContextOnly or FocusPosition.FocusOnly;
+
+    /// <summary>Lo que dio <see cref="UltrawideNow"/> en el último layout (para el separador arrastrado).</summary>
+    private bool _ultrawide;
 
     /// <summary>Guarda los paneles si cambiaron (nombre, ubicación, presentación, altas o bajas).</summary>
     private void SavePanelsIfChanged()
@@ -1842,10 +1928,13 @@ public sealed class ShellController : IDisposable
                 })
                 .ToList(),
         };
-        var (leftWeight, centerWeight, rightWeight) = c.Weights;
+        // La disposición que se ve depende del principal: sin ultrawide, no hay columnas prestadas.
+        _ultrawide = MainArrangement.IsUltrawide(principal.WorkArea);
+        var view = MainArrangement.Effective(c.View, _ultrawide);
+        var (leftWeight, centerWeight, rightWeight) = _workspace.ProportionsOf(view);
         var options = new SceneOptions
         {
-            Focus = c.View,
+            Focus = view,
             ContextWeight = leftWeight,
             CenterWeight = centerWeight,
             WorkWeight = rightWeight,

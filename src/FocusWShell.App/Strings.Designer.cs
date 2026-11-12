@@ -150,8 +150,6 @@ public static class Strings
     /// <summary>Pantalla encendida: sí</summary>
     public static string Deck_AwakeOn => ResourceManager.GetString("Deck_AwakeOn", Culture)!;
 
-    /// <summary>Centro</summary>
-    public static string Deck_Center => ResourceManager.GetString("Deck_Center", Culture)!;
 
     /// <summary>Cerrar una app</summary>
     public static string Deck_Close => ResourceManager.GetString("Deck_Close", Culture)!;
@@ -171,11 +169,7 @@ public static class Strings
     /// <summary>{0} está al frente (recibe el teclado), pero no es la del foco</summary>
     public static string Deck_InFrontTip => ResourceManager.GetString("Deck_InFrontTip", Culture)!;
 
-    /// <summary>Izquierda</summary>
-    public static string Deck_Left => ResourceManager.GetString("Deck_Left", Culture)!;
 
-    /// <summary>Izq.</summary>
-    public static string Deck_LeftShort => ResourceManager.GetString("Deck_LeftShort", Culture)!;
 
     /// <summary>+{0} más</summary>
     public static string Deck_More => ResourceManager.GetString("Deck_More", Culture)!;
@@ -273,11 +267,7 @@ public static class Strings
     /// <summary>¿Seguro? Otra vez</summary>
     public static string Deck_RestoreSure => ResourceManager.GetString("Deck_RestoreSure", Culture)!;
 
-    /// <summary>Derecha</summary>
-    public static string Deck_Right => ResourceManager.GetString("Deck_Right", Culture)!;
 
-    /// <summary>Der.</summary>
-    public static string Deck_RightShort => ResourceManager.GetString("Deck_RightShort", Culture)!;
 
     /// <summary>FOCO</summary>
     public static string Deck_SecFocus => ResourceManager.GetString("Deck_SecFocus", Culture)!;
@@ -291,8 +281,6 @@ public static class Strings
     /// <summary>ENERGÍA</summary>
     public static string Deck_SecPower => ResourceManager.GetString("Deck_SecPower", Culture)!;
 
-    /// <summary>ESCENAS</summary>
-    public static string Deck_SecScenes => ResourceManager.GetString("Deck_SecScenes", Culture)!;
 
     /// <summary>SISTEMA</summary>
     public static string Deck_SecSystem => ResourceManager.GetString("Deck_SecSystem", Culture)!;
@@ -318,14 +306,8 @@ public static class Strings
     /// <summary>Al panel</summary>
     public static string Deck_ToPanelShort => ResourceManager.GetString("Deck_ToPanelShort", Culture)!;
 
-    /// <summary>A medida</summary>
-    public static string Deck_ViewCustom => ResourceManager.GetString("Deck_ViewCustom", Culture)!;
 
-    /// <summary>Listo</summary>
-    public static string Deck_ViewDone => ResourceManager.GetString("Deck_ViewDone", Culture)!;
 
-    /// <summary>Disposición del principal: dónde va el foco y qué ancho tiene. Toca para cambiar</summary>
-    public static string Deck_ViewTip => ResourceManager.GetString("Deck_ViewTip", Culture)!;
 
     /// <summary>un monitor</summary>
     public static string Display_AMonitor => ResourceManager.GetString("Display_AMonitor", Culture)!;
@@ -648,14 +630,8 @@ public static class Strings
     /// <summary>Lleva la ventana seleccionada al Centro</summary>
     public static string Main_PromoteTip => ResourceManager.GetString("Main_PromoteTip", Culture)!;
 
-    /// <summary>Proporciones:</summary>
-    public static string Main_ProportionsLabel => ResourceManager.GetString("Main_ProportionsLabel", Culture)!;
 
-    /// <summary>Proporciones</summary>
-    public static string Main_ProportionsName => ResourceManager.GetString("Main_ProportionsName", Culture)!;
 
-    /// <summary>Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ve</summary>
-    public static string Main_ProportionsTip => ResourceManager.GetString("Main_ProportionsTip", Culture)!;
 
     /// <summary>Reencajar</summary>
     public static string Main_Reattach => ResourceManager.GetString("Main_Reattach", Culture)!;
@@ -732,20 +708,14 @@ public static class Strings
     /// <summary>Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pas</summary>
     public static string Main_UnparkTip => ResourceManager.GetString("Main_UnparkTip", Culture)!;
 
-    /// <summary>Foco al centro</summary>
-    public static string Main_ViewCenter => ResourceManager.GetString("Main_ViewCenter", Culture)!;
 
     /// <summary>Vista:</summary>
     public static string Main_ViewLabel => ResourceManager.GetString("Main_ViewLabel", Culture)!;
 
-    /// <summary>Foco a la izquierda</summary>
-    public static string Main_ViewLeft => ResourceManager.GetString("Main_ViewLeft", Culture)!;
 
     /// <summary>Vista</summary>
     public static string Main_ViewName => ResourceManager.GetString("Main_ViewName", Culture)!;
 
-    /// <summary>Foco a la derecha</summary>
-    public static string Main_ViewRight => ResourceManager.GetString("Main_ViewRight", Culture)!;
 
     /// <summary>Dónde va el foco en el monitor principal</summary>
     public static string Main_ViewTip => ResourceManager.GetString("Main_ViewTip", Culture)!;
@@ -1077,8 +1047,6 @@ public static class Strings
     /// <summary>no se puede mover</summary>
     public static string Unmanageable_Generic => ResourceManager.GetString("Unmanageable_Generic", Culture)!;
 
-    /// <summary>Personalizadas · {0}</summary>
-    public static string Weights_Custom => ResourceManager.GetString("Weights_Custom", Culture)!;
 
     /// <summary>{0}, izquierda</summary>
     public static string Where_AuxLeft => ResourceManager.GetString("Where_AuxLeft", Culture)!;
@@ -1112,4 +1080,69 @@ public static class Strings
     public static string List_TipOtherDesktop => ResourceManager.GetString("List_TipOtherDesktop", Culture)!;
 
     public static string DeckMenu_GoToDesktop => ResourceManager.GetString("DeckMenu_GoToDesktop", Culture)!;
+
+    public static string Pages_InFocus => ResourceManager.GetString("Pages_InFocus", Culture)!;
+
+    public static string Pages_Free => ResourceManager.GetString("Pages_Free", Culture)!;
+
+    public static string Pages_OtherDesktop => ResourceManager.GetString("Pages_OtherDesktop", Culture)!;
+
+    public static string Deck_PagesTab => ResourceManager.GetString("Deck_PagesTab", Culture)!;
+
+    public static string Deck_PagesTabCount => ResourceManager.GetString("Deck_PagesTabCount", Culture)!;
+
+    public static string Deck_PagesTabName => ResourceManager.GetString("Deck_PagesTabName", Culture)!;
+
+    public static string Deck_PagesLoading => ResourceManager.GetString("Deck_PagesLoading", Culture)!;
+
+    public static string Deck_PagesNone => ResourceManager.GetString("Deck_PagesNone", Culture)!;
+
+
+    public static string Deck_PageName => ResourceManager.GetString("Deck_PageName", Culture)!;
+
+    public static string Deck_PageCloseName => ResourceManager.GetString("Deck_PageCloseName", Culture)!;
+
+    public static string DeckMenu_Pages => ResourceManager.GetString("DeckMenu_Pages", Culture)!;
+
+    public static string Deck_PagesSites => ResourceManager.GetString("Deck_PagesSites", Culture)!;
+
+    public static string Deck_PagesLoose => ResourceManager.GetString("Deck_PagesLoose", Culture)!;
+
+    public static string Deck_PagesBack => ResourceManager.GetString("Deck_PagesBack", Culture)!;
+
+    public static string Deck_PagesSite => ResourceManager.GetString("Deck_PagesSite", Culture)!;
+
+    public static string Deck_PagesCloseAll => ResourceManager.GetString("Deck_PagesCloseAll", Culture)!;
+
+    public static string Deck_PagesCloseAllConfirm => ResourceManager.GetString("Deck_PagesCloseAllConfirm", Culture)!;
+
+    public static string Deck_SiteName => ResourceManager.GetString("Deck_SiteName", Culture)!;
+
+    public static string Deck_PageWhere => ResourceManager.GetString("Deck_PageWhere", Culture)!;
+
+    public static string Deck_PanelOff => ResourceManager.GetString("Deck_PanelOff", Culture)!;
+
+    public static string Deck_LeftColumn => ResourceManager.GetString("Deck_LeftColumn", Culture)!;
+
+    public static string Deck_RightColumn => ResourceManager.GetString("Deck_RightColumn", Culture)!;
+
+    public static string Deck_ColumnTip => ResourceManager.GetString("Deck_ColumnTip", Culture)!;
+
+    public static string Deck_BorrowTip => ResourceManager.GetString("Deck_BorrowTip", Culture)!;
+
+    public static string Deck_ResetWidth => ResourceManager.GetString("Deck_ResetWidth", Culture)!;
+
+    public static string Arr_Center => ResourceManager.GetString("Arr_Center", Culture)!;
+
+    public static string Arr_Right => ResourceManager.GetString("Arr_Right", Culture)!;
+
+    public static string Arr_Left => ResourceManager.GetString("Arr_Left", Culture)!;
+
+    public static string Arr_ContextOnly => ResourceManager.GetString("Arr_ContextOnly", Culture)!;
+
+    public static string Arr_WorkOnly => ResourceManager.GetString("Arr_WorkOnly", Culture)!;
+
+    public static string Arr_FocusOnly => ResourceManager.GetString("Arr_FocusOnly", Culture)!;
+
+    public static string Main_ResetWidthTip => ResourceManager.GetString("Main_ResetWidthTip", Culture)!;
 }
