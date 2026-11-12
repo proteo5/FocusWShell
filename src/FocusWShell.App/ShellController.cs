@@ -172,7 +172,7 @@ public sealed class ShellController : IDisposable
             }
 
             var fullscreen = _workspace.Composition.Fullscreen;
-            var openKeys = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var openKeys = _snapshots.Values.Concat(_elsewhere.Values).Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var views = new List<ListPanelView>();
             void Add(string? display, IReadOnlyDictionary<string, PixelRect> lists, int dpi)
             {
@@ -195,6 +195,7 @@ public sealed class ShellController : IDisposable
                         var app = _catalog.Find(MinSizeCatalog.KeyFor(snapshot));
                         var state = w switch
                         {
+                            _ when _elsewhere.ContainsKey(w.Handle) => ListItemState.OtherDesktop,
                             { Placement: Placement.Center or Placement.Fullscreen } => ListItemState.InFocus,
                             { Placement: Placement.Parked } => ListItemState.Parked,
                             { Detached: true } => ListItemState.Detached,
@@ -207,6 +208,15 @@ public sealed class ShellController : IDisposable
                     foreach (var app in _catalog.Apps.Where(a => a.LastPanelId == panelId && a.Pinned && !a.Hidden && !openKeys.Contains(a.AppKey)))
                     {
                         items.Add(new ListItem(app.Name, app.AppKey, null, ListItemState.Closed, "", app));
+                    }
+
+                    // Las ancladas de este panel abiertas en otro escritorio sin gestionar: tocarlas lleva allí.
+                    foreach (var app in _catalog.Apps.Where(a => a.LastPanelId == panelId && a.Pinned && !a.Hidden))
+                    {
+                        if (ElsewhereFree(app.AppKey) is { } there)
+                        {
+                            items.Add(new ListItem(app.Name, app.AppKey, there.Handle, ListItemState.OtherDesktop, there.Title, app));
+                        }
                     }
 
                     views.Add(new ListPanelView(panelId, panel.Name, area, dpi, panel.ListLayout, items));
@@ -235,12 +245,14 @@ public sealed class ShellController : IDisposable
         lock (_gate)
         {
             string NameOf(WindowSnapshot s, string fallback) => _catalog.Find(MinSizeCatalog.KeyFor(s))?.Name ?? fallback;
+            // En otro escritorio, sin ventana: el deck la trata como una cerrada, y abrirla lleva a ella.
             DeckApp Managed(ManagedWindow w, WindowSnapshot s) => new(
                 NameOf(s, w.Label),
                 MinSizeCatalog.KeyFor(s),
-                w.Handle,
+                _elsewhere.ContainsKey(w.Handle) ? null : w.Handle,
                 w switch
                 {
+                    _ when _elsewhere.ContainsKey(w.Handle) => ListItemState.OtherDesktop,
                     { Placement: Placement.Center or Placement.Fullscreen } => ListItemState.InFocus,
                     { Placement: Placement.Parked } => ListItemState.Parked,
                     { Detached: true } => ListItemState.Detached,
@@ -250,7 +262,7 @@ public sealed class ShellController : IDisposable
                 w.PanelId,
                 _catalog.Find(MinSizeCatalog.KeyFor(s)));
 
-            var openKeys = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var openKeys = _snapshots.Values.Concat(_elsewhere.Values).Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
             string Where(Panel p) => p.Display is null
                 ? (p.Side == PanelSide.Left ? Strings.Where_PrincipalLeftShort : Strings.Where_PrincipalRightShort) + (p.Slot == PanelSlot.Lower ? Strings.Where_LowerSuffix : "")
                 : Core.Text.F(p.Side == PanelSide.Left ? Strings.Where_AuxLeft : Strings.Where_AuxRight, aux.FirstOrDefault(d => d.Key == p.Display)?.FriendlyName ?? Strings.Monitor_Missing);
@@ -265,6 +277,13 @@ public sealed class ShellController : IDisposable
                 apps.AddRange(_catalog.Apps
                     .Where(a => a.LastPanelId == p.Id && !a.Hidden && !openKeys.Contains(a.AppKey))
                     .Select(a => new DeckApp(a.Name, a.AppKey, null, ListItemState.Closed, "", p.Id, a)));
+                // Las ancladas de este panel abiertas en otro escritorio sin gestionar: ocupan el sitio de la
+                // cerrada, y tocarlas lleva allí en vez de abrir otra. Una libre no anclada no es del panel.
+                apps.AddRange(_catalog.Apps
+                    .Where(a => a.LastPanelId == p.Id && a.Pinned && !a.Hidden)
+                    .Select(a => (App: a, There: ElsewhereFree(a.AppKey)))
+                    .Where(x => x.There is not null)
+                    .Select(x => new DeckApp(x.App.Name, x.App.AppKey, null, ListItemState.OtherDesktop, x.There!.Title, p.Id, x.App)));
                 return new DeckPanel(p.Id, p.Name, Where(p), apps) { Display = p.Display, Template = p.Template };
             }).ToList();
 
@@ -274,9 +293,10 @@ public sealed class ShellController : IDisposable
                 .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
 
-            var focused = _workspace.Focused is { } f && _snapshots.TryGetValue(f.Handle, out var fs) ? Managed(f, fs) : null;
+            // La del foco en otro escritorio no está aquí: el foco de este escritorio se ve vacío (ADR 0016).
+            var focused = _workspace.Focused is { } f && !_elsewhere.ContainsKey(f.Handle) && _snapshots.TryGetValue(f.Handle, out var fs) ? Managed(f, fs) : null;
             var current = focused?.Handle;
-            bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h));
+            bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h) && !_elsewhere.ContainsKey(h));
             var displays = new List<(string?, string)> { (null, Strings.Monitor_Principal) };
             displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
             return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays)
@@ -539,6 +559,33 @@ public sealed class ShellController : IDisposable
     /// <summary>Última foto de cada ventana conocida: el layout y el diario necesitan proceso y título.</summary>
     private readonly Dictionary<nint, WindowSnapshot> _snapshots = [];
 
+    /// <summary>
+    /// Las ventanas que serían candidatas pero están en otro escritorio virtual, según la última
+    /// enumeración (ADR 0016, fase 1). No se colocan ni se muestran como presentes; abrir su app las activa.
+    /// </summary>
+    private Dictionary<nint, WindowSnapshot> _elsewhere = [];
+
+    /// <summary>
+    /// Una ventana sin gestionar de la app en otro escritorio, si la app no tiene ninguna aquí (para su
+    /// tile en el deck y en la lista).
+    /// </summary>
+    private WindowSnapshot? ElsewhereFree(string appKey)
+    {
+        bool Of(WindowSnapshot w) => string.Equals(MinSizeCatalog.KeyFor(w), appKey, StringComparison.OrdinalIgnoreCase);
+        return _snapshots.Values.Any(w => !_elsewhere.ContainsKey(w.Handle) && Of(w))
+            ? null
+            : _elsewhere.Values.FirstOrDefault(w => !_workspace.IsManaged(w.Handle) && Of(w));
+    }
+
+    /// <summary>Si la ventana está en otro escritorio virtual (según la última enumeración).</summary>
+    public bool IsOnOtherDesktop(nint handle)
+    {
+        lock (_gate)
+        {
+            return _elsewhere.ContainsKey(handle);
+        }
+    }
+
     public RecoveryJournal Journal { get; } = new(RecoveryJournal.DefaultPath);
 
     public MinSizeStore MinSizes { get; } = new(MinSizeStore.DefaultPath);
@@ -752,6 +799,12 @@ public sealed class ShellController : IDisposable
             return Strings.Open_NotInCatalog;
         }
 
+        // Nunca otra copia (ADR 0016): si está abierta en otro escritorio, se activa allí.
+        if (OpenElsewhere(appKey) is { } there)
+        {
+            return ActivateElsewhere(there, app.Name);
+        }
+
         if (AppLauncher.Launch(app) is { } error)
         {
             return error;
@@ -782,6 +835,28 @@ public sealed class ShellController : IDisposable
 
         return Core.Text.F(Strings.Open_NoWindow20, app.Name);
     }
+
+    /// <summary>Una ventana de la app que está en otro escritorio virtual, si hay (la gestionada primero).</summary>
+    private nint? OpenElsewhere(string appKey)
+    {
+        lock (_gate)
+        {
+            return _elsewhere.Values
+                .Where(w => string.Equals(MinSizeCatalog.KeyFor(w), appKey, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(w => _workspace.IsManaged(w.Handle) ? 0 : 1)
+                .Select(w => (nint?)w.Handle)
+                .FirstOrDefault();
+        }
+    }
+
+    /// <summary>
+    /// Activa una ventana de otro escritorio: Windows lleva al usuario a ese escritorio. Si Windows no la
+    /// deja pasar al frente, se avisa en vez de abrir otra copia.
+    /// </summary>
+    private static string ActivateElsewhere(nint handle, string name) =>
+        WindowMover.Activate(handle)
+            ? Core.Text.F(Strings.Desktop_Switched, name)
+            : Core.Text.F(Strings.Desktop_OpenElsewhere, name);
 
     /// <summary>Lo último que se guardó en panels.json, para escribir sólo cuando cambia.</summary>
     private List<Panel> _savedPanels = [];
@@ -1070,8 +1145,15 @@ public sealed class ShellController : IDisposable
         {
             lock (_gate)
             {
+                var elsewhereKeys = _elsewhere.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 foreach (var entry in match.Missing.DistinctBy(m => m.AppKey, StringComparer.OrdinalIgnoreCase))
                 {
+                    // Abierta en otro escritorio: no se abre otra copia (ADR 0016).
+                    if (elsewhereKeys.Contains(entry.AppKey))
+                    {
+                        continue;
+                    }
+
                     if (_catalog.Find(entry.AppKey) is { CanLaunch: true } app)
                     {
                         var scenePanel = panels.FirstOrDefault(p => p.Id == (entry.PanelId ?? Workspace.WorkPanel));
@@ -1203,11 +1285,12 @@ public sealed class ShellController : IDisposable
     public IReadOnlyList<WindowSnapshot> Refresh()
     {
         var own = WindowEnumerator.CurrentIntegrity();
-        var candidates = WindowEnumerator.EnumerateTopLevel()
+        var evaluated = WindowEnumerator.EnumerateTopLevel()
             .Select(w => (Window: w, Eligibility: Filter.Evaluate(w, own)))
-            .Where(c => c.Eligibility.IsCandidate)
             .ToList();
+        var candidates = evaluated.Where(c => c.Eligibility.IsCandidate).ToList();
         var windows = candidates.Where(c => c.Eligibility.Manageable).Select(c => c.Window).ToList();
+        var elsewhere = evaluated.Where(c => c.Eligibility.Reason == ExclusionReason.OtherDesktop).Select(c => c.Window).ToList();
 
         lock (_gate)
         {
@@ -1222,7 +1305,15 @@ public sealed class ShellController : IDisposable
                 _snapshots[w.Handle] = w;
             }
 
-            ObserveApps(windows);
+            // Las de otro escritorio (ADR 0016, fase 1): no se colocan, pero cuentan como abiertas. Las
+            // gestionadas conservan su panel y su foto al día.
+            _elsewhere = elsewhere.ToDictionary(w => w.Handle);
+            foreach (var w in elsewhere.Where(w => _workspace.IsManaged(w.Handle)))
+            {
+                _snapshots[w.Handle] = w;
+            }
+
+            ObserveApps([.. windows, .. elsewhere]);
             var alive = windows.Select(w => w.Handle).ToHashSet();
             // Sólo se da por cerrada la ventana que ya no existe. Una gestionada puede dejar de ser "elegible"
             // un rato sin cerrarse (p. ej. en pantalla completa propia cambia de estilo): sigue gestionada.
@@ -1243,8 +1334,9 @@ public sealed class ShellController : IDisposable
             }
 
             // Las gestionadas que siguen vivas pero no son elegibles ahora siguen en la lista, con su última foto.
+            // Las de otro escritorio no: no se pueden colocar ni emparejar con una escena aquí.
             windows.AddRange(_workspace.Windows
-                .Where(m => !alive.Contains(m.Handle) && _snapshots.ContainsKey(m.Handle))
+                .Where(m => !alive.Contains(m.Handle) && !_elsewhere.ContainsKey(m.Handle) && _snapshots.ContainsKey(m.Handle))
                 .Select(m => _snapshots[m.Handle]));
         }
 
@@ -1712,14 +1804,16 @@ public sealed class ShellController : IDisposable
         ReconcileDisplaysLocked(displays);
 
         var c = _workspace.Composition;
+        // Las de otro escritorio no se colocan: Windows las tiene ocultas y conservan su sitio (ADR 0016).
+        bool Here(nint h) => _snapshots.ContainsKey(h) && !_elsewhere.ContainsKey(h);
         List<WindowSnapshot> Map(IEnumerable<nint> handles) =>
-            handles.Where(_snapshots.ContainsKey).Select(h => _snapshots[h]).ToList();
+            handles.Where(Here).Select(h => _snapshots[h]).ToList();
         PanelAssignment? Assign(PanelView? v) =>
             v is null ? null : new PanelAssignment(v.Panel.Id, v.Panel.Name, v.Panel.Side, v.Panel.Template, Map(v.Windows)) { Slot = v.Panel.Slot, Height = v.Panel.Height };
 
         var assignment = new SceneAssignment(
             Map(c.Context),
-            c.Center is { } center && _snapshots.TryGetValue(center, out var w) ? w : null,
+            c.Center is { } center && Here(center) ? _snapshots[center] : null,
             Map(c.Work))
         {
             ContextId = c.Left?.Panel.Id ?? Workspace.ContextPanel,
@@ -1736,7 +1830,7 @@ public sealed class ShellController : IDisposable
             Scroll = new[] { c.Left, c.LeftLower, c.Right, c.RightLower }.OfType<PanelView>().Concat(c.Aux.SelectMany(a => a.Panels))
                 .Where(v => v.ScrollRow > 0 || v.Reveal is not null)
                 .ToDictionary(v => v.Panel.Id, v => (v.ScrollRow, v.Reveal)),
-            Fullscreen = c.Fullscreen is { } full && _snapshots.TryGetValue(full.Handle, out var fullWindow)
+            Fullscreen = c.Fullscreen is { } full && Here(full.Handle) && _snapshots.TryGetValue(full.Handle, out var fullWindow)
                 ? (fullWindow, full.Display is { } fd && displays.FirstOrDefault(d => d.Key == fd) is { } fullDisplay ? fullDisplay : principal)
                 : null,
             Aux = c.Aux

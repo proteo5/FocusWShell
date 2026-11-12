@@ -42,6 +42,9 @@ public sealed record WindowSnapshot
     /// <summary>Ocultada por DWM: otro escritorio virtual, app UWP suspendida, etc.</summary>
     public bool IsCloaked { get; init; }
 
+    /// <summary>Oculta porque está en otro escritorio virtual de Windows (ADR 0016).</summary>
+    public bool IsOnOtherDesktop { get; init; }
+
     public bool IsMinimized { get; init; }
 
     public bool IsMaximized { get; init; }

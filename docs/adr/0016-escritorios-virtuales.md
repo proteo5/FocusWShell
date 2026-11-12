@@ -1,6 +1,6 @@
 # ADR 0016 — Seguir los escritorios virtuales de Windows: un foco y unas apps por escritorio
 
-- **Estado:** Propuesta (2026-11-11). Se apoya en el spike de escritorios virtuales ([04 — Riesgos y spikes](../04-riesgos-y-spikes.md)); faltan las comprobaciones de S11.
+- **Estado:** Propuesta (2026-11-11); fase 1 implementada. Se apoya en el spike de escritorios virtuales ([04 — Riesgos y spikes](../04-riesgos-y-spikes.md)); faltan las comprobaciones de S11.
 - **Fecha:** 2026-11-11
 
 ## Contexto
@@ -67,8 +67,24 @@ Antes de abrir una app anclada, FocusWShell busca **en todos los escritorios** u
 
 - **Muestra sólo lo del escritorio actual**: su foco, las apps de cada panel y sus libres. Al cambiar de escritorio, el deck se actualiza solo.
 - **Las ancladas abiertas en otro escritorio** se ven como un tile atenuado con la marca **"⧉ Escritorio 2"** (o su nombre). Tocarlo lleva a ese escritorio, en vez de abrir otra copia.
-- **En la cabecera del deck, un indicador del escritorio** actual, con **◀ ▶ para cambiar** de escritorio. Se implementan enviando el atajo de Windows (`SendInput` de Ctrl+Win+← / →), que es documentado y estable. Así se cambia de actividad sin teclado ni ratón.
+- **Pestañas de escritorios**, como las de monitores, para cambiar de actividad sin teclado ni ratón. Ver [Pestañas de escritorios](#pestañas-de-escritorios-en-el-deck).
 - **Las escenas salen del deck.** Los escritorios las reemplazan. Las escenas siguen en la ventana principal, la bandeja y los atajos mientras se valida el uso; si los escritorios cubren la necesidad, se retiran en una versión posterior.
+
+### Pestañas de escritorios en el deck
+
+Sustituyen al indicador con ◀ ▶ que se pensó primero. Con ◀ ▶ había que ir de uno en uno, y no se veía cuántos escritorios había ni qué tenía cada uno. Las pestañas los muestran todos y se llega a cualquiera con un toque. Además, el deck ya usa ese patrón para los monitores.
+
+- **Una fila encima de las pestañas de monitores.** Cambiar de escritorio cambia todos los monitores, así que el escritorio está más arriba en la jerarquía: primero el escritorio y, dentro, sus monitores. El orden lo dice sin explicarlo.
+- **Con su propio aspecto**, para no confundirlas con las de monitores. Por ejemplo, icono de escritorio, nombre y número de apps («▣ Escritorio 2 · 4»). El número cuenta las apps gestionadas y libres de ese escritorio, y deja ver dónde está cada cosa antes de cambiar.
+- **Tocar una pestaña cambia de escritorio de verdad.** Las de monitores sólo cambian lo que muestra el deck. Aquí no puede ser así: el deck muestra siempre lo que está en pantalla. Si enseñara el escritorio 2 mientras se ve el 1, volvería el problema que encontró la prueba.
+- **Cómo se cambia:** enviando el atajo de Windows con `SendInput` (Ctrl+Win+← / →), que es documentado y estable. Para ir a un escritorio que no es vecino, el atajo se repite: del 1 al 3, dos veces. Se ve la animación de Windows en cada paso; es aceptable con pocos escritorios.
+- **Una pestaña «+»** crea un escritorio (Ctrl+Win+D), y Windows pasa a él. El menú de una pestaña (clic derecho o pulsación larga) permite **cerrar** ese escritorio (Ctrl+Win+F4, tras pasar a él). Windows manda sus ventanas al escritorio vecino; FocusWShell las recibe como apps movidas de escritorio, sin cerrar nada.
+- **Si no caben**, se recortan los nombres antes que las pestañas, como en las cabeceras de los paneles. Con muchos escritorios, la fila se desplaza.
+- **Qué escritorios existen y cómo se llaman** sale del registro (`VirtualDesktopIDs`, nombres y orden). No está documentado, así que se lee como adorno ([punto 3](#3-win32-detectar-el-escritorio)). Si falla, se muestran sólo los escritorios que tienen ventanas (su GUID se sabe con la API documentada), con nombres genéricos, en el orden en que aparecieron, y el «+» sigue funcionando.
+
+**Lo que no hacen, por límites de Windows:**
+- **Mover una app a otro escritorio** arrastrándola a una pestaña. La API documentada (`MoveWindowToDesktop`) sólo mueve ventanas del propio proceso; para las de otras apps hace falta la interfaz interna, que cambia entre compilaciones. Se sigue haciendo desde la Vista de tareas.
+- **Renombrar o reordenar** escritorios: también se hace desde la Vista de tareas.
 
 ### 6. Persistencia
 
@@ -83,18 +99,27 @@ Antes de programar las fases 2 y 3:
 1. **Activar una ventana de otro escritorio** (`SetForegroundWindow` desde FocusWShell): ¿Windows cambia al escritorio de la ventana, o la ignora? ¿Y desde el deck, que no tiene el foco?
 2. **Una ventana anclada a todos los escritorios** (Vista de tareas → "Mostrar esta ventana en todos los escritorios"): ¿qué devuelve `GetWindowDesktopId`?
 3. **Eventos al cambiar de escritorio:** ¿llega siempre `EVENT_SYSTEM_FOREGROUND`, también al pasar a un escritorio vacío? ¿Cuánto tarda?
-4. **`SendInput` de Ctrl+Win+→ desde un toque en el deck**: ¿cambia de escritorio sin que el deck tenga el foco?
+4. **`SendInput` de Ctrl+Win+→ desde un toque en el deck**: ¿cambia de escritorio sin que el deck tenga el foco? ¿Y repetido dos veces seguidas (saltar al escritorio no vecino): hay que esperar a que termine la animación?
 5. **Al reiniciar**, ¿se conservan los GUID de los escritorios?
+6. **La lista de escritorios del registro:** ¿se actualiza al momento al crear, cerrar o reordenar desde la Vista de tareas? ¿Un escritorio vacío aparece ahí?
 
 ## Fases
 
 1. **Seguridad (pequeña, ya):** no abrir otra copia si la app existe en otro escritorio (punto 4), y no mostrar en el deck como "en su panel" una app que está en otro escritorio. Arregla lo que la prueba encontró, sin el resto del diseño.
 2. **Un foco y unas apps por escritorio:** modelo (punto 2), detección (punto 3) y persistencia (punto 6).
-3. **Deck:** indicador y ◀ ▶ de escritorios, tiles de otros escritorios y escenas fuera del deck (punto 5).
+3. **Deck:** pestañas de escritorios con «+» y cerrar, y escenas fuera del deck (punto 5). Los tiles de otros escritorios (apagados con «⧉») ya llegaron con la fase 1.
+
+## Implementación de la fase 1 (2026-11-11)
+
+- **Detección:** `WindowSnapshot.IsOnOtherDesktop`, sólo para las ventanas *cloaked* (`IsWindowOnCurrentVirtualDesktop` = falso). El filtro de elegibilidad la evalúa como si se viera y, si ninguna otra regla la excluye, da `ExclusionReason.OtherDesktop`. Una *cloaked* por otra causa (una app de la Store suspendida) sigue siendo `Cloaked`.
+- **El controlador** guarda esas ventanas aparte en cada enumeración. Las gestionadas conservan su panel y su foto al día, pero **el layout no las coloca**; el foco del deck se ve vacío si la del foco está en otro escritorio, y «Anterior» no cuenta con ellas.
+- **Nunca otra copia:** abrir una app (deck, lista, ventana principal) que tiene ventana en otro escritorio la activa en vez de lanzarla, y Windows debería llevar a su escritorio (S11, punto 1). Si Windows no la deja pasar al frente, se avisa. Las escenas tampoco abren las apps que están en otro escritorio.
+- **Deck y lista:** la app de otro escritorio se ve apagada, como una cerrada, con **«⧉»**; no se puede mover, cerrar ni arrastrar desde aquí. Tocarla lleva a ella. Una gestionada se muestra en su panel aunque no esté anclada; una libre sólo si está anclada (ocupa el sitio de la cerrada), porque una libre no es de ningún panel. Las libres de otro escritorio no salen en LIBRES: no están aquí.
+- **Limitaciones hasta la fase 2:** el modelo sigue teniendo un solo foco. Si la del foco se va a otro escritorio y se trae otra al foco, la primera vuelve a su panel en el modelo, y al regresar a su escritorio se coloca ahí. El atajo «volver a la anterior» puede elegir una de otro escritorio y dejar el foco vacío.
 
 ## Consecuencias
 
-- **A favor:** cambiar de actividad es instantáneo y reversible, sin reacomodar ventanas; usa gestos que Windows ya enseña; el deck nunca muestra apps de otro escritorio como si estuvieran aquí; se elimina el riesgo de duplicar apps.
+- **A favor:** cambiar de actividad es instantáneo y reversible, sin reacomodar ventanas; usa gestos que Windows ya enseña, y desde el deck basta un toque en la pestaña del escritorio; el deck nunca muestra apps de otro escritorio como si estuvieran aquí; se elimina el riesgo de duplicar apps.
 - **En contra:** el modelo crece (un foco por escritorio) y la reconciliación consulta el escritorio de cada ventana gestionada. Los nombres y el orden de los escritorios dependen del registro no documentado, aunque sólo como adorno.
 - **Límite de Windows:** cambiar de escritorio cambia todos los monitores. Una app que deba verse siempre en el monitor auxiliar (chat, monitoreo) tiene que anclarse a todos los escritorios desde la Vista de tareas; FocusWShell no puede hacerlo por el usuario sin API no documentada.
 - **Las escenas pierden su papel** en el deck; su retiro total queda pendiente de la validación de uso ([06 — Validación](../06-validacion.md)).

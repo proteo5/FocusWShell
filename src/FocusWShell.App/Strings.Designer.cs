@@ -1100,4 +1100,16 @@ public static class Strings
 
     /// <summary>principal, derecha</summary>
     public static string Where_PrincipalRightShort => ResourceManager.GetString("Where_PrincipalRightShort", Culture)!;
+
+    public static string Desktop_Switched => ResourceManager.GetString("Desktop_Switched", Culture)!;
+
+    public static string Desktop_OpenElsewhere => ResourceManager.GetString("Desktop_OpenElsewhere", Culture)!;
+
+    public static string Deck_OtherDesktopTip => ResourceManager.GetString("Deck_OtherDesktopTip", Culture)!;
+
+    public static string ListState_OtherDesktop => ResourceManager.GetString("ListState_OtherDesktop", Culture)!;
+
+    public static string List_TipOtherDesktop => ResourceManager.GetString("List_TipOtherDesktop", Culture)!;
+
+    public static string DeckMenu_GoToDesktop => ResourceManager.GetString("DeckMenu_GoToDesktop", Culture)!;
 }

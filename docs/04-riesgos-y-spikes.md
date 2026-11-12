@@ -578,7 +578,7 @@ Probado con clics reales sobre el deck en la tablet:
 - Al tocarla, pareció minimizarse; con otro toque apareció una SmallNotePad en el foco.
 - **Lo que pasó en realidad:** se abrió una **segunda instancia** (proceso nuevo a las 15:16:03). La original siguió oculta en el escritorio 2. FocusWShell, al no ver la ventana original como candidata (está *cloaked*), actuó como si la app estuviera cerrada y la abrió. Con una app que no admite varias instancias el resultado sería otro, pero en ningún caso es lo esperado.
 
-**Riesgo:** hoy, mover una app gestionada a otro escritorio deja al deck con información falsa y puede duplicar apps. Mientras no haya soporte de escritorios, conviene no usarlos con FocusWShell.
+**Riesgo:** hoy, mover una app gestionada a otro escritorio deja al deck con información falsa y puede duplicar apps. Mientras no haya soporte de escritorios, conviene no usarlos con FocusWShell. **Mitigado** con la fase 1 del [ADR 0016](adr/0016-escritorios-virtuales.md#implementación-de-la-fase-1-2026-11-11): la app de otro escritorio se ve apagada con «⧉» y tocarla lleva a ella, sin abrir otra copia.
 
 **Conclusión:** los escritorios son viables como reemplazo de las escenas sin API no documentada, si FocusWShell **los sigue en vez de manejarlos**: un espacio de trabajo por escritorio, que el deck muestra según el escritorio actual. El usuario cambia de escritorio con los gestos de Windows.
 

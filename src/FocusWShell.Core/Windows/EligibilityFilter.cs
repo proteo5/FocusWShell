@@ -70,7 +70,9 @@ public sealed class EligibilityFilter
             return ExclusionReason.NotVisible;
         }
 
-        if (w.IsCloaked)
+        // Oculta por estar en otro escritorio: se evalúa como si se viera, y si no la excluye otra regla,
+        // es de otro escritorio (ADR 0016). Oculta por otra cosa (una app de la Store suspendida): fuera.
+        if (w.IsCloaked && !w.IsOnOtherDesktop)
         {
             return ExclusionReason.Cloaked;
         }
@@ -127,7 +129,7 @@ public sealed class EligibilityFilter
             return ExclusionReason.NoCaption;
         }
 
-        return ExclusionReason.None;
+        return w.IsCloaked ? ExclusionReason.OtherDesktop : ExclusionReason.None;
     }
 
     /// <summary>UIPI: un proceso no puede mover ventanas de un proceso con más integridad.</summary>

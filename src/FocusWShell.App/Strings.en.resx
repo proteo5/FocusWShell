@@ -374,4 +374,10 @@ Restore them now?
   <data name="Where_PrincipalLeftShort" xml:space="preserve"><value>principal, left</value></data>
   <data name="Where_PrincipalRight" xml:space="preserve"><value>principal, right of the focus</value></data>
   <data name="Where_PrincipalRightShort" xml:space="preserve"><value>principal, right</value></data>
+  <data name="Desktop_Switched" xml:space="preserve"><value>{0} is on another desktop: taking you there.</value></data>
+  <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} is already open on another desktop. Switch to that desktop to use it.</value></data>
+  <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · on another desktop. Tap to go there.</value></data>
+  <data name="ListState_OtherDesktop" xml:space="preserve"><value>on another desktop</value></data>
+  <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · on another desktop. Click: go there.</value></data>
+  <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Go to its desktop</value></data>
 </root>

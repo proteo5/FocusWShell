@@ -374,4 +374,10 @@
   <data name="Where_PrincipalLeftShort" xml:space="preserve"><value>principal, izquierda</value></data>
   <data name="Where_PrincipalRight" xml:space="preserve"><value>principal, derecha del foco</value></data>
   <data name="Where_PrincipalRightShort" xml:space="preserve"><value>principal, derecha</value></data>
+  <data name="Desktop_Switched" xml:space="preserve"><value>{0} está en otro escritorio: te llevo allí.</value></data>
+  <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} ya está abierta en otro escritorio. Cambia a ese escritorio para usarla.</value></data>
+  <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · en otro escritorio. Tócala para ir allí.</value></data>
+  <data name="ListState_OtherDesktop" xml:space="preserve"><value>en otro escritorio</value></data>
+  <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · en otro escritorio. Clic: ir allí.</value></data>
+  <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Ir a su escritorio</value></data>
 </root>

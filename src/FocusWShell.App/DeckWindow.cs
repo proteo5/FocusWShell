@@ -686,7 +686,13 @@ public sealed class DeckWindow : Window
 
     /// <summary>Las apps que se ven de un panel: las cerradas sólo si están ancladas (o en el modo anclar).</summary>
     private List<DeckApp> Visible(IEnumerable<DeckApp> apps) =>
-        [.. apps.Where(a => a.Handle is not null || _pinning || IsPinned(a))];
+        [.. apps.Where(a => a.Handle is not null || a.State == ListItemState.OtherDesktop || _pinning || IsPinned(a))];
+
+    /// <summary>
+    /// No está aquí: cerrada o en otro escritorio (ADR 0016). Se ve apagada, no se mueve ni se cierra, y
+    /// tocarla la abre o lleva a su escritorio.
+    /// </summary>
+    private static bool Away(DeckApp app) => app.State is ListItemState.Closed or ListItemState.OtherDesktop;
 
     /// <summary>
     /// Modo cerrar: la app que se toque se cierra como con su X (si tiene algo sin guardar, ella pregunta) y
@@ -1213,7 +1219,7 @@ public sealed class DeckWindow : Window
             MaxHeight = 32,
             MinHeight = 14,
             Stretch = System.Windows.Media.Stretch.Uniform,
-            Opacity = app.State == ListItemState.Closed ? 0.45 : 1,
+            Opacity = Away(app) ? 0.45 : 1,
             Margin = new Thickness(0, 1, 0, 2),
         });
         var name = new TextBlock
@@ -1223,9 +1229,10 @@ public sealed class DeckWindow : Window
                 ListItemState.InFocus => " ↑",
                 ListItemState.Parked => " ⏸",
                 ListItemState.Detached => " ↗",
+                ListItemState.OtherDesktop => " ⧉",
                 _ => "",
             },
-            Foreground = app.State == ListItemState.Closed ? DimBrush : TextBrush,
+            Foreground = Away(app) ? DimBrush : TextBrush,
             FontSize = 11,
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextAlignment = TextAlignment.Center,
@@ -1258,7 +1265,8 @@ public sealed class DeckWindow : Window
             BorderThickness = new Thickness(0),
             Background = app.State == ListItemState.InFocus ? ActiveBrush : CardBrush,
             Cursor = Cursors.Hand,
-            ToolTip = string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
+            ToolTip = app.State == ListItemState.OtherDesktop ? Core.Text.F(Strings.Deck_OtherDesktopTip, app.Name)
+                : string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"Deck: {app.Name} ({app.State})");
         // Modo mover (borde = se puede tocar; amarillo = mover): primero todas las que se pueden mover; ya
@@ -1560,7 +1568,8 @@ public sealed class DeckWindow : Window
 
     private async Task Choose(DeckApp app)
     {
-        if (app.State == ListItemState.Closed)
+        // Cerrada, se abre en su panel; en otro escritorio, abrirla activa la que hay y Windows lleva allí.
+        if (Away(app))
         {
             if (!Docked)
             {
@@ -1629,7 +1638,7 @@ public sealed class DeckWindow : Window
 
         if (app.Handle is not { } h)
         {
-            Item(menu, Strings.DeckMenu_OpenInPanel, () => Choose(app));
+            Item(menu, app.State == ListItemState.OtherDesktop ? Strings.DeckMenu_GoToDesktop : Strings.DeckMenu_OpenInPanel, () => Choose(app));
             PinItem();
             return menu;
         }

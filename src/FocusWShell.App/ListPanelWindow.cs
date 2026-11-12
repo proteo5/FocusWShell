@@ -170,13 +170,13 @@ public sealed class ListPanelWindow : Window
         foreach (var item in _view.Items)
         {
             var thumb = new Border { Height = ThumbHeight, Background = ThumbBrush, CornerRadius = new CornerRadius(4) };
-            if (item.Handle is { } handle && item.State != ListItemState.Closed)
+            if (item.Handle is { } handle && !Away(item.State))
             {
                 _slots[handle] = thumb;
             }
             else
             {
-                // Cerrada: su icono, grande y apagado.
+                // Cerrada o en otro escritorio: su icono, grande y apagado.
                 thumb.Child = new Image { Source = item.App is { } app ? AppIcons.Get(app) : null, Width = 48, Height = 48, Opacity = 0.5 };
             }
 
@@ -185,7 +185,7 @@ public sealed class ListPanelWindow : Window
             caption.Children.Add(new TextBlock
             {
                 Text = item.Name + StateSuffix(item.State),
-                Foreground = item.State == ListItemState.Closed ? DimBrush : TextBrush,
+                Foreground = Away(item.State) ? DimBrush : TextBrush,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(6, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -209,7 +209,7 @@ public sealed class ListPanelWindow : Window
             row.Children.Add(new TextBlock
             {
                 Text = item.Name + StateSuffix(item.State),
-                Foreground = item.State == ListItemState.Closed ? DimBrush : TextBrush,
+                Foreground = Away(item.State) ? DimBrush : TextBrush,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(8, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -227,7 +227,7 @@ public sealed class ListPanelWindow : Window
         list.Children.Add(header);
         foreach (var item in _view.Items)
         {
-            var row = DetailRow(item.Name, item.Title, StateText(item.State), item.State == ListItemState.Closed ? DimBrush : TextBrush);
+            var row = DetailRow(item.Name, item.Title, StateText(item.State), Away(item.State) ? DimBrush : TextBrush);
             ((DockPanel)row.Child).Children.Insert(0, AppIcon(item, 16));
             list.Children.Add(Card(item, row, double.NaN, new Thickness(0, 1, 0, 1)));
         }
@@ -258,6 +258,7 @@ public sealed class ListPanelWindow : Window
         card.ToolTip = item.State switch
         {
             ListItemState.Closed => Core.Text.F(Strings.List_TipClosed, item.Name),
+            ListItemState.OtherDesktop => Core.Text.F(Strings.List_TipOtherDesktop, item.Name),
             ListItemState.InFocus => Core.Text.F(Strings.List_TipInFocus, item.Name),
             _ => Core.Text.F(Strings.List_TipOpen, item.Name, item.Title),
         };
@@ -266,7 +267,8 @@ public sealed class ListPanelWindow : Window
         card.MouseLeave += (_, _) => card.Background = CardBrush;
         card.MouseLeftButtonUp += async (_, _) =>
         {
-            if (item.State == ListItemState.Closed)
+            // En otro escritorio, abrirla activa la que ya hay (lleva allí) en vez de abrir otra (ADR 0016).
+            if (Away(item.State))
             {
                 await _openApp(item.AppKey, _view.PanelId);
             }
@@ -286,8 +288,12 @@ public sealed class ListPanelWindow : Window
         ListItemState.InFocus => "  ↑",
         ListItemState.Parked => "  ⏸",
         ListItemState.Detached => "  ↗",
+        ListItemState.OtherDesktop => "  ⧉",
         _ => "",
     };
+
+    /// <summary>No está aquí: cerrada o en otro escritorio. Se ve apagada y tocarla la abre o lleva a ella.</summary>
+    private static bool Away(ListItemState state) => state is ListItemState.Closed or ListItemState.OtherDesktop;
 
     private static string StateText(ListItemState state) => state switch
     {
@@ -296,6 +302,7 @@ public sealed class ListPanelWindow : Window
         ListItemState.Parked => Strings.ListState_Parked,
         ListItemState.Detached => Strings.ListState_Detached,
         ListItemState.Closed => Strings.ListState_Closed,
+        ListItemState.OtherDesktop => Strings.ListState_OtherDesktop,
         _ => "",
     };
 
