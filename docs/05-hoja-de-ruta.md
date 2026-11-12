@@ -71,7 +71,7 @@ Objetivo: que el gestor aguante el uso real: monitores que van y vienen, suspens
 - Escritorios virtuales de Windows: FocusWShell los sigue, con un foco y unas apps por escritorio y los paneles comunes ([ADR 0016](adr/0016-escritorios-virtuales.md)). **Propuesta.** Fases:
   1. No abrir otra copia de una app que está en otro escritorio, y no mostrarla en el deck como si estuviera aquí. **Hecho;** falta probarlo con un segundo escritorio.
   2. Un foco y unas apps por escritorio, con su sesión. Antes, el spike S11.
-  3. En el deck: pestañas de escritorios encima de las de monitores (tocar una cambia de escritorio, «+» crea uno), y las escenas fuera del deck.
+  3. En el deck: pestañas de escritorios encima de las de monitores (tocar una cambia de escritorio, «+» crea uno). Las escenas ya salieron del deck (2026-11-12); siguen en la ventana principal, la bandeja y los atajos.
 
 Criterio de salida: CA5 y las siete CA juntas en una semana de uso diario sin tener que usar el atajo de emergencia por un fallo.
 

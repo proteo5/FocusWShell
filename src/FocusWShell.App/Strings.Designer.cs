@@ -281,8 +281,6 @@ public static class Strings
     /// <summary>ENERGÍA</summary>
     public static string Deck_SecPower => ResourceManager.GetString("Deck_SecPower", Culture)!;
 
-    /// <summary>ESCENAS</summary>
-    public static string Deck_SecScenes => ResourceManager.GetString("Deck_SecScenes", Culture)!;
 
     /// <summary>SISTEMA</summary>
     public static string Deck_SecSystem => ResourceManager.GetString("Deck_SecSystem", Culture)!;

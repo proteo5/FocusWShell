@@ -40,7 +40,6 @@ public sealed record DeckState(
     FocusPosition View,
     IReadOnlyList<DeckPanel> Panels,
     IReadOnlyList<DeckApp> Free,
-    IReadOnlyList<string> Scenes,
     IReadOnlyList<(string? Display, string Name)> Displays)
 {
     /// <summary>Proporciones de la disposición actual.</summary>

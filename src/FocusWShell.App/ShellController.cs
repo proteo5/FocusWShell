@@ -240,7 +240,6 @@ public sealed class ShellController : IDisposable
     /// </summary>
     public DeckState DeckState()
     {
-        var scenes = SceneNames();
         var aux = AuxiliaryDisplays();
         bool ultrawide = UltrawideNow();
         lock (_gate)
@@ -309,7 +308,7 @@ public sealed class ShellController : IDisposable
             bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h) && !_elsewhere.ContainsKey(h));
             var displays = new List<(string?, string)> { (null, Strings.Monitor_Principal) };
             displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
-            return new DeckState(focused, hasPrevious, view, panels, free, scenes, displays)
+            return new DeckState(focused, hasPrevious, view, panels, free, displays)
             {
                 Weights = _workspace.ProportionsOf(view),
                 Ultrawide = ultrawide,

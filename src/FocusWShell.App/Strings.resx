@@ -93,7 +93,6 @@
   <data name="Deck_SecFree" xml:space="preserve"><value>LIBRES</value></data>
   <data name="Deck_SecMonitors" xml:space="preserve"><value>MONITORES</value></data>
   <data name="Deck_SecPower" xml:space="preserve"><value>ENERGÍA</value></data>
-  <data name="Deck_SecScenes" xml:space="preserve"><value>ESCENAS</value></data>
   <data name="Deck_SecSystem" xml:space="preserve"><value>SISTEMA</value></data>
   <data name="Deck_SecView" xml:space="preserve"><value>DISPOSICIÓN DEL PRINCIPAL</value></data>
   <data name="Deck_SendTo" xml:space="preserve"><value>Mandar el deck a</value></data>

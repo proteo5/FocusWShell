@@ -16,7 +16,6 @@ namespace FocusWShell.App;
 public sealed record DeckActions(
     Func<Command[], Task> Run,
     Func<string, string, Task> OpenApp,
-    Action<string> ApplyScene,
     Action ToggleKeepAwake,
     Func<bool> KeepAwake,
     Action FreeAll,
@@ -212,7 +211,7 @@ public sealed class DeckWindow : Window
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         // Izquierda, en tres tarjetas separadas por más aire que sus botones entre sí:
-        //   Foco (la app y qué hacer con ella), Disposición (vista, ancho, escenas) y, abajo, Sistema.
+        //   Foco (la app y qué hacer con ella), Disposición (las columnas del principal) y, abajo, Sistema.
         var left = new Grid();
         void Card(Border card, GridLength height)
         {
@@ -237,13 +236,8 @@ public sealed class DeckWindow : Window
             (Buttons(arrangement.Count, arrangement), GridLength.Auto),
         };
 
-        if (state.Scenes.Count > 0)
-        {
-            layout.Add((Label(Strings.Deck_SecScenes), GridLength.Auto));
-            layout.Add((TextGrid(SceneButtons(state)), new GridLength(1, GridUnitType.Star)));
-        }
-
-        Card(Group(null, layout), new GridLength(1, GridUnitType.Star));
+        Card(Group(null, layout), GridLength.Auto);
+        left.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // aire hasta Sistema
         var system = Group(_powerOpen ? Strings.Deck_SecPower : Strings.Deck_SecSystem, [(Buttons(2, SystemButtons()), GridLength.Auto)]);
         system.Margin = new Thickness(0, 0, 0, 8); // abajo, alineada con LIBRES
         Card(system, GridLength.Auto);
@@ -352,13 +346,7 @@ public sealed class DeckWindow : Window
             Row(FreeCard(state), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
         }
 
-        // Abajo: las escenas (una fila; si no caben, «+N más») y, aparte, lo del sistema.
-        // Con la energía o la disposición abiertas, sin escenas: así cabe todo sin scroll.
-        if (state.Scenes.Count > 0 && !_powerOpen && !_pagesOpen)
-        {
-            Row(TextGrid(SceneButtons(state)), new GridLength(Touch + 8));
-        }
-
+        // Abajo, lo del sistema.
         var system = SystemButtons();
         Row(Buttons(system.Count > 4 ? 3 : system.Count, system), GridLength.Auto);
     }
@@ -1301,16 +1289,6 @@ public sealed class DeckWindow : Window
     private static string? ColumnName(DeckState state, PanelSide side) =>
         state.Panels.Where(p => p.Display is null && p.Side == side).OrderBy(p => p.Slot).FirstOrDefault()?.Name;
 
-    private List<Button> SceneButtons(DeckState state) =>
-        state.Scenes.Select(name => WideButton(name, true, () =>
-        {
-            _actions.ApplyScene(name);
-            if (!Docked)
-            {
-                _actions.Hide();
-            }
-        })).ToList();
-
     private Button AwakeButton()
     {
         var awake = WideButton(_actions.KeepAwake() ? "☀  " + Strings.Deck_AwakeOn : "☾  " + Strings.Deck_AwakeOff, true, () =>
@@ -1488,42 +1466,6 @@ public sealed class DeckWindow : Window
             grid.Children.Add(b);
         }
 
-        return grid;
-    }
-
-    /// <summary>
-    /// Botones de texto que se reparten el espacio que haya (escenas, la fila de abajo). Si no caben todos, el
-    /// último hueco es «+N más» y abre un menú con los que faltan (antes, los que no cabían no se veían).
-    /// </summary>
-    private static FitGrid TextGrid(IEnumerable<Button> buttons)
-    {
-        var grid = new FitGrid { MinCellWidth = 120, MaxCellWidth = 400, Aspect = 4, MinCellHeight = Touch, MaxCellHeight = Touch, Gap = 6, Margin = new Thickness(0, 0, 8, 0) };
-        var list = buttons.ToList();
-        foreach (var b in list)
-        {
-            StretchOut(b);
-            b.Margin = new Thickness(0);
-            grid.Children.Add(b);
-        }
-
-        var more = new Button { Focusable = false, BorderThickness = new Thickness(0), Foreground = TextBrush, Background = CardBrush, Cursor = Cursors.Hand, FontSize = 14 };
-        System.Windows.Automation.AutomationProperties.SetName(more, Strings.Deck_MoreName);
-        more.Click += (_, _) =>
-        {
-            var menu = new ContextMenu { PlacementTarget = more };
-            foreach (var hidden in list.Skip(grid.HiddenFrom))
-            {
-                string header = System.Windows.Automation.AutomationProperties.GetName(hidden) is { Length: > 0 } n ? n : hidden.Content?.ToString() ?? "";
-                var item = new MenuItem { Header = header, IsEnabled = hidden.IsEnabled };
-                item.Click += (_, _) => hidden.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                menu.Items.Add(item);
-            }
-
-            menu.IsOpen = true;
-        };
-        grid.More = more;
-        grid.OverflowChanged = hidden => more.Content = Core.Text.F(Strings.Deck_More, hidden);
-        grid.Children.Add(more);
         return grid;
     }
 

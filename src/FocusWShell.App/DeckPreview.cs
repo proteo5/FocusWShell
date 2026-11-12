@@ -57,7 +57,6 @@ public static class DeckPreview
         var actions = new DeckActions(
             _ => Task.CompletedTask,
             (_, _) => Task.CompletedTask,
-            _ => { },
             () => { },
             () => false,
             () => { },
@@ -143,7 +142,6 @@ public static class DeckPreview
             FocusPosition.Center,
             panels,
             free,
-            manyApps ? ["Código", "Lectura", "Reuniones", "Correo"] : ["Código", "Lectura"],
             [(null, "Principal"), ("hp", "HP 24fw"), ("tablet", "Lenovo tablet")])
         {
             Browsers = new HashSet<nint> { 1, 3 },

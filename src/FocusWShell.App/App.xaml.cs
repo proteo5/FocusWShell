@@ -370,7 +370,6 @@ public partial class App : Application
                 _tray?.Notify("Deck", message);
                 _main?.Refresh();
             },
-            ApplyScene: name => Task.Run(() => ApplyScene(name)),
             ToggleKeepAwake: ToggleKeepAwake,
             KeepAwake: () => _keepAwake.IsActive,
             FreeAll: RestoreFromTray,
