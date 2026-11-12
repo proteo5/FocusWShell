@@ -297,12 +297,7 @@ public partial class App : Application
             ["foco-al-panel"] = () => OnCommandHotkey(Core.Strings.Action_FocusToPanel, _controller.ReturnCenter),
             ["pantalla-completa"] = () => OnCommandHotkey(Core.Strings.Action_Fullscreen, () => _controller.ToggleFullscreen()),
             ["vista"] = () => OnCommandHotkey(Core.Strings.Action_View, () =>
-                _controller.Execute(new SetView(_controller.View switch
-                {
-                    FocusPosition.Center => FocusPosition.Left,
-                    FocusPosition.Left => FocusPosition.Right,
-                    _ => FocusPosition.Center,
-                }))),
+                _controller.Execute(new SetView(MainArrangement.Next(_controller.View, ShellController.UltrawideNow())))),
             ["pantalla-encendida"] = () => Dispatcher.BeginInvoke(ToggleKeepAwake),
             [Hotkeys.Deck] = () => Dispatcher.BeginInvoke(ToggleDeck),
         };

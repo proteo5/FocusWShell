@@ -51,15 +51,12 @@
   <data name="DeckSend_WholeHasPanels" xml:space="preserve"><value>{0}: entero (tiene paneles)</value></data>
   <data name="Deck_AwakeOff" xml:space="preserve"><value>Pantalla encendida: no</value></data>
   <data name="Deck_AwakeOn" xml:space="preserve"><value>Pantalla encendida: sí</value></data>
-  <data name="Deck_Center" xml:space="preserve"><value>Centro</value></data>
   <data name="Deck_Close" xml:space="preserve"><value>Cerrar una app</value></data>
   <data name="Deck_CloseShort" xml:space="preserve"><value>Cerrar</value></data>
   <data name="Deck_Closing" xml:space="preserve"><value>Cerrando…</value></data>
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>vacío</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Ocultar el deck</value></data>
   <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} está al frente (recibe el teclado), pero no es la del foco</value></data>
-  <data name="Deck_Left" xml:space="preserve"><value>Izquierda</value></data>
-  <data name="Deck_LeftShort" xml:space="preserve"><value>Izq.</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} más</value></data>
   <data name="Deck_MoreName" xml:space="preserve"><value>Deck: más apps</value></data>
   <data name="Deck_Mouse" xml:space="preserve"><value>Ratón al foco</value></data>
@@ -92,8 +89,6 @@
   <data name="Deck_ReleaseName" xml:space="preserve"><value>Deck: Liberar {0}</value></data>
   <data name="Deck_RestoreAll" xml:space="preserve"><value>Liberar todas</value></data>
   <data name="Deck_RestoreSure" xml:space="preserve"><value>¿Seguro? Otra vez</value></data>
-  <data name="Deck_Right" xml:space="preserve"><value>Derecha</value></data>
-  <data name="Deck_RightShort" xml:space="preserve"><value>Der.</value></data>
   <data name="Deck_SecFocus" xml:space="preserve"><value>FOCO</value></data>
   <data name="Deck_SecFree" xml:space="preserve"><value>LIBRES</value></data>
   <data name="Deck_SecMonitors" xml:space="preserve"><value>MONITORES</value></data>
@@ -107,9 +102,6 @@
   <data name="Deck_ThisMonitor" xml:space="preserve"><value>Este monitor</value></data>
   <data name="Deck_ToPanel" xml:space="preserve"><value>Foco al panel</value></data>
   <data name="Deck_ToPanelShort" xml:space="preserve"><value>Al panel</value></data>
-  <data name="Deck_ViewCustom" xml:space="preserve"><value>A medida</value></data>
-  <data name="Deck_ViewDone" xml:space="preserve"><value>Listo</value></data>
-  <data name="Deck_ViewTip" xml:space="preserve"><value>Disposición del principal: dónde va el foco y qué ancho tiene. Toca para cambiarla.</value></data>
   <data name="Display_AMonitor" xml:space="preserve"><value>un monitor</value></data>
   <data name="Display_Lost" xml:space="preserve"><value>Se desconectó {0}: sus ventanas pasan a los paneles del principal hasta que vuelva.</value></data>
   <data name="Display_PrincipalBack" xml:space="preserve"><value>{0} vuelve a ser el principal; {1} recupera sus paneles.</value></data>
@@ -219,9 +211,6 @@
   <data name="Main_ParkTip" xml:space="preserve"><value>Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa si la minimizas tú.</value></data>
   <data name="Main_Promote" xml:space="preserve"><value>Al Centro</value></data>
   <data name="Main_PromoteTip" xml:space="preserve"><value>Lleva la ventana seleccionada al Centro</value></data>
-  <data name="Main_ProportionsLabel" xml:space="preserve"><value>Proporciones:</value></data>
-  <data name="Main_ProportionsName" xml:space="preserve"><value>Proporciones</value></data>
-  <data name="Main_ProportionsTip" xml:space="preserve"><value>Ancho de las columnas en esta vista. También puedes arrastrar el borde de una ventana que da a la columna vecina: se guarda.</value></data>
   <data name="Main_Reattach" xml:space="preserve"><value>Reencajar</value></data>
   <data name="Main_ReattachTip" xml:space="preserve"><value>Devuelve al layout una ventana que maximizaste tú</value></data>
   <data name="Main_Refresh" xml:space="preserve"><value>Actualizar lista</value></data>
@@ -247,11 +236,8 @@
   <data name="Main_TabWindowsName" xml:space="preserve"><value>Pestaña Ventanas</value></data>
   <data name="Main_Unpark" xml:space="preserve"><value>Recuperar</value></data>
   <data name="Main_UnparkTip" xml:space="preserve"><value>Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pasa si la abres desde la barra de tareas.</value></data>
-  <data name="Main_ViewCenter" xml:space="preserve"><value>Foco al centro</value></data>
   <data name="Main_ViewLabel" xml:space="preserve"><value>Vista:</value></data>
-  <data name="Main_ViewLeft" xml:space="preserve"><value>Foco a la izquierda</value></data>
   <data name="Main_ViewName" xml:space="preserve"><value>Vista</value></data>
-  <data name="Main_ViewRight" xml:space="preserve"><value>Foco a la derecha</value></data>
   <data name="Main_ViewTip" xml:space="preserve"><value>Dónde va el foco en el monitor principal</value></data>
   <data name="Menu_ExcludeApp" xml:space="preserve"><value>Excluir la app {0} ({1})</value></data>
   <data name="Menu_ExcludeClass" xml:space="preserve"><value>Excluir sólo este tipo de ventana (clase {0})</value></data>
@@ -366,7 +352,6 @@
   <data name="Tray_StartOn" xml:space="preserve"><value>FocusWShell se abrirá al iniciar sesión ({0}).</value></data>
   <data name="Tray_StartWithWindows" xml:space="preserve"><value>Iniciar con Windows</value></data>
   <data name="Unmanageable_Generic" xml:space="preserve"><value>no se puede mover</value></data>
-  <data name="Weights_Custom" xml:space="preserve"><value>Personalizadas · {0}</value></data>
   <data name="Where_AuxLeft" xml:space="preserve"><value>{0}, izquierda</value></data>
   <data name="Where_AuxRight" xml:space="preserve"><value>{0}, derecha</value></data>
   <data name="Where_LowerSuffix" xml:space="preserve"><value> abajo</value></data>
@@ -399,4 +384,17 @@
   <data name="Deck_PagesCloseAllConfirm" xml:space="preserve"><value>¿Cerrar {0}? Toca otra vez</value></data>
   <data name="Deck_SiteName" xml:space="preserve"><value>Sitio {0}, {1} páginas</value></data>
   <data name="Deck_PageWhere" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Deck_PanelOff" xml:space="preserve"><value>apagado</value></data>
+  <data name="Deck_LeftColumn" xml:space="preserve"><value>Izquierda</value></data>
+  <data name="Deck_RightColumn" xml:space="preserve"><value>Derecha</value></data>
+  <data name="Deck_ColumnTip" xml:space="preserve"><value>Prender o apagar {0} en el principal</value></data>
+  <data name="Deck_BorrowTip" xml:space="preserve"><value>Traer {0} a este lado</value></data>
+  <data name="Deck_ResetWidth" xml:space="preserve"><value>Restablecer ancho</value></data>
+  <data name="Arr_Center" xml:space="preserve"><value>Paneles a los dos lados</value></data>
+  <data name="Arr_Right" xml:space="preserve"><value>Paneles a la izquierda</value></data>
+  <data name="Arr_Left" xml:space="preserve"><value>Paneles a la derecha</value></data>
+  <data name="Arr_ContextOnly" xml:space="preserve"><value>Sólo la columna izquierda</value></data>
+  <data name="Arr_WorkOnly" xml:space="preserve"><value>Sólo la columna derecha</value></data>
+  <data name="Arr_FocusOnly" xml:space="preserve"><value>Solo foco</value></data>
+  <data name="Main_ResetWidthTip" xml:space="preserve"><value>Vuelve al ancho por defecto de esta disposición (el ancho se ajusta arrastrando el borde entre columnas)</value></data>
 </root>

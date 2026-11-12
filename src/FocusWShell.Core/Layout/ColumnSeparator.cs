@@ -42,6 +42,8 @@ public static class ColumnSeparator
             ('C', layout.CenterColumn),
             ('R', layout.RightColumn),
         };
+        // Una columna apagada (ancho cero) no es vecina de nadie (ADR 0012, enmienda).
+        columns.RemoveAll(c => c.Rect.Width <= 0);
         columns.Sort((a, b) => a.Rect.Left.CompareTo(b.Rect.Left));
 
         int centerX = expected.Left + (expected.Width / 2);
@@ -79,7 +81,8 @@ public static class ColumnSeparator
             widths[n] = boundary - gap - neighbor.Left;
         }
 
-        double Width(char id) => widths[columns.FindIndex(c => c.Id == id)];
+        // La apagada conserva un peso positivo cualquiera: no se usa en esta disposición.
+        double Width(char id) => columns.FindIndex(c => c.Id == id) is var k and >= 0 ? widths[k] : 1;
         return new ViewWeights(Width('L'), Width('C'), Width('R'));
     }
 }

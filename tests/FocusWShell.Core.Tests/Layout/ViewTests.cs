@@ -1,4 +1,4 @@
-using FocusWShell.Core.Domain;
+﻿using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
 using FocusWShell.Core.Layout;
 
@@ -28,6 +28,52 @@ public class ViewTests
     }
 
     private static WindowTarget Target(SceneLayoutResult r, int id) => r.Targets.Single(t => t.Handle == id);
+
+    [Fact]
+    public void WithoutWorkTheFocusTakesItsPlace()
+    {
+        var r = Compute(FocusPosition.ContextOnly, [Win(1, "Slack")], [Win(2, "Edge")]);
+
+        Assert.Equal(new PixelRect(0, 0, 1204, 1392), Target(r, 1).Rect);
+        Assert.Equal(new PixelRect(1204, 0, 3440, 1392), Target(r, 9).Rect);
+        Assert.Equal(TargetKind.Minimized, Target(r, 2).Kind);
+        Assert.Equal(0, r.RightColumn.Width);
+    }
+
+    [Fact]
+    public void WithoutContextTheFocusGoesToTheLeftEdge()
+    {
+        var r = Compute(FocusPosition.WorkOnly, [Win(1, "Slack")], [Win(2, "Edge")]);
+
+        Assert.Equal(new PixelRect(0, 0, 2236, 1392), Target(r, 9).Rect);
+        Assert.Equal(new PixelRect(2236, 0, 3440, 1392), Target(r, 2).Rect);
+        Assert.Equal(TargetKind.Minimized, Target(r, 1).Kind);
+    }
+
+    [Fact]
+    public void FocusOnlyFillsTheMonitorAndHidesBothPanels()
+    {
+        var r = Compute(FocusPosition.FocusOnly, [Win(1, "Slack")], [Win(2, "Edge")]);
+
+        Assert.Equal(Work, Target(r, 9).Rect);
+        Assert.Equal(TargetKind.Minimized, Target(r, 1).Kind);
+        Assert.Equal(TargetKind.Minimized, Target(r, 2).Kind);
+        Assert.Empty(r.Bands);
+    }
+
+    [Fact]
+    public void TheSeparatorIgnoresAHiddenColumn()
+    {
+        var r = Compute(FocusPosition.ContextOnly, [Win(1, "Slack")], []);
+
+        // Arrastrar el borde derecho de Slack (el separador con el foco) cambia Contexto y el foco.
+        var weights = ColumnSeparator.Detect(new(0, 0, 1204, 1392), new(0, 0, 1404, 1392), r);
+
+        Assert.NotNull(weights);
+        Assert.Equal(1404, weights!.Left);
+        Assert.Equal(2036, weights.Center);
+        Assert.True(weights.IsValid);
+    }
 
     [Fact]
     public void FocusOnTheLeftPutsWorkNextToItAndContextOnTheFarEdge()

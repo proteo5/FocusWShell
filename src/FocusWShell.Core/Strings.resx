@@ -54,9 +54,6 @@
   <data name="Note_TooWideShared" xml:space="preserve"><value>{0} necesita {1} px de ancho y {2} puede tener como mucho {3} sin invadir el foco ni el otro monitor; se minimiza y queda fuera del layout.</value></data>
   <data name="Panel_Context" xml:space="preserve"><value>Contexto</value></data>
   <data name="Panel_Work" xml:space="preserve"><value>Trabajo</value></data>
-  <data name="Preset_HalfAndHalf" xml:space="preserve"><value>Mitad y mitad</value></data>
-  <data name="Preset_Normal" xml:space="preserve"><value>Normal</value></data>
-  <data name="Preset_WideFocus" xml:space="preserve"><value>Foco ancho</value></data>
   <data name="Rej_AlreadyCenter" xml:space="preserve"><value>{0} ya está en el Centro.</value></data>
   <data name="Rej_AlreadyManaged" xml:space="preserve"><value>{0} ya está gestionada.</value></data>
   <data name="Rej_CantFullscreen" xml:space="preserve"><value>{0} no puede pasar a pantalla completa desde {1}.</value></data>
@@ -101,4 +98,7 @@
   <data name="Weights_FocusCenter" xml:space="preserve"><value>izquierda {0} · foco {1} · derecha {2} %</value></data>
   <data name="Weights_FocusLeft" xml:space="preserve"><value>foco {0} · derecha {1} · izquierda {2} %</value></data>
   <data name="Weights_FocusRight" xml:space="preserve"><value>izquierda {0} · derecha {1} · foco {2} %</value></data>
+  <data name="Weights_ContextOnly" xml:space="preserve"><value>izquierda {0} · foco {1} %</value></data>
+  <data name="Weights_WorkOnly" xml:space="preserve"><value>foco {0} · derecha {1} %</value></data>
+  <data name="Weights_FocusOnly" xml:space="preserve"><value>solo foco</value></data>
 </root>

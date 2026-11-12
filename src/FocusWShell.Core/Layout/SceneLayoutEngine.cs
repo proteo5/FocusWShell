@@ -34,37 +34,63 @@ public static class SceneLayoutEngine
         // Los paneles empiezan bajo su tira de pestañas; el Centro ocupa toda la altura.
         int inset = Math.Clamp(input.PanelTopInset, 0, area.Height / 2);
 
+        // 0. Disposición (ADR 0012, enmienda): una columna apagada no ocupa sitio y sus ventanas se minimizan,
+        //    como las ocultas de una pila. Las disposiciones con columnas apagadas se calculan como la de foco
+        //    al centro sin ellas; «fit» dice qué borde del monitor toca el foco, por si no cabe.
+        var view = input.Focus;
+        bool hideLeft = view is FocusPosition.WorkOnly or FocusPosition.FocusOnly;
+        bool hideRight = view is FocusPosition.ContextOnly or FocusPosition.FocusOnly;
+        var focus = view is FocusPosition.Left or FocusPosition.Right ? view : FocusPosition.Center;
+        var fit = view switch
+        {
+            FocusPosition.WorkOnly => FocusPosition.Left,
+            FocusPosition.ContextOnly => FocusPosition.Right,
+            _ => focus,
+        };
+        var hidden = new List<WindowTarget>();
+        IReadOnlyList<PanelInput> Shown(PanelInput first, PanelInput? second, bool hide)
+        {
+            if (!hide)
+            {
+                return Column(first, second);
+            }
+
+            foreach (var panel in Column(first, second))
+            {
+                hidden.AddRange(panel.Windows.Select(w => new WindowTarget(w.Handle, w.Label, panel.Name, TargetKind.Minimized, default)));
+            }
+
+            return [];
+        }
+
         // 1. Paneles de cada columna (hasta dos, uno encima del otro) y su template efectivo según el
         //    alto que les toca.
-        var left = PanelColumn.Build(Column(input.Left, input.LeftLower), area.Top, area.Bottom, inset, gap, notes, excluded);
-        var right = PanelColumn.Build(Column(input.Right, input.RightLower), area.Top, area.Bottom, inset, gap, notes, excluded);
+        var left = PanelColumn.Build(Shown(input.Left, input.LeftLower, hideLeft), area.Top, area.Bottom, inset, gap, notes, excluded);
+        var right = PanelColumn.Build(Shown(input.Right, input.RightLower, hideRight), area.Top, area.Bottom, inset, gap, notes, excluded);
 
-        // 2. Anchos ideales según los pesos, en el orden de la vista.
-        var focus = input.Focus;
-        int wl, wc, wr;
-        switch (focus)
+        // 2. Anchos ideales según los pesos, en el orden de la vista; las columnas apagadas, a cero.
+        var order = focus switch
         {
-            case FocusPosition.Left:
-            {
-                var ideal = Splitter.Columns(area, [input.CenterWeight, input.Right.Weight, input.Left.Weight], gap);
-                (wc, wr, wl) = (ideal[0].Width, ideal[1].Width, ideal[2].Width);
-                break;
-            }
-
-            case FocusPosition.Right:
-            {
-                var ideal = Splitter.Columns(area, [input.Left.Weight, input.Right.Weight, input.CenterWeight], gap);
-                (wl, wr, wc) = (ideal[0].Width, ideal[1].Width, ideal[2].Width);
-                break;
-            }
-
-            default:
-            {
-                var ideal = Splitter.Columns(area, [input.Left.Weight, input.CenterWeight, input.Right.Weight], gap);
-                (wl, wc, wr) = (ideal[0].Width, ideal[1].Width, ideal[2].Width);
-                break;
-            }
-        }
+            FocusPosition.Left => new[] { 'C', 'R', 'L' },
+            FocusPosition.Right => ['L', 'R', 'C'],
+            _ => ['L', 'C', 'R'],
+        };
+        bool Visible(char column) => column switch
+        {
+            'L' => !hideLeft,
+            'R' => !hideRight,
+            _ => true,
+        };
+        double Weight(char column) => column switch
+        {
+            'L' => input.Left.Weight,
+            'R' => input.Right.Weight,
+            _ => input.CenterWeight,
+        };
+        var visibleOrder = order.Where(Visible).ToArray();
+        var ideal = Splitter.Columns(area, [.. visibleOrder.Select(Weight)], gap);
+        int IdealWidth(char column) => Array.IndexOf(visibleOrder, column) is var i and >= 0 ? ideal[i].Width : 0;
+        int wl = IdealWidth('L'), wc = IdealWidth('C'), wr = IdealWidth('R');
 
         int needL = left.RequiredWidth;
         int needR = right.RequiredWidth;
@@ -117,36 +143,37 @@ public static class SceneLayoutEngine
                 Text.F(Strings.Note_TooWideBetween, w.Label, w.MinSize!.Value.Width, panel.DisplayTitle, limit));
         }
 
-        // 7. Columnas definitivas (contiguas, con separación), en el orden de la vista. La última se queda
-        //    con lo que sobre por redondeo.
+        // 7. Columnas definitivas (contiguas, con separación), en el orden de la vista. La última visible se
+        //    queda con lo que sobre por redondeo; una apagada es un rectángulo vacío donde estaría.
         int x0 = area.Left;
-        PixelRect Next(int width, int top, bool last)
+        char lastVisible = visibleOrder[^1];
+        var rects = new Dictionary<char, PixelRect>();
+        foreach (var column in order)
         {
-            var rect = new PixelRect(x0, top, last ? area.Right : x0 + width, area.Bottom);
+            int top = column == 'C' ? area.Top : area.Top + inset;
+            if (!Visible(column))
+            {
+                rects[column] = new PixelRect(x0, top, x0, area.Bottom);
+                continue;
+            }
+
+            int width = column switch { 'L' => wl, 'R' => wr, _ => wc };
+            var rect = new PixelRect(x0, top, column == lastVisible ? area.Right : x0 + width, area.Bottom);
+            rects[column] = rect;
             x0 = rect.Right + gap;
-            return rect;
         }
 
-        PixelRect leftCol, centerCol, rightCol;
+        PixelRect leftCol = rects['L'], centerCol = rects['C'], rightCol = rects['R'];
         PanelSide? leftEdge, rightEdge;
         switch (focus)
         {
             case FocusPosition.Left:
-                centerCol = Next(wc, area.Top, false);
-                rightCol = Next(wr, area.Top + inset, false);
-                leftCol = Next(wl, area.Top + inset, true);
                 (leftEdge, rightEdge) = (PanelSide.Right, null);
                 break;
             case FocusPosition.Right:
-                leftCol = Next(wl, area.Top + inset, false);
-                rightCol = Next(wr, area.Top + inset, false);
-                centerCol = Next(wc, area.Top, true);
                 (leftEdge, rightEdge) = (PanelSide.Left, null);
                 break;
             default:
-                leftCol = Next(wl, area.Top + inset, false);
-                centerCol = Next(wc, area.Top, false);
-                rightCol = Next(wr, area.Top + inset, true);
                 (leftEdge, rightEdge) = (PanelSide.Left, PanelSide.Right);
                 break;
         }
@@ -160,11 +187,12 @@ public static class SceneLayoutEngine
         left.Place(leftCol.Left, leftCol.Right, leftEdge, gap, grid, targets, notes, areas, bands, pages);
         if (input.Center is { } center)
         {
-            targets.Add(new WindowTarget(center.Handle, center.Label, "Centro", TargetKind.Visible, FitCenter(center, centerCol, focus, notes)));
+            targets.Add(new WindowTarget(center.Handle, center.Label, "Centro", TargetKind.Visible, FitCenter(center, centerCol, fit, notes)));
         }
 
         right.Place(rightCol.Left, rightCol.Right, rightEdge, gap, grid, targets, notes, areas, bands, pages);
         targets.AddRange(excluded);
+        targets.AddRange(hidden);
 
         var templates = new Dictionary<string, PanelTemplate>();
         foreach (var p in Column(input.Left, input.LeftLower).Concat(Column(input.Right, input.RightLower)))

@@ -269,6 +269,10 @@ public sealed class SceneApplier
         {
             FocusPosition.Left => (Left: edges.Right, Right: false),
             FocusPosition.Right => (Left: edges.Left, Right: false),
+            // Con una columna apagada, la otra queda en su borde del monitor (ADR 0012, enmienda).
+            FocusPosition.ContextOnly => (Left: edges.Left, Right: false),
+            FocusPosition.WorkOnly => (Left: false, Right: edges.Right),
+            FocusPosition.FocusOnly => (Left: false, Right: false),
             _ => (edges.Left, edges.Right),
         };
         int dpi = _display.Dpi;

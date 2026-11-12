@@ -1,6 +1,6 @@
 ﻿# ADR 0012 — Vistas: un solo foco, que puede ir a la izquierda, al centro o a la derecha
 
-- **Estado:** Aceptada (2026-11-10)
+- **Estado:** Aceptada (2026-11-10); enmendada el 2026-11-12 (la disposición del principal son columnas que se prenden y apagan)
 - **Fecha:** 2026-11-10
 
 ## Contexto
@@ -69,3 +69,52 @@ Tercera parte hecha:
 
 - **Separador entre dos paneles apilados** (`StackSeparator`): redimensionar la ventana de arriba por su borde de abajo, o la de abajo por su borde de arriba, reparte el alto de la columna (`SplitColumn`) y se guarda en los paneles (`Height`). El reparto nunca deja a una ventana sin sitio: si no cabe su mínimo, se lleva al límite con una nota, y sólo sale del layout si ni así cabe.
 - **Pantalla completa** (punto 4): `EnterFullscreen(ventana, monitor)` la lleva al foco si no estaba y la maximiza en el monitor elegido; la columna del foco queda vacía y las tiras de ese monitor se ocultan. `ExitFullscreen`, o des-maximizarla con el botón de Windows, la devuelve al foco. Promover otra ventana termina la pantalla completa como termina el Centro: la anterior vuelve a su panel. Botón "Pantalla completa" con el monitor elegido y **Ctrl+Alt+Mayús+F** (el foco, en el principal). Si su monitor se desconecta, sigue en pantalla completa en el principal.
+
+## Enmienda (2026-11-12): la disposición del principal son columnas que se prenden y apagan
+
+### Contexto
+
+Las tres vistas y sus anchos se refinaron en un ultrawide (3440 × 1440), donde funcionan bien. En la práctica, los anchos fijos (Normal, Foco ancho, Mitad y mitad) no se usaban: arrastrar el separador da el ancho exacto y se guarda. Y las vistas no sirven a quien tiene un principal normal (16:9 o 16:10):
+
+- **Con un solo monitor normal**, tres columnas dejan cada panel en unos 380 px. Los paneles hacen falta, pero sólo uno a la vez, junto al foco (unos 66 / 33).
+- **Con un principal normal y más monitores**, lo habitual es no tener paneles en el principal: el foco lo ocupa entero y los paneles viven en los demás monitores, que ya se pueden tener.
+
+### Decisión
+
+1. **La disposición del principal se elige prendiendo y apagando sus dos columnas**: la de la izquierda (Contexto) y la de la derecha (Trabajo). El foco ocupa lo que queda. La pregunta deja de ser «¿dónde va el foco?» y pasa a ser «¿qué quiero alrededor del foco?».
+2. **Una columna apagada** minimiza las apps de sus paneles y oculta sus tiras, como las ocultas de una pila. Las apps siguen en su panel: el deck lo muestra apagado, tocar una de sus apps la lleva al foco, y prender la columna devuelve todo a su sitio.
+3. **En un ultrawide** (proporción del área del principal de 2,1 : 1 o más), aparece un botón extra en el borde exterior cuando el lado contrario está apagado. Ese botón **trae la columna del otro lado a este lado**: así se conservan las vistas con el foco a un lado y los dos paneles juntos.
+4. **Las seis disposiciones**, con el orden de siempre (Contexto en el borde, Trabajo junto al foco):
+
+   | Columnas prendidas | Pantalla | Proporciones por defecto | Antes |
+   | --- | --- | --- | --- |
+   | Contexto y Trabajo | Contexto · **Foco** · Trabajo | 18 · 55 · 27 | Foco al centro |
+   | Contexto y «⇠ Trabajo» (ultrawide) | Contexto · Trabajo · **Foco** | 15 · 30 · 55 | Foco a la derecha |
+   | Trabajo y «Contexto ⇢» (ultrawide) | **Foco** · Trabajo · Contexto | 55 · 30 · 15 | Foco a la izquierda |
+   | Sólo Contexto | Contexto · **Foco** | 35 · 65 | (nueva) |
+   | Sólo Trabajo | **Foco** · Trabajo | 65 · 35 | (nueva) |
+   | Ninguna | **Foco** (Solo foco) | 100 | (nueva) |
+
+5. **Reglas de los botones**, para que no haya estados raros:
+   - El extra existe sólo si su lado está prendido y el contrario apagado.
+   - Prender el lado contrario devuelve la columna prestada a su sitio, y el extra desaparece.
+   - Apagar el lado donde está la columna prestada apaga las dos.
+6. **Si el principal deja de ser ultrawide**, las dos disposiciones con columna prestada se muestran como «Contexto y Trabajo» (la prestada vuelve a su lado). Lo guardado no cambia: al volver el ultrawide, vuelve como estaba.
+7. **Se quitan los anchos fijos.** Los anchos se ajustan arrastrando el separador y se guardan por disposición, como antes por vista. Para volver al ancho por defecto queda «Restablecer ancho» en el menú de los botones.
+8. **La pantalla completa de una app** (punto 4, `EnterFullscreen`) no cambia: maximiza esa app en el monitor elegido, también un auxiliar. Solo foco es otra cosa: una disposición, que vale para la app que esté en el foco.
+
+### Consecuencias
+
+- El modelo de dominio no cambia: `FocusPosition` gana tres valores (`ContextOnly`, `WorkOnly` y `FocusOnly`) que el motor calcula como la disposición al centro sin esas columnas. Lo guardado (`panels.json`, escenas) sigue valiendo: las tres vistas de antes son tres de las seis disposiciones.
+- El atajo Ctrl+Alt+Mayús+V recorre las disposiciones que ofrece el principal.
+- El principal sigue necesitando un panel, aunque esté apagado. Permitirlo sin paneles queda para cuando haga falta: con «Ninguna» no se ve.
+- Detectar el ultrawide por proporción falla con un 16:9 muy grande (4K). Si hace falta, se podrá forzar en Ajustes.
+
+### Implementación de la enmienda (2026-11-12)
+
+- **Core:** `FocusPosition` gana `ContextOnly`, `WorkOnly` y `FocusOnly`. `MainArrangement` reúne las reglas: qué botones hay, qué hace cada uno, cuándo es ultrawide (`IsUltrawide`), la disposición efectiva sin ultrawide (`Effective`) y el orden del atajo (`Next`).
+- **Motor:** una columna apagada mide cero, no consume separación y sus ventanas salen como `Minimized`. La disposición se calcula como la de foco al centro sin esa columna; el foco que no cabe se ancla al borde del monitor que toca. El separador arrastrado ignora las columnas apagadas.
+- **Los anchos fijos se quitaron** (`ViewProportions.Presets`). `SetProportions(disposición, null)` restablece el ancho.
+- **Deck:** «Disposición del principal» es una fila de interruptores con el nombre de cada columna (el de su primer panel). En el deck estrecho van en la cabecera, sólo con su icono. El menú de cada interruptor tiene «Restablecer ancho». Un panel apagado se ve atenuado y su lugar dice «apagado».
+- **Ventana principal:** el selector lista las disposiciones que ofrece el principal, con el ancho actual y «Restablecer ancho».
+- **Las tiras** de un panel apagado se ocultan solas: no tiene banda en el layout.

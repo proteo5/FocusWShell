@@ -104,7 +104,6 @@ public sealed class DeckWindow : Window
                 _moveApp = null;
                 _closing = false;
                 _pinning = false;
-                _viewOpen = false;
                 _powerOpen = false;
                 _powerArmed = null;
             }
@@ -229,19 +228,14 @@ public sealed class DeckWindow : Window
         modes.Margin = new Thickness(0, 8, 0, 2);
         Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
 
-        // La disposición del principal casi no se cambia: se ve resumida en un botón, que abre aquí mismo
-        // sus botones (vista y ancho) hasta tocar «Listo». Así las escenas tienen más sitio.
-        var layout = new List<(UIElement, GridLength)> { (Label(Strings.Deck_SecView), GridLength.Auto) };
-        if (_viewOpen)
+        // La disposición del principal: las columnas de paneles que se prenden y apagan, como un mapa del
+        // monitor (ADR 0012, enmienda). El foco ocupa lo que dejan.
+        var arrangement = ArrangementButtons(state, compact: false);
+        var layout = new List<(UIElement, GridLength)>
         {
-            layout.Add((Buttons(3, ViewButtons(state, shortText: false)), GridLength.Auto));
-            layout.Add((Buttons(3, WidthButtons(state)), GridLength.Auto));
-            layout.Add((Buttons(1, [ViewDoneButton()]), GridLength.Auto));
-        }
-        else
-        {
-            layout.Add((Buttons(1, [ViewSummary(state, full: true)]), GridLength.Auto));
-        }
+            (Label(Strings.Deck_SecView), GridLength.Auto),
+            (Buttons(arrangement.Count, arrangement), GridLength.Auto),
+        };
 
         if (state.Scenes.Count > 0)
         {
@@ -320,18 +314,12 @@ public sealed class DeckWindow : Window
             _root.Children.Add(e);
         }
 
-        Row(FocusHeader(state, viewSummary: true), GridLength.Auto);
+        Row(FocusHeader(state, arrangement: true), GridLength.Auto);
         // Las seis en una fila: un hueco tras «Ratón» separa las de acción inmediata de las de modo.
         var focusActions = FocusActions(state, shortText: true);
         var focusRow = Buttons(6, focusActions);
         focusActions[2].Margin = new Thickness(0, 0, 20, 8);
         Row(focusRow, GridLength.Auto);
-        // Vista y ancho: resumidos en la cabecera; abiertos, en una fila de seis y «Listo» debajo.
-        if (_viewOpen)
-        {
-            Row(Buttons(6, [.. ViewButtons(state, shortText: true), .. WidthButtons(state)]), GridLength.Auto);
-            Row(Buttons(1, [ViewDoneButton()]), GridLength.Auto);
-        }
 
         // Pestañas por monitor y, debajo, sus paneles uno debajo de otro, con alto según cuántas apps tienen.
         if (TabRow(state, wide: false) is { } tabRow)
@@ -366,7 +354,7 @@ public sealed class DeckWindow : Window
 
         // Abajo: las escenas (una fila; si no caben, «+N más») y, aparte, lo del sistema.
         // Con la energía o la disposición abiertas, sin escenas: así cabe todo sin scroll.
-        if (state.Scenes.Count > 0 && !_powerOpen && !_viewOpen && !_pagesOpen)
+        if (state.Scenes.Count > 0 && !_powerOpen && !_pagesOpen)
         {
             Row(TextGrid(SceneButtons(state)), new GridLength(Touch + 8));
         }
@@ -403,7 +391,6 @@ public sealed class DeckWindow : Window
 
         _closing = mode == "cerrar";
         _pinning = mode == "anclar";
-        _viewOpen = mode == "vista";
         _powerOpen = mode is "energia" or "energia-seguro";
         if (mode == "energia-seguro")
         {
@@ -1067,7 +1054,7 @@ public sealed class DeckWindow : Window
 
     // --- Piezas ----------------------------------------------------------------------------------------
 
-    private DockPanel FocusHeader(DeckState state, bool viewSummary = false)
+    private DockPanel FocusHeader(DeckState state, bool arrangement = false)
     {
         var header = new DockPanel { Margin = new Thickness(0, 0, 8, 8) };
         var close = SmallButton("✕", Strings.Deck_Hide, () => _actions.Hide());
@@ -1084,13 +1071,18 @@ public sealed class DeckWindow : Window
         };
         DockPanel.SetDock(send, Dock.Right);
         header.Children.Add(send);
-        if (viewSummary)
+        if (arrangement)
         {
-            var summary = ViewSummary(state, full: false);
-            summary.Margin = new Thickness(0, 0, 6, 0);
-            summary.VerticalAlignment = VerticalAlignment.Top;
-            DockPanel.SetDock(summary, Dock.Right);
-            header.Children.Add(summary);
+            // En el deck estrecho, los interruptores de columnas van en la cabecera, sólo con su icono.
+            var toggles = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Top };
+            foreach (var b in ArrangementButtons(state, compact: true))
+            {
+                b.Margin = new Thickness(0, 0, 2, 0);
+                toggles.Children.Add(b);
+            }
+
+            DockPanel.SetDock(toggles, Dock.Right);
+            header.Children.Add(toggles);
         }
         var focus = new StackPanel();
         focus.Children.Add(Label(Strings.Deck_SecFocus));
@@ -1244,73 +1236,70 @@ public sealed class DeckWindow : Window
     /// <summary>La app que se acaba de mandar cerrar: su tarjeta dice «Cerrando…» hasta que desaparece.</summary>
     private nint? _closingNow;
 
-    /// <summary>Si están abiertos los botones de la disposición del principal (vista y ancho).</summary>
-    private bool _viewOpen;
-
     /// <summary>
-    /// La disposición del principal, para leerla de un vistazo («▣ Centro · Normal»); tocarla abre sus
-    /// botones. Con <paramref name="full"/> en falso, sólo el icono de la vista y el ancho (para la cabecera).
+    /// Los interruptores de la disposición del principal, de izquierda a derecha como en el monitor: el extra de
+    /// la izquierda (traer Trabajo, sólo en un ultrawide), Contexto, Trabajo y el extra de la derecha (traer
+    /// Contexto). Azul: prendido. Su menú (pulsación larga) restablece el ancho de esta disposición.
     /// </summary>
-    private Button ViewSummary(DeckState state, bool full)
+    private List<Button> ArrangementButtons(DeckState state, bool compact)
     {
-        var (icon, where) = state.View switch
+        var view = state.View;
+        string left = ColumnName(state, PanelSide.Left) ?? Strings.Deck_LeftColumn;
+        string right = ColumnName(state, PanelSide.Right) ?? Strings.Deck_RightColumn;
+        var buttons = new List<Button>();
+        if (MainArrangement.CanBorrowToLeft(view, state.Ultrawide))
         {
-            FocusPosition.Left => ("◧", Strings.Deck_Left),
-            FocusPosition.Right => ("◨", Strings.Deck_Right),
-            _ => ("▣", Strings.Deck_Center),
-        };
-        var width = ViewProportions.Presets(state.View).Where(p => p.Weights.SameAs(state.Weights)).Select(p => p.Name).FirstOrDefault() ?? Strings.Deck_ViewCustom;
-        var b = WideButton(full ? $"{icon}  {where} · {width}   ⚙" : $"{icon}  {width}", true, () =>
+            buttons.Add(ArrangementToggle(compact ? "⇠" : "⇠  " + right, Core.Text.F(Strings.Deck_BorrowTip, right),
+                MainArrangement.RightBorrowedLeft(view), MainArrangement.ToggleBorrowToLeft(view), state, compact));
+        }
+
+        buttons.Add(ArrangementToggle(compact ? "◧" : "◧  " + left, Core.Text.F(Strings.Deck_ColumnTip, left),
+            MainArrangement.LeftOn(view), MainArrangement.ToggleLeft(view), state, compact));
+        buttons.Add(ArrangementToggle(compact ? "◨" : right + "  ◨", Core.Text.F(Strings.Deck_ColumnTip, right),
+            MainArrangement.RightOn(view), MainArrangement.ToggleRight(view), state, compact));
+        if (MainArrangement.CanBorrowToRight(view, state.Ultrawide))
         {
-            _viewOpen = !_viewOpen;
-            Render();
-        });
-        b.MinWidth = 0;
-        b.Padding = new Thickness(10, 0, 10, 0);
-        b.ToolTip = Strings.Deck_ViewTip;
-        System.Windows.Automation.AutomationProperties.SetName(b, "Deck: " + Strings.Deck_ViewTip);
-        if (_viewOpen)
+            buttons.Add(ArrangementToggle(compact ? "⇢" : left + "  ⇢", Core.Text.F(Strings.Deck_BorrowTip, left),
+                MainArrangement.LeftBorrowedRight(view), MainArrangement.ToggleBorrowToRight(view), state, compact));
+        }
+
+        return buttons;
+    }
+
+    private Button ArrangementToggle(string text, string tip, bool on, FocusPosition next, DeckState state, bool compact)
+    {
+        var b = WideButton(text, true, () => Run(false, new SetView(next)));
+        if (compact)
+        {
+            b.MinWidth = Touch;
+            b.Width = Touch;
+            b.Padding = new Thickness(0);
+            b.FontSize = 16;
+        }
+        else
+        {
+            b.MinWidth = 0;
+            b.Padding = new Thickness(8, 0, 8, 0);
+        }
+
+        b.ToolTip = tip;
+        System.Windows.Automation.AutomationProperties.SetName(b, "Deck: " + tip);
+        if (on)
         {
             b.Background = ActiveBrush;
         }
 
+        var menu = new ContextMenu();
+        var reset = new MenuItem { Header = Strings.Deck_ResetWidth };
+        reset.Click += async (_, _) => await Run(false, new SetProportions(state.View, null));
+        menu.Items.Add(reset);
+        b.ContextMenu = menu;
         return b;
     }
 
-    private Button ViewDoneButton() => WideButton("✓  " + Strings.Deck_ViewDone, true, () =>
-    {
-        _viewOpen = false;
-        Render();
-    });
-
-    private List<Button> ViewButtons(DeckState state, bool shortText)
-    {
-        var views = shortText
-            ? new[] { (FocusPosition.Left, "◧  " + Strings.Deck_LeftShort), (FocusPosition.Center, "▣  " + Strings.Deck_Center), (FocusPosition.Right, "◨  " + Strings.Deck_RightShort) }
-            : new[] { (FocusPosition.Left, "◧  " + Strings.Deck_Left), (FocusPosition.Center, "▣  " + Strings.Deck_Center), (FocusPosition.Right, "◨  " + Strings.Deck_Right) };
-        return views.Select(v =>
-        {
-            var b = WideButton(v.Item2, true, () => Run(false, new SetView(v.Item1)));
-            if (state.View == v.Item1)
-            {
-                b.Background = ActiveBrush;
-            }
-
-            return b;
-        }).ToList();
-    }
-
-    private List<Button> WidthButtons(DeckState state) =>
-        ViewProportions.Presets(state.View).Select(p =>
-        {
-            var b = WideButton(p.Name, true, () => Run(false, new SetProportions(state.View, p.Weights)));
-            if (p.Weights.SameAs(state.Weights))
-            {
-                b.Background = ActiveBrush;
-            }
-
-            return b;
-        }).ToList();
+    /// <summary>El nombre de la columna de ese lado en el principal: el de su primer panel.</summary>
+    private static string? ColumnName(DeckState state, PanelSide side) =>
+        state.Panels.Where(p => p.Display is null && p.Side == side).OrderBy(p => p.Slot).FirstOrDefault()?.Name;
 
     private List<Button> SceneButtons(DeckState state) =>
         state.Scenes.Select(name => WideButton(name, true, () =>
@@ -1573,6 +1562,11 @@ public sealed class DeckWindow : Window
         }
 
         var zone = DropZone(content, panel);
+        if (panel.Off)
+        {
+            zone.Opacity = 0.55; // su columna está apagada: sus apps, minimizadas (tocarlas las lleva al foco)
+        }
+
         zone.Margin = new Thickness(0, 0, 8, 8);
         zone.BorderBrush = target ? TargetBrush : CardBrush;
         zone.BorderThickness = new Thickness(target ? 3 : 1);

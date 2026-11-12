@@ -691,6 +691,8 @@ No se usa una flechita (▾), porque promete un menú, ni un aspecto de interrup
 
 ### Deck: la disposición del principal, resumida (validación, 2026-11-11)
 
+**Superado el 2026-11-12** por los interruptores de columnas ([ADR 0012, enmienda](adr/0012-vistas-posicion-del-foco.md#enmienda-2026-11-12-la-disposición-del-principal-son-columnas-que-se-prenden-y-apagan)): ya no hay anchos fijos que resumir, y los interruptores caben en una fila.
+
 Los botones de «Vista» (dónde va el foco y su ancho) casi no se cambian, pero ocupaban dos filas fijas. Además, «Vista» no decía qué controla: no toca los paneles, sino dónde va el foco en el principal y qué ancho tiene.
 
 - **Nuevo nombre:** «Disposición del principal» («Main screen layout»). En la documentación se sigue llamando «vista» (ADR 0012).

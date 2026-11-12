@@ -18,6 +18,14 @@ public sealed record DeckPanel(string Id, string Name, string Where, IReadOnlyLi
 
     /// <summary>Su presentación.</summary>
     public PanelTemplate Template { get; init; }
+
+    /// <summary>Su lado (columna) y su puesto en ella.</summary>
+    public PanelSide Side { get; init; }
+
+    public PanelSlot Slot { get; init; }
+
+    /// <summary>En el principal, con su columna apagada (ADR 0012, enmienda): sus apps están minimizadas.</summary>
+    public bool Off { get; init; }
 }
 
 /// <summary>
@@ -35,8 +43,11 @@ public sealed record DeckState(
     IReadOnlyList<string> Scenes,
     IReadOnlyList<(string? Display, string Name)> Displays)
 {
-    /// <summary>Proporciones de la vista actual (para los presets de ancho del foco).</summary>
+    /// <summary>Proporciones de la disposición actual.</summary>
     public ViewWeights Weights { get; init; } = ViewProportions.Default(FocusPosition.Center);
+
+    /// <summary>Si el principal es ultrawide: ofrece traer una columna al otro lado (ADR 0012, enmienda).</summary>
+    public bool Ultrawide { get; init; }
 
     /// <summary>La ventana al frente (la que recibe el teclado), sea o no de FocusWShell.</summary>
     public nint? Foreground { get; init; }

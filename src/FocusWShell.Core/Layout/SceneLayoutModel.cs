@@ -45,16 +45,29 @@ public enum PanelSide
 }
 
 /// <summary>
-/// Vista del monitor principal (ADR 0012): dónde va el foco. Las columnas de paneles van, de izquierda a
-/// derecha: al centro, izquierda · foco · derecha; a la izquierda, foco · derecha · izquierda; a la
-/// derecha, izquierda · derecha · foco. El panel del lado izquierdo (Contexto) queda siempre en un borde
-/// del monitor y el del lado derecho (Trabajo), junto al foco.
+/// Disposición del monitor principal (ADR 0012 y su enmienda): qué columnas de paneles se ven y en qué orden.
+/// El panel del lado izquierdo (Contexto) queda siempre en un borde del monitor y el del lado derecho
+/// (Trabajo), junto al foco. Las reglas de los botones están en <see cref="MainArrangement"/>.
 /// </summary>
 public enum FocusPosition
 {
+    /// <summary>Contexto · foco · Trabajo.</summary>
     Center,
+
+    /// <summary>Foco · Trabajo · Contexto (Contexto prestado a la derecha; sólo en un ultrawide).</summary>
     Left,
+
+    /// <summary>Contexto · Trabajo · foco (Trabajo prestado a la izquierda; sólo en un ultrawide).</summary>
     Right,
+
+    /// <summary>Contexto · foco: la columna de Trabajo, apagada.</summary>
+    ContextOnly,
+
+    /// <summary>Foco · Trabajo: la columna de Contexto, apagada.</summary>
+    WorkOnly,
+
+    /// <summary>Solo foco: las dos columnas, apagadas.</summary>
+    FocusOnly,
 }
 
 /// <summary>
@@ -71,10 +84,14 @@ public sealed record ViewWeights(double Left, double Center, double Right)
     {
         double total = Left + Center + Right;
         int Pct(double w) => (int)Math.Round(100 * w / total);
+        int Two(double a, double b) => (int)Math.Round(100 * a / (a + b));
         return focus switch
         {
             FocusPosition.Left => Text.F(Strings.Weights_FocusLeft, Pct(Center), Pct(Right), Pct(Left)),
             FocusPosition.Right => Text.F(Strings.Weights_FocusRight, Pct(Left), Pct(Right), Pct(Center)),
+            FocusPosition.ContextOnly => Text.F(Strings.Weights_ContextOnly, Two(Left, Center), Two(Center, Left)),
+            FocusPosition.WorkOnly => Text.F(Strings.Weights_WorkOnly, Two(Center, Right), Two(Right, Center)),
+            FocusPosition.FocusOnly => Strings.Weights_FocusOnly,
             _ => Text.F(Strings.Weights_FocusCenter, Pct(Left), Pct(Center), Pct(Right)),
         };
     }
@@ -92,46 +109,20 @@ public sealed record ViewWeights(double Left, double Center, double Right)
     private static bool Valid(double w) => w > 0 && !double.IsNaN(w) && !double.IsInfinity(w);
 }
 
-/// <summary>Proporciones de partida y presets de cada vista (ADR 0012).</summary>
+/// <summary>
+/// Proporciones de partida de cada disposición (ADR 0012 y su enmienda). Los pesos de una columna apagada
+/// no se usan, pero se guardan positivos para que los pesos sigan siendo válidos.
+/// </summary>
 public static class ViewProportions
 {
-    // Nombres para mostrar (en el idioma de la interfaz); no se guardan: lo que se guarda son los pesos.
-    public static string Normal => Strings.Preset_Normal;
-
-    public static string WideFocus => Strings.Preset_WideFocus;
-
-    public static string HalfAndHalf => Strings.Preset_HalfAndHalf;
-
-    /// <summary>Las de la tabla del ADR 0012.</summary>
     public static ViewWeights Default(FocusPosition focus) => focus switch
     {
         FocusPosition.Center => new(18, 55, 27),
+        FocusPosition.ContextOnly => new(35, 65, 27),
+        FocusPosition.WorkOnly => new(18, 65, 35),
+        FocusPosition.FocusOnly => new(18, 55, 27),
         _ => new(15, 55, 30),
     };
-
-    /// <summary>
-    /// Presets de la vista: el normal, uno con el foco más ancho y uno con el foco y el panel de al lado
-    /// (Trabajo) igual de grandes, para comparar dos ventanas.
-    /// </summary>
-    public static IReadOnlyList<(string Name, ViewWeights Weights)> Presets(FocusPosition focus) => focus switch
-    {
-        FocusPosition.Center =>
-        [
-            (Normal, Default(focus)),
-            (WideFocus, new(12, 70, 18)),
-            (HalfAndHalf, new(10, 45, 45)),
-        ],
-        _ =>
-        [
-            (Normal, Default(focus)),
-            (WideFocus, new(10, 70, 20)),
-            (HalfAndHalf, new(10, 45, 45)),
-        ],
-    };
-
-    /// <summary>Nombre del preset que coincide con estos pesos, o <c>null</c> si son personalizados.</summary>
-    public static string? PresetName(FocusPosition focus, ViewWeights weights) =>
-        Presets(focus).FirstOrDefault(p => p.Weights.SameAs(weights)).Name;
 }
 
 /// <summary>

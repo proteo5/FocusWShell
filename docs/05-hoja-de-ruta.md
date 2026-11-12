@@ -54,6 +54,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 4. **"Mandar el deck a…"** otro monitor, con paneles de pantalla completa con pestañas para tablets. **Hecho** el deck fijado en un monitor (en una mitad o entero), con los paneles de ese monitor en el resto, y un panel en pantalla completa a su lado con sus pestañas; falta probar la desconexión real.
 
 5. **Páginas de los navegadores** en el deck: las pestañas de todas las ventanas de Chrome y Edge agrupadas por sitio, para llevar una al frente o cerrarla (spike S12, ver [riesgos](04-riesgos-y-spikes.md)). **Hecho.**
+6. **La disposición del principal como columnas que se prenden y apagan**, para monitores normales y ultrawide, con Solo foco ([ADR 0012, enmienda](adr/0012-vistas-posicion-del-foco.md#enmienda-2026-11-12-la-disposición-del-principal-son-columnas-que-se-prenden-y-apagan)). **Hecho**, sin los anchos fijos.
 
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.
 

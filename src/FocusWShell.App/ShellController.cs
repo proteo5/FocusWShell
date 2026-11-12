@@ -242,8 +242,10 @@ public sealed class ShellController : IDisposable
     {
         var scenes = SceneNames();
         var aux = AuxiliaryDisplays();
+        bool ultrawide = UltrawideNow();
         lock (_gate)
         {
+            var view = MainArrangement.Effective(_workspace.View, ultrawide);
             string NameOf(WindowSnapshot s, string fallback) => _catalog.Find(MinSizeCatalog.KeyFor(s))?.Name ?? fallback;
             // En otro escritorio, sin ventana: el deck la trata como una cerrada, y abrirla lleva a ella.
             DeckApp Managed(ManagedWindow w, WindowSnapshot s) => new(
@@ -284,7 +286,15 @@ public sealed class ShellController : IDisposable
                     .Select(a => (App: a, There: ElsewhereFree(a.AppKey)))
                     .Where(x => x.There is not null)
                     .Select(x => new DeckApp(x.App.Name, x.App.AppKey, null, ListItemState.OtherDesktop, x.There!.Title, p.Id, x.App)));
-                return new DeckPanel(p.Id, p.Name, Where(p), apps) { Display = p.Display, Template = p.Template };
+                bool off = p.Display is null && ColumnOff(view, p.Side);
+                return new DeckPanel(p.Id, p.Name, off ? Where(p) + " · " + Strings.Deck_PanelOff : Where(p), apps)
+                {
+                    Display = p.Display,
+                    Template = p.Template,
+                    Side = p.Side,
+                    Slot = p.Slot,
+                    Off = off,
+                };
             }).ToList();
 
             var free = _snapshots.Values
@@ -299,9 +309,10 @@ public sealed class ShellController : IDisposable
             bool hasPrevious = _workspace.CenterHistory.Any(h => h != current && _workspace.IsManaged(h) && !_elsewhere.ContainsKey(h));
             var displays = new List<(string?, string)> { (null, Strings.Monitor_Principal) };
             displays.AddRange(aux.Select(d => ((string?)d.Key, d.FriendlyName ?? d.DeviceName)));
-            return new DeckState(focused, hasPrevious, _workspace.View, panels, free, scenes, displays)
+            return new DeckState(focused, hasPrevious, view, panels, free, scenes, displays)
             {
-                Weights = _workspace.ProportionsOf(_workspace.View),
+                Weights = _workspace.ProportionsOf(view),
+                Ultrawide = ultrawide,
                 Foreground = WindowMover.Foreground(),
                 Browsers = BrowserWindowsLocked().Select(b => b.Window.Handle).ToHashSet(),
             };
@@ -591,7 +602,7 @@ public sealed class ShellController : IDisposable
                 && (moved.Placement == Placement.Center || _workspace.EffectivePanel(moved).Display is null)
                 && ColumnSeparator.Detect(before, observed.Visible, report.Layout.Principal) is { } weights)
             {
-                commands = [new SetProportions(_workspace.View, weights), new SnapBack(handle)];
+                commands = [new SetProportions(MainArrangement.Effective(_workspace.View, _ultrawide), weights), new SnapBack(handle)];
             }
 
             // Arrastrada y soltada: sobre el foco va al foco; sobre otro panel, a ese panel; si no, vuelve.
@@ -947,14 +958,15 @@ public sealed class ShellController : IDisposable
     private FocusPosition _savedView;
     private Dictionary<FocusPosition, ViewWeights> _savedProportions = [];
 
-    /// <summary>Proporciones de la vista actual.</summary>
+    /// <summary>Proporciones de la disposición que se ve.</summary>
     public ViewWeights Proportions
     {
         get
         {
+            bool ultrawide = UltrawideNow();
             lock (_gate)
             {
-                return _workspace.ProportionsOf(_workspace.View);
+                return _workspace.ProportionsOf(MainArrangement.Effective(_workspace.View, ultrawide));
             }
         }
     }
@@ -971,7 +983,7 @@ public sealed class ShellController : IDisposable
         }
     }
 
-    /// <summary>Vista actual del principal (ADR 0012).</summary>
+    /// <summary>Disposición guardada del principal (ADR 0012).</summary>
     public FocusPosition View
     {
         get
@@ -982,6 +994,21 @@ public sealed class ShellController : IDisposable
             }
         }
     }
+
+    /// <summary>La disposición que se ve: fuera de un ultrawide, sin columnas prestadas (ADR 0012, enmienda).</summary>
+    public FocusPosition EffectiveView => MainArrangement.Effective(View, UltrawideNow());
+
+    /// <summary>Si el principal es ultrawide (por la proporción de su área de trabajo).</summary>
+    public static bool UltrawideNow() =>
+        DisplayTopology.Principal(DisplayEnumerator.Enumerate()) is { } principal && MainArrangement.IsUltrawide(principal.WorkArea);
+
+    /// <summary>Si la columna de ese lado está apagada en esa disposición.</summary>
+    private static bool ColumnOff(FocusPosition view, PanelSide side) => side == PanelSide.Left
+        ? view is FocusPosition.WorkOnly or FocusPosition.FocusOnly
+        : view is FocusPosition.ContextOnly or FocusPosition.FocusOnly;
+
+    /// <summary>Lo que dio <see cref="UltrawideNow"/> en el último layout (para el separador arrastrado).</summary>
+    private bool _ultrawide;
 
     /// <summary>Guarda los paneles si cambiaron (nombre, ubicación, presentación, altas o bajas).</summary>
     private void SavePanelsIfChanged()
@@ -1902,10 +1929,13 @@ public sealed class ShellController : IDisposable
                 })
                 .ToList(),
         };
-        var (leftWeight, centerWeight, rightWeight) = c.Weights;
+        // La disposición que se ve depende del principal: sin ultrawide, no hay columnas prestadas.
+        _ultrawide = MainArrangement.IsUltrawide(principal.WorkArea);
+        var view = MainArrangement.Effective(c.View, _ultrawide);
+        var (leftWeight, centerWeight, rightWeight) = _workspace.ProportionsOf(view);
         var options = new SceneOptions
         {
-            Focus = c.View,
+            Focus = view,
             ContextWeight = leftWeight,
             CenterWeight = centerWeight,
             WorkWeight = rightWeight,

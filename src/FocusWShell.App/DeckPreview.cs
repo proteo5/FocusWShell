@@ -35,7 +35,12 @@ public static class DeckPreview
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-cerrar.png"), mode: "cerrar");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia.png"), mode: "energia");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-anclar.png"), mode: "anclar");
-            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-vista.png"), mode: "vista");
+            // Disposición del principal (ADR 0012, enmienda): Trabajo apagado en un ultrawide (sale «⇠ Trabajo»),
+            // un monitor normal con sólo Trabajo y Solo foco.
+            Save(Arranged(FocusPosition.ContextOnly, ultrawide: true), width, height, Path.Combine(folder, $"deck-{name}-solo-contexto.png"));
+            Save(Arranged(FocusPosition.Right, ultrawide: true), width, height, Path.Combine(folder, $"deck-{name}-trabajo-prestado.png"));
+            Save(Arranged(FocusPosition.WorkOnly, ultrawide: false), width, height, Path.Combine(folder, $"deck-{name}-monitor-normal.png"));
+            Save(Arranged(FocusPosition.FocusOnly, ultrawide: true), width, height, Path.Combine(folder, $"deck-{name}-solo-foco.png"));
             // Al frente sin ser la del foco: una libre (Docker) y una de otro monitor (Grafana, en el HP).
             Save(Sample(manyApps: false) with { Foreground = 50 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-libre.png"));
             Save(Sample(manyApps: false) with { Foreground = 7 }, width, height, Path.Combine(folder, $"deck-{name}-al-frente-hp.png"));
@@ -127,8 +132,8 @@ public static class DeckPreview
             .ToList();
         var panels = new List<DeckPanel>
         {
-            new("contexto", "Contexto", "principal, izquierda", [App("Google Chrome", 3, ListItemState.InPanel, "contexto")]) { Template = PanelTemplate.Tiles },
-            new("trabajo", "Trabajo", "principal, derecha", work) { Template = PanelTemplate.Tiles },
+            new("contexto", "Contexto", "principal, izquierda", [App("Google Chrome", 3, ListItemState.InPanel, "contexto")]) { Template = PanelTemplate.Tiles, Side = PanelSide.Left },
+            new("trabajo", "Trabajo", "principal, derecha", work) { Template = PanelTemplate.Tiles, Side = PanelSide.Right },
             new("monitoreo", "Monitoreo", "HP 24fw, izquierda", [App("Grafana", 7, ListItemState.InPanel, "monitoreo"), App("Logs", 8, ListItemState.InPanel, "monitoreo")]) { Display = "hp", Template = PanelTemplate.Tiles },
             new("chat", "Chat", "HP 24fw, derecha", [App("Slack", 9, ListItemState.InPanel, "chat"), App("Teams", 10, ListItemState.InPanel, "chat")]) { Display = "hp", Template = PanelTemplate.Stack },
         };
@@ -142,6 +147,22 @@ public static class DeckPreview
             [(null, "Principal"), ("hp", "HP 24fw"), ("tablet", "Lenovo tablet")])
         {
             Browsers = new HashSet<nint> { 1, 3 },
+            Ultrawide = true,
+        };
+    }
+
+    /// <summary>El ejemplo con otra disposición del principal: sus paneles de las columnas apagadas, atenuados.</summary>
+    private static DeckState Arranged(FocusPosition view, bool ultrawide)
+    {
+        var state = Sample(manyApps: false);
+        bool Off(DeckPanel p) => p.Display is null && (p.Side == PanelSide.Left
+            ? view is FocusPosition.WorkOnly or FocusPosition.FocusOnly
+            : view is FocusPosition.ContextOnly or FocusPosition.FocusOnly);
+        return state with
+        {
+            View = view,
+            Panels = [.. state.Panels.Select(p => Off(p) ? p with { Where = p.Where + " · apagado", Off = true } : p)],
+            Ultrawide = ultrawide,
         };
     }
 

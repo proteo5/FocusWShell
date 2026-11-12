@@ -54,9 +54,6 @@
   <data name="Note_TooWideShared" xml:space="preserve"><value>{0} needs {1} px of width and {2} can have at most {3} without covering the focus or the other monitor; it is minimized and left out of the layout.</value></data>
   <data name="Panel_Context" xml:space="preserve"><value>Context</value></data>
   <data name="Panel_Work" xml:space="preserve"><value>Work</value></data>
-  <data name="Preset_HalfAndHalf" xml:space="preserve"><value>Half and half</value></data>
-  <data name="Preset_Normal" xml:space="preserve"><value>Normal</value></data>
-  <data name="Preset_WideFocus" xml:space="preserve"><value>Wide focus</value></data>
   <data name="Rej_AlreadyCenter" xml:space="preserve"><value>{0} is already in the focus.</value></data>
   <data name="Rej_AlreadyManaged" xml:space="preserve"><value>{0} is already managed.</value></data>
   <data name="Rej_CantFullscreen" xml:space="preserve"><value>{0} can't go fullscreen from {1}.</value></data>
@@ -101,4 +98,7 @@
   <data name="Weights_FocusCenter" xml:space="preserve"><value>left {0} · focus {1} · right {2} %</value></data>
   <data name="Weights_FocusLeft" xml:space="preserve"><value>focus {0} · right {1} · left {2} %</value></data>
   <data name="Weights_FocusRight" xml:space="preserve"><value>left {0} · right {1} · focus {2} %</value></data>
+  <data name="Weights_ContextOnly" xml:space="preserve"><value>left {0} · focus {1} %</value></data>
+  <data name="Weights_WorkOnly" xml:space="preserve"><value>focus {0} · right {1} %</value></data>
+  <data name="Weights_FocusOnly" xml:space="preserve"><value>focus only</value></data>
 </root>
