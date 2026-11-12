@@ -6,6 +6,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <Deterministic>true</Deterministic>
+    <!-- Versión de FocusWShell: la muestran la ventana principal y la bandeja, y la usa buildelease.ps1. -->
+    <Version>0.1.0-alpha</Version>
   </PropertyGroup>
 
   <!-- El manifiesto compartido se asigna en Directory.Build.targets: aquí OutputType aún no existe. -->

@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         _controller = controller;
         _settings = settings;
         InitializeComponent();
+        Title = AppVersion.Title;
         _loadingGestures = true;
         GestureAltTab.IsChecked = settings.FocusOnAltTab;
         GestureTaskView.IsChecked = settings.FocusOnTaskView;

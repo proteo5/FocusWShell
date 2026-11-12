@@ -37,6 +37,9 @@ Set-Content -Path (Join-Path $Destino 'version.txt') -Value "$commit $(Get-Date 
 Write-Host "Instalado: $commit"
 
 if ($abierto.Count -gt 0 -or $Abrir) {
-    Start-Process $exe
+    # Se abre a través del Explorador y no directamente: si este script corre desde una app empaquetada
+    # (por ejemplo, la terminal de Claude Desktop), FocusWShell heredaría su contenedor y su configuración
+    # quedaría en la carpeta privada del paquete, no en %LOCALAPPDATA%\FocusWShell.
+    Start-Process explorer.exe -ArgumentList "`"$exe`""
     Write-Host "Abierto: $exe"
 }
