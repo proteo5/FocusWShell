@@ -107,8 +107,8 @@ Las tres vistas y sus anchos se refinaron en un ultrawide (3440 × 1440), donde 
 
 - El modelo de dominio no cambia: `FocusPosition` gana tres valores (`ContextOnly`, `WorkOnly` y `FocusOnly`) que el motor calcula como la disposición al centro sin esas columnas. Lo guardado (`panels.json`, escenas) sigue valiendo: las tres vistas de antes son tres de las seis disposiciones.
 - El atajo Ctrl+Alt+Mayús+V recorre las disposiciones que ofrece el principal.
-- El principal sigue necesitando un panel, aunque esté apagado. Permitirlo sin paneles queda para cuando haga falta: con «Ninguna» no se ve.
-- Detectar el ultrawide por proporción falla con un 16:9 muy grande (4K). Si hace falta, se podrá forzar en Ajustes.
+- El principal sigue necesitando un panel, aunque esté apagado. **No hace falta permitirlo sin paneles** (revisado el 2026-11-12): con Solo foco, sus paneles no ocupan sitio ni tienen tiras, y sus apps se minimizan. Para quien tiene más monitores es lo mismo que no tenerlos, y además puede prenderlos cuando quiera.
+- Detectar el ultrawide por proporción no reconoce un 16:9 muy grande (4K). **No hace falta forzarlo en Ajustes** (revisado el 2026-11-12): la detección sólo decide si aparecen los botones extra (los dos paneles del mismo lado). Las otras cuatro disposiciones están en cualquier monitor. Si alguien pide los extras en un 16:9, lo sencillo es mostrarlos siempre, no añadir un ajuste.
 
 ### Implementación de la enmienda (2026-11-12)
 
