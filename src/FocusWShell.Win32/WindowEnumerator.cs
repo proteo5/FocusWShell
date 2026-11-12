@@ -63,6 +63,7 @@ public static class WindowEnumerator
 
         PInvoke.GetWindowRect(hwnd, out var rect);
         var bounds = ToPixelRect(rect);
+        bool cloaked = IsCloaked(hwnd);
 
         return new WindowSnapshot
         {
@@ -74,7 +75,8 @@ public static class WindowEnumerator
             ProcessName = Path.GetFileName(process.Path),
             AppUserModelId = GetAppUserModelId(hwnd),
             IsVisible = PInvoke.IsWindowVisible(hwnd),
-            IsCloaked = IsCloaked(hwnd),
+            IsCloaked = cloaked,
+            IsOnOtherDesktop = cloaked && VirtualDesktops.IsOnOtherDesktop((nint)hwnd.Value),
             IsMinimized = PInvoke.IsIconic(hwnd),
             IsMaximized = PInvoke.IsZoomed(hwnd),
             HasOwner = PInvoke.GetWindow(hwnd, GET_WINDOW_CMD.GW_OWNER) != HWND.Null,

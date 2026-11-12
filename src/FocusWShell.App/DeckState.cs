@@ -6,6 +6,7 @@ namespace FocusWShell.App;
 /// <summary>Una app en el deck: abierta (con su ventana) o cerrada (del catálogo).</summary>
 /// <param name="Handle">Su ventana, o <c>null</c> si está cerrada.</param>
 /// <param name="PanelId">Su panel; <c>null</c> si es una ventana libre.</param>
+/// <param name="Handle">Su ventana, o <c>null</c> si está cerrada o en otro escritorio (no se puede mover aquí).</param>
 public sealed record DeckApp(string Name, string AppKey, nint? Handle, ListItemState State, string Title, string? PanelId, CatalogApp? App);
 
 /// <summary>Un panel en el deck, con sus apps.</summary>

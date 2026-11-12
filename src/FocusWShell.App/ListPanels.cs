@@ -19,6 +19,9 @@ public enum ListItemState
     /// <summary>Fuera de layout.</summary>
     Detached,
 
+    /// <summary>En otro escritorio virtual (ADR 0016): no está aquí; tocarla lleva a su escritorio.</summary>
+    OtherDesktop,
+
     /// <summary>Cerrada: está en el catálogo y su último panel es éste. Tocarla la abre.</summary>
     Closed,
 }

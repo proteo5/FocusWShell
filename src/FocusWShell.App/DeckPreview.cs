@@ -98,6 +98,7 @@ public static class DeckPreview
             App("Google Chrome", 1, ListItemState.InPanel, "trabajo", pinned: true),
             App("Claude", 2, ListItemState.InFocus, "trabajo", pinned: true),
             App("Notepad", null, ListItemState.Closed, "trabajo", pinned: true),
+            App("SmallNotePad", null, ListItemState.OtherDesktop, "trabajo"),
             App("Paint", null, ListItemState.Closed, "trabajo"),
         };
         if (manyApps)

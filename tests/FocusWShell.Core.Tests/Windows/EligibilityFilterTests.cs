@@ -69,6 +69,14 @@ public class EligibilityFilterTests
         Assert.Equal(ExclusionReason.Cloaked, Evaluate(NormalWindow() with { IsCloaked = true }).Reason);
 
     [Fact]
+    public void WindowOnOtherDesktopIsMarkedAsSuch() =>
+        Assert.Equal(ExclusionReason.OtherDesktop, Evaluate(NormalWindow() with { IsCloaked = true, IsOnOtherDesktop = true }).Reason);
+
+    [Fact]
+    public void OtherRulesStillApplyOnOtherDesktop() =>
+        Assert.Equal(ExclusionReason.ToolWindow, Evaluate(NormalWindow() with { IsCloaked = true, IsOnOtherDesktop = true, IsToolWindow = true }).Reason);
+
+    [Fact]
     public void OwnedDialogIsExcluded() =>
         Assert.Equal(ExclusionReason.Owned, Evaluate(NormalWindow() with { HasOwner = true }).Reason);
 

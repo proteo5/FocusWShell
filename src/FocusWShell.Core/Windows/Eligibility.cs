@@ -16,6 +16,12 @@ public enum ExclusionReason
     TooSmall,
     Fullscreen,
     UserExcluded,
+
+    /// <summary>
+    /// Sería candidata, pero está en otro escritorio virtual (ADR 0016): no se coloca, pero cuenta como
+    /// abierta, para no abrir otra copia.
+    /// </summary>
+    OtherDesktop,
 }
 
 /// <summary>Resultado de evaluar una ventana.</summary>
