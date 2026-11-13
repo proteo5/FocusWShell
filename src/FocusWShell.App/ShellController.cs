@@ -173,6 +173,7 @@ public sealed class ShellController : IDisposable
 
             var fullscreen = _workspace.Composition.Fullscreen;
             var openKeys = _snapshots.Values.Concat(_elsewhere.Values).Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var inTray = TrayKeysLocked();
             var views = new List<ListPanelView>();
             void Add(string? display, IReadOnlyDictionary<string, PixelRect> lists, int dpi)
             {
@@ -205,9 +206,9 @@ public sealed class ShellController : IDisposable
                     }
 
                     // Las cerradas que "viven" en este panel: tocarlas las abre aquí.
-                    foreach (var app in _catalog.Apps.Where(a => a.LastPanelId == panelId && a.Pinned && !a.Hidden && !openKeys.Contains(a.AppKey)))
+                    foreach (var app in _catalog.Apps.Where(a => a.LastPanelId == panelId && (a.Pinned || inTray.Contains(a.AppKey)) && !a.Hidden && !openKeys.Contains(a.AppKey)))
                     {
-                        items.Add(new ListItem(app.Name, app.AppKey, null, ListItemState.Closed, "", app));
+                        items.Add(new ListItem(app.Name, app.AppKey, null, inTray.Contains(app.AppKey) ? ListItemState.InTray : ListItemState.Closed, "", app));
                     }
 
                     // Las ancladas de este panel abiertas en otro escritorio sin gestionar: tocarlas lleva allí.
@@ -268,6 +269,7 @@ public sealed class ShellController : IDisposable
                 ? (p.Side == PanelSide.Left ? Strings.Where_PrincipalLeftShort : Strings.Where_PrincipalRightShort) + (p.Slot == PanelSlot.Lower ? Strings.Where_LowerSuffix : "")
                 : Core.Text.F(p.Side == PanelSide.Left ? Strings.Where_AuxLeft : Strings.Where_AuxRight, aux.FirstOrDefault(d => d.Key == p.Display)?.FriendlyName ?? Strings.Monitor_Missing);
 
+            var inTray = TrayKeysLocked();
             var panels = _workspace.Panels.Select(p =>
             {
                 var apps = _workspace.Windows
@@ -277,7 +279,7 @@ public sealed class ShellController : IDisposable
                 // Las cerradas de este panel; el deck sólo muestra las ancladas, salvo en el modo anclar.
                 apps.AddRange(_catalog.Apps
                     .Where(a => a.LastPanelId == p.Id && !a.Hidden && !openKeys.Contains(a.AppKey))
-                    .Select(a => new DeckApp(a.Name, a.AppKey, null, ListItemState.Closed, "", p.Id, a)));
+                    .Select(a => new DeckApp(a.Name, a.AppKey, null, inTray.Contains(a.AppKey) ? ListItemState.InTray : ListItemState.Closed, "", p.Id, a)));
                 // Las ancladas de este panel abiertas en otro escritorio sin gestionar: ocupan el sitio de la
                 // cerrada, y tocarlas lleva allí en vez de abrir otra. Una libre no anclada no es del panel.
                 apps.AddRange(_catalog.Apps
@@ -559,6 +561,22 @@ public sealed class ShellController : IDisposable
         ExternalChangeHandled? handled = null;
         lock (_gate)
         {
+            // La app ocultó su ventana (se "cerró" a la bandeja): sale del modelo sin tocarla.
+            if (_workspace.Find(handle) is { } hiding && WindowMover.IsHidden(handle))
+            {
+                var trayed = ToTrayLocked(handle);
+                handled = new ExternalChangeHandled(hiding.Label, ExternalChange.Closed, [new WindowClosed(handle)], trayed);
+            }
+        }
+
+        if (handled is not null)
+        {
+            ExternalChangeHandled?.Invoke(handled);
+            return;
+        }
+
+        lock (_gate)
+        {
             var expected = _expectations.Get(handle);
             var observed = WindowMover.Observe(handle);
             var change = _expectations.Reconcile(observed);
@@ -628,6 +646,43 @@ public sealed class ShellController : IDisposable
 
     /// <summary>Última foto de cada ventana conocida: el layout y el diario necesitan proceso y título.</summary>
     private readonly Dictionary<nint, WindowSnapshot> _snapshots = [];
+
+    /// <summary>Una ventana gestionada que su app ocultó (cerrar a la bandeja): su app y su panel.</summary>
+    private sealed record TrayWindow(string AppKey, string Label, string PanelId);
+
+    /// <summary>
+    /// Ventanas en la bandeja: siguen vivas pero ocultas. Fuera del modelo, así ningún acomodo (ni salir, ni
+    /// la emergencia) las vuelve a mostrar: mostrarlas por fuera deja a algunas apps congeladas (Electron).
+    /// Si la app las vuelve a mostrar, regresan a su panel.
+    /// </summary>
+    private readonly Dictionary<nint, TrayWindow> _inTray = [];
+
+    /// <summary>Apps con alguna ventana en la bandeja y ninguna a la vista.</summary>
+    private HashSet<string> TrayKeysLocked()
+    {
+        var open = _snapshots.Values.Concat(_elsewhere.Values).Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return _inTray.Values.Select(t => t.AppKey).Where(k => !open.Contains(k)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Saca del modelo una ventana gestionada que su app ocultó, y la recuerda en la bandeja.</summary>
+    private ControllerResult ToTrayLocked(nint handle)
+    {
+        var w = _workspace.Find(handle)!;
+        string? key = _snapshots.TryGetValue(handle, out var snapshot) ? MinSizeCatalog.KeyFor(snapshot) : null;
+        _expectations.Forget(handle);
+        var result = RunLocked([new WindowClosed(handle)]);
+        if (_snapshots.Remove(handle))
+        {
+            _openApps = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        if (key is not null)
+        {
+            _inTray[handle] = new TrayWindow(key, w.Label, w.PanelId);
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Las ventanas que serían candidatas pero están en otro escritorio virtual, según la última
@@ -890,6 +945,20 @@ public sealed class ShellController : IDisposable
             return error;
         }
 
+        // Si estaba en la bandeja, la app la vuelve a mostrar ella misma: aquí se adopta en el panel pedido y
+        // va al foco, porque se tocó para usarla. Si sólo se adoptara, en un panel apagado o en pestañas
+        // quedaría minimizada al momento de aparecer.
+        bool fromTray;
+        lock (_gate)
+        {
+            var trayed = _inTray.Where(t => string.Equals(t.Value.AppKey, appKey, StringComparison.OrdinalIgnoreCase)).Select(t => t.Key).ToList();
+            fromTray = trayed.Count > 0;
+            foreach (var handle in trayed)
+            {
+                _inTray.Remove(handle);
+            }
+        }
+
         var clock = System.Diagnostics.Stopwatch.StartNew();
         while (clock.Elapsed < TimeSpan.FromSeconds(20))
         {
@@ -906,7 +975,9 @@ public sealed class ShellController : IDisposable
                     continue;
                 }
 
-                var result = RunLocked([new Adopt(pick.Handle, app.Name, panelId)]);
+                var result = RunLocked(fromTray
+                    ? [new Adopt(pick.Handle, app.Name, panelId), new Promote(pick.Handle)]
+                    : [new Adopt(pick.Handle, app.Name, panelId)]);
                 return result.Rejections.Count == 0
                     ? Core.Text.F(Strings.Open_Done, app.Name, panelName)
                     : string.Join(" ", result.Rejections);
@@ -1433,6 +1504,33 @@ public sealed class ShellController : IDisposable
             if (closed.Count > 0)
             {
                 RunLocked(closed);
+            }
+
+            // Las que su app ocultó sin avisarnos (se perdió el evento): a la bandeja.
+            foreach (var hidden in _workspace.Windows
+                .Where(m => !alive.Contains(m.Handle) && !_elsewhere.ContainsKey(m.Handle) && WindowMover.IsHidden(m.Handle))
+                .Select(m => m.Handle)
+                .ToList())
+            {
+                ToTrayLocked(hidden);
+            }
+
+            // Las de la bandeja: si la app ya no existe, se olvidan; si la app las volvió a mostrar (desde su
+            // icono de la bandeja), a su panel y al foco: se mostró para usarla.
+            foreach (var (handle, tray) in _inTray.ToList())
+            {
+                if (alive.Contains(handle))
+                {
+                    _inTray.Remove(handle);
+                    if (!_workspace.IsManaged(handle) && _workspace.FindPanel(tray.PanelId) is not null)
+                    {
+                        RunLocked([new Adopt(handle, tray.Label, tray.PanelId), new Promote(handle)]);
+                    }
+                }
+                else if (!WindowMover.Observe(handle).Exists)
+                {
+                    _inTray.Remove(handle);
+                }
             }
 
             // Las libres que ya no aparecen (cerradas, como las ventanas de una llamada de Zoom) se olvidan: si no,

@@ -26,7 +26,7 @@ Tiene el aspecto de Windows 11, en tema oscuro o claro, con sus secciones a la i
 Todas las ventanas que FocusWShell puede organizar, con el icono de su app, su título y su estado. **Elige un panel y se aplica al momento**: *libre*, *al foco* o cualquier panel. Las demás acciones están en **…**, al final de la fila, o en el clic derecho:
 
 - al foco, o pantalla completa en un monitor;
-- estacionar o recuperar, reacomodar, liberarla;
+- minimizar o restaurar, reacomodar, liberarla;
 - cómo se trata su tamaño (hay apps de tamaño fijo);
 - excluir su app o su tipo de ventana.
 

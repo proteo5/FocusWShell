@@ -13,7 +13,7 @@ public enum ListItemState
     /// <summary>En el foco o en pantalla completa: volverá a este panel.</summary>
     InFocus,
 
-    /// <summary>Estacionada.</summary>
+    /// <summary>Minimizada en su panel.</summary>
     Parked,
 
     /// <summary>Fuera de layout.</summary>
@@ -24,6 +24,12 @@ public enum ListItemState
 
     /// <summary>Cerrada: está en el catálogo y su último panel es éste. Tocarla la abre.</summary>
     Closed,
+
+    /// <summary>
+    /// En la bandeja: la app ocultó su ventana (se "cerró" a la bandeja) pero sigue abierta. No se toca: tocarla
+    /// lanza la app otra vez y es ella quien se muestra. Mostrarla nosotros la deja congelada (Electron).
+    /// </summary>
+    InTray,
 }
 
 /// <summary>Una app en la lista de un panel.</summary>

@@ -8,6 +8,10 @@ Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [
 
 - Manual: a picture of how it works, a step-by-step getting started from the main window, step-by-step guides, and screenshots of every section of the main window. / Manual: un dibujo de cómo funciona, primeros pasos paso a paso desde la ventana principal, guías paso a paso y capturas de cada sección de la ventana principal.
 - Fixed: in the dark theme, the list in Windows was white with white text. / Corregido: en el tema oscuro, la lista de Ventanas salía blanca con el texto blanco.
+- Apps that close to the tray (Codex, Discord, Teams…) show dimmed with ▴ in their panel, and tapping them opens the app again, which shows its window. Before, FocusWShell showed the hidden window itself, and some apps stayed frozen. When the app shows its window again, it goes back to its panel and to the focus. / Las apps que se cierran a la bandeja (Codex, Discord, Teams…) salen atenuadas con ▴ en su panel, y tocarlas abre la app otra vez, que muestra su ventana. Antes FocusWShell mostraba la ventana oculta por su cuenta, y algunas apps quedaban congeladas. Cuando la app vuelve a mostrar su ventana, regresa a su panel y al foco.
+- The deck gives the focus app its own place: on a whole tablet, a big tile at the top, above the buttons; in its panel, a blue border. / El deck le da a la app del foco su lugar propio: en la tablet entera, un tile grande arriba, encima de los botones; en su panel, un borde azul.
+- New Minimize… mode in the deck (teal), and the four modes in a 2×2 grid. Free all moves up with Previous and To panel; Mouse to focus moves to System. / Nuevo modo Minimizar… en el deck (verde azulado), y los cuatro modos en una cuadrícula de 2×2. Liberar todas sube junto a Anterior y Al panel; Ratón al foco pasa a Sistema.
+- "Park" is now called "Minimize" everywhere. / «Estacionar» ahora se llama «Minimizar» en todos lados.
 - The main monitor is called "main" in English, and the Spanish buttons say "foco" instead of "Centro". / El monitor principal se llama «main» en inglés, y los botones en español dicen «foco» en lugar de «Centro».
 
 ## 0.2.0-alpha

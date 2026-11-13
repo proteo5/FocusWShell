@@ -37,12 +37,12 @@
   <data name="DeckMenu_FullscreenOn" xml:space="preserve"><value>Pantalla completa en</value></data>
   <data name="DeckMenu_MoveTo" xml:space="preserve"><value>Mover a</value></data>
   <data name="DeckMenu_OpenInPanel" xml:space="preserve"><value>Abrir en su panel</value></data>
-  <data name="DeckMenu_Park" xml:space="preserve"><value>Estacionar</value></data>
+  <data name="DeckMenu_Park" xml:space="preserve"><value>Minimizar</value></data>
   <data name="DeckMenu_Pin" xml:space="preserve"><value>Anclar a su panel (sale aunque esté cerrada)</value></data>
   <data name="DeckMenu_PutIn" xml:space="preserve"><value>Poner en</value></data>
   <data name="DeckMenu_Release" xml:space="preserve"><value>Liberar (devolverla a su sitio original)</value></data>
   <data name="DeckMenu_ToFocus" xml:space="preserve"><value>Al foco</value></data>
-  <data name="DeckMenu_Unpark" xml:space="preserve"><value>Recuperar</value></data>
+  <data name="DeckMenu_Unpark" xml:space="preserve"><value>Restaurar</value></data>
   <data name="DeckMenu_Unpin" xml:space="preserve"><value>Desanclar</value></data>
   <data name="DeckSend_Corner" xml:space="preserve"><value>Esquina del monitor principal (se oculta solo)</value></data>
   <data name="DeckSend_LeftHalf" xml:space="preserve"><value>{0}: mitad izquierda</value></data>
@@ -59,6 +59,13 @@
   <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} está al frente (recibe el teclado), pero no es la del foco</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} más</value></data>
   <data name="Deck_MoreName" xml:space="preserve"><value>Deck: más apps</value></data>
+  <data name="Deck_Minimize" xml:space="preserve"><value>Minimizar</value></data>
+  <data name="Deck_Minimizing" xml:space="preserve"><value>Minimizando…</value></data>
+  <data name="Deck_MinimizeTip" xml:space="preserve"><value>Toca una app para minimizarla en su panel; tócala otra vez para traerla de vuelta.</value></data>
+  <data name="Deck_HeaderTab" xml:space="preserve"><value>{0} · {1} apps</value></data>
+  <data name="Deck_FocusFrom" xml:space="preserve"><value>de {0}</value></data>
+  <data name="Deck_FocusEmptyTile" xml:space="preserve"><value>Foco vacío</value></data>
+  <data name="Deck_FocusTip" xml:space="preserve"><value>{0} · en el foco. Toca para ver qué hacer con ella.</value></data>
   <data name="Deck_Mouse" xml:space="preserve"><value>Ratón al foco</value></data>
   <data name="Deck_MouseShort" xml:space="preserve"><value>Ratón</value></data>
   <data name="Deck_MouseTip" xml:space="preserve"><value>Lleva el cursor del ratón al centro de la app del foco (o, si no hay, al centro del monitor principal)</value></data>
@@ -121,7 +128,7 @@
   <data name="Ext_FocusToOtherPanel" xml:space="preserve"><value>{0}: la sacaste del foco a otro panel.</value></data>
   <data name="Ext_Maximized" xml:space="preserve"><value>{0}: la maximizaste; queda fuera de layout hasta que la restaures o la reencajes.</value></data>
   <data name="Ext_MaximizedAux" xml:space="preserve"><value>{0}: la maximizaste en el monitor auxiliar; su panel pasa a pantalla completa.</value></data>
-  <data name="Ext_Minimized" xml:space="preserve"><value>{0}: la minimizaste; queda estacionada en su panel.</value></data>
+  <data name="Ext_Minimized" xml:space="preserve"><value>{0}: la minimizaste; sigue en su panel.</value></data>
   <data name="Ext_Moved" xml:space="preserve"><value>{0}: la moviste; vuelve a su sitio.</value></data>
   <data name="Ext_ProportionsMoved" xml:space="preserve"><value>{0}: moviste el separador; esta vista queda en {1}.</value></data>
   <data name="Ext_ShownActive" xml:space="preserve"><value>{0}: la abriste; pasa a ser la visible de su panel.</value></data>
@@ -156,10 +163,11 @@
   <data name="Hk_WindowTitle" xml:space="preserve"><value>FocusWShell · atajos</value></data>
   <data name="Hotkeys_InUse" xml:space="preserve"><value>Otra aplicación ya usa: {0}. «Liberar todas» sigue en el menú de la bandeja.</value></data>
   <data name="ListState_Closed" xml:space="preserve"><value>cerrada</value></data>
+  <data name="ListState_InTray" xml:space="preserve"><value>en la bandeja</value></data>
   <data name="ListState_Detached" xml:space="preserve"><value>fuera de layout</value></data>
   <data name="ListState_InFocus" xml:space="preserve"><value>en el foco</value></data>
   <data name="ListState_InPanel" xml:space="preserve"><value>en el panel</value></data>
-  <data name="ListState_Parked" xml:space="preserve"><value>estacionada</value></data>
+  <data name="ListState_Parked" xml:space="preserve"><value>minimizada</value></data>
   <data name="List_CardName" xml:space="preserve"><value>Lista {0}: {1} ({2})</value></data>
   <data name="List_ColName" xml:space="preserve"><value>Nombre</value></data>
   <data name="List_Details" xml:space="preserve"><value>Detalles</value></data>
@@ -167,6 +175,7 @@
   <data name="List_LargeIcons" xml:space="preserve"><value>Iconos grandes</value></data>
   <data name="List_ModeName" xml:space="preserve"><value>Lista {0}: {1}</value></data>
   <data name="List_TipClosed" xml:space="preserve"><value>{0} · cerrada. Clic: abrirla en este panel.</value></data>
+  <data name="List_TipInTray" xml:space="preserve"><value>{0} · en la bandeja. Clic: mostrarla en este panel.</value></data>
   <data name="List_TipInFocus" xml:space="preserve"><value>{0} · está en el foco.</value></data>
   <data name="List_TipOpen" xml:space="preserve"><value>{0} · {1}. Clic: al foco.</value></data>
   <data name="Main_Apply" xml:space="preserve"><value>Aplicar</value></data>
@@ -206,8 +215,8 @@
   <data name="Main_OpenMissing" xml:space="preserve"><value>Abrir las que falten</value></data>
   <data name="Main_OpenMissingTip" xml:space="preserve"><value>Al aplicar una escena, abre las apps que no estén abiertas (si el catálogo sabe cómo) y pone su ventana en su panel.</value></data>
   <data name="Main_PanelsHelp" xml:space="preserve"><value>Cada monitor tiene dos columnas (izquierda y derecha) y cada una puede partirse arriba y abajo. Para crear un panel, escribe su nombre en la última fila, elige dónde va y pulsa Crear panel.</value></data>
-  <data name="Main_Park" xml:space="preserve"><value>Estacionar</value></data>
-  <data name="Main_ParkTip" xml:space="preserve"><value>Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa si la minimizas tú.</value></data>
+  <data name="Main_Park" xml:space="preserve"><value>Minimizar</value></data>
+  <data name="Main_ParkTip" xml:space="preserve"><value>Minimiza la ventana seleccionada sin quitarle su panel. También pasa si la minimizas tú.</value></data>
   <data name="Main_Promote" xml:space="preserve"><value>Al foco</value></data>
   <data name="Main_PromoteTip" xml:space="preserve"><value>Lleva la ventana seleccionada al foco</value></data>
   <data name="Main_Reattach" xml:space="preserve"><value>Reencajar</value></data>
@@ -233,8 +242,8 @@
   <data name="Main_TabPanelsName" xml:space="preserve"><value>Pestaña Paneles</value></data>
   <data name="Main_TabWindows" xml:space="preserve"><value>Ventanas</value></data>
   <data name="Main_TabWindowsName" xml:space="preserve"><value>Pestaña Ventanas</value></data>
-  <data name="Main_Unpark" xml:space="preserve"><value>Recuperar</value></data>
-  <data name="Main_UnparkTip" xml:space="preserve"><value>Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pasa si la abres desde la barra de tareas.</value></data>
+  <data name="Main_Unpark" xml:space="preserve"><value>Restaurar</value></data>
+  <data name="Main_UnparkTip" xml:space="preserve"><value>Devuelve una ventana minimizada a su panel, en el puesto que tenía. También pasa si la abres desde la barra de tareas.</value></data>
   <data name="Main_ViewLabel" xml:space="preserve"><value>Vista:</value></data>
   <data name="Main_ViewName" xml:space="preserve"><value>Vista</value></data>
   <data name="Main_ViewTip" xml:space="preserve"><value>Dónde va el foco en el monitor principal</value></data>
@@ -303,7 +312,7 @@
   <data name="State_Fullscreen" xml:space="preserve"><value>Pantalla completa (vuelve a {0})</value></data>
   <data name="State_In" xml:space="preserve"><value>En {0}{1}</value></data>
   <data name="State_MonitorMissing" xml:space="preserve"><value> (monitor desconectado)</value></data>
-  <data name="State_Parked" xml:space="preserve"><value>Estacionada en {0}{1}</value></data>
+  <data name="State_Parked" xml:space="preserve"><value>Minimizada en {0}{1}</value></data>
   <data name="State_Unmanageable" xml:space="preserve"><value>No gestionable: {0}</value></data>
   <data name="Status_Resumed" xml:space="preserve"><value>Volvió de la suspensión: se revisaron ventanas y monitores.</value></data>
   <data name="Strip_RowsDown" xml:space="preserve"><value>Filas de abajo</value></data>
@@ -312,7 +321,7 @@
   <data name="Strip_TipDetached" xml:space="preserve"><value>{0} · fuera de layout. Clic: reencajarla.</value></data>
   <data name="Strip_TipHidden" xml:space="preserve"><value>{0} · oculta (otra pestaña o fila). Clic: mostrarla. Doble clic: al foco.</value></data>
   <data name="Strip_TipInFocus" xml:space="preserve"><value>{0} · está en el foco y volverá aquí. Clic: devolverla.</value></data>
-  <data name="Strip_TipParked" xml:space="preserve"><value>{0} · estacionada. Clic: recuperarla. Doble clic: al foco.</value></data>
+  <data name="Strip_TipParked" xml:space="preserve"><value>{0} · minimizada. Clic: restaurarla. Doble clic: al foco.</value></data>
   <data name="Strip_ToFocus" xml:space="preserve"><value>Al foco</value></data>
   <data name="Tile_Large" xml:space="preserve"><value>Grande (3 columnas)</value></data>
   <data name="Tile_Medium" xml:space="preserve"><value>Mediano (2 columnas)</value></data>
@@ -361,6 +370,7 @@
   <data name="Desktop_Switched" xml:space="preserve"><value>{0} está en otro escritorio: te llevo allí.</value></data>
   <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} ya está abierta en otro escritorio. Cambia a ese escritorio para usarla.</value></data>
   <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · en otro escritorio. Tócala para ir allí.</value></data>
+  <data name="Deck_InTrayTip" xml:space="preserve"><value>{0} · en la bandeja. Tócala para mostrarla.</value></data>
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>en otro escritorio</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · en otro escritorio. Clic: ir allí.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Ir a su escritorio</value></data>

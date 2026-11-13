@@ -39,6 +39,7 @@ Esta carpeta es la documentación de ingeniería del proyecto. Parte de las nota
 | [0015](adr/0015-tiles-adaptables-y-lista.md) | Presentaciones: tiles adaptables y lista tipo Explorador | Aceptada |
 | [0016](adr/0016-escritorios-virtuales.md) | Seguir los escritorios virtuales de Windows: un foco y unas apps por escritorio | Propuesta (fase 1 hecha) |
 | [0017](adr/0017-ventana-principal-wpf-ui.md) | La ventana principal con WPF-UI: configurar y ver el estado | Aceptada |
+| [0018](adr/0018-apps-en-la-bandeja.md) | Apps que se cierran a la bandeja: no mostrarlas nosotros | Aceptada |
 
 ## Fuentes
 

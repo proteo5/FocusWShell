@@ -57,7 +57,7 @@
   <data name="Rej_AlreadyCenter" xml:space="preserve"><value>{0} ya está en el foco.</value></data>
   <data name="Rej_AlreadyManaged" xml:space="preserve"><value>{0} ya está gestionada.</value></data>
   <data name="Rej_CantFullscreen" xml:space="preserve"><value>{0} no puede pasar a pantalla completa desde {1}.</value></data>
-  <data name="Rej_CantPark" xml:space="preserve"><value>{0} no se puede estacionar desde {1}.</value></data>
+  <data name="Rej_CantPark" xml:space="preserve"><value>{0} no se puede minimizar desde {1}.</value></data>
   <data name="Rej_CantPromote" xml:space="preserve"><value>{0} no se puede llevar al foco desde {1}.</value></data>
   <data name="Rej_EmptyName" xml:space="preserve"><value>El nombre no puede estar vacío.</value></data>
   <data name="Rej_FillOnlyAux" xml:space="preserve"><value>Pantalla completa sólo vale en monitores auxiliares: en el principal manda el foco.</value></data>
@@ -71,7 +71,7 @@
   <data name="Rej_NotManaged" xml:space="preserve"><value>La ventana no está gestionada.</value></data>
   <data name="Rej_NotSameColumn" xml:space="preserve"><value>«{0}» y «{1}» no comparten columna.</value></data>
   <data name="Rej_OnlyCenterReturns" xml:space="preserve"><value>Sólo se puede devolver al panel la ventana del foco.</value></data>
-  <data name="Rej_OnlyParkedRestores" xml:space="preserve"><value>Sólo se puede recuperar una ventana estacionada.</value></data>
+  <data name="Rej_OnlyParkedRestores" xml:space="preserve"><value>Sólo se puede restaurar una ventana minimizada.</value></data>
   <data name="Rej_PanelExists" xml:space="preserve"><value>Ya existe un panel «{0}».</value></data>
   <data name="Rej_PanelNeedsName" xml:space="preserve"><value>El panel necesita un identificador y un nombre.</value></data>
   <data name="Rej_ReplacePanelsBusy" xml:space="preserve"><value>Los paneles sólo se sustituyen sin ventanas gestionadas.</value></data>

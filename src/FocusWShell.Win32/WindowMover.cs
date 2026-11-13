@@ -466,6 +466,16 @@ public static class WindowMover
         return new(handle, true, minimized, PInvoke.IsZoomed(hwnd), minimized ? default : ReadRects(hwnd).Visible);
     }
 
+    /// <summary>
+    /// Existe pero está oculta (<c>WS_VISIBLE</c> apagado): la app la "cerró" a la bandeja. No es minimizada
+    /// ni de otro escritorio (ésas siguen visibles para Windows).
+    /// </summary>
+    public static unsafe bool IsHidden(nint handle)
+    {
+        var hwnd = new HWND((void*)handle);
+        return PInvoke.IsWindow(hwnd) && !PInvoke.IsWindowVisible(hwnd);
+    }
+
     /// <summary>Ventana en primer plano.</summary>
     public static nint Foreground() => PInvoke.GetForegroundWindow();
 

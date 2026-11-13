@@ -1,9 +1,11 @@
+using System.IO;
 ﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using FocusWShell.Core.Browsers;
 using FocusWShell.Core.Domain;
 using FocusWShell.Core.Geometry;
@@ -152,7 +154,7 @@ public sealed class DeckWindow : Window
             : null;
 
     /// <summary>Si hay un modo encendido: entonces mandan sus bordes, no el de «al frente».</summary>
-    private bool InMode => _moving is not null || _closing || _pinning;
+    private bool InMode => _moving is not null || _closing || _pinning || _minimizing;
 
     /// <summary>Actualiza el contenido si está visible.</summary>
     public void Update(DeckState state)
@@ -210,8 +212,8 @@ public sealed class DeckWindow : Window
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // Izquierda, en tres tarjetas separadas por más aire que sus botones entre sí:
-        //   Foco (la app y qué hacer con ella), Disposición (las columnas del principal) y, abajo, Sistema.
+        // Izquierda, en tarjetas separadas por más aire que sus botones entre sí: arriba FocusWShell y la app
+        // del foco (lo primero que se mira), debajo qué hacer con ella, la disposición y, abajo, Sistema.
         var left = new Grid();
         void Card(Border card, GridLength height)
         {
@@ -220,12 +222,17 @@ public sealed class DeckWindow : Window
             left.Children.Add(card);
         }
 
-        // Mover, anclar y cerrar en una fila de tres: con sus textos cortos, para que quepan.
+        // El foco, con su lugar propio bajo la cabecera: ocupa el aire que sobra, y los botones quedan abajo,
+        // más cerca de la mano en la tablet.
+        Card(Group(null, [(DeckHeader(state), GridLength.Auto), (Label(Strings.Deck_SecFocus), GridLength.Auto), (FocusTile(state), new GridLength(1, GridUnitType.Star))]), new GridLength(1, GridUnitType.Star));
+
+        // Las de acción inmediata (Anterior, Al panel, Liberar todas) y, con un hueco que separa los dos tipos,
+        // los cuatro modos en 2×2: los que acomodan a la izquierda (Mover, Anclar) y los que quitan de la vista
+        // a la derecha (Minimizar, Cerrar).
         var actions = FocusActions(state, shortText: true);
-        // Arriba las de acción inmediata, abajo las de modo, con un hueco que separa los dos tipos.
-        var modes = Buttons(3, actions.Skip(3));
+        var modes = Buttons(2, [actions[3], actions[5], actions[4], actions[6]]);
         modes.Margin = new Thickness(0, 8, 0, 2);
-        Card(Group(null, [(FocusHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
+        Card(Group(null, [(Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
 
         // La disposición del principal: las columnas de paneles que se prenden y apagan, como un mapa del
         // monitor (ADR 0012, enmienda). El foco ocupa lo que dejan.
@@ -237,7 +244,6 @@ public sealed class DeckWindow : Window
         };
 
         Card(Group(null, layout), GridLength.Auto);
-        left.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // aire hasta Sistema
         var system = Group(_powerOpen ? Strings.Deck_SecPower : Strings.Deck_SecSystem, [(Buttons(2, SystemButtons()), GridLength.Auto)]);
         system.Margin = new Thickness(0, 0, 0, 8); // abajo, alineada con LIBRES
         Card(system, GridLength.Auto);
@@ -309,11 +315,12 @@ public sealed class DeckWindow : Window
         }
 
         Row(FocusHeader(state, arrangement: true), GridLength.Auto);
-        // Las seis en una fila: un hueco tras «Ratón» separa las de acción inmediata de las de modo.
+        // Dos filas: arriba las de acción inmediata, abajo los cuatro modos.
         var focusActions = FocusActions(state, shortText: true);
-        var focusRow = Buttons(6, focusActions);
-        focusActions[2].Margin = new Thickness(0, 0, 20, 8);
-        Row(focusRow, GridLength.Auto);
+        Row(Buttons(3, focusActions.Take(3)), GridLength.Auto);
+        var modeRow = Buttons(4, focusActions.Skip(3));
+        modeRow.Margin = new Thickness(0, 0, 0, 8);
+        Row(modeRow, GridLength.Auto);
 
         // Pestañas por monitor y, debajo, sus paneles uno debajo de otro, con alto según cuántas apps tienen.
         if (TabRow(state, wide: false) is { } tabRow)
@@ -348,7 +355,7 @@ public sealed class DeckWindow : Window
 
         // Abajo, lo del sistema.
         var system = SystemButtons();
-        Row(Buttons(system.Count > 4 ? 3 : system.Count, system), GridLength.Auto);
+        Row(Buttons(_powerOpen ? 3 : system.Count, system), GridLength.Auto);
     }
 
     // --- Pestañas por monitor -------------------------------------------------------------------------
@@ -379,6 +386,7 @@ public sealed class DeckWindow : Window
 
         _closing = mode == "cerrar";
         _pinning = mode == "anclar";
+        _minimizing = mode == "minimizar";
         _powerOpen = mode is "energia" or "energia-seguro";
         if (mode == "energia-seguro")
         {
@@ -1108,8 +1116,194 @@ public sealed class DeckWindow : Window
         line.Children.Add(names);
         focus.Children.Add(line);
 
-        header.Children.Add(focus);
+        // La del foco también se toca: en un modo, como cualquier otra app; si no, su menú. Mover otra app
+        // aquí la lleva al foco.
+        var tap = new Button
+        {
+            Content = focus,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Focusable = false,
+            Cursor = Cursors.Hand,
+        };
+        MarkFocusTarget(tap, state);
+        tap.Click += async (_, _) => await TapFocus(state, tap);
+        System.Windows.Automation.AutomationProperties.SetName(tap, "Deck: " + Strings.Deck_SecFocus);
+        header.Children.Add(tap);
         return header;
+    }
+
+    /// <summary>La cabecera del deck ancho: FocusWShell, el monitor que se ve y cuántas apps tiene.</summary>
+    private DockPanel DeckHeader(DeckState state)
+    {
+        var header = new DockPanel { Margin = new Thickness(0, 0, 8, 8) };
+        var close = SmallButton("✕", Strings.Deck_Hide, () => _actions.Hide());
+        DockPanel.SetDock(close, Dock.Right);
+        header.Children.Add(close);
+        var send = SmallButton("⇢", Strings.Deck_SendTo, () => { });
+        send.Margin = new Thickness(0, 0, 6, 0);
+        send.ContextMenu = SendMenu(state);
+        send.Click += (_, _) =>
+        {
+            send.ContextMenu.PlacementTarget = send;
+            send.ContextMenu.IsOpen = true;
+        };
+        DockPanel.SetDock(send, Dock.Right);
+        header.Children.Add(send);
+
+        var logo = new Image
+        {
+            Source = Logo,
+            Width = 32,
+            Height = 32,
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        DockPanel.SetDock(logo, Dock.Left);
+        header.Children.Add(logo);
+
+        var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        names.Children.Add(new TextBlock { Text = "FocusWShell", Foreground = TextBrush, FontSize = 18, FontWeight = FontWeights.SemiBold });
+        if (MonitorTabs(state).FirstOrDefault(t => OnTab(t.Display)) is { } tab)
+        {
+            names.Children.Add(new TextBlock { Text = Core.Text.F(Strings.Deck_HeaderTab, tab.Name, tab.Apps), Foreground = DimBrush, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
+        }
+
+        header.Children.Add(names);
+        return header;
+    }
+
+    private static readonly ImageSource? Logo = LoadLogo();
+
+    private static BitmapFrame? LoadLogo()
+    {
+        try
+        {
+            var decoder = BitmapDecoder.Create(new Uri("pack://application:,,,/Assets/FocusWShell.ico"), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+            return decoder.Frames.OrderByDescending(f => f.PixelWidth).First();
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or UriFormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// El lugar del foco en el deck ancho: un tile grande con la app del foco (icono, nombre, título y de qué
+    /// panel viene) o vacío. Se toca como cualquier app: en un modo, el modo; si no, su menú. En «Mover», con
+    /// otra app elegida, tocarlo la lleva al foco.
+    /// </summary>
+    private Button FocusTile(DeckState state)
+    {
+        var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        if (state.Focus is { } focus)
+        {
+            if (focus.App is { } app && AppIcons.Get(app) is { } icon)
+            {
+                content.Children.Add(new Image { Source = icon, Width = 40, Height = 40, Margin = new Thickness(0, 0, 0, 4) });
+            }
+
+            content.Children.Add(new TextBlock
+            {
+                Text = focus.Name,
+                Foreground = TextBrush,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                TextAlignment = TextAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+            // En una línea, para que quepa en la tablet: de qué panel viene y el título de su ventana.
+            var from = state.Panels.FirstOrDefault(p => p.Id == focus.PanelId) is { } home ? Core.Text.F(Strings.Deck_FocusFrom, home.Name) : null;
+            var detail = string.Join(" · ", new[] { from, focus.Title }.Where(t => !string.IsNullOrEmpty(t)));
+            if (detail.Length > 0)
+            {
+                content.Children.Add(new TextBlock { Text = detail, Foreground = TextBrush, FontSize = 11, TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) });
+            }
+        }
+        else
+        {
+            content.Children.Add(new TextBlock { Text = Strings.Deck_FocusEmptyTile, Foreground = DimBrush, FontSize = 14, TextAlignment = TextAlignment.Center });
+        }
+
+        var tile = new Button
+        {
+            Content = content,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
+            Padding = new Thickness(8),
+            Margin = new Thickness(0, 0, 8, 8),
+            Focusable = false,
+            BorderThickness = new Thickness(0),
+            Background = state.Focus is null ? CardBrush : ActiveBrush,
+            Cursor = Cursors.Hand,
+            ToolTip = state.Focus is { } f ? Core.Text.F(Strings.Deck_FocusTip, f.Name) : null,
+        };
+        MarkFocusTarget(tile, state);
+        tile.Click += async (_, _) => await TapFocus(state, tile);
+        System.Windows.Automation.AutomationProperties.SetName(tile, "Deck: " + Strings.Deck_SecFocus + (state.Focus is { } g ? " " + g.Name : ""));
+        return tile;
+    }
+
+    /// <summary>El borde del lugar del foco en un modo: el mismo que llevaría su app, o el de destino al mover.</summary>
+    private void MarkFocusTarget(Button target, DeckState state)
+    {
+        if (_moving == MoveStep.PickPanel && _moveApp is not null && _moveApp.State != ListItemState.InFocus)
+        {
+            target.BorderBrush = TargetBrush;
+            target.BorderThickness = new Thickness(3);
+        }
+        else if (state.Focus is { Handle: not null } focus)
+        {
+            if (_moving == MoveStep.PickApp || _moveApp?.Handle == focus.Handle)
+            {
+                target.BorderBrush = TargetBrush;
+                target.BorderThickness = new Thickness(_moveApp is null ? 2 : 3);
+            }
+            else if (_pinning && CanPin(focus))
+            {
+                target.BorderBrush = IsPinned(focus) ? PinBrush : PinFaintBrush;
+                target.BorderThickness = new Thickness(IsPinned(focus) ? 3 : 2);
+            }
+            else if (_minimizing)
+            {
+                target.BorderBrush = MinimizeBrush;
+                target.BorderThickness = new Thickness(2);
+            }
+            else if (_closing)
+            {
+                target.BorderBrush = WarnBrush;
+                target.BorderThickness = new Thickness(2);
+            }
+        }
+    }
+
+    private async Task TapFocus(DeckState state, Button target)
+    {
+        // Mover con otra app elegida: al foco (una libre entra antes en un panel).
+        if (_moving == MoveStep.PickPanel && _moveApp is { Handle: { } h } chosen && chosen.State != ListItemState.InFocus)
+        {
+            _moving = null;
+            _moveApp = null;
+            await Run(true, chosen.PanelId is null ? [new Adopt(h, chosen.Name, DefaultPanel()), new Promote(h)] : [new Promote(h)]);
+            return;
+        }
+
+        if (state.Focus is not { } focus)
+        {
+            return;
+        }
+
+        if (InMode)
+        {
+            await TapApp(focus);
+            return;
+        }
+
+        var menu = MenuFor(focus);
+        menu.PlacementTarget = target;
+        menu.IsOpen = true;
     }
 
     private List<Button> FocusActions(DeckState state, bool shortText)
@@ -1123,6 +1317,7 @@ public sealed class DeckWindow : Window
             _moveApp = null;
             _closing = false;
             _pinning = false;
+            _minimizing = false;
             Render();
         });
         System.Windows.Automation.AutomationProperties.SetName(move, "Deck: " + Strings.Deck_Move);
@@ -1137,6 +1332,7 @@ public sealed class DeckWindow : Window
             _moving = null;
             _moveApp = null;
             _pinning = false;
+            _minimizing = false;
             Render();
         });
         System.Windows.Automation.AutomationProperties.SetName(close, "Deck: " + Strings.Deck_Close);
@@ -1152,6 +1348,7 @@ public sealed class DeckWindow : Window
             _moving = null;
             _moveApp = null;
             _closing = false;
+            _minimizing = false;
             Render();
         });
         System.Windows.Automation.AutomationProperties.SetName(pin, "Deck: " + Strings.Deck_Pin);
@@ -1160,15 +1357,45 @@ public sealed class DeckWindow : Window
             pin.Background = PinBrush;
         }
 
-        // El ratón al foco: tras tocar el deck, el cursor queda en la tablet; así vuelve a donde se trabaja.
-        var mouse = WideButton("🖱  " + (shortText ? Strings.Deck_MouseShort : Strings.Deck_Mouse), true, () => _actions.MouseToFocus());
-        mouse.ToolTip = Strings.Deck_MouseTip;
-        System.Windows.Automation.AutomationProperties.SetName(mouse, "Deck: " + Strings.Deck_Mouse);
+        // Minimizar: como Cerrar, se apaga tras un toque. Alterna: una minimizada vuelve a su panel.
+        var minimize = WideButton("▁  " + (_minimizing ? Strings.Deck_Minimizing : Strings.Deck_Minimize), true, () =>
+        {
+            _minimizing = !_minimizing;
+            _moving = null;
+            _moveApp = null;
+            _closing = false;
+            _pinning = false;
+            Render();
+        });
+        minimize.ToolTip = Strings.Deck_MinimizeTip;
+        System.Windows.Automation.AutomationProperties.SetName(minimize, "Deck: " + Strings.Deck_Minimize);
+        if (_minimizing)
+        {
+            minimize.Background = MinimizeBrush;
+        }
 
         Sticky(move, _moving is not null, TargetBrush);
         Sticky(pin, _pinning, PinBrush);
+        Sticky(minimize, _minimizing, MinimizeBrush);
         Sticky(close, _closing, WarnFaintBrush);
-        return [previous, back, mouse, move, pin, close];
+        return [previous, back, RestoreButton(withIcon: !shortText || !IsWide), move, pin, minimize, close];
+    }
+
+    /// <summary>Modo minimizar: la app que se toque se minimiza en su panel, o vuelve si ya lo estaba; luego se apaga.</summary>
+    private bool _minimizing;
+
+    private static readonly Brush MinimizeBrush = Frozen(Color.FromRgb(0x2A, 0xA1, 0x98));
+
+    /// <summary>Si se puede minimizar con el modo: abierta y en un panel (una libre no tiene dónde quedarse).</summary>
+    private static bool CanMinimize(DeckApp app) => app.Handle is not null && app.PanelId is not null;
+
+    /// <summary>El ratón al foco: tras tocar el deck, el cursor queda en la tablet; así vuelve a donde se trabaja.</summary>
+    private Button MouseButton()
+    {
+        var mouse = WideButton("🖱  " + Strings.Deck_Mouse, true, () => _actions.MouseToFocus());
+        mouse.ToolTip = Strings.Deck_MouseTip;
+        System.Windows.Automation.AutomationProperties.SetName(mouse, "Deck: " + Strings.Deck_Mouse);
+        return mouse;
     }
 
     private static readonly Brush WarnFaintBrush = Frozen(Color.FromArgb(0x90, 0xC2, 0x3B, 0x3B));
@@ -1207,13 +1434,13 @@ public sealed class DeckWindow : Window
 
     /// <summary>Las apps que se ven de un panel: las cerradas sólo si están ancladas (o en el modo anclar).</summary>
     private List<DeckApp> Visible(IEnumerable<DeckApp> apps) =>
-        [.. apps.Where(a => a.Handle is not null || a.State == ListItemState.OtherDesktop || _pinning || IsPinned(a))];
+        [.. apps.Where(a => a.Handle is not null || a.State is ListItemState.OtherDesktop or ListItemState.InTray || _pinning || IsPinned(a))];
 
     /// <summary>
-    /// No está aquí: cerrada o en otro escritorio (ADR 0016). Se ve apagada, no se mueve ni se cierra, y
-    /// tocarla la abre o lleva a su escritorio.
+    /// No está aquí: cerrada, en la bandeja o en otro escritorio (ADR 0016). Se ve apagada, no se mueve ni se
+    /// cierra, y tocarla la abre (la de la bandeja se muestra ella misma) o lleva a su escritorio.
     /// </summary>
-    private static bool Away(DeckApp app) => app.State is ListItemState.Closed or ListItemState.OtherDesktop;
+    private static bool Away(DeckApp app) => app.State is ListItemState.Closed or ListItemState.InTray or ListItemState.OtherDesktop;
 
     /// <summary>
     /// Modo cerrar: la app que se toque se cierra como con su X (si tiene algo sin guardar, ella pregunta) y
@@ -1304,10 +1531,11 @@ public sealed class DeckWindow : Window
         return awake;
     }
 
-    private Button RestoreButton()
+    private Button RestoreButton(bool withIcon = true)
     {
         bool armed = DateTime.Now - _restoreArmed < TimeSpan.FromSeconds(4);
-        var restore = WideButton(armed ? "⟲  " + Strings.Deck_RestoreSure : "⟲  " + Strings.Deck_RestoreAll, true, () =>
+        string icon = withIcon ? "⟲  " : "";
+        var restore = WideButton(icon + (armed ? Strings.Deck_RestoreSure : Strings.Deck_RestoreAll), true, () =>
         {
             if (DateTime.Now - _restoreArmed < TimeSpan.FromSeconds(4))
             {
@@ -1333,7 +1561,7 @@ public sealed class DeckWindow : Window
     }
 
     /// <summary>
-    /// Lo del sistema, que se usa poco y va abajo: pantalla encendida, energía, liberar todas y, sólo si
+    /// Lo del sistema, que se usa poco y va abajo: pantalla encendida, energía, el ratón al foco y, sólo si
     /// hubo un «Liberar todas», reordenarlas como estaban. Con la energía abierta, sus botones grandes.
     /// </summary>
     private List<Button> SystemButtons()
@@ -1343,7 +1571,7 @@ public sealed class DeckWindow : Window
             return PowerButtons();
         }
 
-        var buttons = new List<Button> { AwakeButton(), PowerButton(), RestoreButton() };
+        var buttons = new List<Button> { AwakeButton(), PowerButton(), MouseButton() };
         if (_actions.CanRearrange())
         {
             buttons.Add(WideButton("↺  " + Strings.Deck_Rearrange, true, async () =>
@@ -1707,6 +1935,7 @@ public sealed class DeckWindow : Window
                 ListItemState.Parked => " ⏸",
                 ListItemState.Detached => " ↗",
                 ListItemState.OtherDesktop => " ⧉",
+                ListItemState.InTray => " ▴",
                 _ => "",
             },
             Foreground = Away(app) ? DimBrush : TextBrush,
@@ -1724,7 +1953,7 @@ public sealed class DeckWindow : Window
             {
                 Text = "📌",
                 FontSize = 10,
-                Foreground = app.State == ListItemState.InFocus ? TextBrush : PinBrush, // sobre el azul del foco, blanco
+                Foreground = PinBrush,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, -2, -2, 0),
@@ -1740,9 +1969,11 @@ public sealed class DeckWindow : Window
             Padding = new Thickness(4),
             Focusable = false,
             BorderThickness = new Thickness(0),
-            Background = app.State == ListItemState.InFocus ? ActiveBrush : CardBrush,
+            // La del foco tiene su lugar propio en el deck: en su panel sólo lleva un borde azul y la ↑.
+            Background = CardBrush,
             Cursor = Cursors.Hand,
             ToolTip = app.State == ListItemState.OtherDesktop ? Core.Text.F(Strings.Deck_OtherDesktopTip, app.Name)
+                : app.State == ListItemState.InTray ? Core.Text.F(Strings.Deck_InTrayTip, app.Name)
                 : string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"Deck: {app.Name} ({app.State})");
@@ -1775,6 +2006,18 @@ public sealed class DeckWindow : Window
         {
             tile.Opacity = 0.4; // una app cerrada no se mueve ni se cierra
         }
+        else if (_minimizing)
+        {
+            if (CanMinimize(app))
+            {
+                tile.BorderBrush = MinimizeBrush;
+                tile.BorderThickness = new Thickness(app.State == ListItemState.Parked ? 3 : 2);
+            }
+            else
+            {
+                tile.Opacity = 0.4; // libre o cerrada: no tiene panel donde quedarse minimizada
+            }
+        }
         else if (_closing)
         {
             tile.BorderBrush = WarnBrush;
@@ -1787,6 +2030,11 @@ public sealed class DeckWindow : Window
             tile.BorderBrush = TextBrush;
             tile.BorderThickness = new Thickness(2);
             tile.ToolTip = Core.Text.F(Strings.Deck_InFrontTip, app.Name);
+        }
+        else if (!InMode && app.State == ListItemState.InFocus)
+        {
+            tile.BorderBrush = ActiveBrush;
+            tile.BorderThickness = new Thickness(3);
         }
 
         tile.Click += async (_, _) =>
@@ -2021,6 +2269,19 @@ public sealed class DeckWindow : Window
             if (CanPin(app))
             {
                 _actions.SetPinned(app.AppKey, !IsPinned(app));
+            }
+
+            return;
+        }
+
+        if (_minimizing)
+        {
+            // Como «Cerrar»: hecho lo pedido, el modo se apaga. Tocar una que no se puede minimizar no lo apaga.
+            if (CanMinimize(app) && app.Handle is { } m)
+            {
+                _minimizing = false;
+                await Run(false, app.State == ListItemState.Parked ? new Restore(m) : new Park(m));
+                Render();
             }
 
             return;

@@ -129,7 +129,7 @@ To change it, open **Shortcuts and gestures** and turn each one on or off under 
 
 ## Take a break from FocusWShell {#break}
 
-- **For a moment:** **Free all** (in **Home** or under *System* in the deck) lets every window go back to where it was. **Rearrange all** puts them back in their panels.
+- **For a moment:** **Free all** (in **Home** or at the top of the deck) lets every window go back to where it was. **Rearrange all** puts them back in their panels.
 - **For good, this session:** **Exit** in the tray menu puts every window back and closes FocusWShell.
 - **Something is wrong:** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Backspace</kbd>, at any time.
 

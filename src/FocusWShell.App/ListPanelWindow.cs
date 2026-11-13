@@ -258,6 +258,7 @@ public sealed class ListPanelWindow : Window
         card.ToolTip = item.State switch
         {
             ListItemState.Closed => Core.Text.F(Strings.List_TipClosed, item.Name),
+            ListItemState.InTray => Core.Text.F(Strings.List_TipInTray, item.Name),
             ListItemState.OtherDesktop => Core.Text.F(Strings.List_TipOtherDesktop, item.Name),
             ListItemState.InFocus => Core.Text.F(Strings.List_TipInFocus, item.Name),
             _ => Core.Text.F(Strings.List_TipOpen, item.Name, item.Title),
@@ -289,11 +290,12 @@ public sealed class ListPanelWindow : Window
         ListItemState.Parked => "  ⏸",
         ListItemState.Detached => "  ↗",
         ListItemState.OtherDesktop => "  ⧉",
+        ListItemState.InTray => "  ▴",
         _ => "",
     };
 
-    /// <summary>No está aquí: cerrada o en otro escritorio. Se ve apagada y tocarla la abre o lleva a ella.</summary>
-    private static bool Away(ListItemState state) => state is ListItemState.Closed or ListItemState.OtherDesktop;
+    /// <summary>No está aquí: cerrada, en la bandeja o en otro escritorio. Se ve apagada y tocarla la abre o lleva a ella.</summary>
+    private static bool Away(ListItemState state) => state is ListItemState.Closed or ListItemState.InTray or ListItemState.OtherDesktop;
 
     private static string StateText(ListItemState state) => state switch
     {
@@ -303,6 +305,7 @@ public sealed class ListPanelWindow : Window
         ListItemState.Detached => Strings.ListState_Detached,
         ListItemState.Closed => Strings.ListState_Closed,
         ListItemState.OtherDesktop => Strings.ListState_OtherDesktop,
+        ListItemState.InTray => Strings.ListState_InTray,
         _ => "",
     };
 
