@@ -212,8 +212,8 @@ public sealed class DeckWindow : Window
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // Izquierda, en tres tarjetas separadas por más aire que sus botones entre sí:
-        //   Foco (la app y qué hacer con ella), Disposición (las columnas del principal) y, abajo, Sistema.
+        // Izquierda, en tarjetas separadas por más aire que sus botones entre sí: arriba FocusWShell y la app
+        // del foco (lo primero que se mira), debajo qué hacer con ella, la disposición y, abajo, Sistema.
         var left = new Grid();
         void Card(Border card, GridLength height)
         {
@@ -222,13 +222,17 @@ public sealed class DeckWindow : Window
             left.Children.Add(card);
         }
 
-        // Arriba FocusWShell; debajo las de acción inmediata (Anterior, Al panel, Liberar todas) y, con un hueco
-        // que separa los dos tipos, los cuatro modos en 2×2: los que acomodan a la izquierda (Mover, Anclar) y
-        // los que quitan de la vista a la derecha (Minimizar, Cerrar).
+        // El foco, con su lugar propio bajo la cabecera: ocupa el aire que sobra, y los botones quedan abajo,
+        // más cerca de la mano en la tablet.
+        Card(Group(null, [(DeckHeader(state), GridLength.Auto), (Label(Strings.Deck_SecFocus), GridLength.Auto), (FocusTile(state), new GridLength(1, GridUnitType.Star))]), new GridLength(1, GridUnitType.Star));
+
+        // Las de acción inmediata (Anterior, Al panel, Liberar todas) y, con un hueco que separa los dos tipos,
+        // los cuatro modos en 2×2: los que acomodan a la izquierda (Mover, Anclar) y los que quitan de la vista
+        // a la derecha (Minimizar, Cerrar).
         var actions = FocusActions(state, shortText: true);
         var modes = Buttons(2, [actions[3], actions[5], actions[4], actions[6]]);
         modes.Margin = new Thickness(0, 8, 0, 2);
-        Card(Group(null, [(DeckHeader(state), GridLength.Auto), (Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
+        Card(Group(null, [(Buttons(3, actions.Take(3)), GridLength.Auto), (modes, GridLength.Auto)]), GridLength.Auto);
 
         // La disposición del principal: las columnas de paneles que se prenden y apagan, como un mapa del
         // monitor (ADR 0012, enmienda). El foco ocupa lo que dejan.
@@ -240,9 +244,6 @@ public sealed class DeckWindow : Window
         };
 
         Card(Group(null, layout), GridLength.Auto);
-
-        // El foco, con su lugar propio: ocupa el aire hasta Sistema.
-        Card(Group(Strings.Deck_SecFocus, [(FocusTile(state), new GridLength(1, GridUnitType.Star))]), new GridLength(1, GridUnitType.Star));
         var system = Group(_powerOpen ? Strings.Deck_SecPower : Strings.Deck_SecSystem, [(Buttons(2, SystemButtons()), GridLength.Auto)]);
         system.Margin = new Thickness(0, 0, 0, 8); // abajo, alineada con LIBRES
         Card(system, GridLength.Auto);

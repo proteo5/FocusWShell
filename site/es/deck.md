@@ -18,7 +18,7 @@ El deck es la superficie de control de FocusWShell: todo lo que puedes hacer, co
 
 ## Foco
 
-La app del foco tiene su lugar propio. En la tablet entera es un tile grande arriba de **Sistema**, con su icono, su nombre, el panel del que viene y el título de su ventana. En el deck angosto está arriba. Tócala para abrir su menú; en un modo, funciona como cualquier otra app.
+La app del foco tiene su lugar propio. En la tablet entera es un tile grande arriba, bajo el nombre de FocusWShell y encima de los botones, con su icono, su nombre, el panel del que viene y el título de su ventana. En el deck angosto está arriba. Tócala para abrir su menú; en un modo, funciona como cualquier otra app.
 
 En su panel, la app del foco lleva un borde azul y **↑**.
 

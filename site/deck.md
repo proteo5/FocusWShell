@@ -18,7 +18,7 @@ Open or hide it with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd
 
 ## Focus
 
-The app in focus has its own place. On a whole tablet it is a big tile above **System**, with its icon, its name, the panel it comes from and its window title. In the narrower deck it is at the top. Tap it to open its menu; in a mode, it works like any other app.
+The app in focus has its own place. On a whole tablet it is a big tile at the top, under the FocusWShell name and above the buttons, with its icon, its name, the panel it comes from and its window title. In the narrower deck it is at the top. Tap it to open its menu; in a mode, it works like any other app.
 
 In its panel, the focus app has a blue border and **↑**.
 
