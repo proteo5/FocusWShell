@@ -3,22 +3,31 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Threading;
 using FocusWShell.Core.Domain;
 using FocusWShell.Core.Layout;
 using FocusWShell.Core.Windows;
 using FocusWShell.Win32.Persistence;
 using FocusWShell.Win32.Scenes;
+using Wpf.Ui.Controls;
 using WC = System.Windows.Controls;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace FocusWShell.App;
 
-/// <summary>Lista de ventanas, paneles y comandos. El estado real vive en el modelo del controlador.</summary>
-public partial class MainWindow : Window
+/// <summary>
+/// La ventana principal: configurar y ver el estado (el día a día va en el deck). Navegación lateral como la
+/// Configuración de Windows, con WPF-UI. El estado real vive en el modelo del controlador.
+/// </summary>
+public partial class MainWindow : FluentWindow
 {
     private readonly ShellController _controller;
     private readonly ObservableCollection<WindowRow> _rows = [];
 
-    /// <summary>Destinos que el usuario ha cambiado y aún no ha aplicado, por handle.</summary>
+    /// <summary>Destinos que el usuario acaba de cambiar y aún no se han aplicado, por handle.</summary>
     private readonly Dictionary<nint, string> _pending = [];
 
     private bool _buildingPanels;
@@ -29,23 +38,45 @@ public partial class MainWindow : Window
     private readonly AppSettings _settings;
     private bool _loadingGestures;
 
+    /// <summary>El azul del foco en el deck (ActiveBrush), para el mapa de monitores.</summary>
+    private static readonly SolidColorBrush FocusBlue = new(Color.FromRgb(0x28, 0x78, 0xDC));
+
+    /// <summary>Cierra sola la franja de avisos.</summary>
+    private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(8) };
+
     public MainWindow(ShellController controller, AppSettings settings)
     {
         _controller = controller;
         _settings = settings;
         InitializeComponent();
+        Loaded += (_, _) => ApplyTheme(_settings.Theme);
         Title = AppVersion.Title;
+        TitleBar.Title = AppVersion.Title;
+        VersionText.Text = AppVersion.Title;
+        AboutVersion.Text = Core.Text.F(Strings.Gen_Version, AppVersion.Display) + (AppVersion.Commit.Length > 0 ? $" · {AppVersion.Commit}" : "");
+        _statusTimer.Tick += (_, _) =>
+        {
+            _statusTimer.Stop();
+            StatusBar.IsOpen = false;
+        };
+
         _loadingGestures = true;
         GestureAltTab.IsChecked = settings.FocusOnAltTab;
         GestureTaskView.IsChecked = settings.FocusOnTaskView;
         GestureTaskbar.IsChecked = settings.FocusOnTaskbar;
         GestureClick.IsChecked = settings.FocusOnClick;
         OpenMissingBox.IsChecked = settings.OpenMissingApps;
-        LanguageCombo.SelectedItem = LanguageCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+        StartupSwitch.IsChecked = App.StartsWithWindows;
+        AwakeSwitch.IsChecked = ((App)Application.Current).KeepAwakeActive;
+        LanguageCombo.SelectedItem = LanguageCombo.Items.Cast<WC.ComboBoxItem>()
             .FirstOrDefault(i => (string)i.Tag == settings.Language) ?? LanguageCombo.Items[0];
+        ThemeCombo.SelectedItem = ThemeCombo.Items.Cast<WC.ComboBoxItem>()
+            .FirstOrDefault(i => (string)i.Tag == settings.Theme) ?? ThemeCombo.Items[0];
         _loadingGestures = false;
+
         DataContext = this;
         WindowList.ItemsSource = _rows;
+        Nav.SelectedIndex = 0;
         LoadScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(LoadScenes);
         _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() => BuildCatalog(_controller.Panels()));
@@ -53,26 +84,75 @@ public partial class MainWindow : Window
         Refresh();
     }
 
+    // --- Navegación ----------------------------------------------------------------------------------
+
+    private void Nav_SelectionChanged(object sender, WC.SelectionChangedEventArgs e)
+    {
+        if (Nav.SelectedItem is not WC.ListBoxItem { Tag: string page })
+        {
+            return;
+        }
+
+        foreach (var (name, section) in new (string, FrameworkElement)[]
+        {
+            ("Home", HomeSection), ("Windows", WindowsSection), ("Panels", PanelsSection), ("Apps", AppsSection),
+            ("Shortcuts", ShortcutsSection), ("Scenes", ScenesSection), ("Excluded", ExcludedSection), ("General", GeneralSection),
+        })
+        {
+            section.Visibility = name == page ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (page == "Shortcuts")
+        {
+            BuildShortcuts();
+        }
+    }
+
+    /// <summary>Una tarjeta (fondo y borde del tema) alrededor de una fila.</summary>
+    private static WC.Border CardRow(UIElement content)
+    {
+        var card = new WC.Border
+        {
+            Child = content,
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(14, 10, 14, 10),
+            Margin = new Thickness(0, 0, 0, 6),
+            BorderThickness = new Thickness(1),
+        };
+        card.SetResourceReference(WC.Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
+        card.SetResourceReference(WC.Border.BorderBrushProperty, "CardStrokeColorDefaultBrush");
+        return card;
+    }
+
+    /// <summary>Un texto con un color del tema.</summary>
+    private static WC.TextBlock Text(string text, string brush = "TextFillColorPrimaryBrush", double size = 14)
+    {
+        var block = new WC.TextBlock { Text = text, FontSize = size, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        block.SetResourceReference(WC.TextBlock.ForegroundProperty, brush);
+        return block;
+    }
+
     // --- Lista de exclusión (M2) -------------------------------------------------------------------
 
-    /// <summary>Las reglas, cada una con su botón para quitarla.</summary>
+    /// <summary>Las reglas, cada una en su fila con su botón para quitarla.</summary>
     private void BuildExclusions()
     {
         ExclusionsList.Children.Clear();
         if (_settings.Exclusions.Count == 0)
         {
-            ExclusionsList.Children.Add(new WC.TextBlock { Text = Strings.Excl_None, Foreground = System.Windows.Media.Brushes.Gray, Margin = new Thickness(2) });
+            ExclusionsList.Children.Add(Text(Strings.Excl_None, "TextFillColorSecondaryBrush"));
         }
 
         foreach (var rule in _settings.Exclusions)
         {
-            var item = new WC.StackPanel { Orientation = WC.Orientation.Horizontal, Margin = new Thickness(0, 0, 12, 4) };
-            item.Children.Add(new WC.TextBlock { Text = rule.Describe(), VerticalAlignment = VerticalAlignment.Center });
-            var remove = new WC.Button { Content = Strings.Excl_Remove, Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(6, 0, 0, 0) };
+            var row = new WC.DockPanel();
+            var remove = new Wpf.Ui.Controls.Button { Content = Strings.Excl_Remove, Icon = new SymbolIcon(SymbolRegular.Delete24) };
             System.Windows.Automation.AutomationProperties.SetName(remove, Core.Text.F(Strings.Excl_RemoveName, rule.Describe()));
             remove.Click += (_, _) => SetExclusions(_settings.Exclusions.Where(r => r != rule).ToList(), Core.Text.F(Strings.Excl_Removed, rule.Describe()));
-            item.Children.Add(remove);
-            ExclusionsList.Children.Add(item);
+            WC.DockPanel.SetDock(remove, WC.Dock.Right);
+            row.Children.Add(remove);
+            row.Children.Add(Text(rule.Describe()));
+            ExclusionsList.Children.Add(CardRow(row));
         }
     }
 
@@ -123,7 +203,9 @@ public partial class MainWindow : Window
     /// <summary>En un menú, "_" marca la tecla de acceso: se duplica para que se vea tal cual (Chrome_WidgetWin_1).</summary>
     private static string NoAccessKey(string text) => text.Replace("_", "__", StringComparison.Ordinal);
 
-    /// <summary>Clic derecho en una ventana de la lista: excluir su app o ese tipo de ventana.</summary>
+    // --- Ventanas: acciones de cada fila ---------------------------------------------------------------
+
+    /// <summary>Clic derecho en una ventana de la lista: su menú.</summary>
     private void WindowList_ContextMenuOpening(object sender, WC.ContextMenuEventArgs e)
     {
         var menu = WindowList.ContextMenu!;
@@ -134,17 +216,75 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (ExclusionRule.ForApp(row.Snapshot) is { } appRule)
+        FillRowMenu(menu, row);
+    }
+
+    /// <summary>«…» de una fila: el mismo menú que el clic derecho.</summary>
+    private void RowMore_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: WindowRow row } button)
         {
-            var app = new WC.MenuItem { Header = NoAccessKey(Core.Text.F(Strings.Menu_ExcludeApp, row.App, appRule.Value)) };
-            app.Click += (_, _) => AddExclusion(appRule);
-            menu.Items.Add(app);
+            return;
         }
 
-        // Tamaño: según la ventana, fijo (sólo moverla) o redimensionar siempre.
+        WindowList.SelectedItem = row;
+        var menu = new WC.ContextMenu { PlacementTarget = button, Placement = WC.Primitives.PlacementMode.Bottom };
+        FillRowMenu(menu, row);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Lo que se puede hacer con una ventana: al foco, pantalla completa en un monitor, estacionar, recuperar,
+    /// reacomodar o liberar; su tamaño; y excluir su app o su clase de ventana.
+    /// </summary>
+    private void FillRowMenu(WC.ContextMenu menu, WindowRow row)
+    {
+        void Item(WC.ItemsControl parent, string header, Func<Task> action)
+        {
+            var item = new WC.MenuItem { Header = NoAccessKey(header) };
+            item.Click += async (_, _) => await action();
+            parent.Items.Add(item);
+        }
+
+        var h = row.Snapshot.Handle;
+        var managed = _controller.Managed().FirstOrDefault(m => m.Handle == h);
         if (row.Manageable)
         {
-            var (_, mode, appKey) = _controller.SizeInfo(row.Snapshot.Handle);
+            Item(menu, Strings.Main_Promote, () => Run(() => _controller.Execute(managed is null
+                ? [new Adopt(h, row.App, DefaultPanel()), new Promote(h)]
+                : [new Promote(h)])));
+
+            var fullscreen = new WC.MenuItem { Header = NoAccessKey(Strings.DeckMenu_FullscreenOn) };
+            var aux = ShellController.AuxiliaryDisplays();
+            var targets = new List<(string? Display, string Name)> { (null, Strings.Monitor_Principal) };
+            targets.AddRange(aux.Select(a => ((string?)a.Key, a.FriendlyName ?? a.DeviceName)));
+            foreach (var (display, name) in targets)
+            {
+                Item(fullscreen, name, () => Run(() => _controller.Execute(managed switch
+                {
+                    null => [new Adopt(h, row.App, DefaultPanel()), new EnterFullscreen(h, display)],
+                    { Placement: Placement.Fullscreen } when _controller.FullscreenDisplay == display => [new ExitFullscreen(h)],
+                    _ => [new EnterFullscreen(h, display)],
+                })));
+            }
+
+            menu.Items.Add(fullscreen);
+            if (managed is not null)
+            {
+                Item(menu, managed.Placement == Placement.Parked ? Strings.Main_Unpark : Strings.Main_Park, () =>
+                    Run(() => _controller.Execute(managed.Placement == Placement.Parked ? new Restore(h) : new Park(h))));
+                if (managed.Detached)
+                {
+                    Item(menu, Strings.Main_Reattach, () => Run(() => _controller.Execute(new Reattach(h))));
+                }
+
+                Item(menu, Strings.Main_Release, () => Run(() => _controller.Execute(new Release(h))));
+            }
+
+            menu.Items.Add(new WC.Separator());
+
+            // Tamaño: según la ventana, fijo (sólo moverla) o redimensionar siempre.
+            var (_, mode, appKey) = _controller.SizeInfo(h);
             if (appKey.Length > 0)
             {
                 var size = new WC.MenuItem { Header = NoAccessKey(Core.Text.F(Strings.Menu_SizeOf, row.App)) };
@@ -166,8 +306,14 @@ public partial class MainWindow : Window
                 }
 
                 menu.Items.Add(size);
-                menu.Items.Add(new WC.Separator());
             }
+        }
+
+        if (ExclusionRule.ForApp(row.Snapshot) is { } appRule)
+        {
+            var app = new WC.MenuItem { Header = NoAccessKey(Core.Text.F(Strings.Menu_ExcludeApp, row.App, appRule.Value)) };
+            app.Click += (_, _) => AddExclusion(appRule);
+            menu.Items.Add(app);
         }
 
         var classRule = new ExclusionRule(ExclusionKind.WindowClass, row.Snapshot.ClassName);
@@ -176,33 +322,59 @@ public partial class MainWindow : Window
         menu.Items.Add(cls);
     }
 
-    /// <summary>Línea de atajos de la cabecera, con los que están en uso.</summary>
-    private static string HotkeySummary()
+    // --- Atajos y gestos -----------------------------------------------------------------------------
+
+    /// <summary>Los atajos en uso, uno por fila: la combinación y lo que hace.</summary>
+    private void BuildShortcuts()
     {
         var app = (App)Application.Current;
-        var parts = new[]
+        ShortcutList.Children.Clear();
+        ShortcutList.RowDefinitions.Clear();
+        ShortcutList.ColumnDefinitions.Clear();
+        ShortcutList.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = GridLength.Auto });
+        ShortcutList.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        int row = 0;
+        foreach (var action in Core.Input.Hotkeys.Actions.Where(a => !a.Id.StartsWith("escena-", StringComparison.Ordinal)))
         {
-            ("al-foco", Strings.Hk_ToFocus), ("anterior", Strings.Hk_Previous), ("foco-al-panel", Strings.Hk_FocusToPanel), ("pantalla-completa", Strings.Hk_Fullscreen),
-            ("vista", Strings.Hk_View), (Core.Input.Hotkeys.Deck, Strings.Hk_Deck), ("pantalla-encendida", Strings.Hk_KeepAwake), (Core.Input.Hotkeys.Emergency, Strings.Hk_RestoreAll),
-        }
-            .Where(p => app.ChordOf(p.Item1).Length > 0)
-            .Select(p => $"{app.ChordOf(p.Item1)} {p.Item2}");
-        return Strings.Hk_Label + string.Join(" · ", parts);
-    }
+            var chord = app.ChordOf(action.Id);
+            if (chord.Length == 0)
+            {
+                continue;
+            }
 
-    private void Deck_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ToggleDeck();
+            ShortcutList.RowDefinitions.Add(new WC.RowDefinition { Height = GridLength.Auto });
+            var key = new WC.Border
+            {
+                Child = Text(chord, "TextFillColorPrimaryBrush", 13),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(8, 2, 8, 2),
+                Margin = new Thickness(0, 3, 16, 3),
+                BorderThickness = new Thickness(1),
+                HorizontalAlignment = HorizontalAlignment.Left,
+            };
+            key.SetResourceReference(WC.Border.BackgroundProperty, "ControlFillColorDefaultBrush");
+            key.SetResourceReference(WC.Border.BorderBrushProperty, "ControlStrokeColorDefaultBrush");
+            WC.Grid.SetRow(key, row);
+            ShortcutList.Children.Add(key);
+            var what = Text(action.Name, "TextFillColorSecondaryBrush");
+            WC.Grid.SetRow(what, row);
+            WC.Grid.SetColumn(what, 1);
+            ShortcutList.Children.Add(what);
+            row++;
+        }
+    }
 
     private void Hotkeys_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new HotkeysWindow(_settings) { Owner = this };
         dialog.ShowDialog();
+        BuildShortcuts();
         Refresh();
     }
 
-    private bool _showingView;
+    private void Deck_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ToggleDeck();
 
-    /// <summary>Las disposiciones de <c>ViewCombo</c>, en su orden: las que ofrece el principal (ADR 0012, enmienda).</summary>
-    private List<FocusPosition> _views = [];
+    // --- Inicio: disposición del principal y mapa de monitores ----------------------------------------
 
     internal static string ArrangementName(FocusPosition view) => view switch
     {
@@ -214,54 +386,176 @@ public partial class MainWindow : Window
         _ => Strings.Arr_Center,
     };
 
-    private void ShowView(FocusPosition stored)
+    /// <summary>
+    /// Los interruptores de las columnas del principal, como en el deck (ADR 0012, enmienda): azul, prendida;
+    /// en un ultrawide, el extra que trae la otra columna a este lado.
+    /// </summary>
+    private void BuildLayout(IReadOnlyList<Panel> panels)
     {
-        _showingView = true;
         bool ultrawide = ShellController.UltrawideNow();
-        var view = MainArrangement.Effective(stored, ultrawide);
-        _views = [.. MainArrangement.Available(ultrawide)];
-        ViewCombo.ItemsSource = _views.Select(ArrangementName).ToList();
-        ViewCombo.SelectedIndex = _views.IndexOf(view);
+        var view = _controller.EffectiveView;
+        string ColumnName(PanelSide side, string fallback) =>
+            panels.Where(p => p.Display is null && p.Side == side).OrderBy(p => p.Slot).FirstOrDefault()?.Name ?? fallback;
+        string left = ColumnName(PanelSide.Left, Strings.Deck_LeftColumn);
+        string right = ColumnName(PanelSide.Right, Strings.Deck_RightColumn);
 
-        // El ancho se ajusta arrastrando el borde entre columnas; aquí se ve y se puede restablecer.
-        ProportionsText.Text = _controller.Proportions.Describe(view);
+        LayoutToggles.Children.Clear();
+        void Toggle(string text, string tip, bool on, FocusPosition next)
+        {
+            var b = new Wpf.Ui.Controls.Button
+            {
+                Content = text,
+                Appearance = on ? ControlAppearance.Primary : ControlAppearance.Secondary,
+                Margin = new Thickness(0, 0, 8, 8),
+                MinWidth = 120,
+                ToolTip = tip,
+            };
+            System.Windows.Automation.AutomationProperties.SetName(b, tip);
+            b.Click += async (_, _) => await Run(() => _controller.Execute(new SetView(next)));
+            LayoutToggles.Children.Add(b);
+        }
+
+        if (MainArrangement.CanBorrowToLeft(view, ultrawide))
+        {
+            Toggle("⇠  " + right, Core.Text.F(Strings.Deck_BorrowTip, right), MainArrangement.RightBorrowedLeft(view), MainArrangement.ToggleBorrowToLeft(view));
+        }
+
+        Toggle("◧  " + left, Core.Text.F(Strings.Deck_ColumnTip, left), MainArrangement.LeftOn(view), MainArrangement.ToggleLeft(view));
+        Toggle(right + "  ◨", Core.Text.F(Strings.Deck_ColumnTip, right), MainArrangement.RightOn(view), MainArrangement.ToggleRight(view));
+        if (MainArrangement.CanBorrowToRight(view, ultrawide))
+        {
+            Toggle(left + "  ⇢", Core.Text.F(Strings.Deck_BorrowTip, left), MainArrangement.LeftBorrowedRight(view), MainArrangement.ToggleBorrowToRight(view));
+        }
+
+        ProportionsText.Text = $"{ArrangementName(view)} · {_controller.Proportions.Describe(view)}";
         ResetWidthButton.IsEnabled = view != FocusPosition.FocusOnly;
-        _showingView = false;
     }
 
     private async void ResetWidth_Click(object sender, RoutedEventArgs e)
     {
         var view = _controller.EffectiveView;
-        var result = await Task.Run(() => _controller.Execute(new SetProportions(view, null)));
-        Refresh();
-        SetStatus(Describe(result));
+        await Run(() => _controller.Execute(new SetProportions(view, null)));
     }
 
-    /// <summary>Cambiar de disposición mueve el foco de sitio sin cambiar qué ventana hay en él (ADR 0012).</summary>
-    private async void ViewCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    /// <summary>
+    /// El mapa de tus monitores: el principal con sus columnas en el orden y la proporción de la disposición,
+    /// y qué hay en el foco; los demás con sus paneles. Cada panel dice cuántas apps tiene.
+    /// </summary>
+    private void BuildMonitorMap(IReadOnlyList<Panel> panels, IReadOnlyList<FocusWShell.Core.Displays.DisplayInfo> aux)
     {
-        if (_showingView || ViewCombo.SelectedIndex < 0 || ViewCombo.SelectedIndex >= _views.Count || _controller is null)
+        MonitorMap.Children.Clear();
+        var managed = _controller.Managed();
+        var names = _rows.ToDictionary(r => r.Snapshot.Handle, r => r.App);
+        int Count(Panel p) => managed.Count(m => m.PanelId == p.Id && m.Placement is not (Placement.Center or Placement.Fullscreen));
+        string Lines(IEnumerable<Panel> ps) => string.Join("\n", ps.OrderBy(p => p.Slot).Select(p => Core.Text.F(Strings.Home_PanelLine, p.Name, Count(p))));
+        var focus = managed.FirstOrDefault(m => m.Placement is Placement.Center or Placement.Fullscreen);
+        string focusName = focus is null ? Strings.Home_FocusEmpty : Core.Text.F(Strings.Home_Focus, names.GetValueOrDefault(focus.Handle, focus.Label));
+
+        WC.Border Column(string text, bool accent, double weight)
         {
-            return;
+            // Una línea por panel, recortada si la columna es estrecha (nunca partida a media palabra).
+            var label = new WC.TextBlock { Text = text, FontSize = 12, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 6, 8, 6), ToolTip = text };
+            var col = new WC.Border { Child = label, CornerRadius = new CornerRadius(4), Margin = new Thickness(2), Tag = weight };
+            if (accent)
+            {
+                // El foco, con el azul del foco del deck y texto blanco: igual en los dos temas.
+                label.Foreground = Brushes.White;
+                col.Background = FocusBlue;
+            }
+            else
+            {
+                label.SetResourceReference(WC.TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+                col.SetResourceReference(WC.Border.BackgroundProperty, "ControlFillColorSecondaryBrush");
+            }
+            return col;
         }
 
-        var view = _views[ViewCombo.SelectedIndex];
-        var result = await Task.Run(() => _controller.Execute(new SetView(view)));
-        Refresh();
-        SetStatus(Describe(result));
+        WC.StackPanel Monitor(string title, double width, IReadOnlyList<WC.Border> columns)
+        {
+            var grid = new WC.Grid { Height = 110 };
+            for (int i = 0; i < columns.Count; i++)
+            {
+                grid.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = new GridLength((double)columns[i].Tag, GridUnitType.Star) });
+                WC.Grid.SetColumn(columns[i], i);
+                grid.Children.Add(columns[i]);
+            }
+
+            var frame = new WC.Border { Child = grid, Width = width, CornerRadius = new CornerRadius(8), Padding = new Thickness(4), BorderThickness = new Thickness(1) };
+            frame.SetResourceReference(WC.Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
+            frame.SetResourceReference(WC.Border.BorderBrushProperty, "CardStrokeColorDefaultBrush");
+            var block = new WC.StackPanel { Margin = new Thickness(0, 0, 16, 8), VerticalAlignment = VerticalAlignment.Bottom };
+            block.Children.Add(frame);
+            var caption = Text(title, "TextFillColorSecondaryBrush", 12);
+            caption.Margin = new Thickness(2, 4, 0, 0);
+            block.Children.Add(caption);
+            return block;
+        }
+
+        // El principal: sus columnas en el orden de la disposición; las apagadas no salen.
+        var principal = ShellController.TargetDisplay();
+        var view = _controller.EffectiveView;
+        var weights = _controller.Proportions;
+        var leftPanels = panels.Where(p => p.Display is null && p.Side == PanelSide.Left).ToList();
+        var rightPanels = panels.Where(p => p.Display is null && p.Side == PanelSide.Right).ToList();
+        var order = view switch
+        {
+            FocusPosition.Left => "CRL",
+            FocusPosition.Right => "LRC",
+            FocusPosition.ContextOnly => "LC",
+            FocusPosition.WorkOnly => "CR",
+            FocusPosition.FocusOnly => "C",
+            _ => "LCR",
+        };
+        var columns = order.Select(c => c switch
+        {
+            'L' => Column(Lines(leftPanels), false, weights.Left),
+            'R' => Column(Lines(rightPanels), false, weights.Right),
+            _ => Column(view == FocusPosition.FocusOnly ? Core.Text.F(Strings.Home_FocusFull, focusName) : focusName, true, weights.Center),
+        }).ToList();
+        double Ratio(FocusWShell.Core.Displays.DisplayInfo d) => d.WorkArea.Height > 0 ? Math.Clamp((double)d.WorkArea.Width / d.WorkArea.Height, 1, 4) : 16.0 / 9;
+        MonitorMap.Children.Add(Monitor(
+            $"{Strings.Home_Main} · {principal.FriendlyName ?? principal.DeviceName} · {principal.WorkArea.Width} × {principal.WorkArea.Height}",
+            118 * Ratio(principal), columns));
+
+        // Los demás: sus paneles a la izquierda y a la derecha.
+        foreach (var d in aux)
+        {
+            var mine = panels.Where(p => string.Equals(p.Display, d.Key, StringComparison.OrdinalIgnoreCase)).ToList();
+            var cols = new List<WC.Border>();
+            foreach (var side in new[] { PanelSide.Left, PanelSide.Right })
+            {
+                var ps = mine.Where(p => p.Side == side).ToList();
+                if (ps.Count > 0)
+                {
+                    cols.Add(Column(Lines(ps), false, 1));
+                }
+            }
+
+            if (cols.Count == 0)
+            {
+                cols.Add(Column(Strings.Home_NoPanels, false, 1));
+            }
+
+            MonitorMap.Children.Add(Monitor(d.FriendlyName ?? d.DeviceName, 118 * Ratio(d), cols));
+        }
     }
 
+    private async void Rearrange_Click(object sender, RoutedEventArgs e) =>
+        await Run(() => _controller.RearrangeAll() ?? new ControllerResult([], [], null));
+
+    // --- General -------------------------------------------------------------------------------------
+
     /// <summary>Cambiar de idioma: se guarda y se ofrece reiniciar (los textos se cargan al arrancar).</summary>
-    private void LanguageCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void LanguageCombo_SelectionChanged(object sender, WC.SelectionChangedEventArgs e)
     {
-        if (_loadingGestures || LanguageCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem { Tag: string language } || language == _settings.Language)
+        if (_loadingGestures || LanguageCombo.SelectedItem is not WC.ComboBoxItem { Tag: string language } || language == _settings.Language)
         {
             return;
         }
 
         _settings.Language = language;
         _settings.Save();
-        if (MessageBox.Show(this, Strings.Main_LanguageRestartAsk, "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+        if (System.Windows.MessageBox.Show(this, Strings.Main_LanguageRestartAsk, "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
         {
             ((App)Application.Current).Restart();
         }
@@ -270,6 +564,72 @@ public partial class MainWindow : Window
             SetStatus(Strings.Main_LanguageLater);
         }
     }
+
+    /// <summary>
+    /// El tema de esta ventana: el de Windows (y lo sigue si cambia con la ventana abierta), claro u oscuro.
+    /// El deck tiene su propio aspecto y no cambia.
+    /// </summary>
+    private void ApplyTheme(string theme)
+    {
+        Wpf.Ui.Appearance.SystemThemeWatcher.UnWatch(this);
+        if (theme is "light" or "dark")
+        {
+            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(
+                theme == "dark" ? Wpf.Ui.Appearance.ApplicationTheme.Dark : Wpf.Ui.Appearance.ApplicationTheme.Light, WindowBackdropType.Mica);
+        }
+        else
+        {
+            Wpf.Ui.Appearance.ApplicationThemeManager.ApplySystemTheme();
+            Wpf.Ui.Appearance.SystemThemeWatcher.Watch(this);
+        }
+    }
+
+    private void ThemeCombo_SelectionChanged(object sender, WC.SelectionChangedEventArgs e)
+    {
+        if (_loadingGestures || ThemeCombo.SelectedItem is not WC.ComboBoxItem { Tag: string theme } || theme == _settings.Theme)
+        {
+            return;
+        }
+
+        _settings.Theme = theme;
+        _settings.Save();
+        ApplyTheme(theme);
+    }
+
+    private void Startup_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loadingGestures)
+        {
+            ((App)Application.Current).SetStartWithWindows(StartupSwitch.IsChecked == true);
+        }
+    }
+
+    private void Awake_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loadingGestures)
+        {
+            ((App)Application.Current).SetKeepAwakeFromMain(AwakeSwitch.IsChecked == true);
+        }
+    }
+
+    private static void OpenUrl(string url) =>
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true })?.Dispose();
+
+    private void Manual_Click(object sender, RoutedEventArgs e) =>
+        OpenUrl(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "es"
+            ? "https://proteo5.github.io/FocusWShell/es/"
+            : "https://proteo5.github.io/FocusWShell/");
+
+    private void Report_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/proteo5/FocusWShell/issues/new/choose");
+
+    private void Releases_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/proteo5/FocusWShell/releases");
+
+    private void Source_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/proteo5/FocusWShell");
+
+    private void License_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/proteo5/FocusWShell/blob/main/LICENSE");
+
+    private void SettingsFolder_Click(object sender, RoutedEventArgs e) =>
+        OpenUrl(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FocusWShell"));
 
     private void OpenMissing_Changed(object sender, RoutedEventArgs e)
     {
@@ -363,18 +723,7 @@ public partial class MainWindow : Window
 
     public void Refresh()
     {
-        var display = ShellController.TargetDisplay();
         var aux = ShellController.AuxiliaryDisplays();
-        HeaderText.Text =
-            Core.Text.F(Strings.Header_Principal, display.FriendlyName ?? display.DeviceName, display.WorkArea, display.Dpi) +
-            string.Concat(aux.Select(a => Core.Text.F(Strings.Header_Aux, a.FriendlyName ?? a.DeviceName, a.WorkArea, a.Dpi))) + "\n" +
-            HotkeySummary();
-        var fullscreenTargets = new List<string> { Strings.Monitor_Principal };
-        fullscreenTargets.AddRange(aux.Select(a => a.FriendlyName ?? a.DeviceName));
-        int fullscreenIndex = Math.Max(0, FullscreenTarget.SelectedIndex);
-        FullscreenTarget.ItemsSource = fullscreenTargets;
-        FullscreenTarget.SelectedIndex = Math.Min(fullscreenIndex, fullscreenTargets.Count - 1);
-        ShowView(_controller.View);
 
         // Primero se desconectan las filas: al vaciar las opciones, WPF les escribe un valor vacío.
         foreach (var row in _rows)
@@ -399,6 +748,7 @@ public partial class MainWindow : Window
         var windows = _controller.Refresh();
         var managed = _controller.Managed().ToDictionary(m => m.Handle);
         var byId = panels.ToDictionary(p => p.Id);
+        System.Windows.Media.ImageSource? IconOf(WindowSnapshot w) => _controller.CatalogAppOf(w) is { } app ? AppIcons.Get(app) : null;
         foreach (var w in windows)
         {
             managed.TryGetValue(w.Handle, out var m);
@@ -409,7 +759,7 @@ public partial class MainWindow : Window
                 state += Strings.State_FixedSuffix;
             }
 
-            var row = new WindowRow(w, assignment, _controller.AppName(w)) { State = state };
+            var row = new WindowRow(w, assignment, _controller.AppName(w)) { State = state, Icon = IconOf(w) };
             row.PropertyChanged += Row_PropertyChanged;
             _rows.Add(row);
         }
@@ -421,6 +771,7 @@ public partial class MainWindow : Window
             {
                 State = Core.Text.F(Strings.State_Unmanageable, reason),
                 Manageable = false,
+                Icon = IconOf(w),
             });
         }
 
@@ -430,6 +781,17 @@ public partial class MainWindow : Window
         }
 
         WindowList.SelectedItem = _rows.FirstOrDefault(r => r.Snapshot.Handle == selected);
+
+        // Inicio.
+        BuildLayout(panels);
+        BuildMonitorMap(panels, aux);
+        RearrangeButton.IsEnabled = _controller.CanRearrange;
+        var emergency = ((App)Application.Current).ChordOf(Core.Input.Hotkeys.Emergency);
+        SafetyInfo.Message = Core.Text.F(Strings.Home_SafetyText, emergency.Length > 0 ? emergency : "Ctrl+Alt+Shift+Backspace");
+        if (ShortcutsSection.Visibility == Visibility.Visible)
+        {
+            BuildShortcuts();
+        }
     }
 
     /// <summary>Un puesto donde puede ir un panel: monitor, lado y arriba/abajo.</summary>
@@ -499,8 +861,8 @@ public partial class MainWindow : Window
 
         foreach (var panel in panels)
         {
-            var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
-            var name = new System.Windows.Controls.TextBox { Text = panel.Name, Width = 160, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
+            var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            var name = new System.Windows.Controls.TextBox { Text = panel.Name, Width = 180, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
             System.Windows.Automation.AutomationProperties.SetName(name, Core.Text.F(Strings.Panel_NameName, panel.Name));
             name.LostFocus += async (_, _) =>
             {
@@ -546,11 +908,11 @@ public partial class MainWindow : Window
                 Refresh();
             };
 
-            var delete = new System.Windows.Controls.Button { Content = Strings.Main_Delete, Padding = new Thickness(8, 1, 8, 1) };
+            var delete = new Wpf.Ui.Controls.Button { Content = Strings.Main_Delete, Icon = new SymbolIcon(SymbolRegular.Delete24) };
             System.Windows.Automation.AutomationProperties.SetName(delete, Core.Text.F(Strings.Panel_DeleteName, panel.Name));
             delete.Click += async (_, _) =>
             {
-                if (MessageBox.Show(Core.Text.F(Strings.Panel_DeleteAsk, panel.Name), "FocusWShell",
+                if (System.Windows.MessageBox.Show(this, Core.Text.F(Strings.Panel_DeleteAsk, panel.Name), "FocusWShell",
                         MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     await Run(() => _controller.Execute(new DeletePanel(panel.Id)));
@@ -562,18 +924,18 @@ public partial class MainWindow : Window
             row.Children.Add(location);
             row.Children.Add(presentation);
             row.Children.Add(delete);
-            PanelsList.Children.Add(row);
+            PanelsList.Children.Add(CardRow(row));
         }
 
         // Fila para crear un panel nuevo.
-        var create = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-        var newName = new System.Windows.Controls.TextBox { Width = 160, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center };
+        var create = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+        var newName = new Wpf.Ui.Controls.TextBox { Width = 180, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center, PlaceholderText = Strings.Panel_NewName };
         System.Windows.Automation.AutomationProperties.SetName(newName, Strings.Panel_NewName);
         // Para el panel nuevo se propone el primer puesto libre: de un auxiliar si hay, si no del principal.
         var free = locations.Where(o => Occupant(o.Display, o.Side, o.Slot).Length == 0).ToList();
         var suggested = free.FirstOrDefault(o => o.Display is not null) ?? free.FirstOrDefault() ?? locations[0];
         var newLocation = LocationCombo(Strings.Panel_NewLocation, suggested.Display, suggested.Side, suggested.Slot);
-        var add = new System.Windows.Controls.Button { Content = Strings.Panel_Create, Padding = new Thickness(8, 1, 8, 1) };
+        var add = new Wpf.Ui.Controls.Button { Content = Strings.Panel_Create, Icon = new SymbolIcon(SymbolRegular.Add24), Appearance = ControlAppearance.Primary };
         add.Click += async (_, _) =>
         {
             if (string.IsNullOrWhiteSpace(newName.Text) || newLocation.Tag is not List<Location> options || newLocation.SelectedIndex < 0)
@@ -591,7 +953,7 @@ public partial class MainWindow : Window
         create.Children.Add(newName);
         create.Children.Add(newLocation);
         create.Children.Add(add);
-        PanelsList.Children.Add(create);
+        PanelsList.Children.Add(CardRow(create));
         _buildingPanels = false;
     }
 
@@ -605,19 +967,19 @@ public partial class MainWindow : Window
         var apps = _controller.CatalogApps(includeHidden: ShowHiddenApps.IsChecked == true);
         if (apps.Count == 0)
         {
-            CatalogList.Children.Add(new System.Windows.Controls.TextBlock { Text = Strings.Apps_None, Foreground = System.Windows.Media.Brushes.DimGray });
+            CatalogList.Children.Add(Text(Strings.Apps_None, "TextFillColorSecondaryBrush"));
             return;
         }
 
         foreach (var (app, open) in apps)
         {
-            var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+            var row = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Opacity = app.Hidden ? 0.6 : 1 };
             row.Children.Add(new System.Windows.Controls.Image
             {
                 Source = AppIcons.Get(app),
-                Width = 16,
-                Height = 16,
-                Margin = new Thickness(0, 0, 6, 0),
+                Width = 24,
+                Height = 24,
+                Margin = new Thickness(0, 0, 12, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             });
 
@@ -628,7 +990,6 @@ public partial class MainWindow : Window
                 Width = 200,
                 Margin = new Thickness(0, 0, 8, 0),
                 FontWeight = open ? FontWeights.SemiBold : FontWeights.Normal,
-                Foreground = app.Hidden ? System.Windows.Media.Brushes.Gray : System.Windows.Media.Brushes.Black,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = app.ExecutablePath ?? app.Aumid ?? app.AppKey,
             };
@@ -641,13 +1002,9 @@ public partial class MainWindow : Window
                 }
             };
             row.Children.Add(name);
-            row.Children.Add(new System.Windows.Controls.TextBlock
-            {
-                Text = open ? Strings.Apps_Open : Strings.Apps_Closed,
-                Width = 70,
-                Foreground = System.Windows.Media.Brushes.DimGray,
-                VerticalAlignment = VerticalAlignment.Center,
-            });
+            var status = Text(open ? Strings.Apps_Open : Strings.Apps_Closed, "TextFillColorSecondaryBrush");
+            status.Width = 80;
+            row.Children.Add(status);
 
             var target = new System.Windows.Controls.ComboBox
             {
@@ -658,10 +1015,10 @@ public partial class MainWindow : Window
             };
             System.Windows.Automation.AutomationProperties.SetName(target, Core.Text.F(Strings.Apps_TargetName, app.Name));
 
-            var launch = new System.Windows.Controls.Button
+            var launch = new Wpf.Ui.Controls.Button
             {
                 Content = Strings.Apps_Launch,
-                Padding = new Thickness(8, 1, 8, 1),
+                Icon = new SymbolIcon(SymbolRegular.Open24),
                 Margin = new Thickness(0, 0, 6, 0),
                 IsEnabled = app.CanLaunch,
                 ToolTip = app.CanLaunch ? Strings.Apps_LaunchTip : Strings.Apps_CantLaunch,
@@ -682,17 +1039,17 @@ public partial class MainWindow : Window
                 Refresh();
             };
 
-            var hide = new System.Windows.Controls.Button
+            var hide = new Wpf.Ui.Controls.Button
             {
                 Content = app.Hidden ? Strings.Apps_Show : Strings.Apps_Hide,
-                Padding = new Thickness(8, 1, 8, 1),
+                Icon = new SymbolIcon(app.Hidden ? SymbolRegular.Eye24 : SymbolRegular.EyeOff24),
                 Margin = new Thickness(0, 0, 6, 0),
                 ToolTip = app.Hidden ? Strings.Apps_ShowTip : Strings.Apps_HideTip,
             };
             System.Windows.Automation.AutomationProperties.SetName(hide, Core.Text.F(app.Hidden ? Strings.Apps_ShowName : Strings.Apps_HideName, app.Name));
             hide.Click += (_, _) => _controller.SetAppHidden(app.AppKey, !app.Hidden);
 
-            var forget = new System.Windows.Controls.Button { Content = Strings.Apps_Forget, Padding = new Thickness(8, 1, 8, 1) };
+            var forget = new Wpf.Ui.Controls.Button { Content = Strings.Apps_Forget, Icon = new SymbolIcon(SymbolRegular.Delete24) };
             System.Windows.Automation.AutomationProperties.SetName(forget, Core.Text.F(Strings.Apps_ForgetName, app.Name));
             forget.Click += (_, _) => _controller.ForgetApp(app.AppKey);
 
@@ -700,7 +1057,7 @@ public partial class MainWindow : Window
             row.Children.Add(launch);
             row.Children.Add(hide);
             row.Children.Add(forget);
-            CatalogList.Children.Add(row);
+            CatalogList.Children.Add(CardRow(row));
         }
     }
 
@@ -712,17 +1069,36 @@ public partial class MainWindow : Window
         }
 
         _pending[row.Snapshot.Handle] = row.Assignment;
+        Dispatcher.BeginInvoke(ApplyPending);
+    }
 
-        // El foco aloja una sola ventana: la que lo tenía vuelve a su panel.
-        if (row.Assignment == AssignmentOption.Focus)
+    /// <summary>Aplica los paneles elegidos en la lista. Una vez a la vez: un cambio durante otro espera.</summary>
+    private async void ApplyPending()
+    {
+        if (_applying)
         {
-            var managed = _controller.Managed().ToDictionary(m => m.Handle);
-            foreach (var other in _rows.Where(r => r != row && r.Assignment == AssignmentOption.Focus))
-            {
-                other.Assignment = managed.TryGetValue(other.Snapshot.Handle, out var m) ? m.PanelId : AssignmentOption.Free;
-            }
+            return;
+        }
+
+        var commands = PendingCommands();
+        _pending.Clear();
+        if (commands.Count == 0)
+        {
+            return;
+        }
+
+        _applying = true;
+        try
+        {
+            await Run(() => _controller.Execute(commands));
+        }
+        finally
+        {
+            _applying = false;
         }
     }
+
+    private bool _applying;
 
     /// <summary>Panel por defecto para una ventana que va al foco sin tener panel: el derecho del principal.</summary>
     private string DefaultPanel() =>
@@ -790,142 +1166,38 @@ public partial class MainWindow : Window
     {
         _pending.Clear();
         Refresh();
+        SetStatus(Strings.Report_Done);
     }
 
-    private async void Apply_Click(object sender, RoutedEventArgs e)
-    {
-        var commands = PendingCommands();
-        if (commands.Count == 0)
-        {
-            SetStatus(Strings.Act_NothingToApply);
-            return;
-        }
+    private async void Swap_Click(object sender, RoutedEventArgs e) => await Run(() => _controller.Execute(new SwapWithPrevious()));
 
-        await Run(() => _controller.Execute(commands));
-        _pending.Clear();
-        Refresh();
-    }
-
-    private async void Promote_Click(object sender, RoutedEventArgs e)
-    {
-        if (WindowList.SelectedItem is not WindowRow row)
-        {
-            SetStatus(Strings.Act_SelectWindow);
-            return;
-        }
-
-        var h = row.Snapshot.Handle;
-        bool managed = _controller.Managed().Any(m => m.Handle == h);
-        Command[] commands = managed ? [new Promote(h)] : [new Adopt(h, row.App, DefaultPanel()), new Promote(h)];
-        _pending.Remove(h);
-        await Run(() => _controller.Execute(commands));
-        Refresh();
-    }
-
-    /// <summary>
-    /// Pantalla completa (ADR 0012) de la ventana seleccionada en el monitor elegido; si ya lo está ahí,
-    /// sale y vuelve al foco.
-    /// </summary>
-    private async void Fullscreen_Click(object sender, RoutedEventArgs e)
-    {
-        if (WindowList.SelectedItem is not WindowRow row)
-        {
-            SetStatus(Strings.Act_SelectWindow);
-            return;
-        }
-
-        var h = row.Snapshot.Handle;
-        var aux = ShellController.AuxiliaryDisplays();
-        string? display = FullscreenTarget.SelectedIndex > 0 && FullscreenTarget.SelectedIndex - 1 < aux.Count
-            ? aux[FullscreenTarget.SelectedIndex - 1].Key
-            : null;
-        var current = _controller.Managed().FirstOrDefault(m => m.Handle == h);
-        Command[] commands = current switch
-        {
-            null => [new Adopt(h, row.App, DefaultPanel()), new EnterFullscreen(h, display)],
-            { Placement: Placement.Fullscreen } when _controller.FullscreenDisplay == display => [new ExitFullscreen(h)],
-            _ => [new EnterFullscreen(h, display)],
-        };
-        _pending.Remove(h);
-        await Run(() => _controller.Execute(commands));
-        Refresh();
-    }
-
-    private async void Swap_Click(object sender, RoutedEventArgs e)
-    {
-        await Run(() => _controller.Execute(new SwapWithPrevious()));
-        Refresh();
-    }
-
-    private async void Return_Click(object sender, RoutedEventArgs e)
-    {
-        await Run(_controller.ReturnCenter);
-        Refresh();
-    }
-
-    private async void Park_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Park(h));
-
-    private async void Unpark_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Restore(h));
-
-    private async void Reattach_Click(object sender, RoutedEventArgs e) => await OnSelected(h => new Reattach(h));
-
-    /// <summary>Ejecuta un comando sobre la ventana seleccionada.</summary>
-    private async Task OnSelected(Func<nint, Command> command)
-    {
-        if (WindowList.SelectedItem is not WindowRow row)
-        {
-            SetStatus(Strings.Act_SelectWindow);
-            return;
-        }
-
-        _pending.Remove(row.Snapshot.Handle);
-        await Run(() => _controller.Execute(command(row.Snapshot.Handle)));
-        Refresh();
-    }
-
-    private async void Release_Click(object sender, RoutedEventArgs e)
-    {
-        if (WindowList.SelectedItem is not WindowRow row)
-        {
-            SetStatus(Strings.Act_SelectWindow);
-            return;
-        }
-
-        _pending.Remove(row.Snapshot.Handle);
-        await Run(() => _controller.Execute(new Release(row.Snapshot.Handle)));
-        Refresh();
-    }
+    private async void Return_Click(object sender, RoutedEventArgs e) => await Run(_controller.ReturnCenter);
 
     private async void Restore_Click(object sender, RoutedEventArgs e)
     {
         _pending.Clear();
         await Run(_controller.FreeAll);
+    }
+
+    /// <summary>Ejecuta en segundo plano, avisa del resultado y pone la ventana al día.</summary>
+    private async Task Run(Func<ControllerResult> action)
+    {
+        var result = await Task.Run(action);
+        SetStatus(Describe(result), result.Rejections.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         Refresh();
     }
 
-    private async Task Run(Func<ControllerResult> action)
+    /// <summary>Un aviso en la franja de arriba, que se cierra sola.</summary>
+    public void SetStatus(string text) => SetStatus(text, InfoBarSeverity.Informational);
+
+    private void SetStatus(string text, InfoBarSeverity severity)
     {
-        var buttons = new[] { ApplyButton, RestoreButton, RefreshButton, PromoteButton, FullscreenButton, SwapButton, ReturnButton, ParkButton, UnparkButton, ReattachButton, ReleaseButton };
-        foreach (var b in buttons)
-        {
-            b.IsEnabled = false;
-        }
-
-        try
-        {
-            var result = await Task.Run(action);
-            SetStatus(Describe(result));
-        }
-        finally
-        {
-            foreach (var b in buttons)
-            {
-                b.IsEnabled = true;
-            }
-        }
+        StatusBar.Message = text.Trim();
+        StatusBar.Severity = severity;
+        StatusBar.IsOpen = text.Trim().Length > 0;
+        _statusTimer.Stop();
+        _statusTimer.Start();
     }
-
-    public void SetStatus(string text) => StatusText.Text = text;
 
     private void LoadScenes()
     {
@@ -951,8 +1223,8 @@ public partial class MainWindow : Window
 
         _pending.Clear();
         var result = await Task.Run(() => _controller.ApplySavedScene(name));
-        SetStatus(result.Summary + Environment.NewLine + Describe(result.Result));
         Refresh();
+        SetStatus(result.Summary + Environment.NewLine + Describe(result.Result));
     }
 
     private void SaveScene_Click(object sender, RoutedEventArgs e)
@@ -978,7 +1250,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (MessageBox.Show(Core.Text.F(Strings.Scene_DeleteAsk, name), "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question)
+        if (System.Windows.MessageBox.Show(this, Core.Text.F(Strings.Scene_DeleteAsk, name), "FocusWShell", MessageBoxButton.YesNo, MessageBoxImage.Question)
             == MessageBoxResult.Yes)
         {
             _controller.DeleteScene(name);
@@ -1017,38 +1289,21 @@ public partial class MainWindow : Window
             return sb.ToString();
         }
 
-        // Columnas del principal en el orden en que se ven.
-        var layout = report.Layout.Principal;
-        var columns = new[] { (Strings.Report_Left, layout.LeftColumn), (Strings.Report_Focus, layout.CenterColumn), (Strings.Report_Right, layout.RightColumn) }
-            .OrderBy(c => c.Item2.Left)
-            .Select(c => $"{c.Item1} {c.Item2.Width} px");
-        sb.AppendLine(Core.Text.F(Strings.Report_Principal, string.Join(" · ", columns)));
-        var names = FocusWShell.Win32.DisplayEnumerator.Enumerate().ToDictionary(d => d.Key, d => d.FriendlyName ?? d.DeviceName);
-        foreach (var aux in report.Layout.Aux)
-        {
-            sb.AppendLine(
-                CultureInfo.CurrentCulture,
-                $"{names.GetValueOrDefault(aux.Display, aux.Display)}: {string.Join(" · ", aux.Columns.Select(c => $"{aux.Titles.GetValueOrDefault(c.Key, c.Key)} {c.Value.Width} px ({TemplateLabel(aux.EffectiveTemplates[c.Key])})"))}");
-        }
-
         foreach (var note in report.Layout.Notes)
         {
-            sb.AppendLine(CultureInfo.CurrentCulture, $"  · {note}");
-        }
-
-        foreach (var pass in report.Passes.Where(p => p.Learned.Count > 0))
-        {
-            sb.AppendLine(Core.Text.F(Strings.Report_Learned, string.Join("; ", pass.Learned)));
+            sb.AppendLine(CultureInfo.CurrentCulture, $"· {note}");
         }
 
         foreach (var (target, result) in report.Applied.Where(a => a.Result is { IsExact: false }))
         {
-            sb.AppendLine(CultureInfo.CurrentCulture, $"  ! {target.Label}: {result!.Error ?? Core.Text.F(Strings.Report_Deviation, result.MaxDeviation)}");
+            sb.AppendLine(CultureInfo.CurrentCulture, $"! {target.Label}: {result!.Error ?? Core.Text.F(Strings.Report_Deviation, result.MaxDeviation)}");
         }
 
-        var invaders = report.CenterInvaders;
-        string center = invaders.Count == 0 ? Strings.Report_CenterSafe : Core.Text.F(Strings.Report_CenterInvaded, string.Join(", ", invaders));
-        sb.AppendLine(Core.Text.F(Strings.Report_InPlace, report.ExactCount, report.Applied.Count, center));
+        if (report.CenterInvaders is { Count: > 0 } invaders)
+        {
+            sb.AppendLine(Core.Text.F(Strings.Report_CenterInvaded, string.Join(", ", invaders)));
+        }
+
         return sb.ToString();
     }
 

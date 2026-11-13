@@ -36,6 +36,9 @@ Esta carpeta es la documentación de ingeniería del proyecto. Parte de las nota
 | [0012](adr/0012-vistas-posicion-del-foco.md) | Vistas: un solo foco, a la izquierda, al centro o a la derecha | Aceptada |
 | [0013](adr/0013-deck-superficie-de-control.md) | El deck es una superficie de control opcional, en el monitor que se elija | Propuesta |
 | [0014](adr/0014-mapa-de-controles-en-el-deck.md) | Apuntar en la app del foco desde el deck: imagen en vivo, cuadrícula y controles detectados | Propuesta |
+| [0015](adr/0015-tiles-adaptables-y-lista.md) | Presentaciones: tiles adaptables y lista tipo Explorador | Aceptada |
+| [0016](adr/0016-escritorios-virtuales.md) | Seguir los escritorios virtuales de Windows: un foco y unas apps por escritorio | Propuesta (fase 1 hecha) |
+| [0017](adr/0017-ventana-principal-wpf-ui.md) | La ventana principal con WPF-UI: configurar y ver el estado | Aceptada |
 
 ## Fuentes
 

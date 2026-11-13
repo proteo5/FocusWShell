@@ -34,4 +34,8 @@
     <ProjectReference Include="..\FocusWShell.Win32\FocusWShell.Win32.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
 </Project>

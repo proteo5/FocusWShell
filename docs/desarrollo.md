@@ -45,9 +45,19 @@ FocusWShell.exe --deck-preview <carpeta> [es|en]
 
 Las capturas del README y del manual (`site/assets/img/`) salen de aquí. Los datos de ejemplo son inventados y salen en el idioma pedido.
 
+## Vista previa de la ventana principal
+
+Dibuja cada sección de la ventana principal a un PNG, fuera de pantalla, en el idioma y el tema pedidos:
+
+```powershell
+FocusWShell.exe --main-preview <carpeta> [es|en] [dark|light]
+```
+
+Usa los paneles, las apps y las ventanas **de verdad** (sin mover nada): Ventanas y Apps muestran títulos y apps reales, así que sólo Inicio y General van al manual. Corriendo desde la terminal de Claude Desktop, lee la configuración del contenedor del paquete, no la tuya.
+
 ## Publicar una versión
 
-1. Sube `<Version>` en `Directory.Build.props` y haz commit: un release se hace desde un commit, sin cambios pendientes.
+1. Sube `<Version>` en `Directory.Build.props` y `version` en `site/_config.yml`, y el nombre del zip en los README y en el manual (`install.md`, `instalar.md`). Haz commit: un release se hace desde un commit, sin cambios pendientes.
 2. Genera el paquete:
 
    ```powershell

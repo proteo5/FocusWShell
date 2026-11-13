@@ -28,12 +28,12 @@ The installer copies FocusWShell to `%LOCALAPPDATA%\Programs\FocusWShell`, adds 
 The files are not signed yet, so Windows may warn you the first time, because they come from the internet. Choose **More info → Run anyway**. You can check the download against the `.sha256` file published next to the zip:
 
 ```powershell
-Get-FileHash .\FocusWShell-0.1.0-alpha-win-x64.zip -Algorithm SHA256
+Get-FileHash .\FocusWShell-0.2.0-alpha-win-x64.zip -Algorithm SHA256
 ```
 
 ## Start with Windows
 
-Right-click the tray icon and choose **Start with Windows**. FocusWShell will open when you sign in.
+Turn on **Start with Windows** in **General**, in the main window, or right-click the tray icon and choose it there. FocusWShell will open when you sign in.
 
 ## Update
 

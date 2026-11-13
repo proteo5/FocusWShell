@@ -38,6 +38,46 @@ public partial class App : Application
     private const string ShowEventName = @"Local\FocusWShell.Mostrar";
     private EventWaitHandle? _showRequested;
     private RegisteredWaitHandle? _showWait;
+
+    /// <summary>Dibuja cada sección de la ventana principal a un PNG, fuera de pantalla.</summary>
+    private void RenderMainPreview(string folder, string? theme)
+    {
+        System.IO.Directory.CreateDirectory(folder);
+        _controller.LoadPanels();
+        _controller.LoadCatalog();
+        _settings = AppSettings.Load();
+        HotkeyMap = Hotkeys.Resolve(_settings.Hotkeys);
+        var window = new MainWindow(_controller, _settings) { Left = -20000, Top = -20000, ShowActivated = false, ShowInTaskbar = false };
+        window.Show();
+        if (theme is "dark" or "light")
+        {
+            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(theme == "dark" ? Wpf.Ui.Appearance.ApplicationTheme.Dark : Wpf.Ui.Appearance.ApplicationTheme.Light);
+        }
+
+        for (int i = 0; i < window.Nav.Items.Count; i++)
+        {
+            window.Nav.SelectedIndex = i;
+            window.UpdateLayout();
+            Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            var tag = ((System.Windows.Controls.ListBoxItem)window.Nav.Items[i]).Tag;
+            var root = (System.Windows.FrameworkElement)window.Content;
+            var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+            // Mica no se dibuja fuera de pantalla: se pone el fondo del tema detrás.
+            var visual = new System.Windows.Media.DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                var background = TryFindResource("ApplicationBackgroundBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.Black;
+                dc.DrawRectangle(background, null, new Rect(0, 0, root.ActualWidth, root.ActualHeight));
+                dc.DrawRectangle(new System.Windows.Media.VisualBrush(root), null, new Rect(0, 0, root.ActualWidth, root.ActualHeight));
+            }
+
+            bitmap.Render(visual);
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+            using var file = System.IO.File.Create(System.IO.Path.Combine(folder, $"main-{tag}.png"));
+            encoder.Save(file);
+        }
+    }
     private RegisteredWaitHandle? _exitWait;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -51,6 +91,23 @@ public partial class App : Application
             DeckPreview.Run(
                 preview + 1 < e.Args.Length ? e.Args[preview + 1] : System.IO.Path.GetTempPath(),
                 preview + 2 < e.Args.Length ? e.Args[preview + 2] : null);
+            Shutdown();
+            return;
+        }
+
+        // "FocusWShell.exe --main-preview <carpeta> [es|en]": PNGs de cada sección de la ventana principal, con
+        // los paneles y ventanas de verdad pero sin mover nada (para revisar el diseño).
+        int mainPreview = Array.IndexOf(e.Args, "--main-preview");
+        if (mainPreview >= 0)
+        {
+            if (mainPreview + 2 < e.Args.Length)
+            {
+                Localization.Apply(e.Args[mainPreview + 2]);
+            }
+
+            RenderMainPreview(
+                mainPreview + 1 < e.Args.Length ? e.Args[mainPreview + 1] : System.IO.Path.GetTempPath(),
+                mainPreview + 3 < e.Args.Length ? e.Args[mainPreview + 3] : null);
             Shutdown();
             return;
         }
@@ -698,6 +755,22 @@ public partial class App : Application
     }
 
     private void ToggleKeepAwake() => SetKeepAwake(!_keepAwake.IsActive, announce: true);
+
+    /// <summary>Para la ventana principal (General): si la pantalla se mantiene encendida, y cambiarlo.</summary>
+    internal bool KeepAwakeActive => _keepAwake.IsActive;
+
+    internal void SetKeepAwakeFromMain(bool active) => SetKeepAwake(active, announce: false);
+
+    /// <summary>Para la ventana principal (General): si esta copia inicia con Windows, y cambiarlo.</summary>
+    internal static bool StartsWithWindows => StartWithWindows.IsEnabledFor(ExePath);
+
+    internal void SetStartWithWindows(bool enabled)
+    {
+        if (enabled != StartsWithWindows)
+        {
+            ToggleStartup();
+        }
+    }
 
     /// <summary>Mantener la pantalla encendida (ADR 0010): aplica, recuerda y lo refleja en la bandeja.</summary>
     private void SetKeepAwake(bool active, bool announce)

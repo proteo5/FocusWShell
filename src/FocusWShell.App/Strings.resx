@@ -396,4 +396,65 @@
   <data name="Arr_WorkOnly" xml:space="preserve"><value>Sólo la columna derecha</value></data>
   <data name="Arr_FocusOnly" xml:space="preserve"><value>Solo foco</value></data>
   <data name="Main_ResetWidthTip" xml:space="preserve"><value>Vuelve al ancho por defecto de esta disposición (el ancho se ajusta arrastrando el borde entre columnas)</value></data>
+  <data name="Nav_Home" xml:space="preserve"><value>Inicio</value></data>
+  <data name="Nav_Windows" xml:space="preserve"><value>Ventanas</value></data>
+  <data name="Nav_Panels" xml:space="preserve"><value>Paneles</value></data>
+  <data name="Nav_Apps" xml:space="preserve"><value>Apps</value></data>
+  <data name="Nav_Shortcuts" xml:space="preserve"><value>Atajos y gestos</value></data>
+  <data name="Nav_Scenes" xml:space="preserve"><value>Escenas</value></data>
+  <data name="Nav_Excluded" xml:space="preserve"><value>Excluidas</value></data>
+  <data name="Nav_General" xml:space="preserve"><value>General</value></data>
+  <data name="Home_Monitors" xml:space="preserve"><value>Tus monitores</value></data>
+  <data name="Home_Layout" xml:space="preserve"><value>Disposición del principal</value></data>
+  <data name="Home_Actions" xml:space="preserve"><value>Acciones rápidas</value></data>
+  <data name="Home_OpenDeck" xml:space="preserve"><value>Abrir el deck</value></data>
+  <data name="Home_SafetyTitle" xml:space="preserve"><value>Si algo sale mal</value></data>
+  <data name="Home_SafetyText" xml:space="preserve"><value>{0} devuelve todas las ventanas a su sitio, en cualquier momento. «Salir», en la bandeja, también.</value></data>
+  <data name="Home_Focus" xml:space="preserve"><value>Foco: {0}</value></data>
+  <data name="Home_FocusEmpty" xml:space="preserve"><value>Foco vacío</value></data>
+  <data name="Home_FocusFull" xml:space="preserve"><value>Solo foco: {0}</value></data>
+  <data name="Home_PanelLine" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Home_Main" xml:space="preserve"><value>Principal</value></data>
+  <data name="Home_LayoutHint" xml:space="preserve"><value>Arrastra el borde entre dos ventanas para cambiar un ancho.</value></data>
+  <data name="Win_Help" xml:space="preserve"><value>Las ventanas que FocusWShell puede organizar. Elige su panel y se aplica al momento; las demás acciones están en «…» o en el clic derecho.</value></data>
+  <data name="Win_ColApp" xml:space="preserve"><value>App</value></data>
+  <data name="Win_ColPanel" xml:space="preserve"><value>Panel</value></data>
+  <data name="Win_More" xml:space="preserve"><value>Más acciones de {0}</value></data>
+  <data name="Sc_Keys" xml:space="preserve"><value>Atajos de teclado</value></data>
+  <data name="Sc_KeysHelp" xml:space="preserve"><value>Todos usan Ctrl+Alt+Mayús y una tecla, para no chocar con tus apps.</value></data>
+  <data name="Sc_Edit" xml:space="preserve"><value>Cambiar atajos…</value></data>
+  <data name="Sc_Gestures" xml:space="preserve"><value>Gestos de Windows</value></data>
+  <data name="Sc_GesturesHelp" xml:space="preserve"><value>Llevar al foco la ventana de un panel cuando la eliges con:</value></data>
+  <data name="Scn_Help" xml:space="preserve"><value>Una escena guarda qué apps están en cada panel y en el foco. Aplicarla las reacomoda, y puede abrir las que falten. También se aplican con Ctrl+Alt+Mayús+1…9.</value></data>
+  <data name="Scn_Saved" xml:space="preserve"><value>Escenas guardadas</value></data>
+  <data name="Scn_SaveTitle" xml:space="preserve"><value>Guardar lo de ahora como escena</value></data>
+  <data name="Scn_NamePlaceholder" xml:space="preserve"><value>Nombre de la escena</value></data>
+  <data name="Gen_Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Gen_LanguageHelp" xml:space="preserve"><value>Se aplica al reiniciar FocusWShell.</value></data>
+  <data name="Gen_Startup" xml:space="preserve"><value>Iniciar con Windows</value></data>
+  <data name="Gen_StartupHelp" xml:space="preserve"><value>Abre FocusWShell al iniciar sesión.</value></data>
+  <data name="Gen_Awake" xml:space="preserve"><value>Mantener la pantalla encendida</value></data>
+  <data name="Gen_AwakeHelp" xml:space="preserve"><value>Evita que la pantalla se apague y que el equipo se suspenda.</value></data>
+  <data name="Gen_About" xml:space="preserve"><value>Acerca de</value></data>
+  <data name="Gen_Version" xml:space="preserve"><value>Versión {0}</value></data>
+  <data name="Gen_Manual" xml:space="preserve"><value>Manual</value></data>
+  <data name="Gen_Report" xml:space="preserve"><value>Reportar un problema</value></data>
+  <data name="Gen_Settings" xml:space="preserve"><value>Abrir la carpeta de configuración</value></data>
+  <data name="Gen_Tagline" xml:space="preserve"><value>Un gestor de atención visual para Windows.</value></data>
+  <data name="Home_NoPanels" xml:space="preserve"><value>Sin paneles</value></data>
+  <data name="Gen_Theme" xml:space="preserve"><value>Tema</value></data>
+  <data name="Gen_ThemeHelp" xml:space="preserve"><value>El de esta ventana. El deck tiene su propio aspecto.</value></data>
+  <data name="Gen_ThemeAuto" xml:space="preserve"><value>Automático (el de Windows)</value></data>
+  <data name="Gen_ThemeLight" xml:space="preserve"><value>Claro</value></data>
+  <data name="Gen_ThemeDark" xml:space="preserve"><value>Oscuro</value></data>
+  <data name="Gen_AboutText" xml:space="preserve"><value>Mantiene la app en la que trabajas en una zona amplia y protegida de tu monitor principal, pone las demás en paneles alrededor y en tus otros monitores, y te da un deck para moverte entre ellas.</value></data>
+  <data name="Gen_AboutPrivacy" xml:space="preserve"><value>Funciona sólo en tu PC: no se conecta a la red, no tiene cuenta y no envía telemetría.</value></data>
+  <data name="Gen_ManualHelp" xml:space="preserve"><value>Instalar, primeros pasos, el deck, usar una tablet y los atajos.</value></data>
+  <data name="Gen_Releases" xml:space="preserve"><value>Versiones</value></data>
+  <data name="Gen_ReleasesHelp" xml:space="preserve"><value>Descarga la última versión y sus notas.</value></data>
+  <data name="Gen_ReportHelp" xml:space="preserve"><value>Un problema o una idea, en GitHub. Incluye la versión y tus monitores.</value></data>
+  <data name="Gen_Source" xml:space="preserve"><value>Código fuente</value></data>
+  <data name="Gen_License" xml:space="preserve"><value>Licencia</value></data>
+  <data name="Gen_LicenseHelp" xml:space="preserve"><value>Código abierto: puedes usarlo, modificarlo y compartirlo.</value></data>
+  <data name="Gen_ThirdParty" xml:space="preserve"><value>Usa estos componentes de código abierto:</value></data>
 </root>

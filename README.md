@@ -32,7 +32,7 @@ A window only changes place when you decide. Clicking the chat or getting a noti
 
 ## Install
 
-1. Download `FocusWShell-0.1.0-alpha-win-x64.zip` from [Releases](https://github.com/proteo5/FocusWShell/releases).
+1. Download `FocusWShell-0.2.0-alpha-win-x64.zip` from [Releases](https://github.com/proteo5/FocusWShell/releases).
 2. Extract the whole zip and double-click **install.cmd**.
 3. FocusWShell opens and shows up in the tray, next to the clock. It is also in the Start menu.
 

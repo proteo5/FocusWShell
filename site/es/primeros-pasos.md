@@ -46,6 +46,6 @@ Para cambiar un ancho, arrastra el borde entre dos ventanas. Se recuerda para es
 
 ## 6. Hazlo tuyo
 
-- Paneles en tus otros monitores, y paneles nuevos: la pestaña **Paneles** de la ventana principal (ver [Ventana principal y ajustes]({{ '/es/ventana-principal/' | relative_url }})).
+- Paneles en tus otros monitores, y paneles nuevos: **Paneles** en la ventana principal (ver [Ventana principal y ajustes]({{ '/es/ventana-principal/' | relative_url }})).
 - Mandar el deck a una tablet: ver [Usar una tablet]({{ '/es/tablet/' | relative_url }}).
 - Todas las pestañas de Chrome y Edge en un solo lugar: ver [Páginas de los navegadores]({{ '/es/paginas/' | relative_url }}).

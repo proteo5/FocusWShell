@@ -5,7 +5,7 @@ description: A visual attention manager for Windows. One app in focus, the rest 
 url: https://proteo5.github.io
 baseurl: /FocusWShell
 repository: proteo5/FocusWShell
-version: 0.1.0-alpha
+version: 0.2.0-alpha
 markdown: kramdown
 kramdown:
   input: GFM
