@@ -1,0 +1,60 @@
+name: Something went wrong / Algo falló
+description: FocusWShell did something unexpected, or did not do what it should. / FocusWShell hizo algo inesperado, o no hizo lo que debía.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing FocusWShell. If your windows ended up somewhere strange, **Ctrl+Alt+Shift+Backspace** puts them all back.
+        You can write in English or Spanish.
+
+        Gracias por probar FocusWShell. Si tus ventanas acabaron en un lugar raro, **Ctrl+Alt+Mayús+Retroceso** las devuelve todas.
+        Puedes escribir en inglés o en español.
+  - type: input
+    id: version
+    attributes:
+      label: Version / Versión
+      description: The first line of the tray menu. / La primera línea del menú de la bandeja.
+      placeholder: FocusWShell 0.1.0-alpha
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened / Qué pasó
+      description: What you did, step by step, what you expected and what happened instead. / Qué hiciste, paso a paso, qué esperabas y qué pasó.
+      placeholder: |
+        1. I opened the deck and tapped…
+        2. …
+        Expected: …
+        Instead: …
+    validations:
+      required: true
+  - type: textarea
+    id: monitors
+    attributes:
+      label: Your monitors / Tus monitores
+      description: How many, which one is the main one, their resolution and scaling (Settings → System → Display). Tablet, if you use one. / Cuántos, cuál es el principal, su resolución y escala (Configuración → Sistema → Pantalla). Tablet, si usas una.
+      placeholder: |
+        Main: 3440×1440, 100 %
+        Second: 1920×1080, 125 %
+        Tablet with Apollo + Artemis: 1920×1200
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version / Versión de Windows
+      description: Settings → System → About. / Configuración → Sistema → Información.
+      placeholder: Windows 11 24H2
+  - type: textarea
+    id: log
+    attributes:
+      label: errors.log
+      description: If `%LOCALAPPDATA%\FocusWShell\errors.log` exists, paste it or attach it. / Si existe `%LOCALAPPDATA%\FocusWShell\errors.log`, pégalo o adjúntalo.
+      render: text
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else / Algo más
+      description: Screenshots help a lot. Please hide anything private. / Las capturas ayudan mucho. Oculta lo que sea privado.

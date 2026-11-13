@@ -55,7 +55,12 @@ Las capturas del README y del manual (`site/assets/img/`) salen de aquí. Los da
    ```
 
    Deja en `artifacts\` el zip autocontenido para win-x64 (no necesita .NET instalado) y su SHA-256. El zip lleva la app, `install.cmd`/`install.ps1`, `uninstall.ps1` y un `README.txt` en inglés y español; las plantillas están en `build\paquete\`.
-3. Crea el release en GitHub con una etiqueta `v<versión>`, adjunta el zip y su `.sha256`, y márcalo como *prerelease* mientras sea alfa o beta.
+3. Escribe sus notas en `.github/releases/v<versión>.md` (inglés y español) y añade la versión a `CHANGELOG.md`.
+4. Crea el release en GitHub con una etiqueta `v<versión>` y esas notas, adjunta el zip y su `.sha256`, y márcalo como *prerelease* mientras sea alfa o beta. Con `gh`:
+
+   ```powershell
+   gh release create v<versión> artifacts\FocusWShell-<versión>-win-x64.zip artifacts\FocusWShell-<versión>-win-x64.zip.sha256 --prerelease --title "FocusWShell <versión>" --notes-file .github\releases\v<versión>.md
+   ```
 
 ## Diagnóstico
 

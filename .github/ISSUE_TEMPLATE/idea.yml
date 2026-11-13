@@ -1,0 +1,27 @@
+name: Idea
+description: Something FocusWShell could do, or do better. / Algo que FocusWShell podría hacer, o hacer mejor.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        What helps most is what you were trying to do and where FocusWShell got in the way. You can write in English or Spanish.
+
+        Lo que más ayuda es saber qué intentabas hacer y en qué te estorbó FocusWShell. Puedes escribir en inglés o en español.
+  - type: textarea
+    id: situation
+    attributes:
+      label: What you were trying to do / Qué intentabas hacer
+      description: The situation, in your words. / La situación, con tus palabras.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea / Tu idea
+      description: How you imagine it. / Cómo te lo imaginas.
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup / Tu configuración
+      description: Monitors, tablet, how you work, if it matters. / Monitores, tablet, cómo trabajas, si importa.
