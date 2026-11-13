@@ -8,9 +8,9 @@ permalink: /main-window/
 
 # Main window and settings
 
-The deck is for everyday use; the main window is for setting FocusWShell up and seeing how things are. Open it by double-clicking the tray icon or with **Open FocusWShell** in its menu. Closing it does not stop FocusWShell: it keeps running in the tray.
+The main window is where you set FocusWShell up and see how things are; the deck is for moving between apps all day. Open it by double-clicking the tray icon or with **Open FocusWShell** in its menu. Closing it does not stop FocusWShell: it keeps running in the tray.
 
-It follows the look of Windows 11, in a dark or light theme, with its sections on the left.
+It follows the look of Windows 11, in a dark or light theme, with its sections on the left. New to FocusWShell? [Getting started]({{ '/first-steps/' | relative_url }}) walks through it step by step.
 
 ![The main window, Home]({{ '/assets/img/en/main-home.png' | relative_url }})
 
@@ -32,9 +32,20 @@ Every window FocusWShell can organize, with its app's icon, its title and its st
 
 Windows that cannot be organized are listed too, with the reason: for example, apps running as administrator.
 
+![The Windows section]({{ '/assets/img/en/main-windows.png' | relative_url }})
+
+The buttons on top: **Refresh list**, **Back to previous**, **Focus to panel** and **Free all**.
+
 ## Panels
 
 Create, rename, move and delete panels. Each one has a place (monitor, left or right of the focus on the main monitor, top or bottom, up to two per column) and a presentation. Panels on other monitors can be *Fullscreen*.
+
+![The Panels section]({{ '/assets/img/en/main-panels.png' | relative_url }})
+
+- **Create:** type a name in the last row, choose its place and press **Create panel**.
+- **Rename:** type the new name and click anywhere else.
+- **Move:** choose another place. A place that is taken shows the panel that has it, in brackets.
+- **Delete:** its windows become free and stay where they are.
 
 ## Apps
 
@@ -44,13 +55,15 @@ Every app FocusWShell has seen, with its icon. Rename how it is shown, open it i
 
 The shortcuts in use, and **Change shortcuts…** to set new ones. Under *Windows gestures*, choose whether Alt+Tab, Task view, the taskbar or a click bring a panel's window to the focus. See [Shortcuts]({{ '/shortcuts/' | relative_url }}).
 
+![The Shortcuts and gestures section]({{ '/assets/img/en/main-shortcuts.png' | relative_url }})
+
 ## Scenes
 
-Apply, delete and save scenes: which apps are in each panel and in the focus. They also apply with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>9</kbd>.
+Apply, delete and save scenes: which apps are in each panel and in the focus. They also apply with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>9</kbd>. See [Save your setup as a scene]({{ '/guides/#save-your-setup-as-a-scene' | relative_url }}).
 
 ## Excluded
 
-Apps FocusWShell should never touch, by executable, AUMID or window class.
+Apps FocusWShell should never touch, by executable, AUMID or window class. See [Keep an app out of FocusWShell]({{ '/guides/#keep-an-app-out-of-focuswshell' | relative_url }}).
 
 ## General
 

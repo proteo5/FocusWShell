@@ -9,12 +9,13 @@ en:
   pages:
     - { ref: home, title: Home, url: / }
     - { ref: install, title: Install, url: /install/ }
-    - { ref: first-steps, title: First steps, url: /first-steps/ }
     - { ref: concepts, title: How it works, url: /concepts/ }
+    - { ref: first-steps, title: Getting started, url: /first-steps/ }
+    - { ref: guides, title: Step-by-step guides, url: /guides/ }
+    - { ref: main-window, title: Main window and settings, url: /main-window/ }
     - { ref: deck, title: The deck, url: /deck/ }
     - { ref: pages, title: Browser pages, url: /browser-pages/ }
     - { ref: tablet, title: Using a tablet, url: /tablet/ }
-    - { ref: main-window, title: Main window and settings, url: /main-window/ }
     - { ref: shortcuts, title: Shortcuts, url: /shortcuts/ }
     - { ref: limitations, title: Known limitations, url: /limitations/ }
     - { ref: feedback, title: Feedback and privacy, url: /feedback/ }
@@ -28,12 +29,13 @@ es:
   pages:
     - { ref: home, title: Inicio, url: /es/ }
     - { ref: install, title: Instalar, url: /es/instalar/ }
-    - { ref: first-steps, title: Primeros pasos, url: /es/primeros-pasos/ }
     - { ref: concepts, title: Cómo funciona, url: /es/conceptos/ }
+    - { ref: first-steps, title: Primeros pasos, url: /es/primeros-pasos/ }
+    - { ref: guides, title: Guías paso a paso, url: /es/guias/ }
+    - { ref: main-window, title: Ventana principal y ajustes, url: /es/ventana-principal/ }
     - { ref: deck, title: El deck, url: /es/deck/ }
     - { ref: pages, title: Páginas de los navegadores, url: /es/paginas/ }
     - { ref: tablet, title: Usar una tablet, url: /es/tablet/ }
-    - { ref: main-window, title: Ventana principal y ajustes, url: /es/ventana-principal/ }
     - { ref: shortcuts, title: Atajos, url: /es/atajos/ }
     - { ref: limitations, title: Limitaciones conocidas, url: /es/limitaciones/ }
     - { ref: feedback, title: Comentarios y privacidad, url: /es/comentarios/ }

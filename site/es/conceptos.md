@@ -8,6 +8,29 @@ permalink: /es/conceptos/
 
 # Cómo funciona
 
+## Otra forma de usar tu PC
+
+Sin FocusWShell, cada ventana flota encima de las demás: abres, encimas, minimizas y buscas con Alt+Tab la que necesitas. FocusWShell le da a cada ventana un **sitio** y un **papel**:
+
+![El monitor principal con el foco en medio y los paneles Contexto y Trabajo; otro monitor con un panel; una tablet con el deck; y las ventanas libres aparte]({{ '/assets/img/es/concept.svg' | relative_url }})
+
+- **Una app en el foco**, grande, en medio de tu monitor principal. Es en la que trabajas ahora.
+- **Las demás en paneles**, alrededor del foco y en tus otros monitores, siempre visibles y siempre en el mismo sitio.
+- **El deck**, en una tablet o en una esquina, para cambiar entre ellas con un toque.
+- **Las ventanas libres**, que FocusWShell no toca.
+
+Lo que cambia en el día a día:
+
+| Antes… | Con FocusWShell |
+| --- | --- |
+| Alt+Tab entre un montón de ventanas | Alt+Tab (o un toque en el deck) lleva la app al foco, y la anterior vuelve a su panel |
+| Maximizar la ventana en la que trabajas | Ya es grande: está en el foco |
+| Minimizar lo que estorba | Nada estorba: lo demás está en su panel |
+| Arrastrar y redimensionar para ver dos a la vez | Cada panel muestra sus apps lado a lado |
+| Perder el chat detrás del navegador | El chat está siempre en su panel, en el mismo sitio |
+
+Los primeros días se siente raro no acomodar las ventanas tú. La idea es justamente dejar de hacerlo.
+
 ## Foco, paneles y ventanas libres
 
 | | Qué es | Dónde va |
@@ -17,6 +40,8 @@ permalink: /es/conceptos/
 | **Libres** | Ventanas que FocusWShell no organiza. | Donde las dejes. |
 
 Cuando llevas una app al foco, la que estaba **vuelve a su panel**. Una ventana nunca cambia de lugar por sí sola: un mensaje del chat, una notificación o un clic no la mueven.
+
+![Tocas Correo: va al foco, y el Editor vuelve a su panel]({{ '/assets/img/es/swap.svg' | relative_url }})
 
 Las apps de un panel también pueden estar:
 
@@ -64,3 +89,15 @@ El monitor principal tiene el foco y sus dos columnas. Cada uno de los demás pu
 ## Siempre reversible
 
 Antes de mover cualquier ventana, FocusWShell apunta dónde estaba. **Salir**, el atajo de emergencia <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>Retroceso</kbd> y volver a abrirlo tras una caída devuelven todas las ventanas.
+
+## Sorpresas frecuentes
+
+**«Mi ventana se movió cuando la elegí con Alt+Tab.»** Es la idea: elegir una ventana que está en un panel la lleva al foco. Para quitarlo en Alt+Tab, la Vista de tareas o la barra de tareas, ve a **Atajos y gestos** en la ventana principal.
+
+**«Arrastré una ventana y volvió.»** Las ventanas de un panel conservan su sitio. Suéltala sobre el foco o sobre otro panel para llevarla ahí; para acomodarla tú, libérala primero.
+
+**«Desapareció una app.»** Puede que su columna esté apagada (sus apps esperan minimizadas en su panel), que esté estacionada o que esté detrás de otra en un panel con pestañas. Búscala en el deck o en **Ventanas**: tocarla la trae al foco.
+
+**«Una ventana no sale en la lista.»** Las apps que se ejecutan como administrador no se pueden mover y salen al final con el motivo. Las apps excluidas no salen: ve a **Excluidas** en la ventana principal.
+
+**«Todo está revuelto.»** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>Retroceso</kbd> devuelve todas las ventanas a su sitio. **Reordenar todas**, en **Inicio** o en el deck, las vuelve a poner en sus paneles.

@@ -162,12 +162,12 @@
                                 <TextBlock Grid.Column="3" Text="{x:Static local:Strings.Win_ColPanel}" Style="{StaticResource Hint}" />
                             </Grid>
                         </StackPanel>
-                        <ListView x:Name="WindowList" SelectionMode="Single" ContextMenuOpening="WindowList_ContextMenuOpening"
+                        <ui:ListView x:Name="WindowList" SelectionMode="Single" ContextMenuOpening="WindowList_ContextMenuOpening"
                                   HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <ListView.ContextMenu>
+                            <ui:ListView.ContextMenu>
                                 <ContextMenu />
-                            </ListView.ContextMenu>
-                            <ListView.ItemTemplate>
+                            </ui:ListView.ContextMenu>
+                            <ui:ListView.ItemTemplate>
                                 <DataTemplate DataType="{x:Type local:WindowRow}">
                                     <Grid Margin="0,4">
                                         <Grid.ColumnDefinitions>
@@ -198,8 +198,8 @@
                                                    AutomationProperties.Name="{Binding App, StringFormat=… {0}}" />
                                     </Grid>
                                 </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                            </ui:ListView.ItemTemplate>
+                        </ui:ListView>
                     </DockPanel>
 
                     <!-- Paneles -->

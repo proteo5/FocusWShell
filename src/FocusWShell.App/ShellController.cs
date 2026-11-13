@@ -964,6 +964,19 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    /// <summary>
+    /// Sólo para la vista previa del manual (<c>--main-preview … sample</c>): paneles de ejemplo en memoria.
+    /// Se dan por guardados, así que nunca se escriben en panels.json.
+    /// </summary>
+    internal void UseSamplePanels(IReadOnlyList<Panel> panels)
+    {
+        lock (_gate)
+        {
+            _workspace.Execute(new ReplacePanels(panels));
+            _savedPanels = [.. _workspace.Panels];
+        }
+    }
+
     private FocusPosition _savedView;
     private Dictionary<FocusPosition, ViewWeights> _savedProportions = [];
 

@@ -35,4 +35,4 @@ El usuario la describió como «una app de los 90». Para la alfa, quien la abre
 - **A favor:** la ventana se ve y se usa como una app de Windows 11; un usuario nuevo encuentra cada cosa en su sección; menos código de estilos propio.
 - **En contra:** una dependencia externa que hay que mantener al día. Si WPF-UI cambia mucho o se abandona, la ventana principal tendría que volver a estilos propios; el deck no depende de ella.
 - La ventana «Cambiar atajos…» y los cuadros de confirmación siguen con el aspecto de Windows clásico.
-- `FocusWShell.exe --main-preview <carpeta> [es|en] [dark|light]` dibuja cada sección a un PNG, con los datos reales y sin mover nada, para revisar el diseño. Las secciones Ventanas y Apps muestran títulos y apps reales: no se publican.
+- `FocusWShell.exe --main-preview <carpeta> [es|en] [dark|light]` dibuja cada sección a un PNG, con los datos reales y sin mover nada, para revisar el diseño. Las secciones Ventanas y Apps muestran títulos y apps reales; con `sample`, los paneles y la lista de Ventanas son de ejemplo y sí van al manual.

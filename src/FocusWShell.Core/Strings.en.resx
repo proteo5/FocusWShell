@@ -60,10 +60,10 @@
   <data name="Rej_CantPark" xml:space="preserve"><value>{0} can't be parked from {1}.</value></data>
   <data name="Rej_CantPromote" xml:space="preserve"><value>{0} can't go to the focus from {1}.</value></data>
   <data name="Rej_EmptyName" xml:space="preserve"><value>The name can't be empty.</value></data>
-  <data name="Rej_FillOnlyAux" xml:space="preserve"><value>Fullscreen only works on auxiliary monitors: the principal one has the focus.</value></data>
+  <data name="Rej_FillOnlyAux" xml:space="preserve"><value>Fullscreen only works on auxiliary monitors: the main one has the focus.</value></data>
   <data name="Rej_HeightsPositive" xml:space="preserve"><value>Heights must be positive.</value></data>
   <data name="Rej_IsFullscreen" xml:space="preserve"><value>{0} is fullscreen.</value></data>
-  <data name="Rej_KeepOnePanel" xml:space="preserve"><value>At least one panel must stay on the principal monitor.</value></data>
+  <data name="Rej_KeepOnePanel" xml:space="preserve"><value>At least one panel must stay on the main monitor.</value></data>
   <data name="Rej_NoPanel" xml:space="preserve"><value>There is no panel "{0}".</value></data>
   <data name="Rej_NoPrevious" xml:space="preserve"><value>There is no previous window in the focus.</value></data>
   <data name="Rej_NotDetached" xml:space="preserve"><value>The window is not out of the layout.</value></data>

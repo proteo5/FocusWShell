@@ -18,11 +18,12 @@ description: Un gestor de atención visual para Windows. Una app en el foco, las
 
 </div>
 
-![El deck: la app del foco, la disposición del principal y los paneles de cada monitor]({{ '/assets/img/es/deck.png' | relative_url }})
+![Una app en el foco, en medio del monitor principal; las demás en paneles alrededor y en otros monitores; el deck en una tablet; y las ventanas libres aparte]({{ '/assets/img/es/concept.svg' | relative_url }})
 
 <div class="features" markdown="0">
   <div class="feature"><h3>Primero el foco</h3><p>Una ventana sólo cambia de lugar cuando tú lo decides. Un mensaje del chat o una notificación nunca se apoderan del foco.</p></div>
   <div class="feature"><h3>Se adapta a tus monitores</h3><p>Columnas de paneles a los dos lados en un ultrawide, una junto al foco en un monitor normal, o solo foco si los paneles viven en otros monitores.</p></div>
+  <div class="feature"><h3>Se configura en una ventana</h3><p>Una ventana principal al estilo de Windows 11: un mapa de tus monitores, tus paneles, tus ventanas y tus atajos, en claro u oscuro.</p></div>
   <div class="feature"><h3>Un deck para tus manos</h3><p>En una tablet, una pantalla táctil o una esquina de tu pantalla. Nunca le quita el teclado a la app en la que trabajas.</p></div>
   <div class="feature"><h3>Páginas de los navegadores</h3><p>Todas las pestañas de Chrome y Edge en un solo lugar, agrupadas por sitio. Toca una para traerla al frente, o ciérrala.</p></div>
   <div class="feature"><h3>Siempre reversible</h3><p>Salir, el atajo de emergencia o volver a abrirlo tras una caída devuelve todas las ventanas a su sitio.</p></div>
@@ -37,6 +38,16 @@ Con muchas ventanas abiertas, la que estás trabajando compite con el chat, el c
 - **Paneles:** lo que tienes a mano, alrededor del foco y en tus otros monitores.
 - **Libres:** lo que no quieres organizar se queda donde está.
 
-Lee [cómo funciona]({{ '/es/conceptos/' | relative_url }}), o ve directo a [instalarlo]({{ '/es/instalar/' | relative_url }}).
+Es otra forma de usar tu PC, y lleva unos días acostumbrarse. [Cómo funciona]({{ '/es/conceptos/' | relative_url }}) lo explica en un dibujo.
+
+## Empieza aquí
+
+1. [**Instálalo**]({{ '/es/instalar/' | relative_url }}): descarga, extrae, doble clic. Dos minutos.
+2. [**Primeros pasos**]({{ '/es/primeros-pasos/' | relative_url }}): configúralo paso a paso, desde la ventana principal. Diez minutos.
+3. [**Guías paso a paso**]({{ '/es/guias/' | relative_url }}): otros monitores, una tablet como deck, escenas, atajos.
+
+![La ventana principal, Inicio]({{ '/assets/img/es/main-home.png' | relative_url }})
+
+![El deck: la app del foco, la disposición del principal y los paneles de cada monitor]({{ '/assets/img/es/deck.png' | relative_url }})
 
 > **Es una alfa.** La están probando unas pocas personas. Mueve tus ventanas: si algo sale mal, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>Retroceso</kbd> devuelve todas las ventanas a su sitio, en cualquier momento.

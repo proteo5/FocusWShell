@@ -8,7 +8,7 @@ permalink: /es/atajos/
 
 # Atajos
 
-Todos usan <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd> más una tecla, para no chocar con tus apps. Cámbialos en la ventana principal, en **Atajos y gestos → Cambiar atajos…**: pulsa la combinación nueva y se guarda al momento.
+Todos usan <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd> más una tecla, para no chocar con tus apps. Cámbialos en la ventana principal, en **Atajos y gestos → Cambiar atajos…**: haz clic en un atajo, pulsa la combinación nueva y **Guardar**.
 
 | Tecla | Acción |
 | --- | --- |

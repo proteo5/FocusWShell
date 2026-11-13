@@ -4,6 +4,12 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
+## Unreleased / Sin publicar
+
+- Manual: a picture of how it works, a step-by-step getting started from the main window, step-by-step guides, and screenshots of every section of the main window. / Manual: un dibujo de cómo funciona, primeros pasos paso a paso desde la ventana principal, guías paso a paso y capturas de cada sección de la ventana principal.
+- Fixed: in the dark theme, the list in Windows was white with white text. / Corregido: en el tema oscuro, la lista de Ventanas salía blanca con el texto blanco.
+- The main monitor is called "main" in English, and the Spanish buttons say "foco" instead of "Centro". / El monitor principal se llama «main» en inglés, y los botones en español dicen «foco» en lugar de «Centro».
+
 ## 0.2.0-alpha
 
 A modern main window. / Una ventana principal moderna.

@@ -208,16 +208,16 @@
   <data name="Main_PanelsHelp" xml:space="preserve"><value>Cada monitor tiene dos columnas (izquierda y derecha) y cada una puede partirse arriba y abajo. Para crear un panel, escribe su nombre en la última fila, elige dónde va y pulsa Crear panel.</value></data>
   <data name="Main_Park" xml:space="preserve"><value>Estacionar</value></data>
   <data name="Main_ParkTip" xml:space="preserve"><value>Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa si la minimizas tú.</value></data>
-  <data name="Main_Promote" xml:space="preserve"><value>Al Centro</value></data>
-  <data name="Main_PromoteTip" xml:space="preserve"><value>Lleva la ventana seleccionada al Centro</value></data>
+  <data name="Main_Promote" xml:space="preserve"><value>Al foco</value></data>
+  <data name="Main_PromoteTip" xml:space="preserve"><value>Lleva la ventana seleccionada al foco</value></data>
   <data name="Main_Reattach" xml:space="preserve"><value>Reencajar</value></data>
   <data name="Main_ReattachTip" xml:space="preserve"><value>Devuelve al layout una ventana que maximizaste tú</value></data>
   <data name="Main_Refresh" xml:space="preserve"><value>Actualizar lista</value></data>
   <data name="Main_Release" xml:space="preserve"><value>Liberar</value></data>
   <data name="Main_ReleaseTip" xml:space="preserve"><value>Devuelve la ventana seleccionada a su sitio original y deja de gestionarla</value></data>
   <data name="Main_RestoreAll" xml:space="preserve"><value>Liberar todas</value></data>
-  <data name="Main_Return" xml:space="preserve"><value>Centro al panel</value></data>
-  <data name="Main_ReturnTip" xml:space="preserve"><value>Devuelve la ventana del Centro a su panel</value></data>
+  <data name="Main_Return" xml:space="preserve"><value>Foco al panel</value></data>
+  <data name="Main_ReturnTip" xml:space="preserve"><value>Devuelve la ventana del foco a su panel</value></data>
   <data name="Main_SaveScene" xml:space="preserve"><value>Guardar escena actual</value></data>
   <data name="Main_SaveSceneTip" xml:space="preserve"><value>Guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates. Si el nombre existe, la reemplaza.</value></data>
   <data name="Main_SceneLabel" xml:space="preserve"><value>Escena:</value></data>
@@ -225,7 +225,7 @@
   <data name="Main_ScenesName" xml:space="preserve"><value>Escenas guardadas</value></data>
   <data name="Main_ShowHidden" xml:space="preserve"><value>Ver ocultas</value></data>
   <data name="Main_Swap" xml:space="preserve"><value>Volver a la anterior</value></data>
-  <data name="Main_SwapTip" xml:space="preserve"><value>Devuelve al Centro la ventana que estaba antes</value></data>
+  <data name="Main_SwapTip" xml:space="preserve"><value>Devuelve al foco la ventana que estaba antes</value></data>
   <data name="Main_TabAppsName" xml:space="preserve"><value>Pestaña Apps</value></data>
   <data name="Main_TabExcluded" xml:space="preserve"><value>Excluidas</value></data>
   <data name="Main_TabExcludedName" xml:space="preserve"><value>Pestaña Excluidas</value></data>
@@ -449,7 +449,7 @@
   <data name="Gen_ThemeDark" xml:space="preserve"><value>Oscuro</value></data>
   <data name="Gen_AboutText" xml:space="preserve"><value>Mantiene la app en la que trabajas en una zona amplia y protegida de tu monitor principal, pone las demás en paneles alrededor y en tus otros monitores, y te da un deck para moverte entre ellas.</value></data>
   <data name="Gen_AboutPrivacy" xml:space="preserve"><value>Funciona sólo en tu PC: no se conecta a la red, no tiene cuenta y no envía telemetría.</value></data>
-  <data name="Gen_ManualHelp" xml:space="preserve"><value>Instalar, primeros pasos, el deck, usar una tablet y los atajos.</value></data>
+  <data name="Gen_ManualHelp" xml:space="preserve"><value>Instalar, primeros pasos, guías paso a paso, el deck y los atajos.</value></data>
   <data name="Gen_Releases" xml:space="preserve"><value>Versiones</value></data>
   <data name="Gen_ReleasesHelp" xml:space="preserve"><value>Descarga la última versión y sus notas.</value></data>
   <data name="Gen_ReportHelp" xml:space="preserve"><value>Un problema o una idea, en GitHub. Incluye la versión y tus monitores.</value></data>
