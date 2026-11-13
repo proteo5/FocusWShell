@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to FocusWShell. Each release has its notes in [`.github/releases/`](.github/releases/).
+All notable changes to FocusWShell. Each release has its notes in [`.github/release-notes/`](.github/release-notes/).
 
-Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/releases/`](.github/releases/).
+Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
 ## 0.1.0-alpha
 
@@ -15,4 +15,4 @@ First release, for a small group of testers. / Primera versión, para un grupo p
 - Recovery journal and emergency shortcut. / Diario de recuperación y atajo de emergencia.
 - English and Spanish. / Inglés y español.
 
-Notes / Notas: [v0.1.0-alpha](.github/releases/v0.1.0-alpha.md)
+Notes / Notas: [v0.1.0-alpha](.github/release-notes/v0.1.0-alpha.md)
