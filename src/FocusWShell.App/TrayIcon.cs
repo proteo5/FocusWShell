@@ -21,6 +21,9 @@ public sealed class TrayIcon : IDisposable
         _normal = DrawIcon(Color.FromArgb(40, 120, 220));
         _awake = DrawIcon(Color.FromArgb(235, 160, 30));
         var menu = new Forms.ContextMenuStrip();
+        // Arriba, qué versión es: para decirla al reportar un problema.
+        menu.Items.Add(new Forms.ToolStripMenuItem(AppVersion.Title) { Enabled = false });
+        menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(Strings.TrayMenu_Open, null, (_, _) => open());
         menu.Items.Add(Core.Strings.Action_Deck, null, (_, _) => toggleDeck());
         menu.Items.Add(_scenesItem);
@@ -36,7 +39,7 @@ public sealed class TrayIcon : IDisposable
         _icon = new Forms.NotifyIcon
         {
             Icon = _normal,
-            Text = "FocusWShell",
+            Text = AppVersion.Title,
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -85,7 +88,7 @@ public sealed class TrayIcon : IDisposable
     {
         _keepAwakeItem.Checked = active;
         _icon.Icon = active ? _awake : _normal;
-        _icon.Text = active ? Strings.TrayIcon_Awake : "FocusWShell";
+        _icon.Text = active ? Strings.TrayIcon_Awake : AppVersion.Title;
     }
 
     public void Notify(string title, string text, Forms.ToolTipIcon kind = Forms.ToolTipIcon.Info) =>

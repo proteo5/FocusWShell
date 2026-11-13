@@ -98,13 +98,20 @@ public static class DeckPreview
         deck.Close();
     }
 
-    private static readonly string[] FreeNames = ["Docker Desktop", "Microsoft Edge", "Microsoft Edge", "netbird-ui", "Slack", "Spotify", "WhatsApp"];
+    private static readonly string[] FreeNames = ["Docker Desktop", "Microsoft Edge", "Microsoft Edge", "OneNote", "Slack", "Spotify", "WhatsApp"];
+
+    /// <summary>
+    /// El ejemplo en el idioma de la vista previa: las capturas del README y del manual salen de aquí, en
+    /// inglés y en español. Son datos inventados, no de nadie.
+    /// </summary>
+    private static string T(string es, string en) =>
+        System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en" ? en : es;
 
     /// <summary>Un ejecutable que siempre existe, para que el ejemplo tenga iconos.</summary>
     private static readonly string SampleExe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
 
     private static DeckApp App(string name, nint? handle, ListItemState state, string panel, bool pinned = false) =>
-        new(name, name.ToLowerInvariant() + ".exe", handle, state, handle is null ? "" : $"{name} — ventana", panel,
+        new(name, name.ToLowerInvariant() + ".exe", handle, state, handle is null ? "" : $"{name} — {T("ventana", "window")}", panel,
             new Core.Domain.CatalogApp(name.ToLowerInvariant() + ".exe", name, SampleExe, null, panel, false, DateTimeOffset.Now, DateTimeOffset.Now) { Pinned = pinned });
 
     private static DeckState Sample(bool manyApps)
@@ -114,7 +121,7 @@ public static class DeckPreview
             App("Google Chrome", 1, ListItemState.InPanel, "trabajo", pinned: true),
             App("Claude", 2, ListItemState.InFocus, "trabajo", pinned: true),
             App("Notepad", null, ListItemState.Closed, "trabajo", pinned: true),
-            App("SmallNotePad", null, ListItemState.OtherDesktop, "trabajo"),
+            App("Notes", null, ListItemState.OtherDesktop, "trabajo"),
             App("Paint", null, ListItemState.Closed, "trabajo"),
         };
         if (manyApps)
@@ -131,10 +138,10 @@ public static class DeckPreview
             .ToList();
         var panels = new List<DeckPanel>
         {
-            new("contexto", "Contexto", "principal, izquierda", [App("Google Chrome", 3, ListItemState.InPanel, "contexto")]) { Template = PanelTemplate.Tiles, Side = PanelSide.Left },
-            new("trabajo", "Trabajo", "principal, derecha", work) { Template = PanelTemplate.Tiles, Side = PanelSide.Right },
-            new("monitoreo", "Monitoreo", "HP 24fw, izquierda", [App("Grafana", 7, ListItemState.InPanel, "monitoreo"), App("Logs", 8, ListItemState.InPanel, "monitoreo")]) { Display = "hp", Template = PanelTemplate.Tiles },
-            new("chat", "Chat", "HP 24fw, derecha", [App("Slack", 9, ListItemState.InPanel, "chat"), App("Teams", 10, ListItemState.InPanel, "chat")]) { Display = "hp", Template = PanelTemplate.Stack },
+            new("contexto", T("Contexto", "Context"), T("principal, izquierda", "main, left"), [App("Google Chrome", 3, ListItemState.InPanel, "contexto")]) { Template = PanelTemplate.Tiles, Side = PanelSide.Left },
+            new("trabajo", T("Trabajo", "Work"), T("principal, derecha", "main, right"), work) { Template = PanelTemplate.Tiles, Side = PanelSide.Right },
+            new("monitoreo", T("Monitoreo", "Monitoring"), T("HP 24fw, izquierda", "HP 24fw, left"), [App("Grafana", 7, ListItemState.InPanel, "monitoreo"), App("Logs", 8, ListItemState.InPanel, "monitoreo")]) { Display = "hp", Template = PanelTemplate.Tiles },
+            new("chat", "Chat", T("HP 24fw, derecha", "HP 24fw, right"), [App("Slack", 9, ListItemState.InPanel, "chat"), App("Teams", 10, ListItemState.InPanel, "chat")]) { Display = "hp", Template = PanelTemplate.Stack },
         };
         return new DeckState(
             App("Claude", 2, ListItemState.InFocus, "trabajo"),
@@ -142,7 +149,7 @@ public static class DeckPreview
             FocusPosition.Center,
             panels,
             free,
-            [(null, "Principal"), ("hp", "HP 24fw"), ("tablet", "Lenovo tablet")])
+            [(null, T("Principal", "Main")), ("hp", "HP 24fw"), ("tablet", "Lenovo tablet")])
         {
             Browsers = new HashSet<nint> { 1, 3 },
             Ultrawide = true,
@@ -159,7 +166,7 @@ public static class DeckPreview
         return state with
         {
             View = view,
-            Panels = [.. state.Panels.Select(p => Off(p) ? p with { Where = p.Where + " · apagado", Off = true } : p)],
+            Panels = [.. state.Panels.Select(p => Off(p) ? p with { Where = p.Where + T(" · apagado", " · off"), Off = true } : p)],
             Ultrawide = ultrawide,
         };
     }
@@ -172,27 +179,27 @@ public static class DeckPreview
             new(name.ToLowerInvariant() + ".exe", name, SampleExe, null, "trabajo", false, DateTimeOffset.Now, DateTimeOffset.Now);
         return
         [
-            new PageWindow(1, "Google Chrome", "en el foco", true, true, false, Browser("Google Chrome"),
+            new PageWindow(1, "Google Chrome", T("en el foco", "in focus"), true, true, false, Browser("Google Chrome"),
             [
-                Tab(0, "Inbox (2) - ana@ejemplo.com - ejemplo.com Mail"),
-                Tab(1, "Board - RM board - Jira"),
-                Tab(2, "Innovate - Backlog - Jira"),
-                Tab(3, "Board - SIEM board - Jira", active: true),
-                Tab(4, "DNS | Records | ejemplo.com | Cloudflare"),
-                Tab(5, "Security | Security rules | ejemplo.com | Cloudflare"),
-                Tab(6, "Valimail"),
+                Tab(0, "Inbox (2) - ana@example.com - Gmail"),
+                Tab(1, "Sprint board - Jira"),
+                Tab(2, "Backlog - Jira"),
+                Tab(3, "Release 2.4 - Roadmap - Jira", active: true),
+                Tab(4, "DNS | Records | example.com | Cloudflare"),
+                Tab(5, "Security | WAF | example.com | Cloudflare"),
+                Tab(6, T("Calendario - Semana del 9 de noviembre", "Calendar - Week of November 9")),
                 Tab(7, "Free SPF Checker & SPF Record Lookup - Instant Results"),
             ]),
-            new PageWindow(3, "Microsoft Edge", "Contexto", false, true, false, Browser("Microsoft Edge"),
+            new PageWindow(3, "Microsoft Edge", T("Contexto", "Context"), false, true, false, Browser("Microsoft Edge"),
             [
-                Tab(0, "DeepSeek", "IA"),
+                Tab(0, "Wikipedia", T("Lectura", "Reading")),
                 Tab(1, "Outlook", "Email"),
-                Tab(2, "I Did This Every Morning - YouTube", "Youtube", active: true),
-                Tab(3, "Lo-fi beats to code to - YouTube", "Youtube"),
-                Tab(4, "YouTube", "Youtube"),
-                Tab(5, "Raid - List - Jira"),
+                Tab(2, "Lo-fi beats to code to - YouTube", "Music", active: true),
+                Tab(3, "Jazz for a rainy day - YouTube", "Music"),
+                Tab(4, "YouTube", "Music"),
+                Tab(5, "Bugs - List - Jira"),
             ]),
-            new PageWindow(50, "Microsoft Edge", "libre", false, false, false, Browser("Microsoft Edge"),
+            new PageWindow(50, "Microsoft Edge", T("libre", "free"), false, false, false, Browser("Microsoft Edge"),
             [
                 Tab(0, "Fix login by ana · Pull Request #15 · acme/web", active: true),
                 Tab(1, "acme/api: The API server"),
