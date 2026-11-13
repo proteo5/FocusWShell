@@ -30,7 +30,7 @@ El instalador copia FocusWShell a `%LOCALAPPDATA%\Programs\FocusWShell`, lo aña
 Los archivos todavía no están firmados, así que Windows puede avisarte la primera vez, porque vienen de internet. Elige **Más información → Ejecutar de todas formas**. Puedes comprobar la descarga con el archivo `.sha256` que se publica junto al zip:
 
 ```powershell
-Get-FileHash .\FocusWShell-0.2.0-alpha-win-x64.zip -Algorithm SHA256
+Get-FileHash .\FocusWShell-0.3.0-alpha-win-x64.zip -Algorithm SHA256
 ```
 
 ## Iniciar con Windows

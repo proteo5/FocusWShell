@@ -12,7 +12,7 @@ permalink: /es/comentarios/
 
 Abre un issue en [github.com/proteo5/FocusWShell/issues](https://github.com/proteo5/FocusWShell/issues). Ayuda mucho incluir:
 
-- **La versión:** la primera línea del menú de la bandeja o General → Acerca de, por ejemplo *FocusWShell 0.2.0-alpha*.
+- **La versión:** la primera línea del menú de la bandeja o General → Acerca de, por ejemplo *FocusWShell 0.3.0-alpha*.
 - **Tus monitores:** cuántos, cuál es el principal, su resolución y su escala (Configuración → Sistema → Pantalla).
 - **Qué hiciste y qué pasó,** paso a paso.
 - **`errors.log`,** si existe, en `%LOCALAPPDATA%\FocusWShell`.
