@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Sitio compilado en local (lo compila GitHub Pages).
+site/_site/
+site/.jekyll-cache/

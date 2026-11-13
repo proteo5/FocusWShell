@@ -1,95 +1,74 @@
 ﻿# FocusWShell
 
-Gestor de atención visual para Windows. Organiza las ventanas según el papel que cumplen en tu atención, no sólo como rectángulos en una cuadrícula.
+**A visual attention manager for Windows.** One app in focus, the rest in panels around it, and a deck on your tablet to move between them without hunting for windows.
 
-Pensado para trabajar con un monitor ultrawide y un monitor estándar con muchas ventanas abiertas:
+[Español](README.es.md) · [Manual](https://proteo5.github.io/FocusWShell/) · [Download](https://github.com/proteo5/FocusWShell/releases)
 
-```text
-┌──────────────┬──────────────────────────────┬────────────────┐   ┌──────────────┐
-│ CONTEXTO     │ CENTRO                       │ TRABAJO        │   │ CONTEXTO     │
-│ chat, avisos │ la tarea principal           │ tiles / pila   │   │ correo, cal. │
-└──────────────┴──────────────────────────────┴────────────────┘   └──────────────┘
-                          ultrawide                                  monitor estándar
-```
+![The deck: the app in focus, the main screen layout and the panels of each monitor](site/assets/img/en/deck.png)
 
-- **Centro:** la tarea de concentración, en una región amplia y protegida.
-- **Trabajo:** herramientas de apoyo, en tiles o en una pila con pestañas.
-- **Contexto:** correo, chat, calendario y estados, a la vista pero sin dominar.
-- **Estacionada:** abierta pero apartada; se recupera desde su panel.
+> **Alpha.** FocusWShell moves your windows. It is in early testing; if anything goes wrong, **Ctrl+Alt+Shift+Backspace** puts every window back where it was, at any time.
 
-Una ventana sólo cambia de lugar cuando tú lo decides. Hacer clic en el chat o recibir una notificación no la lleva al centro.
+## Why
 
-## Estado
+With many windows open, the one you are working on competes with chat, mail, dashboards and a dozen browser tabs. FocusWShell organizes windows by the role they play in your attention, not as rectangles in a grid:
 
-Hitos M0, M1, M1b y M2 hechos en código: paneles propios en varios monitores, vistas, escenas, tiles y lista, deck (también en una tablet), y robustez (pantalla completa de las apps, suspensión, monitores que van y vienen, ventanas elevadas, lista de exclusión). Ahora toca usarlo a diario y validar ([06-validacion](docs/06-validacion.md)). El estado de cada hito está en la [hoja de ruta](docs/05-hoja-de-ruta.md).
+- **Focus:** the task you are doing, in a large, protected area of the main screen.
+- **Panels:** the apps you keep at hand, in columns around the focus and on your other monitors, as tiles, tabs or a list.
+- **Free:** what you do not want organized stays where it is.
 
-**Uso diario:** instala una copia estable, fuera del repositorio:
+A window only changes place when you decide. Clicking the chat or getting a notification does not bring it to the focus.
+
+## What it does
+
+- **Main screen layout.** Turn the left and right panel columns on or off, and the focus takes the rest: both columns on an ultrawide, one column on a regular monitor, or **focus only** when your panels live on other monitors.
+- **The deck.** A control surface for a tablet, a touch screen or a corner of your screen. Tap an app to bring it to the focus, move it between panels, pin it, close it. It never steals the keyboard from the app you are working on.
+- **Browser pages.** Every Chrome and Edge tab in one place, grouped by site. Tap one to bring it to the front, or close it, without searching through windows.
+- **Several monitors.** Panels on each monitor; a monitor can go and come back (a tablet over Wi-Fi, a laptop dock) and its panels return with it.
+- **Always reversible.** A recovery journal is written before any window moves. Exiting, the emergency shortcut, or reopening after a crash puts every window back.
+
+| Pages, grouped by site | The pages of one site |
+| --- | --- |
+| ![Browser pages grouped by site](site/assets/img/en/deck-pages.png) | ![The pages of one site, with Close all](site/assets/img/en/deck-pages-site.png) |
+
+## Install
+
+1. Download `FocusWShell-0.1.0-alpha-win-x64.zip` from [Releases](https://github.com/proteo5/FocusWShell/releases).
+2. Extract the whole zip and double-click **install.cmd**.
+3. FocusWShell opens and shows up in the tray, next to the clock. It is also in the Start menu.
+
+It needs **Windows 10 (2004) or Windows 11, 64-bit**, and no administrator rights. .NET is included. The files are not signed yet, so Windows may show *"Windows protected your PC"*: choose **More info → Run anyway**.
+
+To uninstall, run `uninstall.ps1` in `%LOCALAPPDATA%\Programs\FocusWShell` (right-click → *Run with PowerShell*). Your settings stay in `%LOCALAPPDATA%\FocusWShell` unless you add `-RemoveSettings`.
+
+## First steps
+
+1. Open the deck: **Ctrl+Alt+Shift+D**, or *Deck* in the tray menu.
+2. Use **Move…** to put your apps in the *Context* and *Work* panels, and tap an app to bring it to the focus.
+3. Turn the panel columns on or off under **Main screen layout**.
+4. If you have a tablet, send the deck there with **⇢** in the deck.
+
+The [manual](https://proteo5.github.io/FocusWShell/) explains each part, the shortcuts and how to use a tablet.
+
+## Using a tablet as the deck
+
+The deck works on any screen, but it shines on a tablet next to your keyboard. The tested setup is **[Apollo](https://github.com/ClassicOldSong/Apollo)** on the PC and **Artemis** on an Android tablet: Apollo creates a virtual monitor at the tablet's resolution, so Windows sees it as one more screen. Moonlight (iPad) and Sunshine with a virtual display driver should work too, but have not been tested.
+
+## Privacy
+
+FocusWShell runs on your PC only. It makes no network connections and sends no telemetry. Browser tab titles are read only while the *Pages* list is on screen and are never saved.
+
+## Feedback
+
+This is an alpha: problems and ideas are very welcome in [Issues](https://github.com/proteo5/FocusWShell/issues). For a problem, please include your monitors and their scaling, and `%LOCALAPPDATA%\FocusWShell\errors.log` if it exists.
+
+## Building from source
 
 ```powershell
-powershell -File build\instalar.ps1 -Abrir
-```
-
-- Se instala en `%LOCALAPPDATA%\Programs\FocusWShell`.
-- Al volver a ejecutarlo, actualiza la copia: cierra la que esté abierta devolviendo las ventanas a su sitio, y la vuelve a abrir.
-- En la bandeja, **Iniciar con Windows** hace que se abra al iniciar sesión.
-- `FocusWShell.exe --salir` cierra la instancia abierta como lo haría **Salir**.
-- En español o en inglés: «Idioma» en la ventana principal (automático: el de Windows).
-
-Para desarrollar:
-
-```bash
 dotnet run --project src/FocusWShell.App
 ```
 
-Los textos de la interfaz están en `Strings.resx` (español) y `Strings.en.resx` (inglés). Para añadir uno en los dos idiomas:
+.NET 10 SDK on Windows. The engineering documentation (in Spanish) is in [docs/](docs/README.md), and [docs/desarrollo.md](docs/desarrollo.md) covers building, installing a daily copy and making a release.
 
-```powershell
-powershell -File build	extos.ps1 -Clave Deck_Hola -Es "Hola, {0}" -En "Hello, {0}"
-```
-
-Lo que sigue describe lo básico; la ventana principal y el deck tienen más.
-
-- La ventana lista las apps que se pueden gestionar. Elige un rol y un monitor para cada una y pulsa **Aplicar roles**.
-  - El Centro está siempre en el monitor principal.
-  - Los demás monitores alojan paneles auxiliares.
-  - Con el template **Fill**, la primera ventana de un panel auxiliar ocupa ese monitor, maximizada.
-- Encima de cada panel aparece una **tira de pestañas**, una por ventana del panel:
-  - **Clic:** la muestra, la recupera si está estacionada (`⏸`) o la devuelve si está en el Centro (`↑`).
-  - **Doble clic:** la lleva al Centro.
-  - **Clic derecho:** el resto de acciones.
-- **Escenas:**
-  - **Guardar:** escribe un nombre y pulsa "Guardar escena actual". Se guarda qué ventanas están gestionadas, en qué panel y monitor, y los templates.
-  - **Aplicar:** desde la ventana, desde el submenú de la bandeja o con `Ctrl+Alt+Mayús+1…9`. Las ventanas que no son de la escena vuelven a su sitio original.
-- Cerrarla no detiene el gestor: sigue en el área de notificación. Desde su menú, **Salir** devuelve todas las ventanas a su sitio.
-- Atajos globales con `Ctrl+Alt+Mayús`:
-
-  | Tecla | Acción |
-  | --- | --- |
-  | ↑ | Lleva al Centro la ventana activa, si está gestionada. La que estaba vuelve a su panel. |
-  | ← | Vuelve a poner en el Centro la ventana anterior. Repetirlo alterna entre las dos. |
-  | ↓ | Devuelve la ventana del Centro a su panel. |
-  | P | Mantener la pantalla encendida (activa o desactiva; se recuerda). |
-  | Retroceso | **Emergencia:** restaura todas las ventanas en cualquier momento. |
-- Si el gestor muere sin cerrarse, al volver a abrirlo ofrece restaurar las ventanas que dejó movidas.
-
-`tools/FocusWShell.Probe` (`focus-probe`) es la consola de diagnóstico de los spikes.
-
-La documentación de ingeniería está en [docs/](docs/README.md):
-
-- [Visión y alcance](docs/01-vision.md)
-- [Modelo de dominio](docs/02-modelo-de-dominio.md)
-- [Arquitectura](docs/03-arquitectura.md)
-- [Riesgos y spikes](docs/04-riesgos-y-spikes.md)
-- [Hoja de ruta](docs/05-hoja-de-ruta.md)
-- [Decisiones (ADR)](docs/adr/)
-
-## Principios
-
-- Convive con Explorer y la barra de tareas; no reemplaza el shell.
-- Las apps siguen siendo ventanas normales de Windows; el gestor no las incrusta.
-- Siempre hay salida: un atajo global devuelve todas las ventanas a como estaban, incluso después de una caída.
-- No pide permisos de administrador, no envía telemetría.
-
-## Licencia
+## License
 
 [Apache 2.0](LICENSE)

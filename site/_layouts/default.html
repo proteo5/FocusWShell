@@ -1,0 +1,49 @@
+<!doctype html>
+{%- assign lang = page.lang | default: "en" -%}
+{%- assign nav = site.data.nav[lang] -%}
+{%- assign otherlang = "es" -%}{%- if lang == "es" -%}{%- assign otherlang = "en" -%}{%- endif -%}
+{%- assign othernav = site.data.nav[otherlang] -%}
+{%- assign other = othernav.pages | where: "ref", page.ref | first -%}
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.ref == "home" %}{{ site.title }}{% else %}{{ page.title }} · {{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ page.description | default: site.description }}">
+  <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+  <link rel="icon" href="{{ '/assets/img/icon.png' | relative_url }}">
+  {%- if other %}
+  <link rel="alternate" hreflang="{{ otherlang }}" href="{{ other.url | relative_url }}">
+  {%- endif %}
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="{{ nav.pages[0].url | relative_url }}"><img src="{{ '/assets/img/icon.png' | relative_url }}" alt="" width="24" height="24"> FocusWShell</a>
+    <span class="version">{{ site.version }}</span>
+    <nav class="top-links">
+      <a href="https://github.com/{{ site.repository }}/releases">{{ nav.ui.download }}</a>
+      <a href="https://github.com/{{ site.repository }}">GitHub</a>
+      {%- if other %}
+      <a href="{{ other.url | relative_url }}" lang="{{ otherlang }}">{{ nav.ui.other }}</a>
+      {%- endif %}
+    </nav>
+  </header>
+  <div class="alpha">{{ nav.ui.alpha }}</div>
+  <div class="layout">
+    <nav class="side" aria-label="{{ nav.ui.manual }}">
+      <p class="side-title">{{ nav.ui.manual }}</p>
+      <ul>
+        {%- for item in nav.pages %}
+        <li><a href="{{ item.url | relative_url }}"{% if item.ref == page.ref %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+        {%- endfor %}
+      </ul>
+    </nav>
+    <main class="content">
+      {{ content }}
+      <footer class="foot">
+        <a href="https://github.com/{{ site.repository }}/issues">{{ nav.ui.edit }}</a> · Apache 2.0 · FocusWShell {{ site.version }}
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

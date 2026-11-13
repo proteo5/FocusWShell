@@ -1,0 +1,14 @@
+# Sitio y manual de FocusWShell (GitHub Pages). Lo publica .github/workflows/pages.yml en cada push a main.
+# Inglés en la raíz, español en /es/. Cada página dice su idioma (lang) y su par en el otro (ref).
+title: FocusWShell
+description: A visual attention manager for Windows. One app in focus, the rest in panels around it.
+url: https://proteo5.github.io
+baseurl: /FocusWShell
+repository: proteo5/FocusWShell
+version: 0.1.0-alpha
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+exclude:
+  - README.md

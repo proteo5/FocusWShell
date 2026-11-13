@@ -14,6 +14,7 @@ Esta carpeta es la documentación de ingeniería del proyecto. Parte de las nota
 | [04 — Riesgos y spikes](04-riesgos-y-spikes.md) | Lo que puede salir mal técnicamente y cómo comprobarlo pronto. |
 | [05 — Hoja de ruta](05-hoja-de-ruta.md) | Hitos, entregables y criterios de salida. |
 | [06 — Validación de uso](06-validacion.md) | Protocolo y plantilla para el diario de uso personal. |
+| [Desarrollo](desarrollo.md) | Compilar, instalar una copia de uso diario, textos, vista previa del deck y publicar una versión. |
 | [Glosario](glosario.md) | Términos en español y su nombre en el código. |
 | [Decisiones (ADR)](adr/) | Registro de decisiones de arquitectura. |
 
