@@ -56,6 +56,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 5. **Páginas de los navegadores** en el deck: las pestañas de todas las ventanas de Chrome y Edge agrupadas por sitio, para llevar una al frente o cerrarla (spike S12, ver [riesgos](04-riesgos-y-spikes.md)). **Hecho.**
 6. **La disposición del principal como columnas que se prenden y apagan**, para monitores normales y ultrawide, con Solo foco ([ADR 0012, enmienda](adr/0012-vistas-posicion-del-foco.md#enmienda-2026-11-12-la-disposición-del-principal-son-columnas-que-se-prenden-y-apagan)). **Hecho**, sin los anchos fijos.
 7. **La ventana principal, moderna**, con WPF-UI: navegación lateral, Inicio con el mapa de monitores, panel aplicado al momento, tema claro u oscuro y «Acerca de» ([ADR 0017](adr/0017-ventana-principal-wpf-ui.md)). **Hecho** (0.2.0-alpha).
+8. **El foco con lugar propio en el deck**, el modo Minimizar y las apps que se cierran a la bandeja ([ADR 0013, enmienda](adr/0013-deck-superficie-de-control.md#enmienda-el-lugar-del-foco-y-el-modo-minimizar-2026-11-13), [ADR 0018](adr/0018-apps-en-la-bandeja.md)). **Hecho** (0.3.0-alpha).
 
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.
 

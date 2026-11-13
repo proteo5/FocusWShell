@@ -4,7 +4,9 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
-## Unreleased / Sin publicar
+## 0.3.0-alpha
+
+A deck that puts the focus first, apps in the tray, and a step-by-step manual. / Un deck que pone el foco primero, apps en la bandeja y un manual paso a paso.
 
 - Manual: a picture of how it works, a step-by-step getting started from the main window, step-by-step guides, and screenshots of every section of the main window. / Manual: un dibujo de cómo funciona, primeros pasos paso a paso desde la ventana principal, guías paso a paso y capturas de cada sección de la ventana principal.
 - Fixed: in the dark theme, the list in Windows was white with white text. / Corregido: en el tema oscuro, la lista de Ventanas salía blanca con el texto blanco.
@@ -13,6 +15,8 @@ Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [
 - New Minimize… mode in the deck (teal), and the four modes in a 2×2 grid. Free all moves up with Previous and To panel; Mouse to focus moves to System. / Nuevo modo Minimizar… en el deck (verde azulado), y los cuatro modos en una cuadrícula de 2×2. Liberar todas sube junto a Anterior y Al panel; Ratón al foco pasa a Sistema.
 - "Park" is now called "Minimize" everywhere. / «Estacionar» ahora se llama «Minimizar» en todos lados.
 - The main monitor is called "main" in English, and the Spanish buttons say "foco" instead of "Centro". / El monitor principal se llama «main» en inglés, y los botones en español dicen «foco» en lugar de «Centro».
+
+Notes / Notas: [v0.3.0-alpha](.github/release-notes/v0.3.0-alpha.md)
 
 ## 0.2.0-alpha
 
