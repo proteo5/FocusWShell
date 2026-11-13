@@ -794,6 +794,19 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    /// <summary>
+    /// Sólo para <c>--main-preview … sample</c>: cambia la lista de Ventanas por filas de ejemplo, para las
+    /// capturas del manual sin títulos reales.
+    /// </summary>
+    internal void ShowSampleWindows(IEnumerable<WindowRow> rows)
+    {
+        _rows.Clear();
+        foreach (var row in rows)
+        {
+            _rows.Add(row);
+        }
+    }
+
     /// <summary>Un puesto donde puede ir un panel: monitor, lado y arriba/abajo.</summary>
     private sealed record Location(string? Display, PanelSide Side, PanelSlot Slot, string Label);
 

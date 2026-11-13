@@ -40,15 +40,30 @@ public partial class App : Application
     private RegisteredWaitHandle? _showWait;
 
     /// <summary>Dibuja cada sección de la ventana principal a un PNG, fuera de pantalla.</summary>
-    private void RenderMainPreview(string folder, string? theme)
+    private void RenderMainPreview(string folder, string? theme, bool sample)
     {
         System.IO.Directory.CreateDirectory(folder);
         _controller.LoadPanels();
         _controller.LoadCatalog();
         _settings = AppSettings.Load();
+        if (theme is "dark" or "light")
+        {
+            _settings.Theme = theme; // sólo en memoria: la vista previa no guarda nada
+        }
+
         HotkeyMap = Hotkeys.Resolve(_settings.Hotkeys);
+        if (sample)
+        {
+            _controller.UseSamplePanels(SamplePanels());
+        }
+
         var window = new MainWindow(_controller, _settings) { Left = -20000, Top = -20000, ShowActivated = false, ShowInTaskbar = false };
         window.Show();
+        if (sample)
+        {
+            window.ShowSampleWindows(SampleWindowRows());
+        }
+
         if (theme is "dark" or "light")
         {
             Wpf.Ui.Appearance.ApplicationThemeManager.Apply(theme == "dark" ? Wpf.Ui.Appearance.ApplicationTheme.Dark : Wpf.Ui.Appearance.ApplicationTheme.Light);
@@ -78,6 +93,60 @@ public partial class App : Application
             encoder.Save(file);
         }
     }
+
+    /// <summary>
+    /// Ventanas inventadas para la captura de la sección Ventanas del manual: apps de Windows (para que
+    /// tengan icono) con títulos de ejemplo, en el idioma de la interfaz.
+    /// </summary>
+    private static bool SampleInSpanish => Strings.Culture?.TwoLetterISOLanguageName == "es"
+        || (Strings.Culture is null && System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "es");
+
+    /// <summary>Los dos paneles de siempre y uno de ejemplo en el primer monitor auxiliar, si hay.</summary>
+    private static List<Panel> SamplePanels()
+    {
+        string T(string spanish, string english) => SampleInSpanish ? spanish : english;
+        var panels = new List<Panel>
+        {
+            new(Workspace.ContextPanel, T("Contexto", "Context"), null, PanelSide.Left),
+            new(Workspace.WorkPanel, T("Trabajo", "Work"), null, PanelSide.Right),
+        };
+        var auxiliary = ShellController.AuxiliaryDisplays();
+        if (auxiliary.Count > 0 && auxiliary[0] is { } aux)
+        {
+            panels.Add(new("referencia", T("Referencia", "Reference"), aux.Key, PanelSide.Left));
+        }
+
+        return panels;
+    }
+
+    private static List<WindowRow> SampleWindowRows()
+    {
+        string T(string spanish, string english) => SampleInSpanish ? spanish : english;
+        string Win(string file) => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), file);
+        string edge = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge\Application\msedge.exe");
+        string context = T("Contexto", "Context");
+        string work = T("Trabajo", "Work");
+        var rows = new (string App, string Title, string? Path, string? Aumid, string Assignment, string State)[]
+        {
+            ("Microsoft Edge", T("Informe trimestral - Documentos", "Quarterly report - Documents"), edge, null, AssignmentOption.Focus, Core.Text.F(Strings.State_Focus, work)),
+            ("Microsoft Edge", T("Bandeja de entrada - Correo", "Inbox - Mail"), edge, null, Workspace.ContextPanel, Core.Text.F(Strings.State_In, context, "")),
+            (T("Bloc de notas", "Notepad"), T("ideas.txt - Bloc de notas", "ideas.txt - Notepad"), Win("notepad.exe"), null, Workspace.WorkPanel, Core.Text.F(Strings.State_In, work, "")),
+            (T("Explorador de archivos", "File Explorer"), T("Proyectos", "Projects"), Win("explorer.exe"), null, Workspace.WorkPanel, Core.Text.F(Strings.State_Parked, work, "")),
+            (T("Calculadora", "Calculator"), T("Calculadora", "Calculator"), null, "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", Workspace.ContextPanel, Core.Text.F(Strings.State_In, context, "")),
+            ("Paint", T("Sin título - Paint", "Untitled - Paint"), null, "Microsoft.Paint_8wekyb3d8bbwe!App", AssignmentOption.Free, ""),
+            (T("Configuración", "Settings"), T("Configuración", "Settings"), null, "windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel", AssignmentOption.Free, ""),
+        };
+        int handle = 1;
+        return [.. rows.Select(r => new WindowRow(
+            new Core.Windows.WindowSnapshot { Handle = handle++, Title = r.Title, ClassName = "", ProcessId = 0 },
+            r.Assignment,
+            r.App)
+        {
+            State = r.State,
+            Icon = AppIcons.Get(new CatalogApp(r.App, r.App, r.Path, r.Aumid, null, false, DateTimeOffset.Now, DateTimeOffset.Now)),
+        })];
+    }
+
     private RegisteredWaitHandle? _exitWait;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -95,8 +164,9 @@ public partial class App : Application
             return;
         }
 
-        // "FocusWShell.exe --main-preview <carpeta> [es|en]": PNGs de cada sección de la ventana principal, con
-        // los paneles y ventanas de verdad pero sin mover nada (para revisar el diseño).
+        // "FocusWShell.exe --main-preview <carpeta> [es|en] [dark|light] [sample]": PNGs de cada sección de la
+        // ventana principal, con los paneles y ventanas de verdad pero sin mover nada (para revisar el diseño).
+        // Con "sample", la lista de Ventanas lleva filas de ejemplo (para el manual).
         int mainPreview = Array.IndexOf(e.Args, "--main-preview");
         if (mainPreview >= 0)
         {
@@ -107,7 +177,8 @@ public partial class App : Application
 
             RenderMainPreview(
                 mainPreview + 1 < e.Args.Length ? e.Args[mainPreview + 1] : System.IO.Path.GetTempPath(),
-                mainPreview + 3 < e.Args.Length ? e.Args[mainPreview + 3] : null);
+                mainPreview + 3 < e.Args.Length ? e.Args[mainPreview + 3] : null,
+                e.Args.Contains("sample"));
             Shutdown();
             return;
         }

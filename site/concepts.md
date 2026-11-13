@@ -8,6 +8,29 @@ permalink: /concepts/
 
 # How it works
 
+## A different way to use your PC
+
+Without FocusWShell, every window floats on top of the others: you open, overlap, minimize and hunt for the one you need with Alt+Tab. FocusWShell gives each window a **place** and a **role**:
+
+![The main monitor with the focus in the middle and the Context and Work panels; another monitor with a panel; a tablet with the deck; and the free windows apart]({{ '/assets/img/en/concept.svg' | relative_url }})
+
+- **One app in the focus**, large, in the middle of your main monitor. It is what you are working on now.
+- **The rest in panels**, around the focus and on your other monitors, always visible and always in the same place.
+- **The deck**, on a tablet or in a corner, to switch between them with one tap.
+- **Free windows**, which FocusWShell does not touch.
+
+What changes day to day:
+
+| You used to… | With FocusWShell |
+| --- | --- |
+| Alt+Tab through a pile of windows | Alt+Tab (or a tap in the deck) brings the app to the focus, and the previous one goes back to its panel |
+| Maximize the window you work on | It is already large, in the focus |
+| Minimize what gets in the way | Nothing gets in the way: the rest is in its panel |
+| Drag and resize windows to see two at once | Each panel shows its apps side by side |
+| Lose the chat behind the browser | The chat is always in its panel, in the same place |
+
+The first days it feels strange not to arrange windows yourself. The idea is that you stop doing it.
+
 ## Focus, panels and free windows
 
 | | What it is | Where it goes |
@@ -17,6 +40,8 @@ permalink: /concepts/
 | **Free** | Windows FocusWShell does not organize. | Wherever you leave them. |
 
 When you bring an app to the focus, the one that was there **goes back to its panel**. A window never changes place on its own: a chat message, a notification or a click does not move it.
+
+![Tap Mail: it goes to the focus, and the Editor goes back to its panel]({{ '/assets/img/en/swap.svg' | relative_url }})
 
 Apps in a panel can also be:
 
@@ -64,3 +89,15 @@ The main monitor holds the focus and its two columns. Every other monitor can ha
 ## Always reversible
 
 Before moving any window, FocusWShell writes down where it was. **Exit**, the emergency shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Backspace</kbd>, and reopening after a crash all put every window back.
+
+## Common surprises
+
+**"My window moved when I chose it with Alt+Tab."** That is the idea: choosing a window that is in a panel brings it to the focus. To turn that off for Alt+Tab, Task view or the taskbar, see **Shortcuts and gestures** in the main window.
+
+**"I dragged a window and it went back."** Windows in a panel keep their place. Drop it on the focus or on another panel to move it there; to place it yourself, free it first.
+
+**"An app disappeared."** Its column may be off (its apps wait minimized in their panel), it may be parked, or it may be behind another app in a panel with tabs. Look for it in the deck or in **Windows**: tapping it brings it to the focus.
+
+**"A window is not in the list."** Apps running as administrator cannot be moved and are listed at the end with the reason. Excluded apps are not listed at all: see **Excluded** in the main window.
+
+**"Everything is a mess."** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Backspace</kbd> puts every window back where it was. **Rearrange all**, in **Home** or the deck, puts them in their panels again.

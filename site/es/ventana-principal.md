@@ -8,9 +8,9 @@ permalink: /es/ventana-principal/
 
 # Ventana principal y ajustes
 
-El deck es para el día a día; la ventana principal, para configurar FocusWShell y ver cómo está todo. Ábrela con doble clic en el icono de la bandeja o con **Abrir FocusWShell** en su menú. Cerrarla no detiene FocusWShell: sigue funcionando en la bandeja.
+En la ventana principal configuras FocusWShell y ves cómo está todo; el deck es para moverte entre apps durante el día. Ábrela con doble clic en el icono de la bandeja o con **Abrir FocusWShell** en su menú. Cerrarla no detiene FocusWShell: sigue funcionando en la bandeja.
 
-Tiene el aspecto de Windows 11, en tema oscuro o claro, con sus secciones a la izquierda.
+Tiene el aspecto de Windows 11, en tema oscuro o claro, con sus secciones a la izquierda. ¿Empiezas con FocusWShell? [Primeros pasos]({{ '/es/primeros-pasos/' | relative_url }}) la recorre paso a paso.
 
 ![La ventana principal, Inicio]({{ '/assets/img/es/main-home.png' | relative_url }})
 
@@ -32,9 +32,20 @@ Todas las ventanas que FocusWShell puede organizar, con el icono de su app, su t
 
 También aparecen las ventanas que no se pueden organizar, con el motivo: por ejemplo, las apps que se ejecutan como administrador.
 
+![La sección Ventanas]({{ '/assets/img/es/main-windows.png' | relative_url }})
+
+Los botones de arriba: **Actualizar lista**, **Volver a la anterior**, **Foco al panel** y **Liberar todas**.
+
 ## Paneles
 
 Crea, renombra, mueve y borra paneles. Cada uno tiene un sitio (monitor, a la izquierda o a la derecha del foco en el principal, arriba o abajo, hasta dos por columna) y una presentación. Los paneles de los otros monitores pueden ser de *Pantalla completa*.
+
+![La sección Paneles]({{ '/assets/img/es/main-panels.png' | relative_url }})
+
+- **Crear:** escribe un nombre en la última fila, elige su sitio y pulsa **Crear panel**.
+- **Renombrar:** escribe el nombre nuevo y haz clic en otro lado.
+- **Mover:** elige otro sitio. Un sitio ocupado muestra entre paréntesis el panel que lo tiene.
+- **Borrar:** sus ventanas quedan libres, donde están.
 
 ## Apps
 
@@ -44,13 +55,15 @@ Todas las apps que FocusWShell ha visto, con su icono. Cambia cómo se muestra s
 
 Los atajos en uso, y **Cambiar atajos…** para poner otros. En *Gestos de Windows*, elige si Alt+Tab, la Vista de tareas, la barra de tareas o un clic llevan al foco la ventana de un panel. Ver [Atajos]({{ '/es/atajos/' | relative_url }}).
 
+![La sección Atajos y gestos]({{ '/assets/img/es/main-shortcuts.png' | relative_url }})
+
 ## Escenas
 
-Aplica, borra y guarda escenas: qué apps están en cada panel y en el foco. También se aplican con <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>1</kbd>…<kbd>9</kbd>.
+Aplica, borra y guarda escenas: qué apps están en cada panel y en el foco. También se aplican con <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>1</kbd>…<kbd>9</kbd>. Ver [Guardar tu configuración como escena]({{ '/es/guias/#escenas' | relative_url }}).
 
 ## Excluidas
 
-Apps que FocusWShell nunca debe tocar, por ejecutable, AUMID o clase de ventana.
+Apps que FocusWShell nunca debe tocar, por ejecutable, AUMID o clase de ventana. Ver [Dejar una app fuera de FocusWShell]({{ '/es/guias/#excluir' | relative_url }}).
 
 ## General
 

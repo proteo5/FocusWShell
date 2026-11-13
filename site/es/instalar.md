@@ -23,6 +23,8 @@ permalink: /es/instalar/
 
 El instalador copia FocusWShell a `%LOCALAPPDATA%\Programs\FocusWShell`, lo añade al menú Inicio y lo abre. Aparece como un icono en la bandeja, junto al reloj.
 
+**Después:** [Primeros pasos]({{ '/es/primeros-pasos/' | relative_url }}) lo configura paso a paso.
+
 ### «Windows protegió tu PC»
 
 Los archivos todavía no están firmados, así que Windows puede avisarte la primera vez, porque vienen de internet. Elige **Más información → Ejecutar de todas formas**. Puedes comprobar la descarga con el archivo `.sha256` que se publica junto al zip:

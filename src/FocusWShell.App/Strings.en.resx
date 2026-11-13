@@ -32,8 +32,8 @@
   <data name="Assign_Free" xml:space="preserve"><value>— free</value></data>
   <data name="Col_AuxLeft" xml:space="preserve"><value>{0} · left</value></data>
   <data name="Col_AuxRight" xml:space="preserve"><value>{0} · right</value></data>
-  <data name="Col_PrincipalLeft" xml:space="preserve"><value>Principal · left of the focus</value></data>
-  <data name="Col_PrincipalRight" xml:space="preserve"><value>Principal · right of the focus</value></data>
+  <data name="Col_PrincipalLeft" xml:space="preserve"><value>Main · left of the focus</value></data>
+  <data name="Col_PrincipalRight" xml:space="preserve"><value>Main · right of the focus</value></data>
   <data name="DeckMenu_FullscreenOn" xml:space="preserve"><value>Fullscreen on</value></data>
   <data name="DeckMenu_MoveTo" xml:space="preserve"><value>Move to</value></data>
   <data name="DeckMenu_OpenInPanel" xml:space="preserve"><value>Open in its panel</value></data>
@@ -44,7 +44,7 @@
   <data name="DeckMenu_ToFocus" xml:space="preserve"><value>To focus</value></data>
   <data name="DeckMenu_Unpark" xml:space="preserve"><value>Bring back</value></data>
   <data name="DeckMenu_Unpin" xml:space="preserve"><value>Unpin</value></data>
-  <data name="DeckSend_Corner" xml:space="preserve"><value>Corner of the principal monitor (hides itself)</value></data>
+  <data name="DeckSend_Corner" xml:space="preserve"><value>Corner of the main monitor (hides itself)</value></data>
   <data name="DeckSend_LeftHalf" xml:space="preserve"><value>{0}: left half</value></data>
   <data name="DeckSend_RightHalf" xml:space="preserve"><value>{0}: right half</value></data>
   <data name="DeckSend_Whole" xml:space="preserve"><value>{0}: whole</value></data>
@@ -102,9 +102,9 @@
   <data name="Deck_ToPanel" xml:space="preserve"><value>Focus to panel</value></data>
   <data name="Deck_ToPanelShort" xml:space="preserve"><value>To panel</value></data>
   <data name="Display_AMonitor" xml:space="preserve"><value>a monitor</value></data>
-  <data name="Display_Lost" xml:space="preserve"><value>{0} disconnected: its windows move to the principal monitor's panels until it's back.</value></data>
-  <data name="Display_PrincipalBack" xml:space="preserve"><value>{0} is the principal monitor again; {1} gets its panels back.</value></data>
-  <data name="Display_PrincipalLost" xml:space="preserve"><value>The principal monitor disconnected ({0}): {1} becomes the principal one, with the focus and all windows, until it's back.</value></data>
+  <data name="Display_Lost" xml:space="preserve"><value>{0} disconnected: its windows move to the main monitor's panels until it's back.</value></data>
+  <data name="Display_PrincipalBack" xml:space="preserve"><value>{0} is the main monitor again; {1} gets its panels back.</value></data>
+  <data name="Display_PrincipalLost" xml:space="preserve"><value>The main monitor disconnected ({0}): {1} becomes the main one, with the focus and all windows, until it's back.</value></data>
   <data name="Display_Returned" xml:space="preserve"><value>{0} is back: its windows return to it.</value></data>
   <data name="Excl_Added" xml:space="preserve"><value>Excluded: {0}. FocusWShell no longer manages or shows it.</value></data>
   <data name="Excl_Already" xml:space="preserve"><value>Already excluded: {0}.</value></data>
@@ -135,7 +135,7 @@
   <data name="Gesture_TaskView" xml:space="preserve"><value>{0}: picked in task view; it goes to the focus.</value></data>
   <data name="Gesture_Taskbar" xml:space="preserve"><value>{0}: picked on the taskbar; it goes to the focus.</value></data>
   <data name="Header_Aux" xml:space="preserve"><value>   ·   Auxiliary {0} · {1} · {2} DPI</value></data>
-  <data name="Header_Principal" xml:space="preserve"><value>Principal {0} · {1} · {2} DPI</value></data>
+  <data name="Header_Principal" xml:space="preserve"><value>Main {0} · {1} · {2} DPI</value></data>
   <data name="Hk_BoxName" xml:space="preserve"><value>Shortcut for {0}</value></data>
   <data name="Hk_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Hk_Deck" xml:space="preserve"><value>deck</value></data>
@@ -174,7 +174,7 @@
   <data name="Main_AppsHelp" xml:space="preserve"><value>Known apps (added on their own when seen open)</value></data>
   <data name="Main_ColState" xml:space="preserve"><value>State</value></data>
   <data name="Main_ColTitle" xml:space="preserve"><value>Title</value></data>
-  <data name="Main_DeckTip" xml:space="preserve"><value>Show or hide the deck in the corner of the principal monitor</value></data>
+  <data name="Main_DeckTip" xml:space="preserve"><value>Show or hide the deck in the corner of the main monitor</value></data>
   <data name="Main_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Main_ExclClass" xml:space="preserve"><value>Window class</value></data>
   <data name="Main_ExclExecutable" xml:space="preserve"><value>Executable</value></data>
@@ -192,7 +192,7 @@
   <data name="Main_GestureTaskView" xml:space="preserve"><value>Task view (Win+Tab)</value></data>
   <data name="Main_GestureTaskbar" xml:space="preserve"><value>Taskbar</value></data>
   <data name="Main_GesturesLabel" xml:space="preserve"><value>Bring a panel's window to the focus when you pick it with:</value></data>
-  <data name="Main_Help" xml:space="preserve"><value>Pick each window's panel (or leave it free) and press Apply. The focus is always on the principal monitor. In the Panels tab you can rename them, move them to another monitor, change their presentation, delete them or create new ones; deleting a panel leaves its windows free, where they are.</value></data>
+  <data name="Main_Help" xml:space="preserve"><value>Pick each window's panel (or leave it free) and press Apply. The focus is always on the main monitor. In the Panels tab you can rename them, move them to another monitor, change their presentation, delete them or create new ones; deleting a panel leaves its windows free, where they are.</value></data>
   <data name="Main_Hotkeys" xml:space="preserve"><value>Shortcuts…</value></data>
   <data name="Main_HotkeysTip" xml:space="preserve"><value>See and change the global shortcuts</value></data>
   <data name="Main_LanguageAuto" xml:space="preserve"><value>Automatic (Windows)</value></data>
@@ -237,12 +237,12 @@ Restart now?</value></data>
   <data name="Main_UnparkTip" xml:space="preserve"><value>Brings a parked window back to its panel, in the spot it had. It also happens if you open it from the taskbar.</value></data>
   <data name="Main_ViewLabel" xml:space="preserve"><value>View:</value></data>
   <data name="Main_ViewName" xml:space="preserve"><value>View</value></data>
-  <data name="Main_ViewTip" xml:space="preserve"><value>Where the focus goes on the principal monitor</value></data>
+  <data name="Main_ViewTip" xml:space="preserve"><value>Where the focus goes on the main monitor</value></data>
   <data name="Menu_ExcludeApp" xml:space="preserve"><value>Exclude the app {0} ({1})</value></data>
   <data name="Menu_ExcludeClass" xml:space="preserve"><value>Exclude only this kind of window (class {0})</value></data>
   <data name="Menu_SizeOf" xml:space="preserve"><value>Size of {0}</value></data>
   <data name="Monitor_Missing" xml:space="preserve"><value>monitor disconnected</value></data>
-  <data name="Monitor_Principal" xml:space="preserve"><value>Principal</value></data>
+  <data name="Monitor_Principal" xml:space="preserve"><value>Main</value></data>
   <data name="Open_Done" xml:space="preserve"><value>{0} opened in {1}.</value></data>
   <data name="Open_NoWindow20" xml:space="preserve"><value>{0} opened, but none of its windows showed up in 20 s; it stays free.</value></data>
   <data name="Open_NoWindow30" xml:space="preserve"><value>{0} opened, but none of its windows showed up in 30 s; it stays free.</value></data>
@@ -273,11 +273,11 @@ Restore them now?
   <data name="Report_Learned" xml:space="preserve"><value>  · Learned: {0}. It was placed again.</value></data>
   <data name="Report_Left" xml:space="preserve"><value>left</value></data>
   <data name="Report_NotDone" xml:space="preserve"><value>Not done: {0}</value></data>
-  <data name="Report_Principal" xml:space="preserve"><value>Principal: {0}</value></data>
+  <data name="Report_Principal" xml:space="preserve"><value>Main: {0}</value></data>
   <data name="Report_Restored" xml:space="preserve"><value>Restored: {0}</value></data>
   <data name="Report_Right" xml:space="preserve"><value>right</value></data>
   <data name="Scene_Applied" xml:space="preserve"><value>Scene "{0}" applied.</value></data>
-  <data name="Scene_AuxMissing" xml:space="preserve"><value>Auxiliary monitor {0} is not connected: its panels go to the principal one.</value></data>
+  <data name="Scene_AuxMissing" xml:space="preserve"><value>Auxiliary monitor {0} is not connected: its panels go to the main one.</value></data>
   <data name="Scene_DeleteAsk" xml:space="preserve"><value>Delete scene "{0}"? The windows are not moved.</value></data>
   <data name="Scene_Deleted" xml:space="preserve"><value>Scene "{0}" deleted.</value></data>
   <data name="Scene_NeedName" xml:space="preserve"><value>Type a name for the scene.</value></data>
@@ -354,10 +354,10 @@ Restore them now?
   <data name="Where_AuxLeft" xml:space="preserve"><value>{0}, left</value></data>
   <data name="Where_AuxRight" xml:space="preserve"><value>{0}, right</value></data>
   <data name="Where_LowerSuffix" xml:space="preserve"><value> bottom</value></data>
-  <data name="Where_PrincipalLeft" xml:space="preserve"><value>principal, left of the focus</value></data>
-  <data name="Where_PrincipalLeftShort" xml:space="preserve"><value>principal, left</value></data>
-  <data name="Where_PrincipalRight" xml:space="preserve"><value>principal, right of the focus</value></data>
-  <data name="Where_PrincipalRightShort" xml:space="preserve"><value>principal, right</value></data>
+  <data name="Where_PrincipalLeft" xml:space="preserve"><value>main, left of the focus</value></data>
+  <data name="Where_PrincipalLeftShort" xml:space="preserve"><value>main, left</value></data>
+  <data name="Where_PrincipalRight" xml:space="preserve"><value>main, right of the focus</value></data>
+  <data name="Where_PrincipalRightShort" xml:space="preserve"><value>main, right</value></data>
   <data name="Desktop_Switched" xml:space="preserve"><value>{0} is on another desktop: taking you there.</value></data>
   <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} is already open on another desktop. Switch to that desktop to use it.</value></data>
   <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · on another desktop. Tap to go there.</value></data>
@@ -449,7 +449,7 @@ Restore them now?
   <data name="Gen_ThemeDark" xml:space="preserve"><value>Dark</value></data>
   <data name="Gen_AboutText" xml:space="preserve"><value>It keeps the app you are working on in a large, protected area of your main screen, puts the rest in panels around it and on your other monitors, and gives you a deck to move between them.</value></data>
   <data name="Gen_AboutPrivacy" xml:space="preserve"><value>It runs only on your PC: no network connections, no account, no telemetry.</value></data>
-  <data name="Gen_ManualHelp" xml:space="preserve"><value>Installing, first steps, the deck, using a tablet and the shortcuts.</value></data>
+  <data name="Gen_ManualHelp" xml:space="preserve"><value>Installing, getting started, step-by-step guides, the deck and the shortcuts.</value></data>
   <data name="Gen_Releases" xml:space="preserve"><value>Releases</value></data>
   <data name="Gen_ReleasesHelp" xml:space="preserve"><value>Download the latest version and read its notes.</value></data>
   <data name="Gen_ReportHelp" xml:space="preserve"><value>A problem or an idea, on GitHub. Include the version and your monitors.</value></data>

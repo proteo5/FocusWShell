@@ -10,6 +10,8 @@ permalink: /es/deck/
 
 El deck es la superficie de control de FocusWShell: todo lo que puedes hacer, con botones grandes para el dedo. Nunca le quita el teclado a la app en la que trabajas, así que puedes usarlo mientras escribes.
 
+¿Empiezas con FocusWShell? Configúralo primero con [Primeros pasos]({{ '/es/primeros-pasos/' | relative_url }}).
+
 Ábrelo u ocúltalo con <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>D</kbd> o con **Deck** en el menú de la bandeja. En una esquina del principal se oculta solo cuando eliges algo; mandado a un monitor, se queda.
 
 ![El deck]({{ '/assets/img/es/deck.png' | relative_url }})

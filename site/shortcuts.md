@@ -8,7 +8,7 @@ permalink: /shortcuts/
 
 # Shortcuts
 
-All of them use <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd> plus a key, so they do not clash with your apps. Change them in the main window, under **Shortcuts and gestures → Change shortcuts…**: press the new combination and it is saved right away.
+All of them use <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd> plus a key, so they do not clash with your apps. Change them in the main window, under **Shortcuts and gestures → Change shortcuts…**: click a shortcut, press the new combination and **Save**.
 
 | Key | Action |
 | --- | --- |

@@ -23,6 +23,8 @@ permalink: /install/
 
 The installer copies FocusWShell to `%LOCALAPPDATA%\Programs\FocusWShell`, adds it to the Start menu and opens it. It appears as an icon in the tray, next to the clock.
 
+**Next:** [Getting started]({{ '/first-steps/' | relative_url }}) sets it up step by step.
+
 ### "Windows protected your PC"
 
 The files are not signed yet, so Windows may warn you the first time, because they come from the internet. Choose **More info → Run anyway**. You can check the download against the `.sha256` file published next to the zip:
