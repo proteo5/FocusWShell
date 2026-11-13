@@ -129,7 +129,7 @@ Para cambiarlo, abre **Atajos y gestos** y prende o apaga cada uno en *Gestos de
 
 ## Tomarte un descanso de FocusWShell {#descanso}
 
-- **Un momento:** **Liberar todas** (en **Inicio** o en *Sistema* en el deck) devuelve cada ventana a donde estaba. **Reordenar todas** las vuelve a poner en sus paneles.
+- **Un momento:** **Liberar todas** (en **Inicio** o arriba en el deck) devuelve cada ventana a donde estaba. **Reordenar todas** las vuelve a poner en sus paneles.
 - **Por esta sesión:** **Salir**, en el menú de la bandeja, devuelve todas las ventanas y cierra FocusWShell.
 - **Algo va mal:** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>Retroceso</kbd>, en cualquier momento.
 

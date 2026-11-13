@@ -67,3 +67,10 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
 - **Pendiente:**
   - comprobar la desconexión con la tablet de verdad;
 - **Pantalla completa junto al deck:** en el monitor donde está fijado el deck, un panel en «Pantalla completa» no se maximiza. Ocupa el área que deja el deck, bajo su tira de pestañas (`AuxInput.NoMaximize`). Es la idea de Spotify en la tablet.
+
+## Enmienda: el lugar del foco y el modo Minimizar (2026-11-13)
+
+- **El foco tiene su lugar propio.** En el deck ancho, la cabecera pasa a ser FocusWShell (logo, el monitor que se ve y cuántas apps tiene), y la app del foco es un tile grande arriba de *Sistema*: icono, nombre, de qué panel viene y el título de su ventana. En el deck angosto sigue arriba, en la cabecera. En los dos, se toca como una app: en un modo, el modo; si no, su menú. En «Mover», con otra app elegida, es destino: la lleva al foco. En su panel, la del foco ya no va pintada de azul: lleva un borde azul y la ↑, para que no haya dos cosas iguales.
+- **Botones.** Arriba las de acción inmediata: Anterior, Al panel y Liberar todas (que pide un segundo toque). Debajo los cuatro modos en 2×2: Mover y Anclar, que acomodan, a la izquierda; Minimizar y Cerrar, que quitan de la vista, a la derecha. En el deck angosto, dos filas: tres acciones y cuatro modos. Ratón al foco pasa a *Sistema*, junto a Pantalla encendida, Energía y Reordenar todas.
+- **Modo Minimizar…** (verde azulado): como Cerrar, se apaga después de un toque (encendido como Anclar se sentía pegado: cada clic minimizaba otra app). Alterna: minimiza una app en su panel (`Park`) o la trae de vuelta (`Restore`). Sólo para apps en un panel; las libres no tienen dónde quedarse.
+- **«Estacionar» se llama «Minimizar»** en la interfaz y en el sitio. En el código y en el dominio sigue siendo `Park` ([ADR 0006](0006-ocultar-con-minimizar.md)).

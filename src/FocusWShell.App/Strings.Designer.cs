@@ -108,7 +108,7 @@ public static class Strings
     /// <summary>Abrir en su panel</summary>
     public static string DeckMenu_OpenInPanel => ResourceManager.GetString("DeckMenu_OpenInPanel", Culture)!;
 
-    /// <summary>Estacionar</summary>
+    /// <summary>Minimizar</summary>
     public static string DeckMenu_Park => ResourceManager.GetString("DeckMenu_Park", Culture)!;
 
     /// <summary>Anclar a su panel (sale aunque esté cerrada)</summary>
@@ -178,6 +178,13 @@ public static class Strings
     public static string Deck_MoreName => ResourceManager.GetString("Deck_MoreName", Culture)!;
 
     /// <summary>Ratón al foco</summary>
+    public static string Deck_Minimize => ResourceManager.GetString("Deck_Minimize", Culture)!;
+    public static string Deck_Minimizing => ResourceManager.GetString("Deck_Minimizing", Culture)!;
+    public static string Deck_MinimizeTip => ResourceManager.GetString("Deck_MinimizeTip", Culture)!;
+    public static string Deck_HeaderTab => ResourceManager.GetString("Deck_HeaderTab", Culture)!;
+    public static string Deck_FocusFrom => ResourceManager.GetString("Deck_FocusFrom", Culture)!;
+    public static string Deck_FocusEmptyTile => ResourceManager.GetString("Deck_FocusEmptyTile", Culture)!;
+    public static string Deck_FocusTip => ResourceManager.GetString("Deck_FocusTip", Culture)!;
     public static string Deck_Mouse => ResourceManager.GetString("Deck_Mouse", Culture)!;
 
     /// <summary>Ratón</summary>
@@ -369,7 +376,7 @@ public static class Strings
     /// <summary>{0}: la maximizaste en el monitor auxiliar; su panel pasa a pantalla completa.</summary>
     public static string Ext_MaximizedAux => ResourceManager.GetString("Ext_MaximizedAux", Culture)!;
 
-    /// <summary>{0}: la minimizaste; queda estacionada en su panel.</summary>
+    /// <summary>{0}: la minimizaste; sigue en su panel.</summary>
     public static string Ext_Minimized => ResourceManager.GetString("Ext_Minimized", Culture)!;
 
     /// <summary>{0}: la moviste; vuelve a su sitio.</summary>
@@ -484,7 +491,7 @@ public static class Strings
     /// <summary>en el panel</summary>
     public static string ListState_InPanel => ResourceManager.GetString("ListState_InPanel", Culture)!;
 
-    /// <summary>estacionada</summary>
+    /// <summary>minimizada</summary>
     public static string ListState_Parked => ResourceManager.GetString("ListState_Parked", Culture)!;
 
     /// <summary>Lista {0}: {1} ({2})</summary>
@@ -620,7 +627,7 @@ public static class Strings
     /// <summary>Cada monitor tiene dos columnas (izquierda y derecha) y cada una puede partirse </summary>
     public static string Main_PanelsHelp => ResourceManager.GetString("Main_PanelsHelp", Culture)!;
 
-    /// <summary>Estacionar</summary>
+    /// <summary>Minimizar</summary>
     public static string Main_Park => ResourceManager.GetString("Main_Park", Culture)!;
 
     /// <summary>Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa </summary>
@@ -905,7 +912,7 @@ public static class Strings
     /// <summary> (monitor desconectado)</summary>
     public static string State_MonitorMissing => ResourceManager.GetString("State_MonitorMissing", Culture)!;
 
-    /// <summary>Estacionada en {0}{1}</summary>
+    /// <summary>Minimizada en {0}{1}</summary>
     public static string State_Parked => ResourceManager.GetString("State_Parked", Culture)!;
 
     /// <summary>No gestionable: {0}</summary>

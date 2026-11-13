@@ -45,7 +45,7 @@ When you bring an app to the focus, the one that was there **goes back to its pa
 
 Apps in a panel can also be:
 
-- **Parked:** open but set aside (minimized). They come back from their panel.
+- **Minimized:** open but set aside. They keep their panel and come back from it.
 - **Out of layout:** you moved or resized one by hand; FocusWShell leaves it where you put it until you bring it back.
 
 ## The main screen layout
@@ -78,7 +78,7 @@ Each panel shows its apps in one of these ways. Change it in the panel header in
 
 Above each panel there is a thin **strip** with one tab per app:
 
-- **Click:** shows it in the panel (or brings it back if it was parked).
+- **Click:** shows it in the panel (or restores it if it was minimized).
 - **Double-click:** brings it to the focus.
 - **Right-click:** everything else.
 
@@ -96,7 +96,7 @@ Before moving any window, FocusWShell writes down where it was. **Exit**, the em
 
 **"I dragged a window and it went back."** Windows in a panel keep their place. Drop it on the focus or on another panel to move it there; to place it yourself, free it first.
 
-**"An app disappeared."** Its column may be off (its apps wait minimized in their panel), it may be parked, or it may be behind another app in a panel with tabs. Look for it in the deck or in **Windows**: tapping it brings it to the focus.
+**"An app disappeared."** Its column may be off (its apps wait minimized in their panel), it may be minimized, or it may be behind another app in a panel with tabs. Look for it in the deck or in **Windows**: tapping it brings it to the focus.
 
 **"A window is not in the list."** Apps running as administrator cannot be moved and are listed at the end with the reason. Excluded apps are not listed at all: see **Excluded** in the main window.
 

@@ -35,6 +35,7 @@ public static class DeckPreview
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-cerrar.png"), mode: "cerrar");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-energia.png"), mode: "energia");
             Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-anclar.png"), mode: "anclar");
+            Save(Sample(manyApps: false), width, height, Path.Combine(folder, $"deck-{name}-minimizar.png"), mode: "minimizar");
             // Disposición del principal (ADR 0012, enmienda): Trabajo apagado en un ultrawide (sale «⇠ Trabajo»),
             // un monitor normal con sólo Trabajo y Solo foco.
             Save(Arranged(FocusPosition.ContextOnly, ultrawide: true), width, height, Path.Combine(folder, $"deck-{name}-solo-contexto.png"));

@@ -26,7 +26,7 @@ It follows the look of Windows 11, in a dark or light theme, with its sections o
 Every window FocusWShell can organize, with its app's icon, its title and its state. **Choose a panel and it applies right away**: *free*, *to the focus* or any panel. The other actions are in **…** at the end of the row, or on right-click:
 
 - to the focus, or fullscreen on a monitor;
-- park or bring back, re-fit, free it;
+- minimize or restore, re-fit, free it;
 - how its size is handled (some apps have a fixed size);
 - exclude its app or its kind of window.
 

@@ -14,7 +14,7 @@ public enum TabState
     /// <summary>Minimizada por la pila (otra pestaña es la visible).</summary>
     Hidden,
 
-    /// <summary>Estacionada.</summary>
+    /// <summary>Minimizada en su panel.</summary>
     Parked,
 
     /// <summary>Está en el Centro y volverá aquí.</summary>

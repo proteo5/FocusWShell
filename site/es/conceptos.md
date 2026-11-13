@@ -45,7 +45,7 @@ Cuando llevas una app al foco, la que estaba **vuelve a su panel**. Una ventana 
 
 Las apps de un panel también pueden estar:
 
-- **Estacionadas:** abiertas pero apartadas (minimizadas). Vuelven desde su panel.
+- **Minimizadas:** abiertas pero apartadas. Siguen en su panel y vuelven desde él.
 - **Fuera de layout:** moviste o redimensionaste una a mano; FocusWShell la deja donde la pusiste hasta que la devuelvas.
 
 ## La disposición del principal
@@ -78,7 +78,7 @@ Cada panel muestra sus apps de una de estas formas. Se cambia en la cabecera del
 
 Encima de cada panel hay una **tira** fina con una pestaña por app:
 
-- **Clic:** la muestra en el panel (o la recupera si estaba estacionada).
+- **Clic:** la muestra en el panel (o la restaura si estaba minimizada).
 - **Doble clic:** la lleva al foco.
 - **Clic derecho:** todo lo demás.
 
@@ -96,7 +96,7 @@ Antes de mover cualquier ventana, FocusWShell apunta dónde estaba. **Salir**, e
 
 **«Arrastré una ventana y volvió.»** Las ventanas de un panel conservan su sitio. Suéltala sobre el foco o sobre otro panel para llevarla ahí; para acomodarla tú, libérala primero.
 
-**«Desapareció una app.»** Puede que su columna esté apagada (sus apps esperan minimizadas en su panel), que esté estacionada o que esté detrás de otra en un panel con pestañas. Búscala en el deck o en **Ventanas**: tocarla la trae al foco.
+**«Desapareció una app.»** Puede que su columna esté apagada (sus apps esperan minimizadas en su panel), que esté minimizada o que esté detrás de otra en un panel con pestañas. Búscala en el deck o en **Ventanas**: tocarla la trae al foco.
 
 **«Una ventana no sale en la lista.»** Las apps que se ejecutan como administrador no se pueden mover y salen al final con el motivo. Las apps excluidas no salen: ve a **Excluidas** en la ventana principal.
 

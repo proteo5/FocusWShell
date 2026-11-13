@@ -51,7 +51,7 @@ You can rename the panels or create more later. It is fine to start with only tw
 
 The **State** column tells you what FocusWShell is doing with each window. To let a window go, choose **— free**: it goes back to where it was.
 
-The **…** button at the end of each row (or a right-click) has the rest: send it to the focus or fullscreen, park it, free it, or exclude its app so FocusWShell never touches it again.
+The **…** button at the end of each row (or a right-click) has the rest: send it to the focus or fullscreen, minimize it, free it, or exclude its app so FocusWShell never touches it again.
 
 ## Step 4. Bring an app to the focus
 

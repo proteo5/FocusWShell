@@ -13,7 +13,7 @@ public enum ListItemState
     /// <summary>En el foco o en pantalla completa: volverá a este panel.</summary>
     InFocus,
 
-    /// <summary>Estacionada.</summary>
+    /// <summary>Minimizada en su panel.</summary>
     Parked,
 
     /// <summary>Fuera de layout.</summary>

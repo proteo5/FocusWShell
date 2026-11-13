@@ -57,7 +57,7 @@
   <data name="Rej_AlreadyCenter" xml:space="preserve"><value>{0} is already in the focus.</value></data>
   <data name="Rej_AlreadyManaged" xml:space="preserve"><value>{0} is already managed.</value></data>
   <data name="Rej_CantFullscreen" xml:space="preserve"><value>{0} can't go fullscreen from {1}.</value></data>
-  <data name="Rej_CantPark" xml:space="preserve"><value>{0} can't be parked from {1}.</value></data>
+  <data name="Rej_CantPark" xml:space="preserve"><value>{0} can't be minimized from {1}.</value></data>
   <data name="Rej_CantPromote" xml:space="preserve"><value>{0} can't go to the focus from {1}.</value></data>
   <data name="Rej_EmptyName" xml:space="preserve"><value>The name can't be empty.</value></data>
   <data name="Rej_FillOnlyAux" xml:space="preserve"><value>Fullscreen only works on auxiliary monitors: the main one has the focus.</value></data>
@@ -71,7 +71,7 @@
   <data name="Rej_NotManaged" xml:space="preserve"><value>The window is not managed.</value></data>
   <data name="Rej_NotSameColumn" xml:space="preserve"><value>"{0}" and "{1}" are not in the same column.</value></data>
   <data name="Rej_OnlyCenterReturns" xml:space="preserve"><value>Only the focus window can go back to its panel.</value></data>
-  <data name="Rej_OnlyParkedRestores" xml:space="preserve"><value>Only a parked window can be brought back.</value></data>
+  <data name="Rej_OnlyParkedRestores" xml:space="preserve"><value>Only a minimized window can be restored.</value></data>
   <data name="Rej_PanelExists" xml:space="preserve"><value>A panel "{0}" already exists.</value></data>
   <data name="Rej_PanelNeedsName" xml:space="preserve"><value>The panel needs an id and a name.</value></data>
   <data name="Rej_ReplacePanelsBusy" xml:space="preserve"><value>Panels can only be replaced with no managed windows.</value></data>

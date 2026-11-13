@@ -51,7 +51,7 @@ Puedes renombrar los paneles o crear más después. Está bien empezar sólo con
 
 La columna **Estado** dice qué hace FocusWShell con cada ventana. Para soltar una ventana, elige **— libre**: vuelve a donde estaba.
 
-El botón **…** al final de cada fila (o el clic derecho) tiene lo demás: llevarla al foco o a pantalla completa, estacionarla, liberarla, o excluir su app para que FocusWShell no la vuelva a tocar.
+El botón **…** al final de cada fila (o el clic derecho) tiene lo demás: llevarla al foco o a pantalla completa, minimizarla, liberarla, o excluir su app para que FocusWShell no la vuelva a tocar.
 
 ## Paso 4. Lleva una app al foco
 

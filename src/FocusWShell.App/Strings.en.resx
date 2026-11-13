@@ -37,12 +37,12 @@
   <data name="DeckMenu_FullscreenOn" xml:space="preserve"><value>Fullscreen on</value></data>
   <data name="DeckMenu_MoveTo" xml:space="preserve"><value>Move to</value></data>
   <data name="DeckMenu_OpenInPanel" xml:space="preserve"><value>Open in its panel</value></data>
-  <data name="DeckMenu_Park" xml:space="preserve"><value>Park</value></data>
+  <data name="DeckMenu_Park" xml:space="preserve"><value>Minimize</value></data>
   <data name="DeckMenu_Pin" xml:space="preserve"><value>Pin to its panel (shown even when closed)</value></data>
   <data name="DeckMenu_PutIn" xml:space="preserve"><value>Put in</value></data>
   <data name="DeckMenu_Release" xml:space="preserve"><value>Free (back to its original spot)</value></data>
   <data name="DeckMenu_ToFocus" xml:space="preserve"><value>To focus</value></data>
-  <data name="DeckMenu_Unpark" xml:space="preserve"><value>Bring back</value></data>
+  <data name="DeckMenu_Unpark" xml:space="preserve"><value>Restore</value></data>
   <data name="DeckMenu_Unpin" xml:space="preserve"><value>Unpin</value></data>
   <data name="DeckSend_Corner" xml:space="preserve"><value>Corner of the main monitor (hides itself)</value></data>
   <data name="DeckSend_LeftHalf" xml:space="preserve"><value>{0}: left half</value></data>
@@ -59,6 +59,13 @@
   <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} is in front (it gets the keyboard), but it isn't the focus app</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} more</value></data>
   <data name="Deck_MoreName" xml:space="preserve"><value>Deck: more apps</value></data>
+  <data name="Deck_Minimize" xml:space="preserve"><value>Minimize</value></data>
+  <data name="Deck_Minimizing" xml:space="preserve"><value>Minimizing…</value></data>
+  <data name="Deck_MinimizeTip" xml:space="preserve"><value>Tap an app to minimize it in its panel; tap it again to bring it back.</value></data>
+  <data name="Deck_HeaderTab" xml:space="preserve"><value>{0} · {1} apps</value></data>
+  <data name="Deck_FocusFrom" xml:space="preserve"><value>from {0}</value></data>
+  <data name="Deck_FocusEmptyTile" xml:space="preserve"><value>Focus is empty</value></data>
+  <data name="Deck_FocusTip" xml:space="preserve"><value>{0} · in the focus. Tap to see what to do with it.</value></data>
   <data name="Deck_Mouse" xml:space="preserve"><value>Mouse to focus</value></data>
   <data name="Deck_MouseShort" xml:space="preserve"><value>Mouse</value></data>
   <data name="Deck_MouseTip" xml:space="preserve"><value>Moves the mouse pointer to the center of the focus app (or, if there is none, to the center of the main screen)</value></data>
@@ -121,7 +128,7 @@
   <data name="Ext_FocusToOtherPanel" xml:space="preserve"><value>{0}: you took it out of the focus to another panel.</value></data>
   <data name="Ext_Maximized" xml:space="preserve"><value>{0}: you maximized it; it is out of the layout until you restore or re-fit it.</value></data>
   <data name="Ext_MaximizedAux" xml:space="preserve"><value>{0}: you maximized it on the auxiliary monitor; its panel goes fullscreen.</value></data>
-  <data name="Ext_Minimized" xml:space="preserve"><value>{0}: you minimized it; it stays parked in its panel.</value></data>
+  <data name="Ext_Minimized" xml:space="preserve"><value>{0}: you minimized it; it stays in its panel.</value></data>
   <data name="Ext_Moved" xml:space="preserve"><value>{0}: you moved it; it goes back to its spot.</value></data>
   <data name="Ext_ProportionsMoved" xml:space="preserve"><value>{0}: you moved the divider; this view is now {1}.</value></data>
   <data name="Ext_ShownActive" xml:space="preserve"><value>{0}: you opened it; it becomes the visible one in its panel.</value></data>
@@ -160,7 +167,7 @@
   <data name="ListState_Detached" xml:space="preserve"><value>out of the layout</value></data>
   <data name="ListState_InFocus" xml:space="preserve"><value>in the focus</value></data>
   <data name="ListState_InPanel" xml:space="preserve"><value>in the panel</value></data>
-  <data name="ListState_Parked" xml:space="preserve"><value>parked</value></data>
+  <data name="ListState_Parked" xml:space="preserve"><value>minimized</value></data>
   <data name="List_CardName" xml:space="preserve"><value>List {0}: {1} ({2})</value></data>
   <data name="List_ColName" xml:space="preserve"><value>Name</value></data>
   <data name="List_Details" xml:space="preserve"><value>Details</value></data>
@@ -208,8 +215,8 @@ Restart now?</value></data>
   <data name="Main_OpenMissing" xml:space="preserve"><value>Open missing apps</value></data>
   <data name="Main_OpenMissingTip" xml:space="preserve"><value>When applying a scene, open the apps that aren't open (if the catalog knows how) and put their window in their panel.</value></data>
   <data name="Main_PanelsHelp" xml:space="preserve"><value>Each monitor has two columns (left and right) and each one can be split top and bottom. To create a panel, type its name in the last row, choose where it goes and press Create panel.</value></data>
-  <data name="Main_Park" xml:space="preserve"><value>Park</value></data>
-  <data name="Main_ParkTip" xml:space="preserve"><value>Sets the selected window aside (minimized) without removing its panel. It also happens if you minimize it.</value></data>
+  <data name="Main_Park" xml:space="preserve"><value>Minimize</value></data>
+  <data name="Main_ParkTip" xml:space="preserve"><value>Minimizes the selected window without removing its panel. It also happens if you minimize it.</value></data>
   <data name="Main_Promote" xml:space="preserve"><value>To focus</value></data>
   <data name="Main_PromoteTip" xml:space="preserve"><value>Brings the selected window to the focus</value></data>
   <data name="Main_Reattach" xml:space="preserve"><value>Re-fit</value></data>
@@ -235,8 +242,8 @@ Restart now?</value></data>
   <data name="Main_TabPanelsName" xml:space="preserve"><value>Panels tab</value></data>
   <data name="Main_TabWindows" xml:space="preserve"><value>Windows</value></data>
   <data name="Main_TabWindowsName" xml:space="preserve"><value>Windows tab</value></data>
-  <data name="Main_Unpark" xml:space="preserve"><value>Bring back</value></data>
-  <data name="Main_UnparkTip" xml:space="preserve"><value>Brings a parked window back to its panel, in the spot it had. It also happens if you open it from the taskbar.</value></data>
+  <data name="Main_Unpark" xml:space="preserve"><value>Restore</value></data>
+  <data name="Main_UnparkTip" xml:space="preserve"><value>Brings a minimized window back to its panel, in the spot it had. It also happens if you open it from the taskbar.</value></data>
   <data name="Main_ViewLabel" xml:space="preserve"><value>View:</value></data>
   <data name="Main_ViewName" xml:space="preserve"><value>View</value></data>
   <data name="Main_ViewTip" xml:space="preserve"><value>Where the focus goes on the main monitor</value></data>
@@ -305,7 +312,7 @@ Restore them now?
   <data name="State_Fullscreen" xml:space="preserve"><value>Fullscreen (goes back to {0})</value></data>
   <data name="State_In" xml:space="preserve"><value>In {0}{1}</value></data>
   <data name="State_MonitorMissing" xml:space="preserve"><value> (monitor disconnected)</value></data>
-  <data name="State_Parked" xml:space="preserve"><value>Parked in {0}{1}</value></data>
+  <data name="State_Parked" xml:space="preserve"><value>Minimized in {0}{1}</value></data>
   <data name="State_Unmanageable" xml:space="preserve"><value>Not manageable: {0}</value></data>
   <data name="Status_Resumed" xml:space="preserve"><value>Back from sleep: windows and monitors were checked.</value></data>
   <data name="Strip_RowsDown" xml:space="preserve"><value>Rows below</value></data>
@@ -314,7 +321,7 @@ Restore them now?
   <data name="Strip_TipDetached" xml:space="preserve"><value>{0} · out of the layout. Click: re-fit it.</value></data>
   <data name="Strip_TipHidden" xml:space="preserve"><value>{0} · hidden (another tab or row). Click: show it. Double-click: to focus.</value></data>
   <data name="Strip_TipInFocus" xml:space="preserve"><value>{0} · is in the focus and will come back here. Click: send it back.</value></data>
-  <data name="Strip_TipParked" xml:space="preserve"><value>{0} · parked. Click: bring it back. Double-click: to focus.</value></data>
+  <data name="Strip_TipParked" xml:space="preserve"><value>{0} · minimized. Click: restore it. Double-click: to focus.</value></data>
   <data name="Strip_ToFocus" xml:space="preserve"><value>To focus</value></data>
   <data name="Tile_Large" xml:space="preserve"><value>Large (3 columns)</value></data>
   <data name="Tile_Medium" xml:space="preserve"><value>Medium (2 columns)</value></data>
