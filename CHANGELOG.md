@@ -4,6 +4,18 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
+## 0.2.0-alpha
+
+A modern main window. / Una ventana principal moderna.
+
+- Redesigned with WPF-UI, in the style of Windows 11: side navigation, Home with a map of your monitors, the layout toggles and quick actions. / Rediseñada con WPF-UI, al estilo de Windows 11: navegación lateral, Inicio con un mapa de tus monitores, los interruptores de la disposición y acciones rápidas.
+- Choosing a window's panel applies right away; its other actions are in «…». / Elegir el panel de una ventana se aplica al momento; sus demás acciones están en «…».
+- Light or dark theme, or the one of Windows. / Tema claro u oscuro, o el de Windows.
+- General: language, theme, start with Windows, keep the screen on, and an About page with links and licenses. / General: idioma, tema, iniciar con Windows, pantalla encendida y «Acerca de» con enlaces y licencias.
+- Short messages in a strip that closes by itself, instead of a console. / Avisos cortos en una franja que se cierra sola, en lugar de una consola.
+
+Notes / Notas: [v0.2.0-alpha](.github/release-notes/v0.2.0-alpha.md)
+
 ## 0.1.0-alpha
 
 First release, for a small group of testers. / Primera versión, para un grupo pequeño de testers.

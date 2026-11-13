@@ -1145,4 +1145,126 @@ public static class Strings
     public static string Arr_FocusOnly => ResourceManager.GetString("Arr_FocusOnly", Culture)!;
 
     public static string Main_ResetWidthTip => ResourceManager.GetString("Main_ResetWidthTip", Culture)!;
+
+    public static string Nav_Home => ResourceManager.GetString("Nav_Home", Culture)!;
+
+    public static string Nav_Windows => ResourceManager.GetString("Nav_Windows", Culture)!;
+
+    public static string Nav_Panels => ResourceManager.GetString("Nav_Panels", Culture)!;
+
+    public static string Nav_Apps => ResourceManager.GetString("Nav_Apps", Culture)!;
+
+    public static string Nav_Shortcuts => ResourceManager.GetString("Nav_Shortcuts", Culture)!;
+
+    public static string Nav_Scenes => ResourceManager.GetString("Nav_Scenes", Culture)!;
+
+    public static string Nav_Excluded => ResourceManager.GetString("Nav_Excluded", Culture)!;
+
+    public static string Nav_General => ResourceManager.GetString("Nav_General", Culture)!;
+
+    public static string Home_Monitors => ResourceManager.GetString("Home_Monitors", Culture)!;
+
+    public static string Home_Layout => ResourceManager.GetString("Home_Layout", Culture)!;
+
+    public static string Home_Actions => ResourceManager.GetString("Home_Actions", Culture)!;
+
+    public static string Home_OpenDeck => ResourceManager.GetString("Home_OpenDeck", Culture)!;
+
+    public static string Home_SafetyTitle => ResourceManager.GetString("Home_SafetyTitle", Culture)!;
+
+    public static string Home_SafetyText => ResourceManager.GetString("Home_SafetyText", Culture)!;
+
+    public static string Home_Focus => ResourceManager.GetString("Home_Focus", Culture)!;
+
+    public static string Home_FocusEmpty => ResourceManager.GetString("Home_FocusEmpty", Culture)!;
+
+    public static string Home_FocusFull => ResourceManager.GetString("Home_FocusFull", Culture)!;
+
+    public static string Home_PanelLine => ResourceManager.GetString("Home_PanelLine", Culture)!;
+
+    public static string Home_Main => ResourceManager.GetString("Home_Main", Culture)!;
+
+    public static string Home_LayoutHint => ResourceManager.GetString("Home_LayoutHint", Culture)!;
+
+    public static string Win_Help => ResourceManager.GetString("Win_Help", Culture)!;
+
+    public static string Win_ColApp => ResourceManager.GetString("Win_ColApp", Culture)!;
+
+    public static string Win_ColPanel => ResourceManager.GetString("Win_ColPanel", Culture)!;
+
+    public static string Win_More => ResourceManager.GetString("Win_More", Culture)!;
+
+    public static string Sc_Keys => ResourceManager.GetString("Sc_Keys", Culture)!;
+
+    public static string Sc_KeysHelp => ResourceManager.GetString("Sc_KeysHelp", Culture)!;
+
+    public static string Sc_Edit => ResourceManager.GetString("Sc_Edit", Culture)!;
+
+    public static string Sc_Gestures => ResourceManager.GetString("Sc_Gestures", Culture)!;
+
+    public static string Sc_GesturesHelp => ResourceManager.GetString("Sc_GesturesHelp", Culture)!;
+
+    public static string Scn_Help => ResourceManager.GetString("Scn_Help", Culture)!;
+
+    public static string Scn_Saved => ResourceManager.GetString("Scn_Saved", Culture)!;
+
+    public static string Scn_SaveTitle => ResourceManager.GetString("Scn_SaveTitle", Culture)!;
+
+    public static string Scn_NamePlaceholder => ResourceManager.GetString("Scn_NamePlaceholder", Culture)!;
+
+    public static string Gen_Language => ResourceManager.GetString("Gen_Language", Culture)!;
+
+    public static string Gen_LanguageHelp => ResourceManager.GetString("Gen_LanguageHelp", Culture)!;
+
+    public static string Gen_Startup => ResourceManager.GetString("Gen_Startup", Culture)!;
+
+    public static string Gen_StartupHelp => ResourceManager.GetString("Gen_StartupHelp", Culture)!;
+
+    public static string Gen_Awake => ResourceManager.GetString("Gen_Awake", Culture)!;
+
+    public static string Gen_AwakeHelp => ResourceManager.GetString("Gen_AwakeHelp", Culture)!;
+
+    public static string Gen_About => ResourceManager.GetString("Gen_About", Culture)!;
+
+    public static string Gen_Version => ResourceManager.GetString("Gen_Version", Culture)!;
+
+    public static string Gen_Manual => ResourceManager.GetString("Gen_Manual", Culture)!;
+
+    public static string Gen_Report => ResourceManager.GetString("Gen_Report", Culture)!;
+
+    public static string Gen_Settings => ResourceManager.GetString("Gen_Settings", Culture)!;
+
+    public static string Gen_Tagline => ResourceManager.GetString("Gen_Tagline", Culture)!;
+
+    public static string Home_NoPanels => ResourceManager.GetString("Home_NoPanels", Culture)!;
+
+    public static string Gen_Theme => ResourceManager.GetString("Gen_Theme", Culture)!;
+
+    public static string Gen_ThemeHelp => ResourceManager.GetString("Gen_ThemeHelp", Culture)!;
+
+    public static string Gen_ThemeAuto => ResourceManager.GetString("Gen_ThemeAuto", Culture)!;
+
+    public static string Gen_ThemeLight => ResourceManager.GetString("Gen_ThemeLight", Culture)!;
+
+    public static string Gen_ThemeDark => ResourceManager.GetString("Gen_ThemeDark", Culture)!;
+
+    public static string Gen_AboutText => ResourceManager.GetString("Gen_AboutText", Culture)!;
+
+    public static string Gen_AboutPrivacy => ResourceManager.GetString("Gen_AboutPrivacy", Culture)!;
+
+    public static string Gen_ManualHelp => ResourceManager.GetString("Gen_ManualHelp", Culture)!;
+
+    public static string Gen_Releases => ResourceManager.GetString("Gen_Releases", Culture)!;
+
+    public static string Gen_ReleasesHelp => ResourceManager.GetString("Gen_ReleasesHelp", Culture)!;
+
+    public static string Gen_ReportHelp => ResourceManager.GetString("Gen_ReportHelp", Culture)!;
+
+    public static string Gen_Source => ResourceManager.GetString("Gen_Source", Culture)!;
+
+    public static string Gen_License => ResourceManager.GetString("Gen_License", Culture)!;
+
+    public static string Gen_LicenseHelp => ResourceManager.GetString("Gen_LicenseHelp", Culture)!;
+
+    public static string Gen_ThirdParty => ResourceManager.GetString("Gen_ThirdParty", Culture)!;
 }

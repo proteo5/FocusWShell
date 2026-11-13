@@ -12,7 +12,7 @@
   <data name="Action_RestoreAll" xml:space="preserve"><value>Free all</value></data>
   <data name="Action_Scene" xml:space="preserve"><value>Scene {0}</value></data>
   <data name="Action_ToFocus" xml:space="preserve"><value>To focus (the active window)</value></data>
-  <data name="Action_View" xml:space="preserve"><value>Change view</value></data>
+  <data name="Action_View" xml:space="preserve"><value>Next main screen layout</value></data>
   <data name="And" xml:space="preserve"><value> and </value></data>
   <data name="Apply_CaptureFailed" xml:space="preserve"><value>Couldn't capture the original state of every window; nothing was moved.</value></data>
   <data name="Apply_LearnedMin" xml:space="preserve"><value>{0} → minimum {1}</value></data>

@@ -32,7 +32,7 @@ Una ventana sólo cambia de lugar cuando tú lo decides. Hacer clic en el chat o
 
 ## Instalar
 
-1. Descarga `FocusWShell-0.1.0-alpha-win-x64.zip` desde [Releases](https://github.com/proteo5/FocusWShell/releases).
+1. Descarga `FocusWShell-0.2.0-alpha-win-x64.zip` desde [Releases](https://github.com/proteo5/FocusWShell/releases).
 2. Descomprime todo el zip y haz doble clic en **install.cmd**.
 3. FocusWShell se abre y aparece en la bandeja, junto al reloj. También está en el menú Inicio.
 

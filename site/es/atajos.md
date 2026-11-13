@@ -8,7 +8,7 @@ permalink: /es/atajos/
 
 # Atajos
 
-Todos usan <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd> más una tecla, para no chocar con tus apps. Cámbialos en **Atajos…**, en la ventana principal: pulsa la combinación nueva y se guarda al momento.
+Todos usan <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd> más una tecla, para no chocar con tus apps. Cámbialos en la ventana principal, en **Atajos y gestos → Cambiar atajos…**: pulsa la combinación nueva y se guarda al momento.
 
 | Tecla | Acción |
 | --- | --- |
@@ -24,6 +24,6 @@ Todos usan <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd> más una tecla, para
 
 ## Gestos de Windows
 
-Con los ajustes de siempre, elegir una ventana que está en un panel con **Alt+Tab**, la **Vista de tareas** (Win+Tab) o la **barra de tareas** la lleva al foco. Hacer clic en una ventana, no. Se cambia en la ventana principal, en *Ventanas*.
+Con los ajustes de siempre, elegir una ventana que está en un panel con **Alt+Tab**, la **Vista de tareas** (Win+Tab) o la **barra de tareas** la lleva al foco. Hacer clic en una ventana, no. Se cambia en la ventana principal, en **Atajos y gestos**.
 
 Arrastrar una ventana sobre el foco o sobre otro panel la lleva allí. Arrastrarla a otra parte y soltarla la devuelve a su sitio.

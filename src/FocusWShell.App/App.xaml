@@ -1,6 +1,19 @@
 <Application x:Class="FocusWShell.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              ShutdownMode="OnExplicitShutdown">
-    <Application.Resources />
+    <Application.Resources>
+        <!-- Sólo los colores del tema de WPF-UI (oscuro o claro, como Windows). Los estilos de los controles
+             se cargan en la ventana principal, para no cambiar el deck, las tiras ni las listas. -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ThemesDictionary Theme="Dark" />
+                <!-- La fuente y los tamaños de los iconos: SymbolIcon los busca en los recursos de la aplicación.
+                     Son sólo valores, no estilos: el deck no cambia. -->
+                <ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Variables.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Fonts.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>

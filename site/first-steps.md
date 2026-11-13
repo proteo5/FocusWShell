@@ -46,6 +46,6 @@ To change a width, drag the border between two windows. It is remembered for tha
 
 ## 6. Make it yours
 
-- Panels on your other monitors, and new panels: the **Panels** tab of the main window (see [Main window and settings]({{ '/main-window/' | relative_url }})).
+- Panels on your other monitors, and new panels: **Panels** in the main window (see [Main window and settings]({{ '/main-window/' | relative_url }})).
 - Send the deck to a tablet: see [Using a tablet]({{ '/tablet/' | relative_url }}).
 - Every Chrome and Edge tab in one place: see [Browser pages]({{ '/browser-pages/' | relative_url }}).

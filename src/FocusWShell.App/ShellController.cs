@@ -776,6 +776,16 @@ public sealed class ShellController : IDisposable
     /// Nombre de la app de una ventana: el del catálogo o, si no está, el del proceso. Así las apps de la
     /// Store dejan de verse como "ApplicationFrameHost".
     /// </summary>
+    /// <summary>La app del catálogo de una ventana, si se conoce (para su icono).</summary>
+    public CatalogApp? CatalogAppOf(WindowSnapshot window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        lock (_gate)
+        {
+            return _catalog.Find(MinSizeCatalog.KeyFor(window));
+        }
+    }
+
     public string AppName(WindowSnapshot window)
     {
         ArgumentNullException.ThrowIfNull(window);

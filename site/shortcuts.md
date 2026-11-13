@@ -8,7 +8,7 @@ permalink: /shortcuts/
 
 # Shortcuts
 
-All of them use <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd> plus a key, so they do not clash with your apps. Change them in **Shortcuts…** in the main window: press the new combination and it is saved right away.
+All of them use <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd> plus a key, so they do not clash with your apps. Change them in the main window, under **Shortcuts and gestures → Change shortcuts…**: press the new combination and it is saved right away.
 
 | Key | Action |
 | --- | --- |
@@ -24,6 +24,6 @@ All of them use <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd> plus a key, so t
 
 ## Windows gestures
 
-With the default settings, choosing a window that is in a panel with **Alt+Tab**, **Task view** (Win+Tab) or the **taskbar** brings it to the focus. Clicking a window does not. Change this in the main window, under *Windows*.
+With the default settings, choosing a window that is in a panel with **Alt+Tab**, **Task view** (Win+Tab) or the **taskbar** brings it to the focus. Clicking a window does not. Change this in the main window, under **Shortcuts and gestures**.
 
 Dragging a window onto the focus or onto another panel moves it there. Dragging it elsewhere and letting go puts it back in its place.

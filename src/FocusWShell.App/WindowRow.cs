@@ -25,6 +25,9 @@ public sealed class WindowRow(WindowSnapshot snapshot, string assignment, string
 
     public string Title => Snapshot.Title;
 
+    /// <summary>El icono de su app, si se conoce.</summary>
+    public System.Windows.Media.ImageSource? Icon { get; init; }
+
     /// <summary>Lo que el gestor hace ahora con la ventana, según el modelo.</summary>
     public string State { get; init; } = "";
 

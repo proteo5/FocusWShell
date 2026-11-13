@@ -24,6 +24,9 @@ public sealed class AppSettings
     /// <summary>Idioma de la interfaz: <c>auto</c> (el de Windows), <c>es</c> o <c>en</c>. Se aplica al arrancar.</summary>
     public string Language { get; set; } = Localization.Auto;
 
+    /// <summary>Tema de la ventana principal: <c>auto</c> (el de Windows), <c>light</c> o <c>dark</c>.</summary>
+    public string Theme { get; set; } = "auto";
+
     /// <summary>Mantener la pantalla encendida (ADR 0010). Se recuerda entre sesiones.</summary>
     public bool KeepDisplayOn { get; set; }
 
