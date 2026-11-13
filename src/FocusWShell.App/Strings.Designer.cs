@@ -473,6 +473,7 @@ public static class Strings
 
     /// <summary>cerrada</summary>
     public static string ListState_Closed => ResourceManager.GetString("ListState_Closed", Culture)!;
+    public static string ListState_InTray => ResourceManager.GetString("ListState_InTray", Culture)!;
 
     /// <summary>fuera de layout</summary>
     public static string ListState_Detached => ResourceManager.GetString("ListState_Detached", Culture)!;
@@ -506,6 +507,7 @@ public static class Strings
 
     /// <summary>{0} · cerrada. Clic: abrirla en este panel.</summary>
     public static string List_TipClosed => ResourceManager.GetString("List_TipClosed", Culture)!;
+    public static string List_TipInTray => ResourceManager.GetString("List_TipInTray", Culture)!;
 
     /// <summary>{0} · está en el foco.</summary>
     public static string List_TipInFocus => ResourceManager.GetString("List_TipInFocus", Culture)!;
@@ -1074,6 +1076,7 @@ public static class Strings
     public static string Desktop_OpenElsewhere => ResourceManager.GetString("Desktop_OpenElsewhere", Culture)!;
 
     public static string Deck_OtherDesktopTip => ResourceManager.GetString("Deck_OtherDesktopTip", Culture)!;
+    public static string Deck_InTrayTip => ResourceManager.GetString("Deck_InTrayTip", Culture)!;
 
     public static string ListState_OtherDesktop => ResourceManager.GetString("ListState_OtherDesktop", Culture)!;
 

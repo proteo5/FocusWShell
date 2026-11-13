@@ -58,6 +58,7 @@ Marcas en una app:
 | ↗ | Fuera de layout. |
 | Atenuada | Cerrada (anclada), o su columna está apagada. |
 | ⧉ | Abierta en otro escritorio virtual; tocarla te lleva allí. |
+| ▴ | En la bandeja: la app ocultó su ventana al cerrarla, pero sigue abierta. Tocarla abre la app otra vez, y la app muestra su ventana en el foco. |
 | Borde blanco | Tiene el teclado, pero no es la del foco. |
 
 **🗂 Páginas**, a la derecha de las pestañas de monitores, muestra las pestañas de tus navegadores. Ver [Páginas de los navegadores]({{ '/es/paginas/' | relative_url }}).

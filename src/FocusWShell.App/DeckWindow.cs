@@ -1207,13 +1207,13 @@ public sealed class DeckWindow : Window
 
     /// <summary>Las apps que se ven de un panel: las cerradas sólo si están ancladas (o en el modo anclar).</summary>
     private List<DeckApp> Visible(IEnumerable<DeckApp> apps) =>
-        [.. apps.Where(a => a.Handle is not null || a.State == ListItemState.OtherDesktop || _pinning || IsPinned(a))];
+        [.. apps.Where(a => a.Handle is not null || a.State is ListItemState.OtherDesktop or ListItemState.InTray || _pinning || IsPinned(a))];
 
     /// <summary>
-    /// No está aquí: cerrada o en otro escritorio (ADR 0016). Se ve apagada, no se mueve ni se cierra, y
-    /// tocarla la abre o lleva a su escritorio.
+    /// No está aquí: cerrada, en la bandeja o en otro escritorio (ADR 0016). Se ve apagada, no se mueve ni se
+    /// cierra, y tocarla la abre (la de la bandeja se muestra ella misma) o lleva a su escritorio.
     /// </summary>
-    private static bool Away(DeckApp app) => app.State is ListItemState.Closed or ListItemState.OtherDesktop;
+    private static bool Away(DeckApp app) => app.State is ListItemState.Closed or ListItemState.InTray or ListItemState.OtherDesktop;
 
     /// <summary>
     /// Modo cerrar: la app que se toque se cierra como con su X (si tiene algo sin guardar, ella pregunta) y
@@ -1707,6 +1707,7 @@ public sealed class DeckWindow : Window
                 ListItemState.Parked => " ⏸",
                 ListItemState.Detached => " ↗",
                 ListItemState.OtherDesktop => " ⧉",
+                ListItemState.InTray => " ▴",
                 _ => "",
             },
             Foreground = Away(app) ? DimBrush : TextBrush,
@@ -1743,6 +1744,7 @@ public sealed class DeckWindow : Window
             Background = app.State == ListItemState.InFocus ? ActiveBrush : CardBrush,
             Cursor = Cursors.Hand,
             ToolTip = app.State == ListItemState.OtherDesktop ? Core.Text.F(Strings.Deck_OtherDesktopTip, app.Name)
+                : app.State == ListItemState.InTray ? Core.Text.F(Strings.Deck_InTrayTip, app.Name)
                 : string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"Deck: {app.Name} ({app.State})");

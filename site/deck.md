@@ -58,6 +58,7 @@ Marks on an app:
 | ↗ | Out of layout. |
 | Dimmed | Closed (pinned), or its column is off. |
 | ⧉ | Open on another virtual desktop; tapping it takes you there. |
+| ▴ | In the tray: the app hid its window when you closed it, but it is still running. Tapping it opens the app again, and the app shows its window in the focus. |
 | White border | It has the keyboard, but it is not the focus app. |
 
 **🗂 Pages**, at the right of the monitor tabs, shows the tabs of your browsers. See [Browser pages]({{ '/browser-pages/' | relative_url }}).

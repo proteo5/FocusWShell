@@ -8,6 +8,7 @@ Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [
 
 - Manual: a picture of how it works, a step-by-step getting started from the main window, step-by-step guides, and screenshots of every section of the main window. / Manual: un dibujo de cómo funciona, primeros pasos paso a paso desde la ventana principal, guías paso a paso y capturas de cada sección de la ventana principal.
 - Fixed: in the dark theme, the list in Windows was white with white text. / Corregido: en el tema oscuro, la lista de Ventanas salía blanca con el texto blanco.
+- Apps that close to the tray (Codex, Discord, Teams…) show dimmed with ▴ in their panel, and tapping them opens the app again, which shows its window. Before, FocusWShell showed the hidden window itself, and some apps stayed frozen. When the app shows its window again, it goes back to its panel and to the focus. / Las apps que se cierran a la bandeja (Codex, Discord, Teams…) salen atenuadas con ▴ en su panel, y tocarlas abre la app otra vez, que muestra su ventana. Antes FocusWShell mostraba la ventana oculta por su cuenta, y algunas apps quedaban congeladas. Cuando la app vuelve a mostrar su ventana, regresa a su panel y al foco.
 - The main monitor is called "main" in English, and the Spanish buttons say "foco" instead of "Centro". / El monitor principal se llama «main» en inglés, y los botones en español dicen «foco» en lugar de «Centro».
 
 ## 0.2.0-alpha

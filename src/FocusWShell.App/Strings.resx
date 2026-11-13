@@ -156,6 +156,7 @@
   <data name="Hk_WindowTitle" xml:space="preserve"><value>FocusWShell · atajos</value></data>
   <data name="Hotkeys_InUse" xml:space="preserve"><value>Otra aplicación ya usa: {0}. «Liberar todas» sigue en el menú de la bandeja.</value></data>
   <data name="ListState_Closed" xml:space="preserve"><value>cerrada</value></data>
+  <data name="ListState_InTray" xml:space="preserve"><value>en la bandeja</value></data>
   <data name="ListState_Detached" xml:space="preserve"><value>fuera de layout</value></data>
   <data name="ListState_InFocus" xml:space="preserve"><value>en el foco</value></data>
   <data name="ListState_InPanel" xml:space="preserve"><value>en el panel</value></data>
@@ -167,6 +168,7 @@
   <data name="List_LargeIcons" xml:space="preserve"><value>Iconos grandes</value></data>
   <data name="List_ModeName" xml:space="preserve"><value>Lista {0}: {1}</value></data>
   <data name="List_TipClosed" xml:space="preserve"><value>{0} · cerrada. Clic: abrirla en este panel.</value></data>
+  <data name="List_TipInTray" xml:space="preserve"><value>{0} · en la bandeja. Clic: mostrarla en este panel.</value></data>
   <data name="List_TipInFocus" xml:space="preserve"><value>{0} · está en el foco.</value></data>
   <data name="List_TipOpen" xml:space="preserve"><value>{0} · {1}. Clic: al foco.</value></data>
   <data name="Main_Apply" xml:space="preserve"><value>Aplicar</value></data>
@@ -361,6 +363,7 @@
   <data name="Desktop_Switched" xml:space="preserve"><value>{0} está en otro escritorio: te llevo allí.</value></data>
   <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} ya está abierta en otro escritorio. Cambia a ese escritorio para usarla.</value></data>
   <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · en otro escritorio. Tócala para ir allí.</value></data>
+  <data name="Deck_InTrayTip" xml:space="preserve"><value>{0} · en la bandeja. Tócala para mostrarla.</value></data>
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>en otro escritorio</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · en otro escritorio. Clic: ir allí.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Ir a su escritorio</value></data>

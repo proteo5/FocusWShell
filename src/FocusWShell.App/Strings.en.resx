@@ -156,6 +156,7 @@
   <data name="Hk_WindowTitle" xml:space="preserve"><value>FocusWShell · shortcuts</value></data>
   <data name="Hotkeys_InUse" xml:space="preserve"><value>Another app already uses: {0}. "Free all" is still in the tray menu.</value></data>
   <data name="ListState_Closed" xml:space="preserve"><value>closed</value></data>
+  <data name="ListState_InTray" xml:space="preserve"><value>in the tray</value></data>
   <data name="ListState_Detached" xml:space="preserve"><value>out of the layout</value></data>
   <data name="ListState_InFocus" xml:space="preserve"><value>in the focus</value></data>
   <data name="ListState_InPanel" xml:space="preserve"><value>in the panel</value></data>
@@ -167,6 +168,7 @@
   <data name="List_LargeIcons" xml:space="preserve"><value>Large icons</value></data>
   <data name="List_ModeName" xml:space="preserve"><value>List {0}: {1}</value></data>
   <data name="List_TipClosed" xml:space="preserve"><value>{0} · closed. Click: open it in this panel.</value></data>
+  <data name="List_TipInTray" xml:space="preserve"><value>{0} · in the tray. Click: show it in this panel.</value></data>
   <data name="List_TipInFocus" xml:space="preserve"><value>{0} · is in the focus.</value></data>
   <data name="List_TipOpen" xml:space="preserve"><value>{0} · {1}. Click: to focus.</value></data>
   <data name="Main_Apply" xml:space="preserve"><value>Apply</value></data>
@@ -361,6 +363,7 @@ Restore them now?
   <data name="Desktop_Switched" xml:space="preserve"><value>{0} is on another desktop: taking you there.</value></data>
   <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} is already open on another desktop. Switch to that desktop to use it.</value></data>
   <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · on another desktop. Tap to go there.</value></data>
+  <data name="Deck_InTrayTip" xml:space="preserve"><value>{0} · in the tray. Tap to show it.</value></data>
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>on another desktop</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · on another desktop. Click: go there.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Go to its desktop</value></data>
