@@ -595,6 +595,11 @@ public sealed class ShellController : IDisposable
                 _openApps = _snapshots.Values.Select(MinSizeCatalog.KeyFor).ToHashSet(StringComparer.OrdinalIgnoreCase);
             }
 
+            if (change == ExternalChange.Closed)
+            {
+                SessionWindowGoneLocked(handle);
+            }
+
             // Se puso en pantalla completa ella misma (F11, un vídeo): no se le quita. Queda fuera de layout
             // y, al salir, el siguiente cambio la devuelve a su sitio (M2).
             if (commands is [SnapBack] && change == ExternalChange.MovedOrResized
@@ -647,8 +652,8 @@ public sealed class ShellController : IDisposable
     /// <summary>Última foto de cada ventana conocida: el layout y el diario necesitan proceso y título.</summary>
     private readonly Dictionary<nint, WindowSnapshot> _snapshots = [];
 
-    /// <summary>Una ventana gestionada que su app ocultó (cerrar a la bandeja): su app y su panel.</summary>
-    private sealed record TrayWindow(string AppKey, string Label, string PanelId);
+    /// <summary>Una ventana gestionada que su app ocultó (cerrar a la bandeja): su app, su panel y su título.</summary>
+    private sealed record TrayWindow(string AppKey, string Label, string PanelId, string Title);
 
     /// <summary>
     /// Ventanas en la bandeja: siguen vivas pero ocultas. Fuera del modelo, así ningún acomodo (ni salir, ni
@@ -678,7 +683,7 @@ public sealed class ShellController : IDisposable
 
         if (key is not null)
         {
-            _inTray[handle] = new TrayWindow(key, w.Label, w.PanelId);
+            _inTray[handle] = new TrayWindow(key, w.Label, w.PanelId, snapshot!.Title);
         }
 
         return result;
@@ -1032,6 +1037,7 @@ public sealed class ShellController : IDisposable
             _savedPanels = [.. _workspace.Panels];
             _savedView = _workspace.View;
             _savedProportions = new(_workspace.CustomProportions);
+            RememberDisplayKeysLocked();
         }
     }
 
@@ -1103,9 +1109,27 @@ public sealed class ShellController : IDisposable
     /// <summary>Lo que dio <see cref="UltrawideNow"/> en el último layout (para el separador arrastrado).</summary>
     private bool _ultrawide;
 
+    /// <summary>El monitor donde se guardó fijado el deck (de settings.json), antes de que se vuelva a fijar.</summary>
+    public string? SavedDeckDisplay { get; set; }
+
+    /// <summary>
+    /// Las claves de monitor que se recuerdan (paneles y deck), para reconocer un monitor que vuelve con otra
+    /// (<see cref="DisplayAliases"/>).
+    /// </summary>
+    private void RememberDisplayKeysLocked()
+    {
+        var keys = _workspace.KnownDisplays.Append(DeckDock?.Display ?? SavedDeckDisplay).OfType<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!keys.SetEquals(DisplayEnumerator.KnownKeys))
+        {
+            DisplayEnumerator.KnownKeys = keys;
+        }
+    }
+
     /// <summary>Guarda los paneles si cambiaron (nombre, ubicación, presentación, altas o bajas).</summary>
     private void SavePanelsIfChanged()
     {
+        RememberDisplayKeysLocked();
         bool proportionsChanged = _workspace.CustomProportions.Count != _savedProportions.Count
             || _workspace.CustomProportions.Any(p => !_savedProportions.TryGetValue(p.Key, out var w) || w != p.Value);
         if (!_workspace.Panels.SequenceEqual(_savedPanels) || _workspace.View != _savedView || proportionsChanged)
@@ -1152,6 +1176,28 @@ public sealed class ShellController : IDisposable
     /// <summary>Ventanas de la sesión que aún no han aparecido (la app tarda en abrirse al iniciar Windows).</summary>
     private List<SceneWindow> _sessionPending = [];
 
+    /// <summary>Cuánto tiempo tras arrancar se siguen acomodando las ventanas de la sesión que aparecen tarde.</summary>
+    public static readonly TimeSpan SessionAdoption = TimeSpan.FromMinutes(3);
+
+    /// <summary>Hasta cuándo se acomodan las ventanas de la sesión (<see cref="SessionAdoption"/> tras arrancar).</summary>
+    private DateTime _sessionUntil;
+
+    /// <summary>
+    /// Las ventanas que se pusieron en su panel desde la sesión, con su entrada. Algunas apps abren una ventana al
+    /// arrancar y luego la cambian por otra (Docker Desktop): si la primera se cierra mientras dura el arranque,
+    /// su entrada vuelve a quedar pendiente y se acomoda la nueva. Si no, la app se olvidaba.
+    /// </summary>
+    private readonly Dictionary<nint, SceneWindow> _sessionAdopted = [];
+
+    /// <summary>Una ventana se fue (cerrada, o su app la destruyó desde la bandeja).</summary>
+    private void SessionWindowGoneLocked(nint handle)
+    {
+        if (_sessionAdopted.Remove(handle, out var entry) && DateTime.Now < _sessionUntil)
+        {
+            _sessionPending.Add(entry);
+        }
+    }
+
     /// <summary>Guarda qué ventana está en qué panel (se llama tras los cambios y al salir).</summary>
     public void SaveSession() => Session.Save([CaptureScene(SessionName)]);
 
@@ -1172,6 +1218,11 @@ public sealed class ShellController : IDisposable
         lock (_gate)
         {
             _sessionPending = [.. match.Missing];
+            _sessionUntil = DateTime.Now + SessionAdoption;
+            foreach (var (entry, window) in match.Matched)
+            {
+                _sessionAdopted[window.Handle] = entry;
+            }
         }
 
         if (match.Matched.Count == 0)
@@ -1225,6 +1276,7 @@ public sealed class ShellController : IDisposable
                 }
 
                 commands.Add(new Adopt(window.Handle, entry.Label, panel.Id));
+                _sessionAdopted[window.Handle] = entry;
                 if (entry.Placement == ScenePlacement.Parked)
                 {
                     commands.Add(new Park(window.Handle));
@@ -1263,6 +1315,19 @@ public sealed class ShellController : IDisposable
                     return new SceneWindow(MinSizeCatalog.KeyFor(snapshot), w.Label, snapshot.Title, w.PanelId, placement) { Size = w.Size };
                 })
                 .ToList();
+
+            // Sólo para la sesión: lo que aún no volvió (apps que tardan en abrirse tras reiniciar) y las apps
+            // en la bandeja siguen siendo de su panel. Sin esto, el primer guardado tras arrancar las olvidaba.
+            if (name == SessionName)
+            {
+                windows.AddRange(_inTray.Values.Select(t => new SceneWindow(t.AppKey, t.Label, t.Title, t.PanelId, ScenePlacement.InPanel)));
+
+                // Una app que ya volvió por otro lado (abierta a mano) no se repite: con dos entradas para una
+                // ventana, la sesión estricta no sabría cuál es y la dejaría fuera.
+                var present = windows.Select(w => w.AppKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                windows.AddRange(_sessionPending.Where(p => !present.Contains(p.AppKey)));
+            }
+
             var panels = _workspace.Panels
                 .Select(p => new ScenePanel(p.Id, p.Name, AuxIndex(p.Display), p.Side, p.Template, p.Slot, p.Height))
                 .ToList();
@@ -1449,6 +1514,20 @@ public sealed class ShellController : IDisposable
 
     public int PendingCount => Journal.Load().Count;
 
+    /// <summary>
+    /// Al arrancar: quita del diario las ventanas que ya no existen (tras reiniciar Windows, todas). No hay nada que
+    /// devolver a su sitio y preguntar sólo asusta: «no se cerró bien» cuando lo que pasó fue un reinicio.
+    /// </summary>
+    public void PruneGoneFromJournal()
+    {
+        var entries = Journal.Load();
+        var alive = entries.Where(e => WindowMover.IsSameWindow(e.Handle, e.ProcessId)).ToList();
+        if (alive.Count != entries.Count)
+        {
+            Journal.Save(alive);
+        }
+    }
+
     /// <summary>Copia del estado del modelo, para pintar la UI.</summary>
     public IReadOnlyList<ManagedWindow> Managed()
     {
@@ -1504,6 +1583,10 @@ public sealed class ShellController : IDisposable
             if (closed.Count > 0)
             {
                 RunLocked(closed);
+                foreach (var c in closed)
+                {
+                    SessionWindowGoneLocked(c.Handle);
+                }
             }
 
             // Las que su app ocultó sin avisarnos (se perdió el evento): a la bandeja.
@@ -1530,6 +1613,7 @@ public sealed class ShellController : IDisposable
                 else if (!WindowMover.Observe(handle).Exists)
                 {
                     _inTray.Remove(handle);
+                    SessionWindowGoneLocked(handle);
                 }
             }
 

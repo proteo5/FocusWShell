@@ -8,15 +8,16 @@ namespace FocusWShell.Win32;
 public static class AppLauncher
 {
     /// <summary>
-    /// Las apps empaquetadas (AUMID con "!", p. ej. WhatsApp de la Store) se abren por
-    /// <c>shell:AppsFolder</c>; el resto, por su ejecutable. Devuelve un error legible o <c>null</c>.
+    /// Las apps empaquetadas (AUMID con "!", p. ej. WhatsApp de la Store) y las apps web instaladas desde Chrome o
+    /// Edge (Google Chat) se abren por <c>shell:AppsFolder</c>: por su ejecutable se abriría el navegador. El resto,
+    /// por su ejecutable. Devuelve un error legible o <c>null</c>.
     /// </summary>
     public static string? Launch(CatalogApp app)
     {
         ArgumentNullException.ThrowIfNull(app);
         try
         {
-            if (app.Aumid is { } aumid && aumid.Contains('!', StringComparison.Ordinal))
+            if (app.Aumid is { } aumid && (aumid.Contains('!', StringComparison.Ordinal) || IsWebApp(aumid)))
             {
                 using var shell = Process.Start(new ProcessStartInfo("explorer.exe", @"shell:AppsFolder\" + aumid) { UseShellExecute = true });
                 return null;
@@ -42,10 +43,15 @@ public static class AppLauncher
 
     /// <summary>
     /// Nombre de una app: el que le da Windows por su AUMID si es una app empaquetada (p. ej. "Calculator",
-    /// alojada en ApplicationFrameHost) y, si no, la descripción de su ejecutable.
+    /// alojada en ApplicationFrameHost) o una app web instalada desde Chrome o Edge (p. ej. "Google Chat", que si
+    /// no saldría como "Google Chrome") y, si no, la descripción de su ejecutable.
     /// </summary>
     public static string? FriendlyName(string? executablePath, string? aumid) =>
-        (aumid is not null && aumid.Contains('!', StringComparison.Ordinal) ? PackagedName(aumid) : null) ?? FriendlyName(executablePath);
+        (aumid is not null && (aumid.Contains('!', StringComparison.Ordinal) || IsWebApp(aumid)) ? PackagedName(aumid) : null)
+        ?? FriendlyName(executablePath);
+
+    /// <summary>Si el AUMID es de una app web instalada desde Chrome o Edge (<c>Chrome._crx_…</c>).</summary>
+    public static bool IsWebApp(string aumid) => aumid.Contains("._crx_", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Nombre de una app empaquetada en <c>shell:AppsFolder</c>, o <c>null</c>.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Si el shell falla, se usa el nombre del ejecutable.")]
