@@ -4,13 +4,17 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
-## Unreleased / Sin publicar
+## 0.3.1-alpha
+
+Your apps come back to their panels after restarting Windows. / Tus apps vuelven a sus paneles después de reiniciar Windows.
 
 - Fixed: after restarting Windows, apps didn't go back to their panels. The session is now saved when shutdown starts, and not again while Windows closes the apps; it also keeps the apps that take a while to open, the ones in the tray, and the ones that swap their window at startup (Docker Desktop). / Corregido: tras reiniciar Windows, las apps no volvían a sus paneles. La sesión se guarda al empezar el apagado, y no otra vez mientras Windows cierra las apps; además conserva las apps que tardan en abrirse, las de la bandeja y las que cambian de ventana al arrancar (Docker Desktop).
 - Fixed: the panels of a tablet connected with Apollo disappeared, because it gets a new ID on every connection. A monitor of the same model that comes back with another ID is now recognized. / Corregido: los paneles de una tablet conectada con Apollo desaparecían, porque estrena identificador en cada conexión. Ahora se reconoce un monitor del mismo modelo que vuelve con otro.
 - Fixed: after a restart, FocusWShell no longer says it wasn't closed properly. / Corregido: tras un reinicio, FocusWShell ya no dice que no se cerró adecuadamente.
 - Web apps installed from Chrome or Edge (Google Chat) show with their own name and open themselves, not the browser. / Las apps web instaladas desde Chrome o Edge (Google Chat) salen con su nombre y se abren ellas, no el navegador.
 - The deck: panel borders easier to see, and bigger panel and app names. / El deck: bordes de los paneles más visibles, y nombres de paneles y apps más grandes.
+
+Notes / Notas: [v0.3.1-alpha](.github/release-notes/v0.3.1-alpha.md)
 
 ## 0.3.0-alpha
 
