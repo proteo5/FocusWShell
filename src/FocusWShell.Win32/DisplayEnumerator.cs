@@ -57,8 +57,32 @@ public static class DisplayEnumerator
             });
         }
 
+        // Un monitor conocido que volvió con otra clave (la tablet de Apollo estrena una en cada conexión) se
+        // presenta con la de siempre: así sus paneles y el deck lo reconocen.
+        var known = KnownKeys;
+        if (known.Count > 0)
+        {
+            var aliases = DisplayAliases.Resolve([.. result.Select(d => d.Key)], known);
+            if (aliases.Count > 0)
+            {
+                for (int i = 0; i < result.Count; i++)
+                {
+                    if (aliases.TryGetValue(result[i].Key, out var old))
+                    {
+                        result[i] = result[i] with { StableId = old };
+                    }
+                }
+            }
+        }
+
         return result;
     }
+
+    /// <summary>
+    /// Las claves de monitor que recuerda la app (las de sus paneles y la del deck fijado). Se reemplaza entera
+    /// cuando cambian, así que se lee sin bloqueos desde cualquier hilo.
+    /// </summary>
+    public static IReadOnlyCollection<string> KnownKeys { get; set; } = [];
 
     private static PixelRect ToPixelRect(RECT r) => new(r.left, r.top, r.right, r.bottom);
 }

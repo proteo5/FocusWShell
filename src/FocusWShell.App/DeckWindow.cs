@@ -343,7 +343,7 @@ public sealed class DeckWindow : Window
 
             foreach (var panel in shown)
             {
-                Row(PanelCard(panel), new GridLength(1 + panel.Apps.Count, GridUnitType.Star), 116);
+                Row(PanelCard(panel), new GridLength(1 + panel.Apps.Count, GridUnitType.Star), 132); // cabecera + una fila de apps con su nombre
             }
         }
 
@@ -1738,11 +1738,17 @@ public sealed class DeckWindow : Window
         }
 
         zone.Margin = new Thickness(0, 0, 8, 8);
-        zone.BorderBrush = target ? TargetBrush : CardBrush;
-        zone.BorderThickness = new Thickness(target ? 3 : 1);
-        zone.Padding = new Thickness(target ? 4 : 6);
+        zone.BorderBrush = target ? TargetBrush : PanelEdgeBrush;
+        zone.BorderThickness = new Thickness(target ? 3 : 2);
+        zone.Padding = new Thickness(target ? 4 : 5);
         return zone;
     }
+
+    /// <summary>
+    /// Borde de los paneles (y de LIBRES): más claro que las tarjetas, para que se distingan de un vistazo
+    /// desde la tablet. Antes era del color de las tarjetas y casi no se veía.
+    /// </summary>
+    private static readonly Brush PanelEdgeBrush = Frozen(Color.FromRgb(0x4C, 0x56, 0x68));
 
     /// <summary>Borde de un panel donde se puede soltar la app que se está moviendo.</summary>
     private static readonly Brush TargetBrush = Frozen(Color.FromRgb(0xF2, 0xC1, 0x2E));
@@ -1760,7 +1766,15 @@ public sealed class DeckWindow : Window
     private Border FreeCard(DeckState state)
     {
         var body = new DockPanel();
-        var label = Label(Strings.Deck_SecFree);
+        var label = new TextBlock
+        {
+            Text = Strings.Deck_SecFree,
+            Foreground = TextBrush,
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(2, 4, 0, 2),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
         DockPanel.SetDock(label, Dock.Top);
         body.Children.Add(label);
         if (state.Free.Count > 0)
@@ -1782,10 +1796,10 @@ public sealed class DeckWindow : Window
         var card = new Border
         {
             Child = content,
-            BorderBrush = target ? TargetBrush : CardBrush,
-            BorderThickness = new Thickness(target ? 3 : 1),
+            BorderBrush = target ? TargetBrush : PanelEdgeBrush,
+            BorderThickness = new Thickness(target ? 3 : 2),
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(target ? 4 : 6),
+            Padding = new Thickness(target ? 4 : 5),
             Margin = new Thickness(0, 0, 8, 8),
             Background = Brushes.Transparent,
             AllowDrop = true,
@@ -1939,7 +1953,7 @@ public sealed class DeckWindow : Window
                 _ => "",
             },
             Foreground = Away(app) ? DimBrush : TextBrush,
-            FontSize = 11,
+            FontSize = 13,
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextAlignment = TextAlignment.Center,
         };
@@ -2195,8 +2209,15 @@ public sealed class DeckWindow : Window
         controls.Children.Add(segments);
         DockPanel.SetDock(controls, Dock.Right);
         header.Children.Add(controls);
-        var title = Label($"{panel.Name.ToUpperInvariant()} · {panel.Where}");
-        title.VerticalAlignment = VerticalAlignment.Center;
+        // El nombre, grande y claro (se lee desde la tablet); dónde está, más pequeño y atenuado.
+        var title = new TextBlock
+        {
+            Margin = new Thickness(2, 0, 0, 2),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        title.Inlines.Add(new System.Windows.Documents.Run(panel.Name.ToUpperInvariant()) { Foreground = TextBrush, FontSize = 15, FontWeight = FontWeights.SemiBold });
+        title.Inlines.Add(new System.Windows.Documents.Run($"  ·  {panel.Where}") { Foreground = DimBrush, FontSize = 13 });
         header.Children.Add(title);
         return header;
     }

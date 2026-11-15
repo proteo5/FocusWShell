@@ -252,6 +252,7 @@ public partial class App : Application
 
         OfferRecovery();
 
+        _controller.SavedDeckDisplay = _settings.DeckDisplay;
         _controller.LoadPanels();
         _controller.LoadCatalog();
         _settings = AppSettings.Load();
@@ -391,6 +392,7 @@ public partial class App : Application
             });
         });
         _controller.LayoutChanged += () => Dispatcher.BeginInvoke(ScheduleSessionSave);
+        SessionEnding += OnSessionEnding;
 
         // El deck fijado en un monitor (ADR 0013, fase 4) vuelve a su sitio al arrancar, si el monitor está.
         if (_settings.DeckDisplay is { } deckDisplay && Enum.TryParse<DeckZone>(_settings.DeckZone, out var zone))
@@ -745,6 +747,7 @@ public partial class App : Application
     /// <summary>Arranque tras un cierre no limpio (ADR 0005): por defecto, restaurar.</summary>
     private void OfferRecovery()
     {
+        _controller.PruneGoneFromJournal();
         int pending = _controller.PendingCount;
         if (pending == 0)
         {
@@ -882,10 +885,9 @@ public partial class App : Application
     /// </summary>
     private void PowerAction(DeckPower action)
     {
-        if (action is DeckPower.Restart or DeckPower.ShutDown or DeckPower.SignOut && _sessionReady)
+        if (action is DeckPower.Restart or DeckPower.ShutDown or DeckPower.SignOut)
         {
-            _sessionSave?.Stop();
-            _controller.SaveSession();
+            FreezeSession();
         }
 
         _deck?.Hide();
@@ -975,10 +977,42 @@ public partial class App : Application
     private bool _sessionReady;
     private DispatcherTimer? _sessionSave;
 
+    /// <summary>
+    /// Windows se está apagando: la sesión ya se guardó y no se vuelve a guardar. Al apagar, las apps se cierran
+    /// antes que FocusWShell; guardarla entonces la dejaría sin ellas y, al volver, no irían a sus paneles.
+    /// </summary>
+    private bool _sessionFrozen;
+
+    /// <summary>
+    /// Guarda la sesión tal como está y la congela hasta que el proceso termine. Si el apagado se cancela (una app
+    /// lo detuvo), se descongela a los dos minutos.
+    /// </summary>
+    private void FreezeSession()
+    {
+        if (!_sessionReady || _sessionFrozen)
+        {
+            return;
+        }
+
+        _sessionSave?.Stop();
+        _controller.SaveSession();
+        _sessionFrozen = true;
+        var thaw = new DispatcherTimer { Interval = TimeSpan.FromMinutes(2) };
+        thaw.Tick += (_, _) =>
+        {
+            thaw.Stop();
+            _sessionFrozen = false;
+        };
+        thaw.Start();
+    }
+
+    /// <summary>Apagar, reiniciar o cerrar sesión desde Windows (no desde el deck).</summary>
+    private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e) => FreezeSession();
+
     /// <summary>Guarda la sesión unos segundos después del último cambio.</summary>
     private void ScheduleSessionSave()
     {
-        if (!_sessionReady || IsExiting)
+        if (!_sessionReady || IsExiting || _sessionFrozen)
         {
             return;
         }
@@ -999,7 +1033,7 @@ public partial class App : Application
     /// <summary>Cada 10 s durante 3 min, adopta las ventanas de la última sesión que aparezcan.</summary>
     private void StartLateAdoption()
     {
-        var until = DateTime.Now.AddMinutes(3);
+        var until = DateTime.Now + ShellController.SessionAdoption;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
         timer.Tick += (_, _) =>
         {
@@ -1030,7 +1064,7 @@ public partial class App : Application
     private void ExitAndRestore()
     {
         // Antes de devolver las ventanas a su sitio: así, al volver a abrir FocusWShell, vuelven a sus paneles.
-        if (_sessionReady)
+        if (_sessionReady && !_sessionFrozen)
         {
             _sessionSave?.Stop();
             _controller.SaveSession();
