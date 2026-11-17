@@ -61,6 +61,14 @@ Los atajos en uso, y **Cambiar atajos…** para poner otros. En *Gestos de Windo
 
 Aplica, borra y guarda escenas: qué apps están en cada panel y en el foco. También se aplican con <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>1</kbd>…<kbd>9</kbd>. Ver [Guardar tu configuración como escena]({{ '/es/guias/#escenas' | relative_url }}).
 
+## Actividad
+
+Cuánto pasa cada app **en el foco** (a la vista, en el centro) y **en uso** (la que recibe el teclado y el ratón). **En paralelo** es el tiempo con el foco en una app y el uso en otra: por ejemplo, un documento a la vista mientras escribes en el chat.
+
+Está apagada hasta que prendas **Medir la actividad**. Se guarda sólo en este equipo, sin títulos de ventanas, durante 90 días; **Borrar historial** lo borra todo. El tiempo deja de contar tras 3 minutos sin tocar el teclado ni el ratón, y al bloquear o suspender.
+
+Para cada día: el tiempo activo, el tiempo en paralelo, cuántas veces llevaste una app al foco y la racha más larga con la misma app en el foco. Debajo, cada app con una barra azul (en el foco) y una verde (en uso).
+
 ## Excluidas
 
 Apps que FocusWShell nunca debe tocar, por ejecutable, AUMID o clase de ventana. Ver [Dejar una app fuera de FocusWShell]({{ '/es/guias/#excluir' | relative_url }}).

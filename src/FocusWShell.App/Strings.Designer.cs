@@ -21,6 +21,72 @@ public static class Strings
     /// <summary>Selecciona una ventana de la lista.</summary>
     public static string Act_SelectWindow => ResourceManager.GetString("Act_SelectWindow", Culture)!;
 
+    /// <summary>Tiempo activo</summary>
+    public static string Activity_Active => ResourceManager.GetString("Activity_Active", Culture)!;
+
+    /// <summary>dddd d 'de' MMMM</summary>
+    public static string Activity_DateFormat => ResourceManager.GetString("Activity_DateFormat", Culture)!;
+
+    /// <summary>Borrar historial</summary>
+    public static string Activity_Delete => ResourceManager.GetString("Activity_Delete", Culture)!;
+
+    /// <summary>¿Borrar toda la actividad guardada? No se puede deshacer.</summary>
+    public static string Activity_DeleteAsk => ResourceManager.GetString("Activity_DeleteAsk", Culture)!;
+
+    /// <summary>Se borró la actividad guardada.</summary>
+    public static string Activity_Deleted => ResourceManager.GetString("Activity_Deleted", Culture)!;
+
+    /// <summary>No hay actividad este día.</summary>
+    public static string Activity_Empty => ResourceManager.GetString("Activity_Empty", Culture)!;
+
+    /// <summary>Cuánto pasa cada app en el foco y en uso. En paralelo es el tiempo con el foco e</summary>
+    public static string Activity_Help => ResourceManager.GetString("Activity_Help", Culture)!;
+
+    /// <summary>En el foco</summary>
+    public static string Activity_InFocus => ResourceManager.GetString("Activity_InFocus", Culture)!;
+
+    /// <summary>En uso</summary>
+    public static string Activity_InUse => ResourceManager.GetString("Activity_InUse", Culture)!;
+
+    /// <summary>Racha más larga en el foco</summary>
+    public static string Activity_Longest => ResourceManager.GetString("Activity_Longest", Culture)!;
+
+    /// <summary>Medir la actividad</summary>
+    public static string Activity_Measure => ResourceManager.GetString("Activity_Measure", Culture)!;
+
+    /// <summary>Sólo en este equipo, sin títulos de ventanas. Se guardan los últimos {0} días.</summary>
+    public static string Activity_MeasureHelp => ResourceManager.GetString("Activity_MeasureHelp", Culture)!;
+
+    /// <summary>Día siguiente</summary>
+    public static string Activity_NextDay => ResourceManager.GetString("Activity_NextDay", Culture)!;
+
+    /// <summary>sin panel</summary>
+    public static string Activity_NoPanel => ResourceManager.GetString("Activity_NoPanel", Culture)!;
+
+    /// <summary>La medición está apagada. Préndela para empezar a ver tu actividad.</summary>
+    public static string Activity_Off => ResourceManager.GetString("Activity_Off", Culture)!;
+
+    /// <summary>Día anterior</summary>
+    public static string Activity_PrevDay => ResourceManager.GetString("Activity_PrevDay", Culture)!;
+
+    /// <summary>{0} % del tiempo activo</summary>
+    public static string Activity_Share => ResourceManager.GetString("Activity_Share", Culture)!;
+
+    /// <summary>En paralelo</summary>
+    public static string Activity_SideBySide => ResourceManager.GetString("Activity_SideBySide", Culture)!;
+
+    /// <summary>{0} veces</summary>
+    public static string Activity_Times => ResourceManager.GetString("Activity_Times", Culture)!;
+
+    /// <summary>Al foco</summary>
+    public static string Activity_ToFocus => ResourceManager.GetString("Activity_ToFocus", Culture)!;
+
+    /// <summary>Hoy, {0}</summary>
+    public static string Activity_Today => ResourceManager.GetString("Activity_Today", Culture)!;
+
+    /// <summary>Ayer, {0}</summary>
+    public static string Activity_Yesterday => ResourceManager.GetString("Activity_Yesterday", Culture)!;
+
     /// <summary>FocusWShell ya se está ejecutando. Búscalo en el área de notificación.</summary>
     public static string App_AlreadyRunning => ResourceManager.GetString("App_AlreadyRunning", Culture)!;
 
@@ -81,6 +147,24 @@ public static class Strings
     /// <summary>Panel para abrir {0}</summary>
     public static string Apps_TargetName => ResourceManager.GetString("Apps_TargetName", Culture)!;
 
+    /// <summary>Paneles a los dos lados</summary>
+    public static string Arr_Center => ResourceManager.GetString("Arr_Center", Culture)!;
+
+    /// <summary>Sólo la columna izquierda</summary>
+    public static string Arr_ContextOnly => ResourceManager.GetString("Arr_ContextOnly", Culture)!;
+
+    /// <summary>Solo foco</summary>
+    public static string Arr_FocusOnly => ResourceManager.GetString("Arr_FocusOnly", Culture)!;
+
+    /// <summary>Paneles a la derecha</summary>
+    public static string Arr_Left => ResourceManager.GetString("Arr_Left", Culture)!;
+
+    /// <summary>Paneles a la izquierda</summary>
+    public static string Arr_Right => ResourceManager.GetString("Arr_Right", Culture)!;
+
+    /// <summary>Sólo la columna derecha</summary>
+    public static string Arr_WorkOnly => ResourceManager.GetString("Arr_WorkOnly", Culture)!;
+
     /// <summary>Al foco</summary>
     public static string Assign_Focus => ResourceManager.GetString("Assign_Focus", Culture)!;
 
@@ -102,11 +186,17 @@ public static class Strings
     /// <summary>Pantalla completa en</summary>
     public static string DeckMenu_FullscreenOn => ResourceManager.GetString("DeckMenu_FullscreenOn", Culture)!;
 
+    /// <summary>Ir a su escritorio</summary>
+    public static string DeckMenu_GoToDesktop => ResourceManager.GetString("DeckMenu_GoToDesktop", Culture)!;
+
     /// <summary>Mover a</summary>
     public static string DeckMenu_MoveTo => ResourceManager.GetString("DeckMenu_MoveTo", Culture)!;
 
     /// <summary>Abrir en su panel</summary>
     public static string DeckMenu_OpenInPanel => ResourceManager.GetString("DeckMenu_OpenInPanel", Culture)!;
+
+    /// <summary>Páginas…</summary>
+    public static string DeckMenu_Pages => ResourceManager.GetString("DeckMenu_Pages", Culture)!;
 
     /// <summary>Minimizar</summary>
     public static string DeckMenu_Park => ResourceManager.GetString("DeckMenu_Park", Culture)!;
@@ -123,7 +213,7 @@ public static class Strings
     /// <summary>Al foco</summary>
     public static string DeckMenu_ToFocus => ResourceManager.GetString("DeckMenu_ToFocus", Culture)!;
 
-    /// <summary>Recuperar</summary>
+    /// <summary>Restaurar</summary>
     public static string DeckMenu_Unpark => ResourceManager.GetString("DeckMenu_Unpark", Culture)!;
 
     /// <summary>Desanclar</summary>
@@ -150,6 +240,8 @@ public static class Strings
     /// <summary>Pantalla encendida: sí</summary>
     public static string Deck_AwakeOn => ResourceManager.GetString("Deck_AwakeOn", Culture)!;
 
+    /// <summary>Traer {0} a este lado</summary>
+    public static string Deck_BorrowTip => ResourceManager.GetString("Deck_BorrowTip", Culture)!;
 
     /// <summary>Cerrar una app</summary>
     public static string Deck_Close => ResourceManager.GetString("Deck_Close", Culture)!;
@@ -160,22 +252,47 @@ public static class Strings
     /// <summary>Cerrando…</summary>
     public static string Deck_Closing => ResourceManager.GetString("Deck_Closing", Culture)!;
 
+    /// <summary>Prender o apagar {0} en el principal</summary>
+    public static string Deck_ColumnTip => ResourceManager.GetString("Deck_ColumnTip", Culture)!;
+
     /// <summary>vacío</summary>
     public static string Deck_FocusEmpty => ResourceManager.GetString("Deck_FocusEmpty", Culture)!;
+
+    /// <summary>Foco vacío</summary>
+    public static string Deck_FocusEmptyTile => ResourceManager.GetString("Deck_FocusEmptyTile", Culture)!;
+
+    /// <summary>de {0}</summary>
+    public static string Deck_FocusFrom => ResourceManager.GetString("Deck_FocusFrom", Culture)!;
+
+    /// <summary>{0} · en el foco. Toca para ver qué hacer con ella.</summary>
+    public static string Deck_FocusTip => ResourceManager.GetString("Deck_FocusTip", Culture)!;
+
+    /// <summary>{0} · {1} apps</summary>
+    public static string Deck_HeaderTab => ResourceManager.GetString("Deck_HeaderTab", Culture)!;
 
     /// <summary>Ocultar el deck</summary>
     public static string Deck_Hide => ResourceManager.GetString("Deck_Hide", Culture)!;
 
-    /// <summary>{0} está al frente (recibe el teclado), pero no es la del foco</summary>
+    /// <summary>{0} está en uso (recibe el teclado y el ratón), pero no es la del foco</summary>
     public static string Deck_InFrontTip => ResourceManager.GetString("Deck_InFrontTip", Culture)!;
 
-    /// <summary>{0}: tócala para verla en su panel y escribir en ella; otra vez, al foco</summary>
-    public static string Deck_ShowTabTip => ResourceManager.GetString("Deck_ShowTabTip", Culture)!;
+    /// <summary>{0} · en la bandeja. Tócala para mostrarla.</summary>
+    public static string Deck_InTrayTip => ResourceManager.GetString("Deck_InTrayTip", Culture)!;
 
-    /// <summary>{0} es la pestaña que se ve en su panel: tócala para llevarla al foco</summary>
-    public static string Deck_VisibleTabTip => ResourceManager.GetString("Deck_VisibleTabTip", Culture)!;
+    /// <summary>en uso</summary>
+    public static string Deck_InUse => ResourceManager.GetString("Deck_InUse", Culture)!;
 
+    /// <summary>Izquierda</summary>
+    public static string Deck_LeftColumn => ResourceManager.GetString("Deck_LeftColumn", Culture)!;
 
+    /// <summary>Minimizar</summary>
+    public static string Deck_Minimize => ResourceManager.GetString("Deck_Minimize", Culture)!;
+
+    /// <summary>Toca una app para minimizarla en su panel; tócala otra vez para traerla de vuelt</summary>
+    public static string Deck_MinimizeTip => ResourceManager.GetString("Deck_MinimizeTip", Culture)!;
+
+    /// <summary>Minimizando…</summary>
+    public static string Deck_Minimizing => ResourceManager.GetString("Deck_Minimizing", Culture)!;
 
     /// <summary>+{0} más</summary>
     public static string Deck_More => ResourceManager.GetString("Deck_More", Culture)!;
@@ -184,13 +301,6 @@ public static class Strings
     public static string Deck_MoreName => ResourceManager.GetString("Deck_MoreName", Culture)!;
 
     /// <summary>Ratón al foco</summary>
-    public static string Deck_Minimize => ResourceManager.GetString("Deck_Minimize", Culture)!;
-    public static string Deck_Minimizing => ResourceManager.GetString("Deck_Minimizing", Culture)!;
-    public static string Deck_MinimizeTip => ResourceManager.GetString("Deck_MinimizeTip", Culture)!;
-    public static string Deck_HeaderTab => ResourceManager.GetString("Deck_HeaderTab", Culture)!;
-    public static string Deck_FocusFrom => ResourceManager.GetString("Deck_FocusFrom", Culture)!;
-    public static string Deck_FocusEmptyTile => ResourceManager.GetString("Deck_FocusEmptyTile", Culture)!;
-    public static string Deck_FocusTip => ResourceManager.GetString("Deck_FocusTip", Culture)!;
     public static string Deck_Mouse => ResourceManager.GetString("Deck_Mouse", Culture)!;
 
     /// <summary>Ratón</summary>
@@ -223,8 +333,56 @@ public static class Strings
     /// <summary>{0} no tiene paneles. Créalos en la ventana de FocusWShell, pestaña Paneles: esc</summary>
     public static string Deck_NoPanels => ResourceManager.GetString("Deck_NoPanels", Culture)!;
 
+    /// <summary>{0} · en otro escritorio. Tócala para ir allí.</summary>
+    public static string Deck_OtherDesktopTip => ResourceManager.GetString("Deck_OtherDesktopTip", Culture)!;
+
+    /// <summary>Cerrar la página {0}</summary>
+    public static string Deck_PageCloseName => ResourceManager.GetString("Deck_PageCloseName", Culture)!;
+
+    /// <summary>Ir a la página {0}</summary>
+    public static string Deck_PageName => ResourceManager.GetString("Deck_PageName", Culture)!;
+
+    /// <summary>{0} · {1}</summary>
+    public static string Deck_PageWhere => ResourceManager.GetString("Deck_PageWhere", Culture)!;
+
+    /// <summary>‹ Sitios</summary>
+    public static string Deck_PagesBack => ResourceManager.GetString("Deck_PagesBack", Culture)!;
+
+    /// <summary>Cerrar todas</summary>
+    public static string Deck_PagesCloseAll => ResourceManager.GetString("Deck_PagesCloseAll", Culture)!;
+
+    /// <summary>¿Cerrar {0}? Toca otra vez</summary>
+    public static string Deck_PagesCloseAllConfirm => ResourceManager.GetString("Deck_PagesCloseAllConfirm", Culture)!;
+
+    /// <summary>Leyendo las páginas…</summary>
+    public static string Deck_PagesLoading => ResourceManager.GetString("Deck_PagesLoading", Culture)!;
+
+    /// <summary>PÁGINAS SUELTAS</summary>
+    public static string Deck_PagesLoose => ResourceManager.GetString("Deck_PagesLoose", Culture)!;
+
+    /// <summary>No hay pestañas que leer en Chrome ni en Edge.</summary>
+    public static string Deck_PagesNone => ResourceManager.GetString("Deck_PagesNone", Culture)!;
+
+    /// <summary>{0} · {1}</summary>
+    public static string Deck_PagesSite => ResourceManager.GetString("Deck_PagesSite", Culture)!;
+
+    /// <summary>SITIOS</summary>
+    public static string Deck_PagesSites => ResourceManager.GetString("Deck_PagesSites", Culture)!;
+
+    /// <summary>Páginas</summary>
+    public static string Deck_PagesTab => ResourceManager.GetString("Deck_PagesTab", Culture)!;
+
+    /// <summary>Páginas · {0}</summary>
+    public static string Deck_PagesTabCount => ResourceManager.GetString("Deck_PagesTabCount", Culture)!;
+
+    /// <summary>Páginas de los navegadores</summary>
+    public static string Deck_PagesTabName => ResourceManager.GetString("Deck_PagesTabName", Culture)!;
+
     /// <summary>sin apps (suelta aquí una app)</summary>
     public static string Deck_PanelEmpty => ResourceManager.GetString("Deck_PanelEmpty", Culture)!;
+
+    /// <summary>apagado</summary>
+    public static string Deck_PanelOff => ResourceManager.GetString("Deck_PanelOff", Culture)!;
 
     /// <summary>Anclar</summary>
     public static string Deck_Pin => ResourceManager.GetString("Deck_Pin", Culture)!;
@@ -274,13 +432,17 @@ public static class Strings
     /// <summary>Deck: Liberar {0}</summary>
     public static string Deck_ReleaseName => ResourceManager.GetString("Deck_ReleaseName", Culture)!;
 
+    /// <summary>Restablecer ancho</summary>
+    public static string Deck_ResetWidth => ResourceManager.GetString("Deck_ResetWidth", Culture)!;
+
     /// <summary>Liberar todas</summary>
     public static string Deck_RestoreAll => ResourceManager.GetString("Deck_RestoreAll", Culture)!;
 
     /// <summary>¿Seguro? Otra vez</summary>
     public static string Deck_RestoreSure => ResourceManager.GetString("Deck_RestoreSure", Culture)!;
 
-
+    /// <summary>Derecha</summary>
+    public static string Deck_RightColumn => ResourceManager.GetString("Deck_RightColumn", Culture)!;
 
     /// <summary>FOCO</summary>
     public static string Deck_SecFocus => ResourceManager.GetString("Deck_SecFocus", Culture)!;
@@ -294,7 +456,6 @@ public static class Strings
     /// <summary>ENERGÍA</summary>
     public static string Deck_SecPower => ResourceManager.GetString("Deck_SecPower", Culture)!;
 
-
     /// <summary>SISTEMA</summary>
     public static string Deck_SecSystem => ResourceManager.GetString("Deck_SecSystem", Culture)!;
 
@@ -303,6 +464,12 @@ public static class Strings
 
     /// <summary>Mandar el deck a</summary>
     public static string Deck_SendTo => ResourceManager.GetString("Deck_SendTo", Culture)!;
+
+    /// <summary>{0}: tócala para verla en su panel y escribir en ella; otra vez, al foco</summary>
+    public static string Deck_ShowTabTip => ResourceManager.GetString("Deck_ShowTabTip", Culture)!;
+
+    /// <summary>Sitio {0}, {1} páginas</summary>
+    public static string Deck_SiteName => ResourceManager.GetString("Deck_SiteName", Culture)!;
 
     /// <summary>{0} (desconectado)</summary>
     public static string Deck_TabDisconnected => ResourceManager.GetString("Deck_TabDisconnected", Culture)!;
@@ -319,8 +486,14 @@ public static class Strings
     /// <summary>Al panel</summary>
     public static string Deck_ToPanelShort => ResourceManager.GetString("Deck_ToPanelShort", Culture)!;
 
+    /// <summary>{0} es la pestaña que se ve en su panel: tócala para llevarla al foco</summary>
+    public static string Deck_VisibleTabTip => ResourceManager.GetString("Deck_VisibleTabTip", Culture)!;
 
+    /// <summary>{0} ya está abierta en otro escritorio. Cambia a ese escritorio para usarla.</summary>
+    public static string Desktop_OpenElsewhere => ResourceManager.GetString("Desktop_OpenElsewhere", Culture)!;
 
+    /// <summary>{0} está en otro escritorio: te llevo allí.</summary>
+    public static string Desktop_Switched => ResourceManager.GetString("Desktop_Switched", Culture)!;
 
     /// <summary>un monitor</summary>
     public static string Display_AMonitor => ResourceManager.GetString("Display_AMonitor", Culture)!;
@@ -409,6 +582,87 @@ public static class Strings
     /// <summary>No hay ninguna ventana en el foco.</summary>
     public static string Focus_Empty => ResourceManager.GetString("Focus_Empty", Culture)!;
 
+    /// <summary>Acerca de</summary>
+    public static string Gen_About => ResourceManager.GetString("Gen_About", Culture)!;
+
+    /// <summary>Funciona sólo en tu PC: no se conecta a la red, no tiene cuenta y no envía telem</summary>
+    public static string Gen_AboutPrivacy => ResourceManager.GetString("Gen_AboutPrivacy", Culture)!;
+
+    /// <summary>Mantiene la app en la que trabajas en una zona amplia y protegida de tu monitor </summary>
+    public static string Gen_AboutText => ResourceManager.GetString("Gen_AboutText", Culture)!;
+
+    /// <summary>Mantener la pantalla encendida</summary>
+    public static string Gen_Awake => ResourceManager.GetString("Gen_Awake", Culture)!;
+
+    /// <summary>Evita que la pantalla se apague y que el equipo se suspenda.</summary>
+    public static string Gen_AwakeHelp => ResourceManager.GetString("Gen_AwakeHelp", Culture)!;
+
+    /// <summary>Idioma</summary>
+    public static string Gen_Language => ResourceManager.GetString("Gen_Language", Culture)!;
+
+    /// <summary>Se aplica al reiniciar FocusWShell.</summary>
+    public static string Gen_LanguageHelp => ResourceManager.GetString("Gen_LanguageHelp", Culture)!;
+
+    /// <summary>Licencia</summary>
+    public static string Gen_License => ResourceManager.GetString("Gen_License", Culture)!;
+
+    /// <summary>Código abierto: puedes usarlo, modificarlo y compartirlo.</summary>
+    public static string Gen_LicenseHelp => ResourceManager.GetString("Gen_LicenseHelp", Culture)!;
+
+    /// <summary>Manual</summary>
+    public static string Gen_Manual => ResourceManager.GetString("Gen_Manual", Culture)!;
+
+    /// <summary>Instalar, primeros pasos, guías paso a paso, el deck y los atajos.</summary>
+    public static string Gen_ManualHelp => ResourceManager.GetString("Gen_ManualHelp", Culture)!;
+
+    /// <summary>Versiones</summary>
+    public static string Gen_Releases => ResourceManager.GetString("Gen_Releases", Culture)!;
+
+    /// <summary>Descarga la última versión y sus notas.</summary>
+    public static string Gen_ReleasesHelp => ResourceManager.GetString("Gen_ReleasesHelp", Culture)!;
+
+    /// <summary>Reportar un problema</summary>
+    public static string Gen_Report => ResourceManager.GetString("Gen_Report", Culture)!;
+
+    /// <summary>Un problema o una idea, en GitHub. Incluye la versión y tus monitores.</summary>
+    public static string Gen_ReportHelp => ResourceManager.GetString("Gen_ReportHelp", Culture)!;
+
+    /// <summary>Abrir la carpeta de configuración</summary>
+    public static string Gen_Settings => ResourceManager.GetString("Gen_Settings", Culture)!;
+
+    /// <summary>Código fuente</summary>
+    public static string Gen_Source => ResourceManager.GetString("Gen_Source", Culture)!;
+
+    /// <summary>Iniciar con Windows</summary>
+    public static string Gen_Startup => ResourceManager.GetString("Gen_Startup", Culture)!;
+
+    /// <summary>Abre FocusWShell al iniciar sesión.</summary>
+    public static string Gen_StartupHelp => ResourceManager.GetString("Gen_StartupHelp", Culture)!;
+
+    /// <summary>Un gestor de atención visual para Windows.</summary>
+    public static string Gen_Tagline => ResourceManager.GetString("Gen_Tagline", Culture)!;
+
+    /// <summary>Tema</summary>
+    public static string Gen_Theme => ResourceManager.GetString("Gen_Theme", Culture)!;
+
+    /// <summary>Automático (el de Windows)</summary>
+    public static string Gen_ThemeAuto => ResourceManager.GetString("Gen_ThemeAuto", Culture)!;
+
+    /// <summary>Oscuro</summary>
+    public static string Gen_ThemeDark => ResourceManager.GetString("Gen_ThemeDark", Culture)!;
+
+    /// <summary>El de esta ventana. El deck tiene su propio aspecto.</summary>
+    public static string Gen_ThemeHelp => ResourceManager.GetString("Gen_ThemeHelp", Culture)!;
+
+    /// <summary>Claro</summary>
+    public static string Gen_ThemeLight => ResourceManager.GetString("Gen_ThemeLight", Culture)!;
+
+    /// <summary>Usa estos componentes de código abierto:</summary>
+    public static string Gen_ThirdParty => ResourceManager.GetString("Gen_ThirdParty", Culture)!;
+
+    /// <summary>Versión {0}</summary>
+    public static string Gen_Version => ResourceManager.GetString("Gen_Version", Culture)!;
+
     /// <summary>{0}: elegida con Alt+Tab; pasa al foco.</summary>
     public static string Gesture_AltTab => ResourceManager.GetString("Gesture_AltTab", Culture)!;
 
@@ -481,12 +735,50 @@ public static class Strings
     /// <summary>FocusWShell · atajos</summary>
     public static string Hk_WindowTitle => ResourceManager.GetString("Hk_WindowTitle", Culture)!;
 
+    /// <summary>Acciones rápidas</summary>
+    public static string Home_Actions => ResourceManager.GetString("Home_Actions", Culture)!;
+
+    /// <summary>Foco: {0}</summary>
+    public static string Home_Focus => ResourceManager.GetString("Home_Focus", Culture)!;
+
+    /// <summary>Foco vacío</summary>
+    public static string Home_FocusEmpty => ResourceManager.GetString("Home_FocusEmpty", Culture)!;
+
+    /// <summary>Solo foco: {0}</summary>
+    public static string Home_FocusFull => ResourceManager.GetString("Home_FocusFull", Culture)!;
+
+    /// <summary>Disposición del principal</summary>
+    public static string Home_Layout => ResourceManager.GetString("Home_Layout", Culture)!;
+
+    /// <summary>Arrastra el borde entre dos ventanas para cambiar un ancho.</summary>
+    public static string Home_LayoutHint => ResourceManager.GetString("Home_LayoutHint", Culture)!;
+
+    /// <summary>Principal</summary>
+    public static string Home_Main => ResourceManager.GetString("Home_Main", Culture)!;
+
+    /// <summary>Tus monitores</summary>
+    public static string Home_Monitors => ResourceManager.GetString("Home_Monitors", Culture)!;
+
+    /// <summary>Sin paneles</summary>
+    public static string Home_NoPanels => ResourceManager.GetString("Home_NoPanels", Culture)!;
+
+    /// <summary>Abrir el deck</summary>
+    public static string Home_OpenDeck => ResourceManager.GetString("Home_OpenDeck", Culture)!;
+
+    /// <summary>{0} · {1}</summary>
+    public static string Home_PanelLine => ResourceManager.GetString("Home_PanelLine", Culture)!;
+
+    /// <summary>{0} devuelve todas las ventanas a su sitio, en cualquier momento. «Salir», en la</summary>
+    public static string Home_SafetyText => ResourceManager.GetString("Home_SafetyText", Culture)!;
+
+    /// <summary>Si algo sale mal</summary>
+    public static string Home_SafetyTitle => ResourceManager.GetString("Home_SafetyTitle", Culture)!;
+
     /// <summary>Otra aplicación ya usa: {0}. «Liberar todas» sigue en el menú de la bandeja.</summary>
     public static string Hotkeys_InUse => ResourceManager.GetString("Hotkeys_InUse", Culture)!;
 
     /// <summary>cerrada</summary>
     public static string ListState_Closed => ResourceManager.GetString("ListState_Closed", Culture)!;
-    public static string ListState_InTray => ResourceManager.GetString("ListState_InTray", Culture)!;
 
     /// <summary>fuera de layout</summary>
     public static string ListState_Detached => ResourceManager.GetString("ListState_Detached", Culture)!;
@@ -496,6 +788,12 @@ public static class Strings
 
     /// <summary>en el panel</summary>
     public static string ListState_InPanel => ResourceManager.GetString("ListState_InPanel", Culture)!;
+
+    /// <summary>en la bandeja</summary>
+    public static string ListState_InTray => ResourceManager.GetString("ListState_InTray", Culture)!;
+
+    /// <summary>en otro escritorio</summary>
+    public static string ListState_OtherDesktop => ResourceManager.GetString("ListState_OtherDesktop", Culture)!;
 
     /// <summary>minimizada</summary>
     public static string ListState_Parked => ResourceManager.GetString("ListState_Parked", Culture)!;
@@ -520,13 +818,18 @@ public static class Strings
 
     /// <summary>{0} · cerrada. Clic: abrirla en este panel.</summary>
     public static string List_TipClosed => ResourceManager.GetString("List_TipClosed", Culture)!;
-    public static string List_TipInTray => ResourceManager.GetString("List_TipInTray", Culture)!;
 
     /// <summary>{0} · está en el foco.</summary>
     public static string List_TipInFocus => ResourceManager.GetString("List_TipInFocus", Culture)!;
 
+    /// <summary>{0} · en la bandeja. Clic: mostrarla en este panel.</summary>
+    public static string List_TipInTray => ResourceManager.GetString("List_TipInTray", Culture)!;
+
     /// <summary>{0} · {1}. Clic: al foco.</summary>
     public static string List_TipOpen => ResourceManager.GetString("List_TipOpen", Culture)!;
+
+    /// <summary>{0} · en otro escritorio. Clic: ir allí.</summary>
+    public static string List_TipOtherDesktop => ResourceManager.GetString("List_TipOtherDesktop", Culture)!;
 
     /// <summary>Aplicar</summary>
     public static string Main_Apply => ResourceManager.GetString("Main_Apply", Culture)!;
@@ -636,17 +939,14 @@ public static class Strings
     /// <summary>Minimizar</summary>
     public static string Main_Park => ResourceManager.GetString("Main_Park", Culture)!;
 
-    /// <summary>Aparta la ventana seleccionada (minimizada) sin quitarle su panel. También pasa </summary>
+    /// <summary>Minimiza la ventana seleccionada sin quitarle su panel. También pasa si la minim</summary>
     public static string Main_ParkTip => ResourceManager.GetString("Main_ParkTip", Culture)!;
 
-    /// <summary>Al Centro</summary>
+    /// <summary>Al foco</summary>
     public static string Main_Promote => ResourceManager.GetString("Main_Promote", Culture)!;
 
-    /// <summary>Lleva la ventana seleccionada al Centro</summary>
+    /// <summary>Lleva la ventana seleccionada al foco</summary>
     public static string Main_PromoteTip => ResourceManager.GetString("Main_PromoteTip", Culture)!;
-
-
-
 
     /// <summary>Reencajar</summary>
     public static string Main_Reattach => ResourceManager.GetString("Main_Reattach", Culture)!;
@@ -663,13 +963,16 @@ public static class Strings
     /// <summary>Devuelve la ventana seleccionada a su sitio original y deja de gestionarla</summary>
     public static string Main_ReleaseTip => ResourceManager.GetString("Main_ReleaseTip", Culture)!;
 
+    /// <summary>Vuelve al ancho por defecto de esta disposición (el ancho se ajusta arrastrando </summary>
+    public static string Main_ResetWidthTip => ResourceManager.GetString("Main_ResetWidthTip", Culture)!;
+
     /// <summary>Liberar todas</summary>
     public static string Main_RestoreAll => ResourceManager.GetString("Main_RestoreAll", Culture)!;
 
-    /// <summary>Centro al panel</summary>
+    /// <summary>Foco al panel</summary>
     public static string Main_Return => ResourceManager.GetString("Main_Return", Culture)!;
 
-    /// <summary>Devuelve la ventana del Centro a su panel</summary>
+    /// <summary>Devuelve la ventana del foco a su panel</summary>
     public static string Main_ReturnTip => ResourceManager.GetString("Main_ReturnTip", Culture)!;
 
     /// <summary>Guardar escena actual</summary>
@@ -693,7 +996,7 @@ public static class Strings
     /// <summary>Volver a la anterior</summary>
     public static string Main_Swap => ResourceManager.GetString("Main_Swap", Culture)!;
 
-    /// <summary>Devuelve al Centro la ventana que estaba antes</summary>
+    /// <summary>Devuelve al foco la ventana que estaba antes</summary>
     public static string Main_SwapTip => ResourceManager.GetString("Main_SwapTip", Culture)!;
 
     /// <summary>Pestaña Apps</summary>
@@ -717,20 +1020,17 @@ public static class Strings
     /// <summary>Pestaña Ventanas</summary>
     public static string Main_TabWindowsName => ResourceManager.GetString("Main_TabWindowsName", Culture)!;
 
-    /// <summary>Recuperar</summary>
+    /// <summary>Restaurar</summary>
     public static string Main_Unpark => ResourceManager.GetString("Main_Unpark", Culture)!;
 
-    /// <summary>Devuelve una ventana estacionada a su panel, en el puesto que tenía. También pas</summary>
+    /// <summary>Devuelve una ventana minimizada a su panel, en el puesto que tenía. También pasa</summary>
     public static string Main_UnparkTip => ResourceManager.GetString("Main_UnparkTip", Culture)!;
-
 
     /// <summary>Vista:</summary>
     public static string Main_ViewLabel => ResourceManager.GetString("Main_ViewLabel", Culture)!;
 
-
     /// <summary>Vista</summary>
     public static string Main_ViewName => ResourceManager.GetString("Main_ViewName", Culture)!;
-
 
     /// <summary>Dónde va el foco en el monitor principal</summary>
     public static string Main_ViewTip => ResourceManager.GetString("Main_ViewTip", Culture)!;
@@ -750,6 +1050,33 @@ public static class Strings
     /// <summary>Principal</summary>
     public static string Monitor_Principal => ResourceManager.GetString("Monitor_Principal", Culture)!;
 
+    /// <summary>Actividad</summary>
+    public static string Nav_Activity => ResourceManager.GetString("Nav_Activity", Culture)!;
+
+    /// <summary>Apps</summary>
+    public static string Nav_Apps => ResourceManager.GetString("Nav_Apps", Culture)!;
+
+    /// <summary>Excluidas</summary>
+    public static string Nav_Excluded => ResourceManager.GetString("Nav_Excluded", Culture)!;
+
+    /// <summary>General</summary>
+    public static string Nav_General => ResourceManager.GetString("Nav_General", Culture)!;
+
+    /// <summary>Inicio</summary>
+    public static string Nav_Home => ResourceManager.GetString("Nav_Home", Culture)!;
+
+    /// <summary>Paneles</summary>
+    public static string Nav_Panels => ResourceManager.GetString("Nav_Panels", Culture)!;
+
+    /// <summary>Escenas</summary>
+    public static string Nav_Scenes => ResourceManager.GetString("Nav_Scenes", Culture)!;
+
+    /// <summary>Atajos y gestos</summary>
+    public static string Nav_Shortcuts => ResourceManager.GetString("Nav_Shortcuts", Culture)!;
+
+    /// <summary>Ventanas</summary>
+    public static string Nav_Windows => ResourceManager.GetString("Nav_Windows", Culture)!;
+
     /// <summary>{0} abierta en {1}.</summary>
     public static string Open_Done => ResourceManager.GetString("Open_Done", Culture)!;
 
@@ -761,6 +1088,15 @@ public static class Strings
 
     /// <summary>Esa app ya no está en el catálogo.</summary>
     public static string Open_NotInCatalog => ResourceManager.GetString("Open_NotInCatalog", Culture)!;
+
+    /// <summary>libre</summary>
+    public static string Pages_Free => ResourceManager.GetString("Pages_Free", Culture)!;
+
+    /// <summary>en el foco</summary>
+    public static string Pages_InFocus => ResourceManager.GetString("Pages_InFocus", Culture)!;
+
+    /// <summary>⧉ en otro escritorio</summary>
+    public static string Pages_OtherDesktop => ResourceManager.GetString("Pages_OtherDesktop", Culture)!;
 
     /// <summary>Crear panel</summary>
     public static string Panel_Create => ResourceManager.GetString("Panel_Create", Culture)!;
@@ -837,6 +1173,21 @@ public static class Strings
     /// <summary>derecha</summary>
     public static string Report_Right => ResourceManager.GetString("Report_Right", Culture)!;
 
+    /// <summary>Cambiar atajos…</summary>
+    public static string Sc_Edit => ResourceManager.GetString("Sc_Edit", Culture)!;
+
+    /// <summary>Gestos de Windows</summary>
+    public static string Sc_Gestures => ResourceManager.GetString("Sc_Gestures", Culture)!;
+
+    /// <summary>Llevar al foco la ventana de un panel cuando la eliges con:</summary>
+    public static string Sc_GesturesHelp => ResourceManager.GetString("Sc_GesturesHelp", Culture)!;
+
+    /// <summary>Atajos de teclado</summary>
+    public static string Sc_Keys => ResourceManager.GetString("Sc_Keys", Culture)!;
+
+    /// <summary>Todos usan Ctrl+Alt+Mayús y una tecla, para no chocar con tus apps.</summary>
+    public static string Sc_KeysHelp => ResourceManager.GetString("Sc_KeysHelp", Culture)!;
+
     /// <summary>Escena «{0}» aplicada.</summary>
     public static string Scene_Applied => ResourceManager.GetString("Scene_Applied", Culture)!;
 
@@ -878,6 +1229,18 @@ public static class Strings
 
     /// <summary>el foco</summary>
     public static string Scene_TheFocus => ResourceManager.GetString("Scene_TheFocus", Culture)!;
+
+    /// <summary>Una escena guarda qué apps están en cada panel y en el foco. Aplicarla las reaco</summary>
+    public static string Scn_Help => ResourceManager.GetString("Scn_Help", Culture)!;
+
+    /// <summary>Nombre de la escena</summary>
+    public static string Scn_NamePlaceholder => ResourceManager.GetString("Scn_NamePlaceholder", Culture)!;
+
+    /// <summary>Guardar lo de ahora como escena</summary>
+    public static string Scn_SaveTitle => ResourceManager.GetString("Scn_SaveTitle", Culture)!;
+
+    /// <summary>Escenas guardadas</summary>
+    public static string Scn_Saved => ResourceManager.GetString("Scn_Saved", Culture)!;
 
     /// <summary>Según la ventana (tamaño fijo)</summary>
     public static string Size_AutoFixed => ResourceManager.GetString("Size_AutoFixed", Culture)!;
@@ -945,7 +1308,7 @@ public static class Strings
     /// <summary>{0} · está en el foco y volverá aquí. Clic: devolverla.</summary>
     public static string Strip_TipInFocus => ResourceManager.GetString("Strip_TipInFocus", Culture)!;
 
-    /// <summary>{0} · estacionada. Clic: recuperarla. Doble clic: al foco.</summary>
+    /// <summary>{0} · minimizada. Clic: restaurarla. Doble clic: al foco.</summary>
     public static string Strip_TipParked => ResourceManager.GetString("Strip_TipParked", Culture)!;
 
     /// <summary>Al foco</summary>
@@ -1062,7 +1425,6 @@ public static class Strings
     /// <summary>no se puede mover</summary>
     public static string Unmanageable_Generic => ResourceManager.GetString("Unmanageable_Generic", Culture)!;
 
-
     /// <summary>{0}, izquierda</summary>
     public static string Where_AuxLeft => ResourceManager.GetString("Where_AuxLeft", Culture)!;
 
@@ -1084,203 +1446,15 @@ public static class Strings
     /// <summary>principal, derecha</summary>
     public static string Where_PrincipalRightShort => ResourceManager.GetString("Where_PrincipalRightShort", Culture)!;
 
-    public static string Desktop_Switched => ResourceManager.GetString("Desktop_Switched", Culture)!;
-
-    public static string Desktop_OpenElsewhere => ResourceManager.GetString("Desktop_OpenElsewhere", Culture)!;
-
-    public static string Deck_OtherDesktopTip => ResourceManager.GetString("Deck_OtherDesktopTip", Culture)!;
-    public static string Deck_InTrayTip => ResourceManager.GetString("Deck_InTrayTip", Culture)!;
-
-    public static string ListState_OtherDesktop => ResourceManager.GetString("ListState_OtherDesktop", Culture)!;
-
-    public static string List_TipOtherDesktop => ResourceManager.GetString("List_TipOtherDesktop", Culture)!;
-
-    public static string DeckMenu_GoToDesktop => ResourceManager.GetString("DeckMenu_GoToDesktop", Culture)!;
-
-    public static string Pages_InFocus => ResourceManager.GetString("Pages_InFocus", Culture)!;
-
-    public static string Pages_Free => ResourceManager.GetString("Pages_Free", Culture)!;
-
-    public static string Pages_OtherDesktop => ResourceManager.GetString("Pages_OtherDesktop", Culture)!;
-
-    public static string Deck_PagesTab => ResourceManager.GetString("Deck_PagesTab", Culture)!;
-
-    public static string Deck_PagesTabCount => ResourceManager.GetString("Deck_PagesTabCount", Culture)!;
-
-    public static string Deck_PagesTabName => ResourceManager.GetString("Deck_PagesTabName", Culture)!;
-
-    public static string Deck_PagesLoading => ResourceManager.GetString("Deck_PagesLoading", Culture)!;
-
-    public static string Deck_PagesNone => ResourceManager.GetString("Deck_PagesNone", Culture)!;
-
-
-    public static string Deck_PageName => ResourceManager.GetString("Deck_PageName", Culture)!;
-
-    public static string Deck_PageCloseName => ResourceManager.GetString("Deck_PageCloseName", Culture)!;
-
-    public static string DeckMenu_Pages => ResourceManager.GetString("DeckMenu_Pages", Culture)!;
-
-    public static string Deck_PagesSites => ResourceManager.GetString("Deck_PagesSites", Culture)!;
-
-    public static string Deck_PagesLoose => ResourceManager.GetString("Deck_PagesLoose", Culture)!;
-
-    public static string Deck_PagesBack => ResourceManager.GetString("Deck_PagesBack", Culture)!;
-
-    public static string Deck_PagesSite => ResourceManager.GetString("Deck_PagesSite", Culture)!;
-
-    public static string Deck_PagesCloseAll => ResourceManager.GetString("Deck_PagesCloseAll", Culture)!;
-
-    public static string Deck_PagesCloseAllConfirm => ResourceManager.GetString("Deck_PagesCloseAllConfirm", Culture)!;
-
-    public static string Deck_SiteName => ResourceManager.GetString("Deck_SiteName", Culture)!;
-
-    public static string Deck_PageWhere => ResourceManager.GetString("Deck_PageWhere", Culture)!;
-
-    public static string Deck_PanelOff => ResourceManager.GetString("Deck_PanelOff", Culture)!;
-
-    public static string Deck_LeftColumn => ResourceManager.GetString("Deck_LeftColumn", Culture)!;
-
-    public static string Deck_RightColumn => ResourceManager.GetString("Deck_RightColumn", Culture)!;
-
-    public static string Deck_ColumnTip => ResourceManager.GetString("Deck_ColumnTip", Culture)!;
-
-    public static string Deck_BorrowTip => ResourceManager.GetString("Deck_BorrowTip", Culture)!;
-
-    public static string Deck_ResetWidth => ResourceManager.GetString("Deck_ResetWidth", Culture)!;
-
-    public static string Arr_Center => ResourceManager.GetString("Arr_Center", Culture)!;
-
-    public static string Arr_Right => ResourceManager.GetString("Arr_Right", Culture)!;
-
-    public static string Arr_Left => ResourceManager.GetString("Arr_Left", Culture)!;
-
-    public static string Arr_ContextOnly => ResourceManager.GetString("Arr_ContextOnly", Culture)!;
-
-    public static string Arr_WorkOnly => ResourceManager.GetString("Arr_WorkOnly", Culture)!;
-
-    public static string Arr_FocusOnly => ResourceManager.GetString("Arr_FocusOnly", Culture)!;
-
-    public static string Main_ResetWidthTip => ResourceManager.GetString("Main_ResetWidthTip", Culture)!;
-
-    public static string Nav_Home => ResourceManager.GetString("Nav_Home", Culture)!;
-
-    public static string Nav_Windows => ResourceManager.GetString("Nav_Windows", Culture)!;
-
-    public static string Nav_Panels => ResourceManager.GetString("Nav_Panels", Culture)!;
-
-    public static string Nav_Apps => ResourceManager.GetString("Nav_Apps", Culture)!;
-
-    public static string Nav_Shortcuts => ResourceManager.GetString("Nav_Shortcuts", Culture)!;
-
-    public static string Nav_Scenes => ResourceManager.GetString("Nav_Scenes", Culture)!;
-
-    public static string Nav_Excluded => ResourceManager.GetString("Nav_Excluded", Culture)!;
-
-    public static string Nav_General => ResourceManager.GetString("Nav_General", Culture)!;
-
-    public static string Home_Monitors => ResourceManager.GetString("Home_Monitors", Culture)!;
-
-    public static string Home_Layout => ResourceManager.GetString("Home_Layout", Culture)!;
-
-    public static string Home_Actions => ResourceManager.GetString("Home_Actions", Culture)!;
-
-    public static string Home_OpenDeck => ResourceManager.GetString("Home_OpenDeck", Culture)!;
-
-    public static string Home_SafetyTitle => ResourceManager.GetString("Home_SafetyTitle", Culture)!;
-
-    public static string Home_SafetyText => ResourceManager.GetString("Home_SafetyText", Culture)!;
-
-    public static string Home_Focus => ResourceManager.GetString("Home_Focus", Culture)!;
-
-    public static string Home_FocusEmpty => ResourceManager.GetString("Home_FocusEmpty", Culture)!;
-
-    public static string Home_FocusFull => ResourceManager.GetString("Home_FocusFull", Culture)!;
-
-    public static string Home_PanelLine => ResourceManager.GetString("Home_PanelLine", Culture)!;
-
-    public static string Home_Main => ResourceManager.GetString("Home_Main", Culture)!;
-
-    public static string Home_LayoutHint => ResourceManager.GetString("Home_LayoutHint", Culture)!;
-
-    public static string Win_Help => ResourceManager.GetString("Win_Help", Culture)!;
-
+    /// <summary>App</summary>
     public static string Win_ColApp => ResourceManager.GetString("Win_ColApp", Culture)!;
 
+    /// <summary>Panel</summary>
     public static string Win_ColPanel => ResourceManager.GetString("Win_ColPanel", Culture)!;
 
+    /// <summary>Las ventanas que FocusWShell puede organizar. Elige su panel y se aplica al mome</summary>
+    public static string Win_Help => ResourceManager.GetString("Win_Help", Culture)!;
+
+    /// <summary>Más acciones de {0}</summary>
     public static string Win_More => ResourceManager.GetString("Win_More", Culture)!;
-
-    public static string Sc_Keys => ResourceManager.GetString("Sc_Keys", Culture)!;
-
-    public static string Sc_KeysHelp => ResourceManager.GetString("Sc_KeysHelp", Culture)!;
-
-    public static string Sc_Edit => ResourceManager.GetString("Sc_Edit", Culture)!;
-
-    public static string Sc_Gestures => ResourceManager.GetString("Sc_Gestures", Culture)!;
-
-    public static string Sc_GesturesHelp => ResourceManager.GetString("Sc_GesturesHelp", Culture)!;
-
-    public static string Scn_Help => ResourceManager.GetString("Scn_Help", Culture)!;
-
-    public static string Scn_Saved => ResourceManager.GetString("Scn_Saved", Culture)!;
-
-    public static string Scn_SaveTitle => ResourceManager.GetString("Scn_SaveTitle", Culture)!;
-
-    public static string Scn_NamePlaceholder => ResourceManager.GetString("Scn_NamePlaceholder", Culture)!;
-
-    public static string Gen_Language => ResourceManager.GetString("Gen_Language", Culture)!;
-
-    public static string Gen_LanguageHelp => ResourceManager.GetString("Gen_LanguageHelp", Culture)!;
-
-    public static string Gen_Startup => ResourceManager.GetString("Gen_Startup", Culture)!;
-
-    public static string Gen_StartupHelp => ResourceManager.GetString("Gen_StartupHelp", Culture)!;
-
-    public static string Gen_Awake => ResourceManager.GetString("Gen_Awake", Culture)!;
-
-    public static string Gen_AwakeHelp => ResourceManager.GetString("Gen_AwakeHelp", Culture)!;
-
-    public static string Gen_About => ResourceManager.GetString("Gen_About", Culture)!;
-
-    public static string Gen_Version => ResourceManager.GetString("Gen_Version", Culture)!;
-
-    public static string Gen_Manual => ResourceManager.GetString("Gen_Manual", Culture)!;
-
-    public static string Gen_Report => ResourceManager.GetString("Gen_Report", Culture)!;
-
-    public static string Gen_Settings => ResourceManager.GetString("Gen_Settings", Culture)!;
-
-    public static string Gen_Tagline => ResourceManager.GetString("Gen_Tagline", Culture)!;
-
-    public static string Home_NoPanels => ResourceManager.GetString("Home_NoPanels", Culture)!;
-
-    public static string Gen_Theme => ResourceManager.GetString("Gen_Theme", Culture)!;
-
-    public static string Gen_ThemeHelp => ResourceManager.GetString("Gen_ThemeHelp", Culture)!;
-
-    public static string Gen_ThemeAuto => ResourceManager.GetString("Gen_ThemeAuto", Culture)!;
-
-    public static string Gen_ThemeLight => ResourceManager.GetString("Gen_ThemeLight", Culture)!;
-
-    public static string Gen_ThemeDark => ResourceManager.GetString("Gen_ThemeDark", Culture)!;
-
-    public static string Gen_AboutText => ResourceManager.GetString("Gen_AboutText", Culture)!;
-
-    public static string Gen_AboutPrivacy => ResourceManager.GetString("Gen_AboutPrivacy", Culture)!;
-
-    public static string Gen_ManualHelp => ResourceManager.GetString("Gen_ManualHelp", Culture)!;
-
-    public static string Gen_Releases => ResourceManager.GetString("Gen_Releases", Culture)!;
-
-    public static string Gen_ReleasesHelp => ResourceManager.GetString("Gen_ReleasesHelp", Culture)!;
-
-    public static string Gen_ReportHelp => ResourceManager.GetString("Gen_ReportHelp", Culture)!;
-
-    public static string Gen_Source => ResourceManager.GetString("Gen_Source", Culture)!;
-
-    public static string Gen_License => ResourceManager.GetString("Gen_License", Culture)!;
-
-    public static string Gen_LicenseHelp => ResourceManager.GetString("Gen_LicenseHelp", Culture)!;
-
-    public static string Gen_ThirdParty => ResourceManager.GetString("Gen_ThirdParty", Culture)!;
 }

@@ -18,7 +18,7 @@ El deck es la superficie de control de FocusWShell: todo lo que puedes hacer, co
 
 ## Foco
 
-La app del foco tiene su lugar propio. En la tablet entera es un tile grande arriba, bajo el nombre de FocusWShell y encima de los botones, con su icono, su nombre, el panel del que viene y el título de su ventana. En el deck angosto está arriba. Tócala para abrir su menú; en un modo, funciona como cualquier otra app.
+La app del foco tiene su lugar propio. En la tablet entera es un tile grande arriba, bajo el nombre de FocusWShell y encima de los botones, con su icono, su nombre y el panel del que viene. Cuando escribes en otra app (está **en uso**), esa sale a su lado, más pequeña y con borde blanco. En el deck angosto está arriba. Tócala para abrir su menú; en un modo, funciona como cualquier otra app.
 
 En su panel, la app del foco lleva un borde azul y **↑**.
 
@@ -65,7 +65,7 @@ Marcas en una app:
 | Atenuada | Cerrada (anclada), o su columna está apagada. |
 | ⧉ | Abierta en otro escritorio virtual; tocarla te lleva allí. |
 | ▴ | En la bandeja: la app ocultó su ventana al cerrarla, pero sigue abierta. Tocarla abre la app otra vez, y la app muestra su ventana en el foco. |
-| Borde blanco | Tiene el teclado, pero no es la del foco. |
+| Borde blanco | En uso: tiene el teclado y el ratón, pero no es la del foco. |
 
 **🗂 Páginas**, a la derecha de las pestañas de monitores, muestra las pestañas de tus navegadores. Ver [Páginas de los navegadores]({{ '/es/paginas/' | relative_url }}).
 

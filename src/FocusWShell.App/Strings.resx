@@ -56,7 +56,8 @@
   <data name="Deck_Closing" xml:space="preserve"><value>Cerrando…</value></data>
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>vacío</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Ocultar el deck</value></data>
-  <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} está al frente (recibe el teclado), pero no es la del foco</value></data>
+  <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} está en uso (recibe el teclado y el ratón), pero no es la del foco</value></data>
+  <data name="Deck_InUse" xml:space="preserve"><value>en uso</value></data>
   <data name="Deck_ShowTabTip" xml:space="preserve"><value>{0}: tócala para verla en su panel y escribir en ella; otra vez, al foco</value></data>
   <data name="Deck_VisibleTabTip" xml:space="preserve"><value>{0} es la pestaña que se ve en su panel: tócala para llevarla al foco</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} más</value></data>
@@ -469,4 +470,27 @@
   <data name="Gen_License" xml:space="preserve"><value>Licencia</value></data>
   <data name="Gen_LicenseHelp" xml:space="preserve"><value>Código abierto: puedes usarlo, modificarlo y compartirlo.</value></data>
   <data name="Gen_ThirdParty" xml:space="preserve"><value>Usa estos componentes de código abierto:</value></data>
+  <data name="Nav_Activity" xml:space="preserve"><value>Actividad</value></data>
+  <data name="Activity_Help" xml:space="preserve"><value>Cuánto pasa cada app en el foco y en uso. En paralelo es el tiempo con el foco en una app y el teclado en otra: por ejemplo, un documento a la vista mientras escribes en el chat.</value></data>
+  <data name="Activity_Measure" xml:space="preserve"><value>Medir la actividad</value></data>
+  <data name="Activity_MeasureHelp" xml:space="preserve"><value>Sólo en este equipo, sin títulos de ventanas. Se guardan los últimos {0} días.</value></data>
+  <data name="Activity_PrevDay" xml:space="preserve"><value>Día anterior</value></data>
+  <data name="Activity_NextDay" xml:space="preserve"><value>Día siguiente</value></data>
+  <data name="Activity_DateFormat" xml:space="preserve"><value>dddd d 'de' MMMM</value></data>
+  <data name="Activity_Today" xml:space="preserve"><value>Hoy, {0}</value></data>
+  <data name="Activity_Yesterday" xml:space="preserve"><value>Ayer, {0}</value></data>
+  <data name="Activity_Active" xml:space="preserve"><value>Tiempo activo</value></data>
+  <data name="Activity_SideBySide" xml:space="preserve"><value>En paralelo</value></data>
+  <data name="Activity_Share" xml:space="preserve"><value>{0} % del tiempo activo</value></data>
+  <data name="Activity_ToFocus" xml:space="preserve"><value>Al foco</value></data>
+  <data name="Activity_Times" xml:space="preserve"><value>{0} veces</value></data>
+  <data name="Activity_Longest" xml:space="preserve"><value>Racha más larga en el foco</value></data>
+  <data name="Activity_InFocus" xml:space="preserve"><value>En el foco</value></data>
+  <data name="Activity_InUse" xml:space="preserve"><value>En uso</value></data>
+  <data name="Activity_NoPanel" xml:space="preserve"><value>sin panel</value></data>
+  <data name="Activity_Empty" xml:space="preserve"><value>No hay actividad este día.</value></data>
+  <data name="Activity_Off" xml:space="preserve"><value>La medición está apagada. Préndela para empezar a ver tu actividad.</value></data>
+  <data name="Activity_Delete" xml:space="preserve"><value>Borrar historial</value></data>
+  <data name="Activity_DeleteAsk" xml:space="preserve"><value>¿Borrar toda la actividad guardada? No se puede deshacer.</value></data>
+  <data name="Activity_Deleted" xml:space="preserve"><value>Se borró la actividad guardada.</value></data>
 </root>
