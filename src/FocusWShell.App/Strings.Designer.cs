@@ -169,6 +169,12 @@ public static class Strings
     /// <summary>{0} está al frente (recibe el teclado), pero no es la del foco</summary>
     public static string Deck_InFrontTip => ResourceManager.GetString("Deck_InFrontTip", Culture)!;
 
+    /// <summary>{0}: tócala para verla en su panel y escribir en ella; otra vez, al foco</summary>
+    public static string Deck_ShowTabTip => ResourceManager.GetString("Deck_ShowTabTip", Culture)!;
+
+    /// <summary>{0} es la pestaña que se ve en su panel: tócala para llevarla al foco</summary>
+    public static string Deck_VisibleTabTip => ResourceManager.GetString("Deck_VisibleTabTip", Culture)!;
+
 
 
     /// <summary>+{0} más</summary>

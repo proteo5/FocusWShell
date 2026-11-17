@@ -4,6 +4,11 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
+## Unreleased / Sin publicar
+
+- In the deck, in a panel in tabs (or Fill), tapping a hidden tab shows it in its panel and gives it the keyboard, without moving it to the focus; tapping the tab you see (underlined) brings it to the focus. The icons keep their place. / En el deck, en un panel en pestañas (o Llenar), tocar una pestaña oculta la muestra en su panel y le da el teclado, sin moverla al foco; tocar la que se ve (subrayada) la lleva al foco. Los iconos no cambian de lugar.
+- The app that leaves the focus comes back to a panel in tabs as the tab you see, instead of sometimes hiding behind another. / La app que sale del foco vuelve a un panel en pestañas como la pestaña que se ve, en lugar de quedar a veces oculta detrás de otra.
+
 ## 0.3.1-alpha
 
 Your apps come back to their panels after restarting Windows. / Tus apps vuelven a sus paneles después de reiniciar Windows.

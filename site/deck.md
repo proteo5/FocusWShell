@@ -50,6 +50,7 @@ Turn the **Context** and **Work** columns of the main screen on or off (blue: on
 The row of tabs at the top chooses which monitor's panels you see. Each panel shows its apps:
 
 - **Tap an app:** to the focus. A free one is only brought to the front, and stays free.
+- **In a panel in tabs (or Fill):** the tab you see is underlined. Tap a hidden one to show it in its panel and type in it, without moving it to the focus: you work in the focus and in it at the same time. Tap the one you see to bring it to the focus. The icons keep their place, and the app that leaves the focus comes back as the tab you see.
 - **Long-press (or right-click):** its menu: to the focus, fullscreen on a monitor, minimize, move to another panel, free it, pin it.
 - **Drag** an app onto another panel to move it, or onto **Free** to let it go.
 - The panel header has its [presentation]({{ '/concepts/#panel-presentations' | relative_url }}) (▦ ⧉ ☰ ⛶) and, in tabs, ◀ ▶.

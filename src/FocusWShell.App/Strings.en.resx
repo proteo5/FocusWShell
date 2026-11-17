@@ -57,6 +57,8 @@
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>empty</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Hide the deck</value></data>
   <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} is in front (it gets the keyboard), but it isn't the focus app</value></data>
+  <data name="Deck_ShowTabTip" xml:space="preserve"><value>{0}: tap to show it in its panel and type in it; tap again to bring it to the focus</value></data>
+  <data name="Deck_VisibleTabTip" xml:space="preserve"><value>{0} is the tab shown in its panel: tap to bring it to the focus</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} more</value></data>
   <data name="Deck_MoreName" xml:space="preserve"><value>Deck: more apps</value></data>
   <data name="Deck_Minimize" xml:space="preserve"><value>Minimize</value></data>

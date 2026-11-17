@@ -53,6 +53,10 @@ Lo que no se pudo probar sin estar delante, o sin hardware que desconectar. Se m
 - [ ] **Suspensión real** con apps en paneles y el deck abierto: al volver, todo en su sitio en unos 4 s y el aviso «Volvió de la suspensión».
 - [ ] **Suspensión con la tablet:** la tablet (Apollo/Artemis) tarda en volver; sus paneles pasan al principal y regresan cuando vuelve.
 - [ ] **Desconectar el monitor principal:** el otro hace de principal, con el Centro y todas las ventanas. Al reconectarlo, cada uno recupera lo suyo. Anotar si Windows lo vuelve a nombrar principal.
+- [x] **Desconectar un monitor auxiliar con paneles** (2026-11-17, 0.3.1-alpha + pestañas, el HP): su pestaña sigue en el deck como desconectado, con sus paneles guardados. Al quitarle el panel, la pestaña se va y todo sigue funcionando.
+- [x] **Cambiar un monitor de puerto** (2026-11-17, el monitor pequeño, de un adaptador USB a HDMI al HDMI directo): Windows le da otro identificador y FocusWShell lo reconoce por su modelo; sus paneles y sus apps siguen en su lugar.
+- [x] **Tablet con Apollo, que estrena identificador en cada conexión** (2026-11-16, 0.3.1-alpha): sus paneles ya no desaparecen.
+- [ ] **Dos monitores idénticos (mismo modelo) que cambian de identificador a la vez:** sin hardware para probarlo. Lo esperado: no se puede saber cuál es cuál, así que ninguno recupera sus paneles solo y hay que reacomodarlos (`DisplayAliases` sólo une uno a uno).
 - [ ] **Desconectar la tablet con el deck fijado en ella:** el deck vuelve a la esquina del principal; al reconectarla, vuelve a la tablet.
 - [ ] **«Al foco» con el teclado** sobre una ventana elevada (p. ej. el Administrador de tareas): avisa de que corre como administrador.
 - [ ] **Un juego en pantalla completa** y **una presentación de PowerPoint:** ese monitor queda en pausa (sin tiras ni deck) y todo vuelve al salir.

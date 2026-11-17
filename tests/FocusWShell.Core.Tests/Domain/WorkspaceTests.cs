@@ -1,4 +1,5 @@
 ﻿using FocusWShell.Core.Domain;
+using FocusWShell.Core.Layout;
 
 namespace FocusWShell.Core.Tests.Domain;
 
@@ -26,6 +27,39 @@ public class WorkspaceTests
         Assert.True(ws.Windows.Count(w => w.Placement == Placement.Center) <= 1);
         Assert.Equal(ws.Windows.Count, ws.Windows.Select(w => w.Handle).Distinct().Count());
         Assert.All(ws.CenterHistory, h => Assert.True(ws.IsManaged(h)));
+    }
+
+    /// <summary>Las ventanas en el panel de Trabajo, en orden: en pestañas, la primera es la que se ve.</summary>
+    private static List<nint> WorkTabs(Workspace ws) =>
+        [.. ws.Windows.Where(w => w.PanelId == Workspace.WorkPanel && w.Placement == Placement.InPanel).Select(w => w.Handle)];
+
+    [Fact]
+    public void InTabsTheOneThatLeavesTheFocusIsTheVisibleTab()
+    {
+        var ws = Sample();
+        ws.Execute(new SetPresentation(Workspace.WorkPanel, PanelTemplate.Stack));
+        ws.Execute(new Promote(Edge));
+
+        ws.Execute(new Promote(Slack)); // Edge vuelve a Trabajo: delante, no detrás de Explorer y GitHub
+
+        Assert.Equal([Edge, Explorer, GitHub], WorkTabs(ws));
+
+        ws.Execute(new Promote(GitHub));
+        ws.Execute(new ReturnToPanel(GitHub));
+
+        Assert.Equal([GitHub, Edge, Explorer], WorkTabs(ws));
+        AssertInvariants(ws);
+    }
+
+    [Fact]
+    public void InTilesTheOneThatLeavesTheFocusKeepsItsPlace()
+    {
+        var ws = Sample();
+        ws.Execute(new Promote(Edge));
+
+        ws.Execute(new ReturnToPanel(Edge));
+
+        Assert.Equal([Explorer, GitHub, Edge], WorkTabs(ws));
     }
 
     [Fact]
