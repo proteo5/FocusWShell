@@ -1712,7 +1712,7 @@ public sealed class DeckWindow : Window
         var header = PanelHeader(panel);
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
-        var apps = Visible(panel.Apps);
+        var apps = Visible(StableOrder(panel));
         if (apps.Count == 0)
         {
             body.Children.Add(new TextBlock { Text = Strings.Deck_PanelEmpty, Foreground = DimBrush, Margin = new Thickness(4), VerticalAlignment = VerticalAlignment.Top });
@@ -2050,6 +2050,17 @@ public sealed class DeckWindow : Window
             tile.BorderBrush = ActiveBrush;
             tile.BorderThickness = new Thickness(3);
         }
+        else if (!InMode && IsTab(app, visible: true))
+        {
+            // La pestaña que se ve en su panel: subrayada, como una pestaña. Las ocultas se muestran con un toque.
+            tile.BorderBrush = DimBrush;
+            tile.BorderThickness = new Thickness(0, 0, 0, 3);
+            tile.ToolTip = Core.Text.F(Strings.Deck_VisibleTabTip, app.Name);
+        }
+        else if (!InMode && IsTab(app, visible: false))
+        {
+            tile.ToolTip = Core.Text.F(Strings.Deck_ShowTabTip, app.Name);
+        }
 
         tile.Click += async (_, _) =>
         {
@@ -2370,8 +2381,54 @@ public sealed class DeckWindow : Window
             return;
         }
 
+        // En un panel en pestañas (o Llenar), tocar una oculta la muestra en su panel y le da el teclado, sin
+        // moverla al foco: se trabaja en el foco y en ella a la vez. Tocar la que ya se ve la lleva al foco. Es la
+        // misma regla que la tira del panel en el monitor (un clic la muestra; doble clic, al foco).
+        if (IsTab(app, visible: false))
+        {
+            await Run(true, new MakeActiveInPanel(h));
+            await _actions.BringToFront(h);
+            return;
+        }
+
         await Run(true, new Promote(h));
     }
+
+    /// <summary>El orden en que el deck dibujó las apps de cada panel en pestañas o Llenar (ventana o app cerrada).</summary>
+    private readonly Dictionary<string, List<string>> _tabOrder = [];
+
+    /// <summary>
+    /// Las apps de un panel en el orden en que el deck ya las mostraba. En pestañas, el modelo pone primera la
+    /// visible: si el deck siguiera ese orden, cada toque movería los iconos y el siguiente caería en otra app.
+    /// Las nuevas van al final. En las demás presentaciones, el orden del panel (el que se ve en el monitor).
+    /// </summary>
+    private IReadOnlyList<DeckApp> StableOrder(DeckPanel panel)
+    {
+        if (panel.Template is not (PanelTemplate.Stack or PanelTemplate.Fill))
+        {
+            _tabOrder.Remove(panel.Id);
+            return panel.Apps;
+        }
+
+        static string Key(DeckApp a) => a.Handle is { } h ? h.ToString(System.Globalization.CultureInfo.InvariantCulture) : "app:" + a.AppKey;
+        var known = _tabOrder.GetValueOrDefault(panel.Id) ?? [];
+        var ordered = panel.Apps
+            .OrderBy(a => known.IndexOf(Key(a)) is int i and >= 0 ? i : int.MaxValue) // estable: las nuevas, en su orden
+            .ToList();
+        _tabOrder[panel.Id] = [.. ordered.Select(Key)];
+        return ordered;
+    }
+
+    /// <summary>Las pestañas de un panel en pestañas o Llenar: sus apps en el panel, la visible primero.</summary>
+    private List<DeckApp>? TabsOf(DeckApp app) =>
+        app.PanelId is { } id && _state?.Panels.FirstOrDefault(p => p.Id == id) is { Template: PanelTemplate.Stack or PanelTemplate.Fill } panel
+            ? panel.Apps.Where(a => a.State == ListItemState.InPanel && a.Handle is not null).ToList()
+            : null;
+
+    /// <summary>Si la app es una pestaña de un panel con varias: la que se ve (<paramref name="visible"/>) o una oculta.</summary>
+    private bool IsTab(DeckApp app, bool visible) =>
+        app.Handle is { } h && app.State == ListItemState.InPanel && TabsOf(app) is { Count: > 1 } tabs
+        && (tabs[0].Handle == h) == visible;
 
     private ContextMenu MenuFor(DeckApp app)
     {

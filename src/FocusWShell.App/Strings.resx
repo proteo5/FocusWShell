@@ -57,6 +57,8 @@
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>vacío</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Ocultar el deck</value></data>
   <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} está al frente (recibe el teclado), pero no es la del foco</value></data>
+  <data name="Deck_ShowTabTip" xml:space="preserve"><value>{0}: tócala para verla en su panel y escribir en ella; otra vez, al foco</value></data>
+  <data name="Deck_VisibleTabTip" xml:space="preserve"><value>{0} es la pestaña que se ve en su panel: tócala para llevarla al foco</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} más</value></data>
   <data name="Deck_MoreName" xml:space="preserve"><value>Deck: más apps</value></data>
   <data name="Deck_Minimize" xml:space="preserve"><value>Minimizar</value></data>

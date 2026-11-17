@@ -74,3 +74,13 @@ Puede vivir en un monitor táctil, sea una tablet que extiende el escritorio ([A
 - **Botones.** Arriba las de acción inmediata: Anterior, Al panel y Liberar todas (que pide un segundo toque). Debajo los cuatro modos en 2×2: Mover y Anclar, que acomodan, a la izquierda; Minimizar y Cerrar, que quitan de la vista, a la derecha. En el deck angosto, dos filas: tres acciones y cuatro modos. Ratón al foco pasa a *Sistema*, junto a Pantalla encendida, Energía y Reordenar todas.
 - **Modo Minimizar…** (verde azulado): como Cerrar, se apaga después de un toque (encendido como Anclar se sentía pegado: cada clic minimizaba otra app). Alterna: minimiza una app en su panel (`Park`) o la trae de vuelta (`Restore`). Sólo para apps en un panel; las libres no tienen dónde quedarse.
 - **«Estacionar» se llama «Minimizar»** en la interfaz y en el sitio. En el código y en el dominio sigue siendo `Park` ([ADR 0006](0006-ocultar-con-minimizar.md)).
+
+## Enmienda: en pestañas, tocar no es llevar al foco (2026-11-17)
+
+El foco de FocusWShell es un *lugar* (el centro de la atención); el de Windows, *a qué ventana va el teclado*. En un panel en pestañas sólo se ve una ventana, y para trabajar en ella junto a la del foco había que ciclar con ◀ ▶, porque tocarla en el deck la mandaba al foco.
+
+- **En pestañas y en Llenar**, el deck sigue la regla de la tira del panel en el monitor (un clic la muestra; doble clic, al foco): tocar una pestaña oculta la muestra en su panel (`MakeActiveInPanel`) y le da el teclado, sin moverla; tocar la que se ve la lleva al foco. La que se ve va subrayada. En mosaicos y en lista no cambia nada: todas se ven, y tocar sigue llevando al foco.
+- **Orden fijo en el deck.** El modelo pone primera la pestaña visible; el deck recuerda el orden en que dibujó las apps de cada panel en pestañas y lo conserva (las nuevas, al final). Si siguiera el del modelo, cada toque movería los iconos y el siguiente caería en otra app.
+- **La que sale del foco vuelve visible.** Al cambiar la app del foco o al devolverla a su panel, en pestañas y en Llenar queda como la pestaña que se ve, como con Anterior. Antes volvía a su puesto y a veces quedaba oculta. En mosaicos conserva su puesto.
+
+Se probó en uso real antes de dejarlo; no convencía del todo en papel, y con el orden fijo y la vuelta visible se sintió bien.

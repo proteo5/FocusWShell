@@ -50,6 +50,7 @@ Prende o apaga las columnas de **Contexto** y **Trabajo** del monitor principal 
 La fila de pestañas de arriba elige de qué monitor ves los paneles. Cada panel muestra sus apps:
 
 - **Toca una app:** al foco. Una libre sólo se trae al frente, y sigue libre.
+- **En un panel en pestañas (o Llenar):** la pestaña que se ve va subrayada. Toca una oculta para verla en su panel y escribir en ella, sin moverla al foco: trabajas en el foco y en ella a la vez. Toca la que se ve para llevarla al foco. Los iconos no cambian de lugar, y la app que sale del foco vuelve como la pestaña que se ve.
 - **Déjala apretada (o clic derecho):** su menú: al foco, pantalla completa en un monitor, minimizar, mover a otro panel, liberarla, anclarla.
 - **Arrastra** una app a otro panel para moverla, o a **Libres** para soltarla.
 - La cabecera del panel tiene su [presentación]({{ '/es/conceptos/#presentaciones-de-un-panel' | relative_url }}) (▦ ⧉ ☰ ⛶) y, en pestañas, ◀ ▶.

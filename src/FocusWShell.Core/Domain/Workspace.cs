@@ -537,6 +537,7 @@ public sealed class Workspace
             // La anterior (en el Centro o en pantalla completa) vuelve a su panel, al mismo puesto que
             // tenía, y queda como "anterior".
             Replace(previous with { Placement = Placement.InPanel });
+            ShowFirstInPanel(previous.Handle);
             _centerHistory.Remove(previous.Handle);
             _centerHistory.Insert(0, previous.Handle);
         }
@@ -605,9 +606,33 @@ public sealed class Workspace
         }
 
         Replace(w with { Placement = Placement.InPanel });
+        ShowFirstInPanel(handle);
         _centerHistory.Remove(handle);
         _centerHistory.Insert(0, handle);
         return CommandOutcome.Accept(new ApplyLayout());
+    }
+
+    /// <summary>
+    /// La que vuelve del foco a un panel en pestañas (o Llenar) queda como la pestaña visible: acaba de estar en
+    /// uso y es la que se busca con la vista. Antes volvía a su puesto y a veces quedaba oculta detrás de otra.
+    /// En tiles se ven todas: conserva su puesto.
+    /// </summary>
+    private void ShowFirstInPanel(nint handle)
+    {
+        if (Find(handle) is not { Placement: Placement.InPanel, Detached: false } w
+            || EffectivePanel(w).Template is not (PanelTemplate.Stack or PanelTemplate.Fill))
+        {
+            return;
+        }
+
+        var panel = EffectivePanel(w);
+        int first = _windows.FindIndex(x => x.Placement == Placement.InPanel && !x.Detached && EffectivePanel(x).Id == panel.Id);
+        int index = _windows.IndexOf(w);
+        if (first >= 0 && first < index)
+        {
+            _windows.RemoveAt(index);
+            _windows.Insert(first, w);
+        }
     }
 
     private CommandOutcome DoSwapWithPrevious()
