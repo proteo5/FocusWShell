@@ -320,6 +320,38 @@ public sealed class ShellController : IDisposable
         }
     }
 
+    // --- Actividad (ADR 0019) -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Qué app está en el foco y cuál en uso ahora, para contar la actividad. La app en uso puede no ser de
+    /// FocusWShell (libre, excluida, del sistema): cuenta con su nombre, sin panel.
+    /// </summary>
+    public (Core.Activity.ActivityApp? Focus, Core.Activity.ActivityApp? InUse) ActivityNow()
+    {
+        var foreground = WindowMover.Foreground();
+        lock (_gate)
+        {
+            Core.Activity.ActivityApp? Of(WindowSnapshot s)
+            {
+                if (s.IsOwnProcess)
+                {
+                    return null; // el deck o la ventana principal: no es una app en la que se trabaje
+                }
+
+                var key = MinSizeCatalog.KeyFor(s);
+                var name = _catalog.Find(key)?.Name ?? Path.GetFileNameWithoutExtension(s.ProcessName);
+                var panel = _workspace.Find(s.Handle) is { } w ? _workspace.EffectivePanel(w).Id : null;
+                return string.IsNullOrEmpty(key) ? null : new(key, string.IsNullOrEmpty(name) ? key : name, panel);
+            }
+
+            var focus = _workspace.Focused is { } f && !_elsewhere.ContainsKey(f.Handle) && _snapshots.TryGetValue(f.Handle, out var fs) ? Of(fs) : null;
+            var inUse = foreground == 0
+                ? null
+                : _snapshots.TryGetValue(foreground, out var us) ? Of(us) : WindowEnumerator.Snapshot(foreground) is { } other ? Of(other) : null;
+            return (focus, inUse);
+        }
+    }
+
     // --- Páginas de los navegadores (spike S12) -----------------------------------------------------
 
     /// <summary>Las ventanas de Chrome y Edge que se conocen: las de aquí y las de otro escritorio.</summary>

@@ -1197,34 +1197,33 @@ public sealed class DeckWindow : Window
     /// </summary>
     private Button FocusTile(DeckState state)
     {
-        var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        // La app en uso (la que recibe el teclado), si no es la del foco: va a su lado, más pequeña y con el
+        // borde blanco que la marca en su panel (ADR 0019).
+        var inUse = ForegroundMark(state) is { } fg
+            ? state.Panels.SelectMany(p => p.Apps).Concat(state.Free).FirstOrDefault(a => a.Handle == fg)
+            : null;
+
+        UIElement content;
         if (state.Focus is { } focus)
         {
-            if (focus.App is { } app && AppIcons.Get(app) is { } icon)
+            var main = TileApp(focus.App, focus.Name, From(state, focus.PanelId), big: true);
+            if (inUse is null)
             {
-                content.Children.Add(new Image { Source = icon, Width = 40, Height = 40, Margin = new Thickness(0, 0, 0, 4) });
+                content = main;
             }
-
-            content.Children.Add(new TextBlock
+            else
             {
-                Text = focus.Name,
-                Foreground = TextBrush,
-                FontSize = 18,
-                FontWeight = FontWeights.SemiBold,
-                TextAlignment = TextAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-            });
-            // En una línea, para que quepa en la tablet: de qué panel viene y el título de su ventana.
-            var from = state.Panels.FirstOrDefault(p => p.Id == focus.PanelId) is { } home ? Core.Text.F(Strings.Deck_FocusFrom, home.Name) : null;
-            var detail = string.Join(" · ", new[] { from, focus.Title }.Where(t => !string.IsNullOrEmpty(t)));
-            if (detail.Length > 0)
-            {
-                content.Children.Add(new TextBlock { Text = detail, Foreground = TextBrush, FontSize = 11, TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) });
+                var both = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+                main.MaxWidth = 150;
+                both.Children.Add(main);
+                both.Children.Add(new Border { Width = 1, Background = DimBrush, Margin = new Thickness(12, 4, 12, 4) });
+                both.Children.Add(TileApp(inUse.App, inUse.Name, Strings.Deck_InUse, big: false));
+                content = both;
             }
         }
         else
         {
-            content.Children.Add(new TextBlock { Text = Strings.Deck_FocusEmptyTile, Foreground = DimBrush, FontSize = 14, TextAlignment = TextAlignment.Center });
+            content = new TextBlock { Text = Strings.Deck_FocusEmptyTile, Foreground = DimBrush, FontSize = 14, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         }
 
         var tile = new Button
@@ -1244,6 +1243,48 @@ public sealed class DeckWindow : Window
         tile.Click += async (_, _) => await TapFocus(state, tile);
         System.Windows.Automation.AutomationProperties.SetName(tile, "Deck: " + Strings.Deck_SecFocus + (state.Focus is { } g ? " " + g.Name : ""));
         return tile;
+    }
+
+    /// <summary>«de Trabajo»: de qué panel viene una app, o <c>null</c> si es libre.</summary>
+    private static string? From(DeckState state, string? panelId) =>
+        state.Panels.FirstOrDefault(p => p.Id == panelId) is { } home ? Core.Text.F(Strings.Deck_FocusFrom, home.Name) : null;
+
+    /// <summary>
+    /// Una app en el tile del foco: icono, nombre y una línea corta debajo. Grande, la del foco; pequeña y con
+    /// borde blanco en el icono, la que está en uso. Sin el título de la ventana: en los navegadores es largo
+    /// y no ayuda (ADR 0019).
+    /// </summary>
+    private static StackPanel TileApp(CatalogApp? app, string name, string? detail, bool big)
+    {
+        var panel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        if (app is not null && AppIcons.Get(app) is { } icon)
+        {
+            var size = big ? 40 : 28;
+            UIElement image = new Image { Source = icon, Width = size, Height = size };
+            if (!big)
+            {
+                image = new Border { Child = image, BorderBrush = TextBrush, BorderThickness = new Thickness(2), Padding = new Thickness(2), CornerRadius = new CornerRadius(4), HorizontalAlignment = HorizontalAlignment.Center };
+            }
+
+            ((FrameworkElement)image).Margin = new Thickness(0, 0, 0, 4);
+            panel.Children.Add(image);
+        }
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = name,
+            Foreground = TextBrush,
+            FontSize = big ? 18 : 14,
+            FontWeight = big ? FontWeights.SemiBold : FontWeights.Normal,
+            TextAlignment = TextAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        if (!string.IsNullOrEmpty(detail))
+        {
+            panel.Children.Add(new TextBlock { Text = detail, Foreground = TextBrush, FontSize = 11, TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) });
+        }
+
+        return panel;
     }
 
     /// <summary>El borde del lugar del foco en un modo: el mismo que llevaría su app, o el de destino al mover.</summary>

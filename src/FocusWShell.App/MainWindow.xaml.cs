@@ -96,10 +96,16 @@ public partial class MainWindow : FluentWindow
         foreach (var (name, section) in new (string, FrameworkElement)[]
         {
             ("Home", HomeSection), ("Windows", WindowsSection), ("Panels", PanelsSection), ("Apps", AppsSection),
-            ("Shortcuts", ShortcutsSection), ("Scenes", ScenesSection), ("Excluded", ExcludedSection), ("General", GeneralSection),
+            ("Shortcuts", ShortcutsSection), ("Scenes", ScenesSection), ("Activity", ActivitySection), ("Excluded", ExcludedSection), ("General", GeneralSection),
         })
         {
             section.Visibility = name == page ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (page == "Activity")
+        {
+            Host.Activity?.Flush(); // el tramo abierto, para ver el día al momento
+            BuildActivity();
         }
 
         if (page == "Shortcuts")

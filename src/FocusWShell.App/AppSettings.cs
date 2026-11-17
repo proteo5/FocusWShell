@@ -30,6 +30,12 @@ public sealed class AppSettings
     /// <summary>Mantener la pantalla encendida (ADR 0010). Se recuerda entre sesiones.</summary>
     public bool KeepDisplayOn { get; set; }
 
+    /// <summary>Medir la actividad: tiempo en el foco y en uso (ADR 0019). Apagado por defecto.</summary>
+    public bool ActivityEnabled { get; set; }
+
+    /// <summary>Cuántos días se guarda la actividad.</summary>
+    public int ActivityKeepDays { get; set; } = 90;
+
     /// <summary>Alt+Tab a una ventana de un panel la lleva al foco (ADR 0003, enmienda).</summary>
     public bool FocusOnAltTab { get; set; } = true;
 

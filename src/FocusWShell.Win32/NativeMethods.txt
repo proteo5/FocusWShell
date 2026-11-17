@@ -143,3 +143,7 @@ SetSuspendState
 // Pestañas de navegadores (S12)
 ScreenToClient
 PostMessage
+
+// Actividad (ADR 0019): tiempo sin entrada
+GetLastInputInfo
+LASTINPUTINFO

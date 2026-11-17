@@ -61,6 +61,14 @@ The shortcuts in use, and **Change shortcuts…** to set new ones. Under *Window
 
 Apply, delete and save scenes: which apps are in each panel and in the focus. They also apply with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>9</kbd>. See [Save your setup as a scene]({{ '/guides/#save-your-setup-as-a-scene' | relative_url }}).
 
+## Activity
+
+How long each app spends **in focus** (in view, in the center) and **in use** (the one that gets the keyboard and mouse). **Side by side** is the time with one app in focus and another in use: for example, a document in view while you type in the chat.
+
+It is off until you turn on **Measure activity**. It is kept only on this PC, without window titles, for 90 days; **Delete history** deletes all of it. Time stops counting after 3 minutes without touching the keyboard or mouse, and when you lock or sleep.
+
+For each day: the active time, the time side by side, how many times you brought an app to the focus, and the longest stretch with the same app in focus. Below, each app with a blue bar (in focus) and a green one (in use).
+
 ## Excluded
 
 Apps FocusWShell should never touch, by executable, AUMID or window class. See [Keep an app out of FocusWShell]({{ '/guides/#keep-an-app-out-of-focuswshell' | relative_url }}).

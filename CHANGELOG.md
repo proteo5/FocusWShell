@@ -4,10 +4,16 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
-## Unreleased / Sin publicar
+## 0.4.0-alpha
 
+Activity: how long each app spends in focus and in use, and the deck shows the app you type in. / Actividad: cuánto pasa cada app en el foco y en uso, y el deck muestra la app en la que escribes.
+
+- New Activity section in the main window: how long each app spends in focus and in use, and the time side by side (one app in focus, the keyboard in another). It is off until you turn it on, and it stays on your PC. / Nueva sección Actividad en la ventana principal: cuánto pasa cada app en el foco y en uso, y el tiempo en paralelo (una app en el foco, el teclado en otra). Está apagada hasta que la prendas, y se queda en tu equipo.
+- In the deck, the focus tile also shows the app in use when it is another one, and no longer shows the window title. / En el deck, el tile del foco muestra también la app en uso cuando es otra, y ya no muestra el título de la ventana.
 - In the deck, in a panel in tabs (or Fill), tapping a hidden tab shows it in its panel and gives it the keyboard, without moving it to the focus; tapping the tab you see (underlined) brings it to the focus. The icons keep their place. / En el deck, en un panel en pestañas (o Llenar), tocar una pestaña oculta la muestra en su panel y le da el teclado, sin moverla al foco; tocar la que se ve (subrayada) la lleva al foco. Los iconos no cambian de lugar.
 - The app that leaves the focus comes back to a panel in tabs as the tab you see, instead of sometimes hiding behind another. / La app que sale del foco vuelve a un panel en pestañas como la pestaña que se ve, en lugar de quedar a veces oculta detrás de otra.
+
+Notes / Notas: [v0.4.0-alpha](.github/release-notes/v0.4.0-alpha.md)
 
 ## 0.3.1-alpha
 

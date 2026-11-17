@@ -5,6 +5,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Dwm;
 using Windows.Win32.Graphics.Gdi;
+using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.Shell.PropertiesSystem;
 using Windows.Win32.UI.WindowsAndMessaging;
 
@@ -38,6 +39,19 @@ public static class WindowEnumerator
         }
 
         return result;
+    }
+
+    /// <summary>Una sola ventana (p. ej. la que está en uso), o <c>null</c> si ya no existe.</summary>
+    public static WindowSnapshot? Snapshot(nint hwnd) =>
+        hwnd == 0 ? null : TrySnapshot((HWND)hwnd, Environment.ProcessId, []);
+
+    /// <summary>Cuánto hace de la última tecla o movimiento del ratón, en todo el equipo.</summary>
+    public static unsafe TimeSpan IdleTime()
+    {
+        var info = new LASTINPUTINFO { cbSize = (uint)sizeof(LASTINPUTINFO) };
+        return PInvoke.GetLastInputInfo(ref info)
+            ? TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - info.dwTime))
+            : TimeSpan.Zero;
     }
 
     /// <summary>Nivel de integridad del proceso actual.</summary>

@@ -77,6 +77,7 @@
                     <ListBoxItem Tag="Apps"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Apps24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Apps}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="Shortcuts"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Keyboard24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Shortcuts}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="Scenes"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="SlideLayout24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Scenes}" /></StackPanel></ListBoxItem>
+                    <ListBoxItem Tag="Activity"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DataHistogram24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Activity}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="Excluded"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Prohibited24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Excluded}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="General"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Settings24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_General}" /></StackPanel></ListBoxItem>
                 </ListBox>
@@ -282,6 +283,35 @@
                                     </WrapPanel>
                                 </StackPanel>
                             </ui:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Actividad (ADR 0019) -->
+                    <ScrollViewer x:Name="ActivitySection" Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Text="{x:Static local:Strings.Nav_Activity}" Style="{StaticResource PageTitle}" />
+                            <TextBlock Text="{x:Static local:Strings.Activity_Help}" Style="{StaticResource PageHelp}" />
+                            <ui:CardControl Margin="0,0,0,16" Icon="{ui:SymbolIcon Symbol=DataHistogram24}">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="{x:Static local:Strings.Activity_Measure}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock x:Name="ActivityPrivacy" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="ActivitySwitch" Checked="Activity_Changed" Unchecked="Activity_Changed"
+                                                 AutomationProperties.Name="{x:Static local:Strings.Activity_Measure}" />
+                            </ui:CardControl>
+                            <DockPanel Margin="0,0,0,12">
+                                <ui:Button DockPanel.Dock="Right" Content="{x:Static local:Strings.Activity_Delete}" Icon="{ui:SymbolIcon Symbol=Delete24}" Click="ActivityDelete_Click" />
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:Button Icon="{ui:SymbolIcon Symbol=ChevronLeft24}" Click="ActivityPrev_Click" MinWidth="40" Margin="0,0,4,0"
+                                               ToolTip="{x:Static local:Strings.Activity_PrevDay}" AutomationProperties.Name="{x:Static local:Strings.Activity_PrevDay}" />
+                                    <ui:Button x:Name="ActivityNextButton" Icon="{ui:SymbolIcon Symbol=ChevronRight24}" Click="ActivityNext_Click" MinWidth="40" Margin="0,0,12,0"
+                                               ToolTip="{x:Static local:Strings.Activity_NextDay}" AutomationProperties.Name="{x:Static local:Strings.Activity_NextDay}" />
+                                    <TextBlock x:Name="ActivityDate" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                </StackPanel>
+                            </DockPanel>
+                            <StackPanel x:Name="ActivityContent" />
                         </StackPanel>
                     </ScrollViewer>
 

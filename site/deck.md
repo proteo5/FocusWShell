@@ -18,7 +18,7 @@ Open or hide it with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd
 
 ## Focus
 
-The app in focus has its own place. On a whole tablet it is a big tile at the top, under the FocusWShell name and above the buttons, with its icon, its name, the panel it comes from and its window title. In the narrower deck it is at the top. Tap it to open its menu; in a mode, it works like any other app.
+The app in focus has its own place. On a whole tablet it is a big tile at the top, under the FocusWShell name and above the buttons, with its icon, its name and the panel it comes from. When you type in another app (it is **in use**), that one shows next to it, smaller, with a white border. In the narrower deck it is at the top. Tap it to open its menu; in a mode, it works like any other app.
 
 In its panel, the focus app has a blue border and **↑**.
 
@@ -65,7 +65,7 @@ Marks on an app:
 | Dimmed | Closed (pinned), or its column is off. |
 | ⧉ | Open on another virtual desktop; tapping it takes you there. |
 | ▴ | In the tray: the app hid its window when you closed it, but it is still running. Tapping it opens the app again, and the app shows its window in the focus. |
-| White border | It has the keyboard, but it is not the focus app. |
+| White border | In use: it has the keyboard and mouse, but it is not the focus app. |
 
 **🗂 Pages**, at the right of the monitor tabs, shows the tabs of your browsers. See [Browser pages]({{ '/browser-pages/' | relative_url }}).
 

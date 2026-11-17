@@ -4,6 +4,7 @@ using FocusWShell.Core.Domain;
 using FocusWShell.Core.Input;
 using FocusWShell.Core.Layout;
 using FocusWShell.Win32;
+using FocusWShell.Win32.Persistence;
 using Forms = System.Windows.Forms;
 
 namespace FocusWShell.App;
@@ -25,6 +26,7 @@ public partial class App : Application
     private MainWindow? _main;
     private StripManager? _strips;
     private ListManager? _lists;
+    private ActivityRecorder? _activity;
     private DisplayChangeListener? _displays;
     private readonly DisplayKeepAwake _keepAwake = new();
     private AppSettings _settings = new();
@@ -293,6 +295,7 @@ public partial class App : Application
             _strips?.Refresh();
             _lists?.Refresh();
             RefreshDeck();
+            _activity?.Observe(); // otra app en el foco
         });
         _controller.CatalogChanged += () => Dispatcher.BeginInvoke(() =>
         {
@@ -303,6 +306,7 @@ public partial class App : Application
         {
             _lists?.OnForeground(hwnd);
             _deck?.UpdateForeground(hwnd); // el indicador de «al frente», sin esperar al siguiente repaso
+            _activity?.Observe();
         });
         _controller.PauseChanged += _ => Dispatcher.BeginInvoke(FollowPause);
         _controller.FocusGestureEnabled = g => g switch
@@ -363,6 +367,7 @@ public partial class App : Application
         _tray = new TrayIcon(ShowMain, ToggleKeepAwake, RestoreFromTray, ExitAndRestore, () => Dispatcher.BeginInvoke(ToggleDeck), ToggleStartup);
         ShowStartup();
         SetKeepAwake(_settings.KeepDisplayOn, announce: false);
+        StartActivity();
         RefreshTrayScenes();
         _controller.ScenesChanged += () => Dispatcher.BeginInvoke(RefreshTrayScenes);
         StartHotkeys(announce: true);
@@ -989,6 +994,7 @@ public partial class App : Application
     /// </summary>
     private void FreezeSession()
     {
+        _activity?.Flush(); // lo medido hasta ahora, antes de que Windows cierre las apps
         if (!_sessionReady || _sessionFrozen)
         {
             return;
@@ -1008,6 +1014,38 @@ public partial class App : Application
 
     /// <summary>Apagar, reiniciar o cerrar sesión desde Windows (no desde el deck).</summary>
     private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e) => FreezeSession();
+
+    /// <summary>La actividad (ADR 0019): se mide sólo si está prendida; se guardan los días que diga la configuración.</summary>
+    private void StartActivity()
+    {
+        _activity ??= new ActivityRecorder(_controller, new ActivityStore(ActivityStore.DefaultFolder));
+        if (!_settings.ActivityEnabled)
+        {
+            _activity.Stop();
+            return;
+        }
+
+        try
+        {
+            _activity.Store.Prune(_settings.ActivityKeepDays, DateOnly.FromDateTime(DateTime.Now));
+        }
+        catch (System.IO.IOException)
+        {
+        }
+
+        _activity.Start();
+    }
+
+    /// <summary>La actividad, para la sección Actividad de la ventana principal.</summary>
+    internal ActivityRecorder? Activity => _activity;
+
+    /// <summary>Prender o apagar la medición de la actividad (sección Actividad).</summary>
+    internal void SetActivity(bool enabled)
+    {
+        _settings.ActivityEnabled = enabled;
+        _settings.Save();
+        StartActivity();
+    }
 
     /// <summary>Guarda la sesión unos segundos después del último cambio.</summary>
     private void ScheduleSessionSave()
@@ -1069,6 +1107,8 @@ public partial class App : Application
             _sessionSave?.Stop();
             _controller.SaveSession();
         }
+
+        _activity?.Dispose();
 
         IsExiting = true;
         TryRestoreAll();

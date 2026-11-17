@@ -56,7 +56,8 @@
   <data name="Deck_Closing" xml:space="preserve"><value>Closing…</value></data>
   <data name="Deck_FocusEmpty" xml:space="preserve"><value>empty</value></data>
   <data name="Deck_Hide" xml:space="preserve"><value>Hide the deck</value></data>
-  <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} is in front (it gets the keyboard), but it isn't the focus app</value></data>
+  <data name="Deck_InFrontTip" xml:space="preserve"><value>{0} is in use (it gets the keyboard and mouse), but it isn't the focus app</value></data>
+  <data name="Deck_InUse" xml:space="preserve"><value>in use</value></data>
   <data name="Deck_ShowTabTip" xml:space="preserve"><value>{0}: tap to show it in its panel and type in it; tap again to bring it to the focus</value></data>
   <data name="Deck_VisibleTabTip" xml:space="preserve"><value>{0} is the tab shown in its panel: tap to bring it to the focus</value></data>
   <data name="Deck_More" xml:space="preserve"><value>+{0} more</value></data>
@@ -469,4 +470,27 @@ Restore them now?
   <data name="Gen_License" xml:space="preserve"><value>License</value></data>
   <data name="Gen_LicenseHelp" xml:space="preserve"><value>Open source: you can use, change and share it.</value></data>
   <data name="Gen_ThirdParty" xml:space="preserve"><value>Built with these open source components:</value></data>
+  <data name="Nav_Activity" xml:space="preserve"><value>Activity</value></data>
+  <data name="Activity_Help" xml:space="preserve"><value>How long each app spends in focus and in use. Side by side is the time with one app in focus and the keyboard in another: for example, a document in view while you type in the chat.</value></data>
+  <data name="Activity_Measure" xml:space="preserve"><value>Measure activity</value></data>
+  <data name="Activity_MeasureHelp" xml:space="preserve"><value>Only on this PC, without window titles. The last {0} days are kept.</value></data>
+  <data name="Activity_PrevDay" xml:space="preserve"><value>Previous day</value></data>
+  <data name="Activity_NextDay" xml:space="preserve"><value>Next day</value></data>
+  <data name="Activity_DateFormat" xml:space="preserve"><value>dddd, MMMM d</value></data>
+  <data name="Activity_Today" xml:space="preserve"><value>Today, {0}</value></data>
+  <data name="Activity_Yesterday" xml:space="preserve"><value>Yesterday, {0}</value></data>
+  <data name="Activity_Active" xml:space="preserve"><value>Active time</value></data>
+  <data name="Activity_SideBySide" xml:space="preserve"><value>Side by side</value></data>
+  <data name="Activity_Share" xml:space="preserve"><value>{0}% of active time</value></data>
+  <data name="Activity_ToFocus" xml:space="preserve"><value>To the focus</value></data>
+  <data name="Activity_Times" xml:space="preserve"><value>{0} times</value></data>
+  <data name="Activity_Longest" xml:space="preserve"><value>Longest in focus</value></data>
+  <data name="Activity_InFocus" xml:space="preserve"><value>In focus</value></data>
+  <data name="Activity_InUse" xml:space="preserve"><value>In use</value></data>
+  <data name="Activity_NoPanel" xml:space="preserve"><value>no panel</value></data>
+  <data name="Activity_Empty" xml:space="preserve"><value>No activity on this day.</value></data>
+  <data name="Activity_Off" xml:space="preserve"><value>Measuring is off. Turn it on to start seeing your activity.</value></data>
+  <data name="Activity_Delete" xml:space="preserve"><value>Delete history</value></data>
+  <data name="Activity_DeleteAsk" xml:space="preserve"><value>Delete all the saved activity? This can't be undone.</value></data>
+  <data name="Activity_Deleted" xml:space="preserve"><value>The saved activity was deleted.</value></data>
 </root>
