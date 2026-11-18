@@ -1,10 +1,15 @@
 using System.Windows.Threading;
 using FocusWShell.Core.Activity;
+using FocusWShell.Core.Browsers;
 using FocusWShell.Win32;
 using FocusWShell.Win32.Persistence;
 using Microsoft.Win32;
 
 namespace FocusWShell.App;
+
+/// <summary>Una app para la actividad con la ventana de la que salió.</summary>
+/// <param name="Browser">Si es Chrome o Edge: con los sitios prendidos, se lee su barra de direcciones.</param>
+public sealed record ActivityWindow(ActivityApp App, nint Handle, bool Browser);
 
 /// <summary>
 /// Lleva la cuenta de la actividad (ADR 0019): le pasa al <see cref="ActivityTracker"/> los cambios de la app
@@ -19,9 +24,15 @@ public sealed class ActivityRecorder : IDisposable
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan FlushEvery = TimeSpan.FromMinutes(5);
 
+    /// <summary>Cada cuánto se mira el sitio del navegador (cambiar de pestaña no avisa).</summary>
+    private static readonly TimeSpan SitesEvery = TimeSpan.FromSeconds(5);
+
     private readonly ShellController _controller;
     private readonly ActivityTracker _tracker = new();
     private readonly DispatcherTimer _timer;
+    private readonly DispatcherTimer _sitesTimer;
+    private readonly Dictionary<nint, string?> _sites = []; // el último sitio leído de cada navegador
+    private bool _readingSites;
     private DateTime _lastFlush = DateTime.Now;
     private bool _paused; // bloqueado o suspendido
 
@@ -31,6 +42,8 @@ public sealed class ActivityRecorder : IDisposable
         Store = store;
         _timer = new DispatcherTimer { Interval = Tick };
         _timer.Tick += (_, _) => OnTick();
+        _sitesTimer = new DispatcherTimer { Interval = SitesEvery };
+        _sitesTimer.Tick += (_, _) => Observe();
         SystemEvents.SessionSwitch += OnSessionSwitch;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
     }
@@ -67,14 +80,105 @@ public sealed class ActivityRecorder : IDisposable
         _timer.Stop();
     }
 
-    /// <summary>Cambió la app en uso o lo que hay en el foco.</summary>
-    public void Observe()
+    /// <summary>
+    /// Medir también los sitios de los navegadores (ADR 0019, sitios). Se lee la barra de direcciones del
+    /// navegador en el foco o en uso, en un hilo de fondo, y se guarda sólo su host.
+    /// </summary>
+    public bool Sites
     {
-        if (_timer.IsEnabled && !_paused)
+        get => _sitesTimer.IsEnabled;
+        set
         {
-            var (focus, inUse) = _controller.ActivityNow();
-            Write(_tracker.Observe(DateTime.Now, focus, inUse));
+            if (value)
+            {
+                _sitesTimer.Start();
+            }
+            else
+            {
+                _sitesTimer.Stop();
+                _sites.Clear();
+            }
+
+            Observe(); // el tramo abierto se corta: con o sin sitio a partir de ahora
         }
+    }
+
+    /// <summary>Cambió la app en uso o lo que hay en el foco.</summary>
+    public void Observe() => Observe(readSites: true);
+
+    private void Observe(bool readSites)
+    {
+        if (!_timer.IsEnabled || _paused)
+        {
+            return;
+        }
+
+        var (focus, inUse) = _controller.ActivityNow();
+        Write(_tracker.Observe(DateTime.Now, WithSite(focus), WithSite(inUse)));
+        if (readSites && Sites && _tracker.Running)
+        {
+            ReadSites(focus, inUse);
+        }
+    }
+
+    /// <summary>La app, con el último sitio leído de su ventana si es un navegador.</summary>
+    private ActivityApp? WithSite(ActivityWindow? window) =>
+        window is null ? null
+        : Sites && window.Browser && _sites.TryGetValue(window.Handle, out var site) ? window.App with { Site = site }
+        : window.App;
+
+    /// <summary>
+    /// Lee en el fondo la barra de los navegadores en el foco y en uso. Si el sitio cambió, el tramo se corta.
+    /// Mientras se escribe en la barra se conserva el sitio anterior: lo escrito no es una página.
+    /// </summary>
+    private void ReadSites(ActivityWindow? focus, ActivityWindow? inUse)
+    {
+        nint[] handles = [.. new[] { focus, inUse }.Where(w => w is { Browser: true }).Select(w => w!.Handle).Distinct()];
+        if (_readingSites || handles.Length == 0)
+        {
+            return;
+        }
+
+        _readingSites = true;
+        Task.Run(() => handles.Select(h => (Handle: h, Address: BrowserAddressReader.Read(h))).ToList())
+            .ContinueWith(
+                t =>
+                {
+                    _readingSites = false;
+                    if (!Sites || t.IsFaulted)
+                    {
+                        return;
+                    }
+
+                    bool changed = false;
+                    var known = new Dictionary<nint, string?>();
+                    foreach (var (handle, address) in t.Result)
+                    {
+                        _sites.TryGetValue(handle, out var before);
+                        var site = address switch
+                        {
+                            null => null,
+                            { Private: true } => SiteHost.Private,
+                            { Editing: true } => before,
+                            _ => SiteHost.From(address.Value),
+                        };
+                        known[handle] = site;
+                        changed |= !_sites.ContainsKey(handle) || !string.Equals(before, site, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    // Sólo se recuerdan las ventanas leídas: otra que vuelva se lee otra vez.
+                    _sites.Clear();
+                    foreach (var (handle, site) in known)
+                    {
+                        _sites[handle] = site;
+                    }
+
+                    if (changed)
+                    {
+                        Observe(readSites: false);
+                    }
+                },
+                TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     /// <summary>Guarda el tramo abierto (al apagar o reiniciar, o para ver el día al momento).</summary>
@@ -186,6 +290,7 @@ public sealed class ActivityRecorder : IDisposable
     public void Dispose()
     {
         Stop();
+        _sitesTimer.Stop();
         SystemEvents.SessionSwitch -= OnSessionSwitch;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
     }

@@ -1,6 +1,6 @@
 # ADR 0019 — Actividad: tiempo en el foco y en uso
 
-- **Estado:** Aceptada (fase 1 en 0.4.0-alpha)
+- **Estado:** Aceptada (fase 1 en 0.4.0-alpha; sitios, enmienda del 2026-11-17)
 - **Fecha:** 2026-11-17
 
 ## Contexto
@@ -59,7 +59,7 @@ Las gráficas se dibujan con formas de WPF, sin librería.
 ### Lo que no hace
 
 - Metas, límites ni avisos («llevas 2 h en X»): eso es otro producto y convertiría la actividad en vigilancia.
-- Contar por página dentro de los navegadores. Si se agrega, será una opción aparte y apagada.
+- Contar por página dentro de los navegadores, ni guardar sus títulos. Sí se cuentan los sitios, como opción aparte (ver la enmienda).
 
 ## Consecuencias
 
@@ -67,3 +67,36 @@ Las gráficas se dibujan con formas de WPF, sin librería.
 - La app en uso puede ser una ventana que FocusWShell no organiza (libre, excluida o del sistema). Cuenta con su nombre, sin panel.
 - Con apps elevadas, el nombre puede no leerse; cuentan como «Elevada».
 - El cambio de app en uso se detecta con `EVENT_SYSTEM_FOREGROUND` (`SetWinEventHook`), sin sondeo.
+
+## Enmienda: los sitios de los navegadores (2026-11-17)
+
+### Contexto
+
+En un navegador, «Microsoft Edge 3 h» dice poco: el tiempo se reparte entre sitios muy distintos. La lista de 🗂 Páginas del deck ya agrupa por sitio, pero adivinando con los títulos (`PageSites`), y eso no sirve para medir: un mismo sitio cambia de título, y los títulos son lo más personal de la página.
+
+Además, Páginas listaba también las pestañas de las ventanas de incógnito y de InPrivate.
+
+### Spike
+
+Una sonda con UI Automation en Chrome y Edge (los dos en Windows 11, interfaz en inglés):
+
+- **La barra de direcciones se lee.** Es una caja de texto (`Edit`, «Address and search bar») fuera del contenido web, con `ValuePattern`. Tarda entre 15 y 130 ms por ventana. Edge muestra el `https://`; Chrome lo oculta.
+- **Una ventana privada se reconoce por un botón** de la barra de herramientas: «Incognito» en Chrome, «InPrivate browsing» en Edge. Edge lo dice también en el título; Chrome no. En las ventanas normales no hubo falsos positivos.
+- **Lo escrito sin Enter no queda.** Al salir del navegador, la barra vuelve a la dirección de la página. La pestaña nueva tiene la barra vacía.
+
+### Decisión
+
+- **Segundo interruptor, «Medir también los sitios»,** apagado por defecto. Solo se puede prender si la actividad está prendida.
+- **Solo el host** (`github.com`), sin `www.`, en minúsculas. Nunca la ruta, la consulta, el puerto ni el título. `localhost` y las IP cuentan como sitio. Las páginas internas del navegador (`edge://`, `chrome://`), los archivos locales y la pestaña nueva no tienen sitio: cuentan solo para el navegador. La normalización está en Core (`SiteHost`) y se prueba con xUnit.
+- **El sitio va en la app del tramo** (`ActivityApp.Site`). Otro sitio corta el tramo, pero no cuenta como otra llegada al foco ni corta la racha: sigue siendo el mismo navegador.
+- **Ventana privada:** se guarda `(private)` y se muestra «Navegación privada». Se cuenta el tiempo, nunca qué se vio.
+- **Mientras se escribe en la barra** (la barra tiene el teclado) no se lee: se conserva el sitio anterior.
+- **Cuándo se lee:** al cambiar la app en el foco o en uso, y cada 5 s mientras se mide, porque cambiar de pestaña no avisa. Solo se leen los navegadores en el foco o en uso, en un hilo de fondo.
+- **En la sección Actividad,** los sitios con al menos un minuto van debajo de su navegador, sangrados y con las mismas barras. Están plegados al principio («▸ 7 sitios»), para que un navegador con muchos sitios no tape las demás apps.
+- **En 🗂 Páginas,** las ventanas privadas no se listan ni se agrupan por sitio: hay una fila por ventana, «Ventana privada · N pestañas», que la lleva al frente.
+
+### Consecuencias
+
+- El nombre del botón privado depende del idioma del navegador. Se reconoce `incogn`, `inkogn` e `InPrivate`, que cubre los idiomas comunes. En un idioma que no los use, una ventana privada contaría como normal y guardaría su sitio: es el límite conocido.
+- La estructura de la interfaz de los navegadores no es un contrato. Si la barra no se encuentra, no hay sitio y la actividad sigue por app.
+- Un cambio de pestaña se nota con hasta 5 s de retraso.

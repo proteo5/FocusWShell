@@ -59,4 +59,5 @@ public sealed record DeckState(
 /// <param name="Browser">Nombre del navegador («Microsoft Edge»).</param>
 /// <param name="Where">Dónde está, para la UI: en el foco, su panel, libre u otro escritorio.</param>
 /// <param name="Managed">Si está en un panel (tocar una página la lleva al foco) o es libre (sólo al frente).</param>
-public sealed record PageWindow(nint Handle, string Browser, string Where, bool InFocus, bool Managed, bool OtherDesktop, CatalogApp? App, IReadOnlyList<BrowserTab> Tabs);
+/// <param name="Private">Ventana de incógnito o InPrivate: el deck no muestra sus páginas, sólo cuántas son.</param>
+public sealed record PageWindow(nint Handle, string Browser, string Where, bool InFocus, bool Managed, bool OtherDesktop, CatalogApp? App, IReadOnlyList<BrowserTab> Tabs, bool Private = false);

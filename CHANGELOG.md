@@ -4,6 +4,11 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
+## Unreleased / Sin publicar
+
+- Activity can also measure sites: under Chrome and Edge, the time of each site (github.com). It is a separate switch, off by default; only the site is saved, never the page or its title. / La actividad puede medir también los sitios: debajo de Chrome y Edge, el tiempo de cada sitio (github.com). Es un interruptor aparte, apagado por defecto; sólo se guarda el sitio, nunca la página ni su título.
+- Private windows (incognito, InPrivate) count as "Private browsing", with no site, and 🗂 Pages no longer lists their tabs: it shows "Private window · N tabs". / Las ventanas privadas (incógnito, InPrivate) cuentan como «Navegación privada», sin sitio, y 🗂 Páginas ya no lista sus pestañas: muestra «Ventana privada · N pestañas».
+
 ## 0.4.0-alpha
 
 Activity: how long each app spends in focus and in use, and the deck shows the app you type in. / Actividad: cuánto pasa cada app en el foco y en uso, y el deck muestra la app en la que escribes.

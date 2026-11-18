@@ -614,7 +614,8 @@ public sealed class DeckWindow : Window
 
     private List<PageEntry> PageEntries()
     {
-        var all = (_pages ?? []).SelectMany(w => w.Tabs.Select(t => (Window: w, Tab: t))).ToList();
+        // Las ventanas privadas no se listan ni se agrupan por sitio: van aparte, una fila cada una.
+        var all = (_pages ?? []).Where(w => !w.Private).SelectMany(w => w.Tabs.Select(t => (Window: w, Tab: t))).ToList();
         var sites = PageSites.Assign([.. all.Select(x => x.Tab.Title)]);
         return [.. all.Select((x, i) => new PageEntry(x.Window, x.Tab, sites[i]))];
     }
@@ -635,7 +636,7 @@ public sealed class DeckWindow : Window
             Margin = new Thickness(0, 0, 8, 8),
         };
         var entries = PageEntries();
-        if (entries.Count == 0)
+        if (entries.Count == 0 && !(_pages ?? []).Any(w => w.Private))
         {
             card.Child = new TextBlock
             {
@@ -720,6 +721,43 @@ public sealed class DeckWindow : Window
 
             list.Children.Add(grid);
         }
+
+        var hidden = (_pages ?? []).Where(w => w.Private).ToList();
+        if (hidden.Count > 0)
+        {
+            list.Children.Add(Label(Strings.Deck_PagesPrivate));
+            var grid = new UniformGrid { Columns = IsWide ? 3 : 2 };
+            foreach (var window in hidden)
+            {
+                grid.Children.Add(PrivateTile(window));
+            }
+
+            list.Children.Add(grid);
+        }
+    }
+
+    /// <summary>
+    /// Una ventana privada: cuántas pestañas tiene y dónde está, sin sus títulos. Tocarla la lleva al frente
+    /// (al foco, si es de un panel) en la pestaña que tenía.
+    /// </summary>
+    private Button PrivateTile(PageWindow window)
+    {
+        var content = new DockPanel();
+        var where = new TextBlock { Text = Core.Text.F(Strings.Deck_PageWhere, window.Browser, window.Where), Foreground = DimBrush, FontSize = 11, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(where, Dock.Right);
+        content.Children.Add(where);
+        var text = Core.Text.F(Strings.Deck_PagesPrivateWindow, window.Tabs.Count);
+        content.Children.Add(new TextBlock { Text = "🕶  " + text, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+        var tile = PageButton(content);
+        if (window.OtherDesktop)
+        {
+            tile.Foreground = DimBrush;
+        }
+
+        System.Windows.Automation.AutomationProperties.SetName(tile, text);
+        var tab = window.Tabs.FirstOrDefault(t => t.Active) ?? window.Tabs[0];
+        tile.Click += async (_, _) => await ChoosePage(window, tab);
+        return tile;
     }
 
     /// <summary>Un sitio: su nombre y cuántas páginas tiene. Tocarlo muestra sus páginas.</summary>

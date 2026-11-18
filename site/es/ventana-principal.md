@@ -69,6 +69,8 @@ Está apagada hasta que prendas **Medir la actividad**. Se guarda sólo en este 
 
 Para cada día: el tiempo activo, el tiempo en paralelo, cuántas veces llevaste una app al foco y la racha más larga con la misma app en el foco. Debajo, cada app con una barra azul (en el foco) y una verde (en uso).
 
+**Medir también los sitios** agrega, debajo de Chrome y Edge, el tiempo de cada sitio (github.com); toca **▸ N sitios** para mostrarlos u ocultarlos. Sólo se guarda el sitio, nunca la página ni su título. Las ventanas privadas (incógnito, InPrivate) cuentan como **Navegación privada**, sin sitio, y lo que escribes en la barra de direcciones no se lee.
+
 ## Excluidas
 
 Apps que FocusWShell nunca debe tocar, por ejecutable, AUMID o clase de ventana. Ver [Dejar una app fuera de FocusWShell]({{ '/es/guias/#excluir' | relative_url }}).

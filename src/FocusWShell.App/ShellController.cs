@@ -326,12 +326,12 @@ public sealed class ShellController : IDisposable
     /// Qué app está en el foco y cuál en uso ahora, para contar la actividad. La app en uso puede no ser de
     /// FocusWShell (libre, excluida, del sistema): cuenta con su nombre, sin panel.
     /// </summary>
-    public (Core.Activity.ActivityApp? Focus, Core.Activity.ActivityApp? InUse) ActivityNow()
+    public (ActivityWindow? Focus, ActivityWindow? InUse) ActivityNow()
     {
         var foreground = WindowMover.Foreground();
         lock (_gate)
         {
-            Core.Activity.ActivityApp? Of(WindowSnapshot s)
+            ActivityWindow? Of(WindowSnapshot s)
             {
                 if (s.IsOwnProcess)
                 {
@@ -341,7 +341,9 @@ public sealed class ShellController : IDisposable
                 var key = MinSizeCatalog.KeyFor(s);
                 var name = _catalog.Find(key)?.Name ?? Path.GetFileNameWithoutExtension(s.ProcessName);
                 var panel = _workspace.Find(s.Handle) is { } w ? _workspace.EffectivePanel(w).Id : null;
-                return string.IsNullOrEmpty(key) ? null : new(key, string.IsNullOrEmpty(name) ? key : name, panel);
+                return string.IsNullOrEmpty(key)
+                    ? null
+                    : new(new(key, string.IsNullOrEmpty(name) ? key : name, panel), s.Handle, BrowserTabs.IsBrowser(s.ProcessName, s.ClassName));
             }
 
             var focus = _workspace.Focused is { } f && !_elsewhere.ContainsKey(f.Handle) && _snapshots.TryGetValue(f.Handle, out var fs) ? Of(fs) : null;
@@ -391,7 +393,7 @@ public sealed class ShellController : IDisposable
         {
             if (BrowserTabs.Read(w.Handle) is { Count: > 0 } tabs)
             {
-                pages.Add(new PageWindow(w.Handle, w.Browser, w.Where, w.InFocus, w.Managed, w.Elsewhere, w.App, tabs));
+                pages.Add(new PageWindow(w.Handle, w.Browser, w.Where, w.InFocus, w.Managed, w.Elsewhere, w.App, tabs, BrowserAddressReader.IsPrivate(w.Handle)));
             }
         }
 

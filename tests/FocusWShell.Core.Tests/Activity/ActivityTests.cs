@@ -42,7 +42,7 @@ public class ActivityTests
         t.Active(At(0));
         t.Observe(At(0), Code, Code);
 
-        var closed = t.Idle(At(12)); // detectado a los 15, la última entrada fue a los 12
+        var closed = t.Idle(At(12)); // detectado a los 15, la Ãºltima entrada fue a los 12
         Assert.Equal([new ActivitySegment(At(0), At(12), Code, Code)], closed);
 
         Assert.Empty(t.Observe(At(20), Docs, Docs)); // inactivo: no abre tramo
@@ -113,5 +113,41 @@ public class ActivityTests
 
         Assert.Equal(1, day.ToFocus);
         Assert.Equal(TimeSpan.FromMinutes(20), day.LongestFocus);
+    }
+
+    private static readonly ActivityApp Edge = new("msedge", "Microsoft Edge", "work");
+
+    [Fact]
+    public void AnotherSiteInTheBrowserCutsTheSegment()
+    {
+        var t = new ActivityTracker();
+        t.Active(At(0));
+        t.Observe(At(0), Edge with { Site = "github.com" }, Edge with { Site = "github.com" });
+
+        var closed = t.Observe(At(5), Edge with { Site = "youtube.com" }, Edge with { Site = "youtube.com" });
+
+        Assert.Equal("github.com", Assert.Single(closed).Focus!.Site);
+    }
+
+    [Fact]
+    public void SitesAddUpUnderTheirBrowserWithoutNewArrivals()
+    {
+        var day = ActivityDay.From(
+        [
+            new(At(0), At(20), Edge with { Site = "github.com" }, Edge with { Site = "github.com" }),
+            new(At(20), At(30), Edge with { Site = Core.Browsers.SiteHost.Private }, Slack),
+            new(At(30), At(40), Edge, Edge),                                  // sin sitio: pestaÃ±a nueva
+            new(At(40), At(45), Edge with { Site = "GitHub.com" }, Edge with { Site = "github.com" }),
+        ]);
+
+        Assert.Equal(1, day.ToFocus);                                      // otro sitio no es otra llegada
+        Assert.Equal(TimeSpan.FromMinutes(45), day.LongestFocus);
+
+        var edge = day.Apps.Single(a => a.Key == "msedge");
+        Assert.Equal(TimeSpan.FromMinutes(45), edge.InFocus);
+        Assert.Equal(2, edge.Sites.Count);
+        Assert.Equal(new ActivitySiteTotal("github.com", TimeSpan.FromMinutes(25), TimeSpan.FromMinutes(25)), edge.Sites[0]);
+        Assert.Equal(Core.Browsers.SiteHost.Private, edge.Sites[1].Site);
+        Assert.Empty(day.Apps.Single(a => a.Key == "slack").Sites);
     }
 }

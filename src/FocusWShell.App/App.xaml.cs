@@ -1022,6 +1022,7 @@ public partial class App : Application
         if (!_settings.ActivityEnabled)
         {
             _activity.Stop();
+            _activity.Sites = false;
             return;
         }
 
@@ -1034,6 +1035,7 @@ public partial class App : Application
         }
 
         _activity.Start();
+        _activity.Sites = _settings.ActivitySites;
     }
 
     /// <summary>La actividad, para la sección Actividad de la ventana principal.</summary>
@@ -1043,6 +1045,14 @@ public partial class App : Application
     internal void SetActivity(bool enabled)
     {
         _settings.ActivityEnabled = enabled;
+        _settings.Save();
+        StartActivity();
+    }
+
+    /// <summary>Prender o apagar la medición de los sitios de los navegadores (sección Actividad).</summary>
+    internal void SetActivitySites(bool enabled)
+    {
+        _settings.ActivitySites = enabled;
         _settings.Save();
         StartActivity();
     }
