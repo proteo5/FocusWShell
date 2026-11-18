@@ -97,7 +97,15 @@ public partial class MainWindow
                 list.Children.Add(AppRow(siteName, null, site.InFocus, site.InUse, max, site: true));
             }
 
-            ((WC.StackPanel)row.Children[0]).Children.Add(SitesToggle(app.Key, sites.Count, list));
+            // En la línea del panel, a su derecha: no agrega altura a la fila.
+            var nameStack = (WC.StackPanel)row.Children[0];
+            var panelText = (WC.TextBlock)nameStack.Children[1];
+            nameStack.Children.Remove(panelText);
+            var line = new WC.StackPanel { Orientation = WC.Orientation.Horizontal };
+            panelText.VerticalAlignment = VerticalAlignment.Center;
+            line.Children.Add(panelText);
+            line.Children.Add(SitesToggle(app.Key, sites.Count, list));
+            nameStack.Children.Add(line);
             rows.Children.Add(list);
         }
 
@@ -114,8 +122,9 @@ public partial class MainWindow
         var button = new WC.Button
         {
             Content = Label(),
-            Padding = new Thickness(0, 2, 6, 2),
-            Margin = new Thickness(-1, 2, 0, 0),
+            Padding = new Thickness(4, 0, 4, 0),
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
