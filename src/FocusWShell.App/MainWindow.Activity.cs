@@ -116,23 +116,25 @@ public partial class MainWindow
     /// «▸ 7 sitios»: despliega o pliega los sitios de un navegador sin redibujar la sección. Se recuerda
     /// mientras la ventana está abierta, también al cambiar de día.
     /// </summary>
-    private WC.Button SitesToggle(string key, int count, WC.StackPanel list)
+    private Wpf.Ui.Controls.Button SitesToggle(string key, int count, WC.StackPanel list)
     {
-        string Label() => (list.Visibility == Visibility.Visible ? "▾  " : "▸  ") + (count == 1 ? Strings.Activity_SitesOne : Core.Text.F(Strings.Activity_SitesCount, count));
-        var button = new WC.Button
+        // Un botón pequeño del tema (relleno, borde y estado al pasar el ratón), con contraste en claro y oscuro;
+        // el chevron dice si está abierto.
+        var text = count == 1 ? Strings.Activity_SitesOne : Core.Text.F(Strings.Activity_SitesCount, count);
+        Wpf.Ui.Controls.SymbolIcon Chevron() => new(list.Visibility == Visibility.Visible ? Wpf.Ui.Controls.SymbolRegular.ChevronDown16 : Wpf.Ui.Controls.SymbolRegular.ChevronRight16) { FontSize = 12 };
+        var button = new Wpf.Ui.Controls.Button
         {
-            Content = Label(),
-            Padding = new Thickness(4, 0, 4, 0),
-            Margin = new Thickness(6, 0, 0, 0),
+            Content = text,
+            Icon = Chevron(),
+            Padding = new Thickness(6, 1, 8, 1),
+            MinHeight = 0,
+            Margin = new Thickness(8, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Background = Brushes.Transparent,
-            BorderThickness = new Thickness(0),
             FontSize = 12,
             Cursor = System.Windows.Input.Cursors.Hand,
         };
-        button.SetResourceReference(WC.Control.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
-        System.Windows.Automation.AutomationProperties.SetName(button, (count == 1 ? Strings.Activity_SitesOne : Core.Text.F(Strings.Activity_SitesCount, count)));
+        System.Windows.Automation.AutomationProperties.SetName(button, text);
         button.Click += (_, _) =>
         {
             bool open = list.Visibility != Visibility.Visible;
@@ -146,7 +148,7 @@ public partial class MainWindow
                 _activityOpenSites.Remove(key);
             }
 
-            button.Content = Label();
+            button.Icon = Chevron();
         };
         return button;
     }
