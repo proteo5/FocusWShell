@@ -84,7 +84,7 @@ Tiles para paneles con dos o tres apps que quieres ver a la vez; pestañas para 
 
 ## Dejar una app en su panel aunque esté cerrada {#anclar}
 
-Ánclala, y su lugar en el panel se queda aunque la cierres: atenuada, y un toque la abre ahí.
+Ánclala, y su lugar en el panel se queda aunque la cierres: atenuada, y un toque la abre ahí. Si la abres de otra forma (la barra de tareas, Inicio, un acceso directo), también va a su panel, salvo que alguna de sus ventanas ya esté en un panel.
 
 1. En el deck, toca **Anclar…** (índigo).
 2. Toca la app.

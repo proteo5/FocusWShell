@@ -84,7 +84,7 @@ Tiles for panels with two or three apps you want to see at once; tabs for a pane
 
 ## Keep an app in its panel, even when closed {#pin}
 
-Pin it, and its place in the panel stays when you close it: dimmed, and one tap opens it there.
+Pin it, and its place in the panel stays when you close it: dimmed, and one tap opens it there. If you open it another way (the taskbar, Start, a shortcut), it also goes to its panel, unless one of its windows is already in a panel.
 
 1. In the deck, tap **Pin…** (indigo).
 2. Tap the app.

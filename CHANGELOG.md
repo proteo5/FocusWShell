@@ -6,6 +6,7 @@ Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [
 
 ## Unreleased / Sin publicar
 
+- Fixed: after restarting, apps you opened yourself more than 3 minutes later stayed free, even pinned ones. Now a pinned app goes to its panel however you open it, and the apps of the last session go back to their panel the first time they appear. A window you free yourself is not moved. / Corregido: tras reiniciar, las apps que abrías tú más de 3 minutos después quedaban libres, aunque estuvieran ancladas. Ahora una app anclada va a su panel la abras como la abras, y las apps de la última sesión vuelven a su panel la primera vez que aparecen. Una ventana que tú liberas no se mueve.
 - Activity can also measure sites: under Chrome and Edge, the time of each site (github.com). It is a separate switch, off by default; only the site is saved, never the page or its title. / La actividad puede medir también los sitios: debajo de Chrome y Edge, el tiempo de cada sitio (github.com). Es un interruptor aparte, apagado por defecto; sólo se guarda el sitio, nunca la página ni su título.
 - Private windows (incognito, InPrivate) count as "Private browsing", with no site, and 🗂 Pages no longer lists their tabs: it shows "Private window · N tabs". / Las ventanas privadas (incógnito, InPrivate) cuentan como «Navegación privada», sin sitio, y 🗂 Páginas ya no lista sus pestañas: muestra «Ventana privada · N pestañas».
 
