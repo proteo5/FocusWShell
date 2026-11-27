@@ -4,6 +4,10 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
+## Unreleased / Sin publicar
+
+- Fixed: Store apps whose window does not give its app ID (WhatsApp) showed an internal name ("WhatsApp.Root") and a generic icon. They now take the name and icon of the Start menu. / Corregido: las apps de la Store cuya ventana no da su id de app (WhatsApp) salían con un nombre interno («WhatsApp.Root») y un icono genérico. Ahora toman el nombre y el icono del menú Inicio.
+
 ## 0.5.0-alpha
 
 Sites in Activity, private windows kept private, and apps that go back to their panel however you open them. / Sitios en Actividad, ventanas privadas que se quedan privadas, y apps que vuelven a su panel las abras como las abras.
