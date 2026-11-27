@@ -35,7 +35,11 @@ public static class AppIcons
 
         // Si la ruta quedó vieja (la app se actualizó estando cerrada), la de la versión nueva.
         var path = app.ExecutablePath is { } stored ? ExecutableLocator.Resolve(stored) ?? stored : null;
+        // Una app de la Store sin AUMID en su ventana (WhatsApp): el icono de su paquete, el de Inicio. El de su
+        // ejecutable puede ser uno genérico.
+        var packaged = app.Aumid is null ? PackagedApps.AumidFor(path) : null;
         var icon = (app.Aumid is { } aumid ? FromShell(ShellIcon.ForAumid(aumid, Size)) : null)
+            ?? (packaged is not null ? FromShell(ShellIcon.ForAumid(packaged, Size)) : null)
             ?? (path is not null ? FromExecutable(path) ?? FromShell(ShellIcon.For(path, Size)) : null)
             ?? (ExecutablePaths.GuessPackagedAumid(path) is { } guessed ? FromShell(ShellIcon.ForAumid(guessed, Size)) : null);
         Cache[key] = icon;
