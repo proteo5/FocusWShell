@@ -5,7 +5,8 @@ const T = {
   es: {
     focus: 'Foco', previous: 'Anterior', toPanel: 'Al panel', freeAll: 'Liberar todas', move: 'Mover…', moving: 'Moviendo…', pin: 'Anclar…', pinning: 'Anclando…', inUse: 'en uso',
     minimize: 'Minimizar…', minimizing: 'Minimizando…', close: 'Cerrar…', closing: 'Cerrando…',
-    pickMinimize: 'Toca una app de un panel para minimizarla (o devolverla).', pickClose: 'Toca la app que quieres cerrar. Si tiene algo sin guardar, ella pregunta en el PC.',
+    pickMinimize: 'Toca una app de un panel para minimizarla (o devolverla).',
+    full: 'Pantalla…', fulling: 'Eligiendo…', pickFull: 'Toca la app que quieres en pantalla completa. Para salir, tócala en el foco.', pickScreen: n => `¿En qué monitor va ${n}?`, from: n => `de ${n}`, pickClose: 'Toca la app que quieres cerrar. Si tiene algo sin guardar, ella pregunta en el PC.',
     freeAllSure: '¿Liberar? Toca otra vez', layout: 'Disposición del principal', system: 'Sistema', awakeOn: 'Pantalla encendida', awakeOff: 'Pantalla: normal',
     mouse: 'Ratón al foco', rearrange: 'Reordenar todas', resetTip: 'Mantén apretado para restablecer el ancho',
     tiles: 'Cuadrícula', stack: 'Pestañas', list: 'Lista', fill: 'Llenar', prevTab: 'Pestaña anterior', nextTab: 'Pestaña siguiente',
@@ -20,7 +21,8 @@ const T = {
   en: {
     focus: 'Focus', previous: 'Previous', toPanel: 'To panel', freeAll: 'Free all', move: 'Move…', moving: 'Moving…', pin: 'Pin…', pinning: 'Pinning…', inUse: 'in use',
     minimize: 'Minimize…', minimizing: 'Minimizing…', close: 'Close…', closing: 'Closing…',
-    pickMinimize: 'Tap an app in a panel to minimize it (or bring it back).', pickClose: 'Tap the app you want to close. If it has unsaved work, it asks on the PC.',
+    pickMinimize: 'Tap an app in a panel to minimize it (or bring it back).',
+    full: 'Fullscreen…', fulling: 'Choosing…', pickFull: 'Tap the app you want in fullscreen. To leave, tap it in the focus.', pickScreen: n => `Which monitor for ${n}?`, from: n => `from ${n}`, pickClose: 'Tap the app you want to close. If it has unsaved work, it asks on the PC.',
     freeAllSure: 'Free all? Tap again', layout: 'Main screen layout', system: 'System', awakeOn: 'Screen kept on', awakeOff: 'Screen: normal',
     mouse: 'Mouse to focus', rearrange: 'Rearrange all', resetTip: 'Press and hold to reset the width',
     tiles: 'Tiles', stack: 'Tabs', list: 'List', fill: 'Fill', prevTab: 'Previous tab', nextTab: 'Next tab',
@@ -48,9 +50,10 @@ let moving = null;            // null | 'app' | 'panel'
 let chosen = null;            // la app elegida para mover
 let pinning = false;          // modo Anclar: tocar alterna el ancla; sigue prendido hasta tocarlo otra vez
 let minimizing = false, closing = false;   // Minimizar y Cerrar: se apagan tras un toque, como en el deck del PC
+let fulling = false, fullApp = null;       // Pantalla…: la app y, si hay varios monitores, el monitor
 let freeAllArmed = 0;         // «Liberar todas» pide un segundo toque en 4 s
-const anyMode = () => !!moving || pinning || minimizing || closing;
-function clearModes() { moving = null; chosen = null; pinning = false; minimizing = false; closing = false; status(''); }
+const anyMode = () => !!moving || pinning || minimizing || closing || fulling;
+function clearModes() { moving = null; chosen = null; pinning = false; minimizing = false; closing = false; fulling = false; fullApp = null; status(''); }
 let pagesOpen = false, pages = null, site = null;
 
 function status(text, bad) { $('status').textContent = text || ''; $('status').className = 'status' + (bad ? ' bad' : ''); }
@@ -77,9 +80,12 @@ function renderLeft() {
   tile.className = 'focusTile' + (f ? '' : ' empty') + (moving === 'panel' && chosen && (!f || chosen.id !== f.id) ? ' pick' : '');
   // Como en el deck del PC: si el teclado está en otra app, se ve a su lado, más pequeña y con borde blanco.
   const use = f && state.foreground && state.foreground !== f.id ? findApp(state.foreground) : null;
+  // Como en el deck del PC: debajo del nombre, de qué panel viene.
+  const home = f && f.panel ? state.monitors.flatMap(m => m.panels).find(p => p.id === f.panel) : null;
+  const from = home ? `<small class="from">${esc(L.from(home.name))}</small>` : '';
   tile.innerHTML = !f ? esc(L.nothingInFocus)
-    : !use ? `${img(f.key, f.name)}<span>${esc(f.name)}</span>`
-    : `<div class="duo"><div class="main">${img(f.key, f.name)}<span>${esc(f.name)}</span></div><div class="sep"></div>`
+    : !use ? `${img(f.key, f.name)}<span>${esc(f.name)}</span>${from}`
+    : `<div class="duo"><div class="main">${img(f.key, f.name)}<span>${esc(f.name)}</span>${from}</div><div class="sep"></div>`
       + `<div class="use">${img(use.key, use.name)}<span>${esc(use.name)}</span><small>${esc(L.inUse)}</small></div></div>`;
   $('previous').disabled = !state.hasPrevious;
   $('toPanel').disabled = !f;
@@ -95,6 +101,19 @@ function renderLeft() {
     $(id).querySelector('span').textContent = on ? busy : text;
   }
   if (minimizing) status(L.pickMinimize);
+  $('fullMode').classList.toggle('on', fulling);
+  $('fullMode').querySelector('span').textContent = fulling ? L.fulling : L.full;
+  // Elegida la app, los monitores aparecen como botones debajo de los modos.
+  const screens = $('screens'); screens.innerHTML = '';
+  screens.hidden = !(fulling && fullApp);
+  if (fulling && fullApp) {
+    status(L.pickScreen(fullApp.name));
+    for (const sc of state.screens || []) {
+      const b = document.createElement('button'); b.textContent = sc.name;
+      b.onclick = () => { send('fullscreen', { id: fullApp.id, display: sc.id }); clearModes(); render(); };
+      screens.appendChild(b);
+    }
+  } else if (fulling) status(L.pickFull);
   if (closing) status(L.pickClose);
   const armed = Date.now() - freeAllArmed < 4000;
   $('freeAll').classList.toggle('armed', armed);
@@ -140,6 +159,7 @@ $('mouse').onclick = () => send('mouseToFocus');
 $('rearrange').onclick = () => send('rearrange');
 $('minimize').onclick = () => { const on = !minimizing; clearModes(); minimizing = on; render(); };
 $('close').onclick = () => { const on = !closing; clearModes(); closing = on; render(); };
+$('fullMode').onclick = () => { const on = !fulling; clearModes(); fulling = on; render(); };
 $('move').onclick = () => { const on = !moving; clearModes(); moving = on ? 'app' : null; render(); };
 $('pin').onclick = () => { const on = !pinning; clearModes(); pinning = on; render(); };
 // ⛶ entra y sale de pantalla completa; el icono dice qué hará.
@@ -167,13 +187,22 @@ function appButton(a) {
     + (moving === 'app' && canMove(a) ? ' pick' : '') + (chosen && chosen.id === a.id ? ' chosen' : '')
     + (pinning ? (a.canPin ? ' pinnable' + (a.pinned ? ' pinnedOn' : '') : ' away') : '')
     + (minimizing ? (canMinimize(a) ? ' minimizable' + (a.state === 'Parked' ? ' parked' : '') : ' away') : '')
-    + (closing ? (canMove(a) ? ' closable' : ' away') : '');
+    + (closing ? (canMove(a) ? ' closable' : ' away') : '')
+    + (fulling ? (canMove(a) ? ' fullable' + (fullApp && fullApp.id === a.id ? ' chosen' : '') : ' away') : '');
   b.innerHTML = `${a.pinned ? '<span class="pin">📌</span>' : ''}${img(a.key, a.name)}<span>${esc(a.name + mark)}</span>`;
   b.onclick = e => {
     e.stopPropagation();
     if (pinning) { if (a.canPin) send('pin', { id: a.id }); return; }
     if (minimizing) { if (canMinimize(a)) { send('minimize', { id: a.id }); clearModes(); render(); } return; }
     if (closing) { if (canMove(a)) { send('close', { id: a.id }); clearModes(); render(); } return; }
+    if (fulling) {
+      if (!canMove(a)) return;
+      const screens = state.screens || [];
+      if (screens.length === 1) { send('fullscreen', { id: a.id, display: screens[0].id }); clearModes(); }
+      else fullApp = fullApp && fullApp.id === a.id ? null : a;
+      render();
+      return;
+    }
     if (moving) {
       // Elegida la app, todo el panel destino es el destino, también sus iconos: un panel lleno no deja hueco
       // donde tocar. Lo mismo con Libres. Otra app del mismo panel (que no es destino) cambia la elegida.

@@ -479,6 +479,15 @@ public sealed class DeckWebServer : IAsyncDisposable
             case "minimize" when App() is { Handle: { } h, PanelId: not null, State: not ListItemState.Unmovable } app:
                 await Run(app.State == ListItemState.Parked ? new Restore(h) : new Park(h));
                 break;
+            case "fullscreen" when App() is { Handle: { } h, State: not (ListItemState.Unmovable or ListItemState.OtherDesktop) } app
+                && root.TryGetProperty("display", out var d) && d.GetString() is { } key
+                && _state() is { } now && now.Displays.Any(x => (x.Display ?? "") == key):
+                // Como «Pantalla completa en…» del menú del deck del PC; una libre entra antes al panel de trabajo.
+                var display = key.Length == 0 ? null : key;
+                await Run(app.PanelId is null
+                    ? [new Adopt(h, app.Name, DefaultPanel(now)), new EnterFullscreen(h, display)]
+                    : [new EnterFullscreen(h, display)]);
+                break;
             case "close" when App() is { Handle: { } h, State: not ListItemState.Unmovable }:
                 await _onUi(() => _actions.CloseApp(h));
                 break;
@@ -577,6 +586,9 @@ public sealed class DeckWebServer : IAsyncDisposable
 
         await Run(new Promote(h));
     }
+
+    private static string DefaultPanel(DeckState s) =>
+        s.Panels.FirstOrDefault(p => p.Id == Workspace.WorkPanel)?.Id ?? s.Panels[0].Id;
 
     private Task Run(params Command[] commands) => _onUi(() => _actions.Run(commands));
 
@@ -700,6 +712,8 @@ public sealed class DeckWebServer : IAsyncDisposable
                 hasPrevious = s.HasPrevious,
                 foreground = s.Foreground is { } fg ? apps.FirstOrDefault(x => x.Value.Handle == fg).Key : null,
                 monitors,
+                // Los monitores conectados, también sin paneles: donde puede ir una app en pantalla completa.
+                screens = s.Displays.Select(d => new { id = d.Display ?? "", name = d.Name }).ToList(),
                 free,
                 pages = _pageTitles() && s.Browsers.Count > 0,
                 layout = Layout(s).Select(b => new { key = b.Key, label = b.Label, on = b.On }).ToList(),

@@ -126,7 +126,9 @@ Hecho y probado en la tablet Android del usuario:
 - **Interfaz:** dos columnas en horizontal (incluida una tablet pequeña), una en vertical o en un teléfono; todos los monitores apilados (ADR 0020); ⛶ entra y sale de pantalla completa; las apps sin icono muestran su inicial.
 - **Privacidad:** el texto de General cambia cuando el deck en la red está prendido.
 
-Agregado el 2026-11-28: Anclar, la app en uso junto al foco, la presentación de cada panel con ◀ ▶, la disposición del principal, Minimizar, Cerrar, Liberar todas con confirmación y Sistema (pantalla encendida, ratón al foco, reordenar). Pendiente: el menú de cada app con pulsación larga, la disposición del principal, la energía (desactivada en remoto), la pantalla encendida (opción C), comprobar la categoría de red de Windows (hoy sólo se mira que la dirección sea privada) y probar en un iPad.
+Agregado el 2026-11-28: Anclar, la app en uso junto al foco, la presentación de cada panel con ◀ ▶, la disposición del principal, Minimizar, Cerrar, Liberar todas con confirmación y Sistema (pantalla encendida, ratón al foco, reordenar). Después: el modo **Pantalla…** (una app en pantalla completa en el monitor que se elija; comando `fullscreen` con el `id` de uno de los `screens` del estado, que lista los monitores conectados aunque no tengan paneles), «de {panel}» bajo la app del foco, y Páginas sin desplazamiento horizontal.
+
+Decidido no llevar a la red: la energía, y el menú de cada app con pulsación larga (lo que hace ya está en los modos, y en un navegador táctil la pulsación larga choca con la selección de texto). Pendiente: mantener encendida la pantalla de la tablet (necesita el cifrado, opción C) y probar en un iPad.
 
 ## Seguridad (2026-11-28)
 

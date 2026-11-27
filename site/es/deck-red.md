@@ -27,17 +27,18 @@ La tablet queda emparejada. Para quitarla, toca **Quitar** junto a ella en **Dec
 
 Lo mismo que el deck del PC, con todos los monitores a la vez:
 
-- **A la izquierda:** la app del foco (y, si escribes en otra, esa app a su lado, con borde blanco), **Anterior**, **Al panel**, **Liberar todas** (pide un segundo toque), y los modos **Mover…**, **Anclar…**, **Minimizar…** y **Cerrar…**. Debajo, la **disposición del principal** (toca una columna para prenderla o apagarla; déjala apretada para restablecer el ancho) y **Sistema**: mantener encendida la pantalla del PC, el ratón a la app del foco y, tras un Liberar todas, **Reordenar todas**.
+- **A la izquierda:** la app del foco, con el panel de donde viene (y, si escribes en otra, esa app a su lado, con borde blanco), **Anterior**, **Al panel**, **Liberar todas** (pide un segundo toque), y los modos **Mover…**, **Anclar…**, **Minimizar…**, **Pantalla…** y **Cerrar…**. Debajo, la **disposición del principal** (toca una columna para prenderla o apagarla; déjala apretada para restablecer el ancho) y **Sistema**: mantener encendida la pantalla del PC, el ratón a la app del foco y, tras un Liberar todas, **Reordenar todas**.
 - **A la derecha:** cada monitor con sus paneles y, abajo, **Libres** y **🗂 Páginas**. La cabecera de cada panel tiene su presentación (▦ ⧉ ☰, y ⛶ fuera del principal) y, en pestañas, ◀ ▶.
 - **Toca una app** para llevarla al foco. En un panel en pestañas, tocar una pestaña oculta la muestra en su panel; una app anclada y cerrada se abre en su panel; una libre se trae al frente.
 - **Mover…:** toca la app y luego el panel donde va, el foco, o **Libres** para liberarla.
 - **Anclar…:** toca apps para anclarlas o desanclarlas en su panel; toca **Anclar…** otra vez para terminar.
 - **Minimizar…** y **Cerrar…:** toca una app; el modo se apaga solo. Una minimizada se queda en su panel, y minimizarla otra vez la devuelve. Cerrar funciona como su ✕: si tiene algo sin guardar, pregunta en el PC.
-- **⛶** entra y sale de pantalla completa.
+- **Pantalla…:** toca una app y, si tienes más de un monitor, el monitor donde va en pantalla completa. Para sacarla, tócala en el foco, o toca **Al panel**.
+- **⛶** (arriba) pone en pantalla completa la página en la tablet, y la saca.
 
 En horizontal usa dos columnas, como el deck del PC; en un teléfono o una tablet en vertical, una.
 
-No están en la red: los botones de energía (bloquear, suspender, reiniciar, apagar) ni el menú de cada app con pulsación larga. Para eso, usa el deck del PC.
+No están en la red los botones de energía (bloquear, suspender, reiniciar, apagar): para eso, usa el deck del PC. El menú de cada app con pulsación larga tampoco; lo que hace está en los modos.
 
 ## Páginas de los navegadores
 

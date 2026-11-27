@@ -143,3 +143,14 @@ small { color: var(--dim); font-size: 11px; }
   .duo .main img, .duo .main .ph { width: 36px; height: 36px; }
   .duo .use img, .duo .use .ph { width: 26px; height: 26px; }
 }
+
+/* Pantalla…: quinto modo; elegida la app, los monitores como botones. */
+.row5 { grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 4px; } /* si la columna es angosta, pasa a 3 + 2 */
+.row5 button { font-size: 11px; }
+.mode.full { border-bottom: 3px solid #9b6bd6; }
+.mode.full.on { background: #9b6bd6; }
+.app.fullable { outline: 2px solid #9b6bd6; outline-offset: -2px; }
+.app.fullable.chosen { outline-width: 3px; outline-offset: -3px; background: #3a2f4d; }
+.screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+.screens button { background: #9b6bd6; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focusTile small.from { color: #dfe8f7; font-size: 12px; font-weight: 400; }
