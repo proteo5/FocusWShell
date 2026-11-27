@@ -27,15 +27,17 @@ The tablet stays paired. To remove it, tap **Remove** next to it in **Deck on th
 
 The same as the deck on the PC, with every monitor at once:
 
-- **Left:** the app in focus, **Previous**, **To panel**, **Free all** and **Move…**.
-- **Right:** each monitor with its panels, and below, **Free** and **🗂 Pages**.
+- **Left:** the app in focus (and, if you type in another one, that app next to it, with a white border), **Previous**, **To panel**, **Free all** (it asks for a second tap), and the modes **Move…**, **Pin…**, **Minimize…** and **Close…**. Below, the **main screen layout** (tap a column to turn it on or off; press and hold to reset the width) and **System**: keep the PC's screen on, the mouse to the focus app and, after a Free all, **Rearrange all**.
+- **Right:** each monitor with its panels, and below, **Free** and **🗂 Pages**. Each panel header has its presentation (▦ ⧉ ☰, and ⛶ outside the main screen) and, in tabs, ◀ ▶.
 - **Tap an app** to bring it to the focus. In a panel in tabs, tapping a hidden tab shows it in its panel; a closed pinned app opens in its panel; a free one comes to the front.
 - **Move…:** tap the app, then the panel where it goes, the focus, or **Free** to free it.
+- **Pin…:** tap apps to pin or unpin them in their panel; tap **Pin…** again to finish.
+- **Minimize…** and **Close…:** tap one app; the mode turns off by itself. A minimized app stays in its panel, and minimizing it again brings it back. Closing works like its ✕: if it has unsaved work, it asks on the PC.
 - **⛶** enters and leaves fullscreen.
 
 In landscape it uses two columns, like the deck on the PC; on a phone or a tablet in portrait, one.
 
-Not in this version yet: the Pin, Minimize and Close modes, the main screen layout and the power buttons. Use the deck on the PC for those.
+Not on the network: the power buttons (lock, sleep, restart, shut down) and each app's long-press menu. Use the deck on the PC for those.
 
 ## Browser pages
 

@@ -27,15 +27,17 @@ La tablet queda emparejada. Para quitarla, toca **Quitar** junto a ella en **Dec
 
 Lo mismo que el deck del PC, con todos los monitores a la vez:
 
-- **A la izquierda:** la app del foco, **Anterior**, **Al panel**, **Liberar todas** y **Mover…**.
-- **A la derecha:** cada monitor con sus paneles y, abajo, **Libres** y **🗂 Páginas**.
+- **A la izquierda:** la app del foco (y, si escribes en otra, esa app a su lado, con borde blanco), **Anterior**, **Al panel**, **Liberar todas** (pide un segundo toque), y los modos **Mover…**, **Anclar…**, **Minimizar…** y **Cerrar…**. Debajo, la **disposición del principal** (toca una columna para prenderla o apagarla; déjala apretada para restablecer el ancho) y **Sistema**: mantener encendida la pantalla del PC, el ratón a la app del foco y, tras un Liberar todas, **Reordenar todas**.
+- **A la derecha:** cada monitor con sus paneles y, abajo, **Libres** y **🗂 Páginas**. La cabecera de cada panel tiene su presentación (▦ ⧉ ☰, y ⛶ fuera del principal) y, en pestañas, ◀ ▶.
 - **Toca una app** para llevarla al foco. En un panel en pestañas, tocar una pestaña oculta la muestra en su panel; una app anclada y cerrada se abre en su panel; una libre se trae al frente.
 - **Mover…:** toca la app y luego el panel donde va, el foco, o **Libres** para liberarla.
+- **Anclar…:** toca apps para anclarlas o desanclarlas en su panel; toca **Anclar…** otra vez para terminar.
+- **Minimizar…** y **Cerrar…:** toca una app; el modo se apaga solo. Una minimizada se queda en su panel, y minimizarla otra vez la devuelve. Cerrar funciona como su ✕: si tiene algo sin guardar, pregunta en el PC.
 - **⛶** entra y sale de pantalla completa.
 
 En horizontal usa dos columnas, como el deck del PC; en un teléfono o una tablet en vertical, una.
 
-Todavía no tiene: los modos Anclar, Minimizar y Cerrar, la disposición del principal ni los botones de energía. Para eso, usa el deck del PC.
+No están en la red: los botones de energía (bloquear, suspender, reiniciar, apagar) ni el menú de cada app con pulsación larga. Para eso, usa el deck del PC.
 
 ## Páginas de los navegadores
 

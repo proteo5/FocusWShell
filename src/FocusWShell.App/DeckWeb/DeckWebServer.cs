@@ -453,6 +453,48 @@ public sealed class DeckWebServer : IAsyncDisposable
                 }
 
                 break;
+            case "pin" when App() is { App: { } catalog, PanelId: not null, State: not ListItemState.Unmovable } app:
+                // Como el modo Anclar del deck: alterna; una anclada se queda en su panel aunque se cierre.
+                await _onUi(() =>
+                {
+                    _actions.SetPinned(app.AppKey, !catalog.Pinned);
+                    return Task.CompletedTask;
+                });
+                break;
+            case "presentation" when Panel(root) is { } target
+                && Enum.TryParse<PanelTemplate>(root.GetProperty("template").GetString(), out var template)
+                && (template != PanelTemplate.Fill || target.Display is not null):
+                await Run(new SetPresentation(target.Id, template));
+                break;
+            case "tabPrev" or "tabNext" when Panel(root) is { } target && Tabs(target) is { Count: > 1 } tabs:
+                // En pestañas, la visible es la primera: ▶ pone la segunda; ◀, la última (como el deck del PC).
+                await Run(new MakeActiveInPanel((cmd == "tabNext" ? tabs[1] : tabs[^1]).Handle!.Value));
+                break;
+            case "view" when Layout(_state()).FirstOrDefault(b => b.Key == root.GetProperty("key").GetString()) is { } button:
+                await Run(new SetView(button.Next));
+                break;
+            case "resetWidth":
+                await Run(new SetProportions(_state().View, null));
+                break;
+            case "minimize" when App() is { Handle: { } h, PanelId: not null, State: not ListItemState.Unmovable } app:
+                await Run(app.State == ListItemState.Parked ? new Restore(h) : new Park(h));
+                break;
+            case "close" when App() is { Handle: { } h, State: not ListItemState.Unmovable }:
+                await _onUi(() => _actions.CloseApp(h));
+                break;
+            case "keepAwake":
+                await _onUi(() =>
+                {
+                    _actions.ToggleKeepAwake();
+                    return Task.CompletedTask;
+                });
+                break;
+            case "mouseToFocus":
+                await _onUi(() => _actions.MouseToFocus());
+                break;
+            case "rearrange" when _actions.CanRearrange():
+                await _onUi(() => _actions.RearrangeAll());
+                break;
             case "previous":
                 await Run(new SwapWithPrevious());
                 break;
@@ -538,6 +580,45 @@ public sealed class DeckWebServer : IAsyncDisposable
 
     private Task Run(params Command[] commands) => _onUi(() => _actions.Run(commands));
 
+    /// <summary>El panel que nombra el comando, en el estado de ahora.</summary>
+    private DeckPanel? Panel(JsonElement root) =>
+        root.TryGetProperty("panel", out var id) && id.GetString() is { } key ? _state().Panels.FirstOrDefault(p => p.Id == key) : null;
+
+    /// <summary>Las pestañas de un panel en pestañas o Llenar: sus apps en el panel, la visible primero.</summary>
+    private static List<DeckApp> Tabs(DeckPanel panel) =>
+        panel.Template is PanelTemplate.Stack or PanelTemplate.Fill
+            ? [.. panel.Apps.Where(a => a.State == ListItemState.InPanel && a.Handle is not null)]
+            : [];
+
+    /// <summary>Un botón de la disposición del principal: su clave, su texto, si está prendido y la vista a la que lleva.</summary>
+    private sealed record LayoutButton(string Key, string Label, bool On, FocusPosition Next);
+
+    /// <summary>
+    /// La disposición del principal, como en el deck del PC (<c>DeckWindow.ArrangementButtons</c>): prender y
+    /// apagar cada columna y, en un ultrawide, traer una al otro lado.
+    /// </summary>
+    private static List<LayoutButton> Layout(DeckState s)
+    {
+        string Column(PanelSide side, string fallback) =>
+            s.Panels.Where(p => p.Display is null && p.Side == side).OrderBy(p => p.Slot).FirstOrDefault()?.Name ?? fallback;
+        var view = s.View;
+        string left = Column(PanelSide.Left, Strings.Deck_LeftColumn), right = Column(PanelSide.Right, Strings.Deck_RightColumn);
+        var buttons = new List<LayoutButton>();
+        if (MainArrangement.CanBorrowToLeft(view, s.Ultrawide))
+        {
+            buttons.Add(new("borrowLeft", "⇠ " + right, MainArrangement.RightBorrowedLeft(view), MainArrangement.ToggleBorrowToLeft(view)));
+        }
+
+        buttons.Add(new("left", "◧ " + left, MainArrangement.LeftOn(view), MainArrangement.ToggleLeft(view)));
+        buttons.Add(new("right", right + " ◨", MainArrangement.RightOn(view), MainArrangement.ToggleRight(view)));
+        if (MainArrangement.CanBorrowToRight(view, s.Ultrawide))
+        {
+            buttons.Add(new("borrowRight", left + " ⇢", MainArrangement.LeftBorrowedRight(view), MainArrangement.ToggleBorrowToRight(view)));
+        }
+
+        return buttons;
+    }
+
     /// <summary>En un panel en pestañas (o Llenar) con varias: «visible» la que se ve, «hidden» las demás.</summary>
     private static string? TabOf(DeckApp app, DeckState state)
     {
@@ -580,6 +661,7 @@ public sealed class DeckWebServer : IAsyncDisposable
                 state = a.State.ToString(),
                 tab = TabOf(a, s),
                 pinned = a.App?.Pinned == true,
+                canPin = a.App is not null && a.PanelId is not null && a.State != ListItemState.Unmovable,
                 panel = a.PanelId,
             };
 
@@ -599,6 +681,8 @@ public sealed class DeckWebServer : IAsyncDisposable
                             name = p.Name,
                             side = p.Side.ToString(),
                             template = p.Template.ToString(),
+                            canFill = p.Display is not null,
+                            tabs = Tabs(p).Count,
                             off = p.Off,
                             apps = p.Apps.Select(App).ToList(),
                         }).ToList(),
@@ -618,6 +702,9 @@ public sealed class DeckWebServer : IAsyncDisposable
                 monitors,
                 free,
                 pages = _pageTitles() && s.Browsers.Count > 0,
+                layout = Layout(s).Select(b => new { key = b.Key, label = b.Label, on = b.On }).ToList(),
+                keepAwake = _actions.KeepAwake(),
+                canRearrange = _actions.CanRearrange(),
             };
         }
     }

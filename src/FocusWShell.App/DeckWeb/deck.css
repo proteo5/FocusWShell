@@ -6,7 +6,7 @@ button { font: inherit; color: var(--text); background: var(--card); border: 0; 
 button:active { filter: brightness(1.25); }
 button:disabled { opacity: .4; }
 #app { display: grid; grid-template-columns: clamp(210px, 27vw, 300px) 1fr; gap: 12px; height: 100%; padding: 10px 10px 10px max(10px, env(safe-area-inset-left)); }
-#left { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+#left { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
 .card { border: 1px solid #2c3240; border-radius: 8px; padding: 8px; }
 .head { display: flex; align-items: center; gap: 8px; }
 .head .title { flex: 1; display: flex; flex-direction: column; }
@@ -83,4 +83,58 @@ small { color: var(--dim); font-size: 11px; }
   .panel h3 { margin: 2px 2px 4px; font-size: 14px; }
   .panel { min-height: 0; }
   .bottom { min-height: 0; height: 104px; }
+}
+
+/* Anclar (índigo, como en el deck del PC) y la app en uso junto al foco. */
+.row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.mode.pin { border-bottom: 3px solid #5a78c8; }
+.mode.pin.on { background: #5a78c8; }
+.app.pinnable { outline: 2px solid rgba(90, 120, 200, .55); outline-offset: -2px; }
+.app.pinnable.pinnedOn { outline: 3px solid #5a78c8; outline-offset: -3px; }
+.duo { display: flex; align-items: center; gap: 14px; }
+.duo .main { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.duo .sep { width: 1px; align-self: stretch; background: rgba(255, 255, 255, .45); }
+.duo .use { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; font-weight: 400; }
+.duo .use img, .duo .use .ph { width: 32px; height: 32px; border: 2px solid #fff; border-radius: 6px; }
+.duo .use small { color: #dfe8f7; }
+
+/* Minimizar (verde azulado) y Cerrar (rojo), como en el deck del PC; la disposición y el sistema. */
+.mode.minimize { border-bottom: 3px solid #2aa198; }
+.mode.minimize.on { background: #2aa198; }
+.mode.close { border-bottom: 3px solid #c23b3b; }
+.mode.close.on { background: #c23b3b; }
+.app.minimizable { outline: 2px solid #2aa198; outline-offset: -2px; }
+.app.minimizable.parked { outline-width: 3px; outline-offset: -3px; }
+.app.closable { outline: 2px solid #c23b3b; outline-offset: -2px; }
+#freeAll.armed { background: #c23b3b; }
+.layoutRow { display: flex; gap: 6px; }
+.layoutRow button { flex: 1; padding: 0 6px; font-size: 13px; }
+.layoutRow button.on { background: var(--blue); }
+#awake.on { background: #c88a1e; }
+.row2 button { padding: 0 6px; font-size: 13px; }
+.panel h3 { align-items: center; }
+.panel h3 .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tools { display: flex; gap: 3px; }
+.tools button { width: 40px; min-height: 40px; height: 40px; font-size: 16px; padding: 0; }
+.tools button.on { background: var(--blue); }
+.tools .gap { width: 6px; }
+@media (orientation: landscape) and (max-height: 700px) {
+  .tools button { width: 34px; min-height: 34px; height: 34px; font-size: 14px; }
+}
+
+/* Columna izquierda compacta: los cuatro modos en una fila (icono arriba, nombre abajo) y el sistema en otra. */
+.row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.row4 button { padding: 2px; font-size: 12px; line-height: 1.25; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.sys button { font-size: 12px; padding: 0 4px; line-height: 1.2; }
+.focus { min-height: 120px; }
+.focusTile { overflow: hidden; }
+.duo { gap: 10px; font-size: 15px; }
+@media (orientation: landscape) and (max-height: 700px) {
+  #left { gap: 6px; }
+  .card { padding: 6px; }
+  #left button { min-height: 42px; }
+  .row3 button, .row4 button { font-size: 12px; }
+  .label { margin-bottom: 4px; }
+  .duo .main img, .duo .main .ph { width: 36px; height: 36px; }
+  .duo .use img, .duo .use .ph { width: 26px; height: 26px; }
 }

@@ -27,7 +27,24 @@
         <button id="toPanel">↓ <span data-t="toPanel"></span></button>
         <button id="freeAll"><span data-t="freeAll"></span></button>
       </div>
-      <button id="move" class="mode move">⇆ <span data-t="move"></span></button>
+      <div class="row4">
+        <button id="move" class="mode move">⇆ <span data-t="move"></span></button>
+        <button id="pin" class="mode pin">📌 <span data-t="pin"></span></button>
+        <button id="minimize" class="mode minimize">▁ <span data-t="minimize"></span></button>
+        <button id="close" class="mode close">✕ <span data-t="close"></span></button>
+      </div>
+    </section>
+    <section class="card">
+      <small class="label" data-t="layout"></small>
+      <div id="layout" class="layoutRow"></div>
+    </section>
+    <section class="card system">
+      <small class="label" data-t="system"></small>
+      <div class="row3 sys">
+        <button id="awake">☀ <span></span></button>
+        <button id="mouse">🖱 <span data-t="mouse"></span></button>
+        <button id="rearrange" hidden>↺ <span data-t="rearrange"></span></button>
+      </div>
     </section>
     <div id="status" class="status"></div>
   </aside>

@@ -3,7 +3,13 @@
 
 const T = {
   es: {
-    focus: 'Foco', previous: 'Anterior', toPanel: 'Al panel', freeAll: 'Liberar todas', move: 'Mover…', moving: 'Moviendo…',
+    focus: 'Foco', previous: 'Anterior', toPanel: 'Al panel', freeAll: 'Liberar todas', move: 'Mover…', moving: 'Moviendo…', pin: 'Anclar…', pinning: 'Anclando…', inUse: 'en uso',
+    minimize: 'Minimizar…', minimizing: 'Minimizando…', close: 'Cerrar…', closing: 'Cerrando…',
+    pickMinimize: 'Toca una app de un panel para minimizarla (o devolverla).', pickClose: 'Toca la app que quieres cerrar. Si tiene algo sin guardar, ella pregunta en el PC.',
+    freeAllSure: '¿Liberar? Toca otra vez', layout: 'Disposición del principal', system: 'Sistema', awakeOn: 'Pantalla encendida', awakeOff: 'Pantalla: normal',
+    mouse: 'Ratón al foco', rearrange: 'Reordenar todas', resetTip: 'Mantén apretado para restablecer el ancho',
+    tiles: 'Cuadrícula', stack: 'Pestañas', list: 'Lista', fill: 'Llenar', prevTab: 'Pestaña anterior', nextTab: 'Pestaña siguiente',
+    pickPin: 'Toca una app para anclarla o desanclarla en su panel. Toca Anclar otra vez para terminar.',
     pickApp: 'Toca la app que quieres mover.', pickPanel: 'Toca el panel donde va, o Libres para liberarla.',
     free: 'Libres', noFree: 'Sin ventanas libres.', pages: 'Páginas', nothingInFocus: 'Nada en el foco',
     monitors: n => `${n} ${n === 1 ? 'monitor' : 'monitores'}`, apps: n => `${n} apps`,
@@ -12,7 +18,13 @@ const T = {
     loading: 'Leyendo las páginas…', noPages: 'No hay pestañas que leer en Chrome ni en Edge.', closeAll: 'Cerrar todas',
   },
   en: {
-    focus: 'Focus', previous: 'Previous', toPanel: 'To panel', freeAll: 'Free all', move: 'Move…', moving: 'Moving…',
+    focus: 'Focus', previous: 'Previous', toPanel: 'To panel', freeAll: 'Free all', move: 'Move…', moving: 'Moving…', pin: 'Pin…', pinning: 'Pinning…', inUse: 'in use',
+    minimize: 'Minimize…', minimizing: 'Minimizing…', close: 'Close…', closing: 'Closing…',
+    pickMinimize: 'Tap an app in a panel to minimize it (or bring it back).', pickClose: 'Tap the app you want to close. If it has unsaved work, it asks on the PC.',
+    freeAllSure: 'Free all? Tap again', layout: 'Main screen layout', system: 'System', awakeOn: 'Screen kept on', awakeOff: 'Screen: normal',
+    mouse: 'Mouse to focus', rearrange: 'Rearrange all', resetTip: 'Press and hold to reset the width',
+    tiles: 'Tiles', stack: 'Tabs', list: 'List', fill: 'Fill', prevTab: 'Previous tab', nextTab: 'Next tab',
+    pickPin: 'Tap an app to pin or unpin it in its panel. Tap Pin again to finish.',
     pickApp: 'Tap the app you want to move.', pickPanel: 'Tap the panel where it goes, or Free to free it.',
     free: 'Free', noFree: 'No free windows.', pages: 'Pages', nothingInFocus: 'Nothing in focus',
     monitors: n => `${n} ${n === 1 ? 'monitor' : 'monitors'}`, apps: n => `${n} apps`,
@@ -34,6 +46,11 @@ function noIcon(el) { const s = document.createElement('span'); s.className = 'p
 let state = null, ws = null, seq = 0, retry = 500;
 let moving = null;            // null | 'app' | 'panel'
 let chosen = null;            // la app elegida para mover
+let pinning = false;          // modo Anclar: tocar alterna el ancla; sigue prendido hasta tocarlo otra vez
+let minimizing = false, closing = false;   // Minimizar y Cerrar: se apagan tras un toque, como en el deck del PC
+let freeAllArmed = 0;         // «Liberar todas» pide un segundo toque en 4 s
+const anyMode = () => !!moving || pinning || minimizing || closing;
+function clearModes() { moving = null; chosen = null; pinning = false; minimizing = false; closing = false; status(''); }
 let pagesOpen = false, pages = null, site = null;
 
 function status(text, bad) { $('status').textContent = text || ''; $('status').className = 'status' + (bad ? ' bad' : ''); }
@@ -58,14 +75,55 @@ function renderLeft() {
   $('summary').textContent = `${L.monitors(state.monitors.length)} · ${L.apps(apps)}`;
   const f = state.focus, tile = $('focusTile');
   tile.className = 'focusTile' + (f ? '' : ' empty') + (moving === 'panel' && chosen && (!f || chosen.id !== f.id) ? ' pick' : '');
-  tile.innerHTML = f ? `${img(f.key, f.name)}<span>${esc(f.name)}</span>` : esc(L.nothingInFocus);
+  // Como en el deck del PC: si el teclado está en otra app, se ve a su lado, más pequeña y con borde blanco.
+  const use = f && state.foreground && state.foreground !== f.id ? findApp(state.foreground) : null;
+  tile.innerHTML = !f ? esc(L.nothingInFocus)
+    : !use ? `${img(f.key, f.name)}<span>${esc(f.name)}</span>`
+    : `<div class="duo"><div class="main">${img(f.key, f.name)}<span>${esc(f.name)}</span></div><div class="sep"></div>`
+      + `<div class="use">${img(use.key, use.name)}<span>${esc(use.name)}</span><small>${esc(L.inUse)}</small></div></div>`;
   $('previous').disabled = !state.hasPrevious;
   $('toPanel').disabled = !f;
   const move = $('move');
   move.classList.toggle('on', !!moving);
   move.querySelector('span').textContent = moving ? L.moving : L.move;
   if (moving) status(moving === 'app' ? L.pickApp : L.pickPanel);
+  $('pin').classList.toggle('on', pinning);
+  $('pin').querySelector('span').textContent = pinning ? L.pinning : L.pin;
+  if (pinning) status(L.pickPin);
+  for (const [id, on, text, busy] of [['minimize', minimizing, L.minimize, L.minimizing], ['close', closing, L.close, L.closing]]) {
+    $(id).classList.toggle('on', on);
+    $(id).querySelector('span').textContent = on ? busy : text;
+  }
+  if (minimizing) status(L.pickMinimize);
+  if (closing) status(L.pickClose);
+  const armed = Date.now() - freeAllArmed < 4000;
+  $('freeAll').classList.toggle('armed', armed);
+  $('freeAll').querySelector('span').textContent = armed ? L.freeAllSure : L.freeAll;
+
+  // La disposición del principal: azul, prendida. Mantener apretado restablece el ancho.
+  const lay = $('layout'); lay.innerHTML = '';
+  for (const b of state.layout || []) {
+    const btn = document.createElement('button');
+    btn.textContent = b.label; btn.title = L.resetTip; btn.className = b.on ? 'on' : '';
+    btn.onclick = () => send('view', { key: b.key });
+    holdToReset(btn);
+    lay.appendChild(btn);
+  }
+
+  $('awake').classList.toggle('on', !!state.keepAwake);
+  $('awake').querySelector('span').textContent = state.keepAwake ? L.awakeOn : L.awakeOff;
+  $('rearrange').hidden = !state.canRearrange;
 }
+
+function holdToReset(btn) {
+  let timer = null, held = false;
+  btn.addEventListener('pointerdown', () => { held = false; timer = setTimeout(() => { held = true; send('resetWidth'); }, 700); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(e => btn.addEventListener(e, () => clearTimeout(timer)));
+  btn.addEventListener('click', e => { if (held) { e.stopImmediatePropagation(); held = false; } }, true);
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+const findApp = id => [...state.monitors.flatMap(m => m.panels.flatMap(p => p.apps)), ...state.free].find(a => a.id === id);
 
 $('focusTile').onclick = () => {
   if (moving === 'panel' && chosen) { send('tap', { id: chosen.id }); endMove(); return; } // mover al foco
@@ -73,8 +131,17 @@ $('focusTile').onclick = () => {
 };
 $('previous').onclick = () => send('previous');
 $('toPanel').onclick = () => send('toPanel');
-$('freeAll').onclick = () => send('freeAll');
-$('move').onclick = () => { moving = moving ? null : 'app'; chosen = null; if (!moving) status(''); render(); };
+$('freeAll').onclick = () => {
+  if (Date.now() - freeAllArmed < 4000) { freeAllArmed = 0; send('freeAll'); render(); return; }
+  freeAllArmed = Date.now(); render(); setTimeout(render, 4100);
+};
+$('awake').onclick = () => send('keepAwake');
+$('mouse').onclick = () => send('mouseToFocus');
+$('rearrange').onclick = () => send('rearrange');
+$('minimize').onclick = () => { const on = !minimizing; clearModes(); minimizing = on; render(); };
+$('close').onclick = () => { const on = !closing; clearModes(); closing = on; render(); };
+$('move').onclick = () => { const on = !moving; clearModes(); moving = on ? 'app' : null; render(); };
+$('pin').onclick = () => { const on = !pinning; clearModes(); pinning = on; render(); };
 // ⛶ entra y sale de pantalla completa; el icono dice qué hará.
 const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
 $('full').onclick = () => {
@@ -95,12 +162,18 @@ function appButton(a) {
   const away = ['Closed', 'InTray', 'OtherDesktop', 'Unmovable'].includes(a.state);
   const mark = { InFocus: ' ↑', Parked: ' ⏸', Detached: ' ↗', OtherDesktop: ' ⧉', InTray: ' ▴', Unmovable: ' 🛡' }[a.state] || '';
   b.className = 'app' + (away ? ' away' : '') + (a.state === 'InFocus' ? ' infocus' : '')
-    + (state.foreground === a.id && a.state !== 'InFocus' && !moving ? ' inuse' : '')
+    + (state.foreground === a.id && a.state !== 'InFocus' && !anyMode() ? ' inuse' : '')
     + (a.tab === 'visible' ? ' tabvisible' : '')
-    + (moving === 'app' && canMove(a) ? ' pick' : '') + (chosen && chosen.id === a.id ? ' chosen' : '');
+    + (moving === 'app' && canMove(a) ? ' pick' : '') + (chosen && chosen.id === a.id ? ' chosen' : '')
+    + (pinning ? (a.canPin ? ' pinnable' + (a.pinned ? ' pinnedOn' : '') : ' away') : '')
+    + (minimizing ? (canMinimize(a) ? ' minimizable' + (a.state === 'Parked' ? ' parked' : '') : ' away') : '')
+    + (closing ? (canMove(a) ? ' closable' : ' away') : '');
   b.innerHTML = `${a.pinned ? '<span class="pin">📌</span>' : ''}${img(a.key, a.name)}<span>${esc(a.name + mark)}</span>`;
   b.onclick = e => {
     e.stopPropagation();
+    if (pinning) { if (a.canPin) send('pin', { id: a.id }); return; }
+    if (minimizing) { if (canMinimize(a)) { send('minimize', { id: a.id }); clearModes(); render(); } return; }
+    if (closing) { if (canMove(a)) { send('close', { id: a.id }); clearModes(); render(); } return; }
     if (moving) {
       // Elegida la app, todo el panel destino es el destino, también sus iconos: un panel lleno no deja hueco
       // donde tocar. Lo mismo con Libres. Otra app del mismo panel (que no es destino) cambia la elegida.
@@ -119,15 +192,53 @@ function appButton(a) {
 }
 
 const canMove = a => !['Closed', 'InTray', 'OtherDesktop', 'Unmovable'].includes(a.state);
+const canMinimize = a => canMove(a) && !!a.panel;
+
+// Los iconos no cambian de lugar: el PC ordena las pestañas con la visible primero, y al tocar una oculta se
+// movería bajo el dedo. Como en el deck del PC (StableOrder), cada panel recuerda el orden en que vio sus apps;
+// las nuevas van al final.
+const panelOrder = {};
+function stable(p) {
+  const known = panelOrder[p.id] || [];
+  const ordered = [...p.apps].sort((a, b) => {
+    const ia = known.indexOf(a.id), ib = known.indexOf(b.id);
+    return (ia < 0 ? Infinity : ia) - (ib < 0 ? Infinity : ib);
+  });
+  panelOrder[p.id] = ordered.map(a => a.id);
+  return ordered;
+}
+
+// La cabecera de un panel, como en el deck del PC: ◀ ▶ si está en pestañas, y su presentación (la activa en azul).
+function panelTools(p) {
+  const tools = document.createElement('div'); tools.className = 'tools';
+  const add = (text, title, on, click) => {
+    const b = document.createElement('button'); b.textContent = text; b.title = title; b.setAttribute('aria-label', title);
+    if (on) b.className = 'on';
+    b.onclick = e => { e.stopPropagation(); if (!anyMode()) click(); };
+    tools.appendChild(b);
+  };
+  if (p.tabs > 1) {
+    add('◀', L.prevTab, false, () => send('tabPrev', { panel: p.id }));
+    add('▶', L.nextTab, false, () => send('tabNext', { panel: p.id }));
+    tools.insertAdjacentHTML('beforeend', '<span class="gap"></span>');
+  }
+  const templates = [['Tiles', '▦', L.tiles], ['Stack', '⧉', L.stack], ['List', '☰', L.list]];
+  if (p.canFill) templates.push(['Fill', '⛶', L.fill]);
+  for (const [t, icon, name] of templates) add(icon, name, p.template === t, () => send('presentation', { panel: p.id, template: t }));
+  return tools;
+}
 
 function panelCard(p) {
   const card = document.createElement('section');
   const target = moving === 'panel' && chosen && chosen.panel !== p.id;
   card.className = 'panel' + (p.off ? ' off' : '') + (target ? ' target' : '');
   const side = { Left: { es: 'izquierda', en: 'left' }, Right: { es: 'derecha', en: 'right' } }[p.side];
-  card.innerHTML = `<h3>${esc(p.name.toUpperCase())}<span>${side ? side[L === T.es ? 'es' : 'en'] : ''}</span></h3>`;
+  const h3 = document.createElement('h3');
+  h3.innerHTML = `<span class="title"><b>${esc(p.name.toUpperCase())}</b> <span>${side ? side[L === T.es ? 'es' : 'en'] : ''}</span></span>`;
+  h3.appendChild(panelTools(p));
+  card.appendChild(h3);
   const apps = document.createElement('div'); apps.className = 'apps';
-  p.apps.forEach(a => apps.appendChild(appButton(a)));
+  stable(p).forEach(a => apps.appendChild(appButton(a)));
   card.appendChild(apps);
   if (target) card.onclick = () => { send('move', { id: chosen.id, panel: p.id }); endMove(); };
   return card;

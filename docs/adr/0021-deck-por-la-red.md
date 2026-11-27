@@ -126,7 +126,7 @@ Hecho y probado en la tablet Android del usuario:
 - **Interfaz:** dos columnas en horizontal (incluida una tablet pequeña), una en vertical o en un teléfono; todos los monitores apilados (ADR 0020); ⛶ entra y sale de pantalla completa; las apps sin icono muestran su inicial.
 - **Privacidad:** el texto de General cambia cuando el deck en la red está prendido.
 
-Pendiente: los modos Anclar, Minimizar y Cerrar, la disposición del principal, la energía (desactivada en remoto), la pantalla encendida (opción C), comprobar la categoría de red de Windows (hoy sólo se mira que la dirección sea privada) y probar en un iPad.
+Agregado el 2026-11-28: Anclar, la app en uso junto al foco, la presentación de cada panel con ◀ ▶, la disposición del principal, Minimizar, Cerrar, Liberar todas con confirmación y Sistema (pantalla encendida, ratón al foco, reordenar). Pendiente: el menú de cada app con pulsación larga, la disposición del principal, la energía (desactivada en remoto), la pantalla encendida (opción C), comprobar la categoría de red de Windows (hoy sólo se mira que la dirección sea privada) y probar en un iPad.
 
 ## Seguridad (2026-11-28)
 
