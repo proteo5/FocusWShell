@@ -1,4 +1,4 @@
-﻿# 05 — Hoja de ruta
+# 05 — Hoja de ruta
 
 Los hitos son incrementales: cada uno se usa a diario antes de pasar al siguiente. Las referencias **CA1–CA7** son los criterios de aceptación de [01 — Visión y alcance](01-vision.md#cómo-sabremos-si-funciona).
 
@@ -57,7 +57,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 6. **La disposición del principal como columnas que se prenden y apagan**, para monitores normales y ultrawide, con Solo foco ([ADR 0012, enmienda](adr/0012-vistas-posicion-del-foco.md#enmienda-2026-11-12-la-disposición-del-principal-son-columnas-que-se-prenden-y-apagan)). **Hecho**, sin los anchos fijos.
 7. **La ventana principal, moderna**, con WPF-UI: navegación lateral, Inicio con el mapa de monitores, panel aplicado al momento, tema claro u oscuro y «Acerca de» ([ADR 0017](adr/0017-ventana-principal-wpf-ui.md)). **Hecho** (0.2.0-alpha).
 8. **El foco con lugar propio en el deck**, el modo Minimizar y las apps que se cierran a la bandeja ([ADR 0013, enmienda](adr/0013-deck-superficie-de-control.md#enmienda-el-lugar-del-foco-y-el-modo-minimizar-2026-11-13), [ADR 0018](adr/0018-apps-en-la-bandeja.md)). **Hecho** (0.3.0-alpha).
-9. **Actividad**: cuánto pasa cada app en el foco y en uso, y el tiempo en paralelo; en el deck, la app en uso junto a la del foco ([ADR 0019](adr/0019-actividad-foco-y-uso.md)). **Hecho** (0.4.0-alpha): la medición y el día. Después: pares, línea del día, semana y exportar.
+9. **Actividad**: cuánto pasa cada app en el foco y en uso, y el tiempo en paralelo; en el deck, la app en uso junto a la del foco ([ADR 0019](adr/0019-actividad-foco-y-uso.md)). **Hecho** (0.4.0-alpha): la medición y el día; en 0.5.0-alpha, los sitios de los navegadores. Después: pares, línea del día, semana y exportar.
 
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.
 

@@ -31,6 +31,7 @@ Full support (a focus and apps per desktop, and desktop tabs in the deck) is pla
 - Only **Chrome and Edge**. Firefox and others are not supported.
 - The site of each page is guessed from its title, so some pages may appear as single pages.
 - Tested with vertical tabs. Horizontal tabs and collapsed tab groups have not been tested much.
+- Private windows (incognito, InPrivate) are recognized by the browser's own button. If your browser uses a language that names it differently, a private window may count as a normal one in Activity and in Pages.
 
 ## Other
 
