@@ -100,6 +100,7 @@ public static class WindowEnumerator
             IsTopmost = exStyle.HasFlag(WINDOW_EX_STYLE.WS_EX_TOPMOST),
             HasCaption = (style & WINDOW_STYLE.WS_CAPTION) == WINDOW_STYLE.WS_CAPTION,
             IsResizable = style.HasFlag(WINDOW_STYLE.WS_THICKFRAME),
+            HasMinimizeBox = style.HasFlag(WINDOW_STYLE.WS_MINIMIZEBOX),
             Bounds = bounds,
             VisibleBounds = GetVisibleBounds(hwnd) ?? bounds,
             MonitorBounds = GetMonitorBounds(hwnd),

@@ -374,6 +374,7 @@ Restore them now?
   <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} is already open on another desktop. Switch to that desktop to use it.</value></data>
   <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · on another desktop. Tap to go there.</value></data>
   <data name="Deck_InTrayTip" xml:space="preserve"><value>{0} · in the tray. Tap to show it.</value></data>
+  <data name="Deck_UnmovableTip" xml:space="preserve"><value>{0} runs as administrator: FocusWShell can't move it. Tap it to bring it to the front.</value></data>
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>on another desktop</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · on another desktop. Click: go there.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Go to its desktop</value></data>

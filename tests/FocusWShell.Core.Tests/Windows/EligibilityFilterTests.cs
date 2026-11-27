@@ -150,6 +150,15 @@ public class EligibilityFilterTests
     }
 
     [Fact]
+    public void BorderlessWindowWithAMinimizeButtonIsAnApp()
+    {
+        // Qt sin marco (SADP): ni barra de título ni marco redimensionable, pero se minimiza a la barra de tareas.
+        var result = Evaluate(NormalWindow() with { HasCaption = false, IsResizable = false, HasMinimizeBox = true });
+
+        Assert.True(result.IsCandidate);
+    }
+
+    [Fact]
     public void UserExclusionIsApplied()
     {
         var filter = new EligibilityFilter(userExcluded: w => w.ProcessName == "Code.exe");

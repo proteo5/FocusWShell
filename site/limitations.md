@@ -22,7 +22,7 @@ Full support (a focus and apps per desktop, and desktop tabs in the deck) is pla
 
 ## Apps that cannot be organized
 
-- **Apps running as administrator** cannot be moved by FocusWShell, which runs without elevation. They are listed with the reason, and stay where they are.
+- **Apps running as administrator** cannot be moved by FocusWShell, which runs without elevation: Windows doesn't allow it. They show in Free in the deck, dimmed and with 🛡, and tapping one brings it to the front; the main window lists them with the reason. If an app doesn't need to be administrator (in its properties, Compatibility → "Run this program as an administrator"), turn that off and FocusWShell organizes it like the rest.
 - **Fullscreen games and presentations:** when an app goes fullscreen by itself (F11, a game), FocusWShell leaves that monitor alone until it exits. This has been tested with browsers; games and presentations have not been tested much yet.
 - Some apps have a **fixed size** or a large minimum size. FocusWShell learns it and makes room, or leaves them out of the layout with a note.
 

@@ -7,6 +7,7 @@ Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [
 ## Unreleased / Sin publicar
 
 - Fixed: Store apps whose window does not give its app ID (WhatsApp) showed an internal name ("WhatsApp.Root") and a generic icon. They now take the name and icon of the Start menu. / Corregido: las apps de la Store cuya ventana no da su id de app (WhatsApp) salían con un nombre interno («WhatsApp.Root») y un icono genérico. Ahora toman el nombre y el icono del menú Inicio.
+- The deck now shows the apps that run as administrator (SADP, for example), in Free, dimmed and with 🛡: FocusWShell can't move them, but tapping one brings it to the front. Borderless apps with a minimize button (Qt) are no longer ignored. / El deck ahora muestra las apps que corren como administrador (SADP, por ejemplo), en Libres, atenuadas y con 🛡: FocusWShell no puede moverlas, pero tocarlas las trae al frente. Las apps sin marco con botón de minimizar (Qt) ya no se ignoran.
 
 ## 0.5.0-alpha
 

@@ -304,6 +304,25 @@ public sealed class ShellController : IDisposable
                 .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
 
+            // Las que corren como administrador: se ven y se traen al frente, pero no se mueven. Al final de LIBRES.
+            // No están en el catálogo (no se organizan): su nombre y su icono salen de su ejecutable.
+            DeckApp Unmovable(WindowSnapshot s)
+            {
+                var key = MinSizeCatalog.KeyFor(s);
+                if (!_unmovableNames.TryGetValue(key, out var name))
+                {
+                    name = AppLauncher.FriendlyName(s.ProcessPath, s.AppUserModelId) ?? Path.GetFileNameWithoutExtension(s.ProcessName);
+                    _unmovableNames[key] = name;
+                }
+
+                var app = _catalog.Find(key) ?? new CatalogApp(key, name, s.ProcessPath, s.AppUserModelId, null, false, DateTimeOffset.Now, DateTimeOffset.Now);
+                return new DeckApp(_catalog.Find(key)?.Name ?? name, key, s.Handle, ListItemState.Unmovable, s.Title, null, app);
+            }
+
+            free.AddRange(_unmanageable
+                .Select(u => Unmovable(u.Window))
+                .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase));
+
             // La del foco en otro escritorio no está aquí: el foco de este escritorio se ve vacío (ADR 0016).
             var focused = _workspace.Focused is { } f && !_elsewhere.ContainsKey(f.Handle) && _snapshots.TryGetValue(f.Handle, out var fs) ? Managed(f, fs) : null;
             var current = focused?.Handle;
@@ -695,6 +714,9 @@ public sealed class ShellController : IDisposable
     /// Si la app las vuelve a mostrar, regresan a su panel.
     /// </summary>
     private readonly Dictionary<nint, TrayWindow> _inTray = [];
+
+    /// <summary>Nombre de las apps que corren como administrador (no están en el catálogo), por clave: leerlo cuesta.</summary>
+    private readonly Dictionary<string, string> _unmovableNames = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Apps con alguna ventana en la bandeja y ninguna a la vista.</summary>
     private HashSet<string> TrayKeysLocked()

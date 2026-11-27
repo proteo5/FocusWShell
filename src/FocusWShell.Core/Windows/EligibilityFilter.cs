@@ -123,8 +123,9 @@ public sealed class EligibilityFilter
 
         // Ventanas sin barra de título ni marco redimensionable suelen ser popups, splash screens u overlays.
         // Excepción: apps con barra de título dibujada por ellas mismas (Chromium, Electron, Terminal)
-        // conservan WS_THICKFRAME aunque quiten WS_CAPTION.
-        if (!w.HasCaption && !w.IsResizable && !w.IsAppWindow)
+        // conservan WS_THICKFRAME aunque quiten WS_CAPTION; y las apps sin marco (Qt, como SADP) conservan
+        // WS_MINIMIZEBOX para minimizarse a la barra de tareas, cosa que una pantalla de inicio no hace.
+        if (!w.HasCaption && !w.IsResizable && !w.HasMinimizeBox && !w.IsAppWindow)
         {
             return ExclusionReason.NoCaption;
         }

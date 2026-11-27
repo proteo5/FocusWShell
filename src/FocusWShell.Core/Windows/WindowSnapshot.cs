@@ -63,6 +63,9 @@ public sealed record WindowSnapshot
     /// <summary>Se puede redimensionar (<c>WS_THICKFRAME</c>).</summary>
     public bool IsResizable { get; init; }
 
+    /// <summary>Tiene botón de minimizar (<c>WS_MINIMIZEBOX</c>): se minimiza a la barra de tareas como una app.</summary>
+    public bool HasMinimizeBox { get; init; }
+
     public bool IsTopmost { get; init; }
 
     /// <summary>Rectángulo completo, incluye bordes invisibles de redimensionado (<c>GetWindowRect</c>).</summary>

@@ -22,6 +22,12 @@ public enum ListItemState
     /// <summary>En otro escritorio virtual (ADR 0016): no está aquí; tocarla lleva a su escritorio.</summary>
     OtherDesktop,
 
+    /// <summary>
+    /// Abierta pero no se puede mover: corre como administrador (o del sistema) y Windows no deja que FocusWShell
+    /// la mueva. Sale en LIBRES, atenuada; tocarla sólo la trae al frente.
+    /// </summary>
+    Unmovable,
+
     /// <summary>Cerrada: está en el catálogo y su último panel es éste. Tocarla la abre.</summary>
     Closed,
 

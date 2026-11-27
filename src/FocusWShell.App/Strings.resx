@@ -374,6 +374,7 @@
   <data name="Desktop_OpenElsewhere" xml:space="preserve"><value>{0} ya está abierta en otro escritorio. Cambia a ese escritorio para usarla.</value></data>
   <data name="Deck_OtherDesktopTip" xml:space="preserve"><value>{0} · en otro escritorio. Tócala para ir allí.</value></data>
   <data name="Deck_InTrayTip" xml:space="preserve"><value>{0} · en la bandeja. Tócala para mostrarla.</value></data>
+  <data name="Deck_UnmovableTip" xml:space="preserve"><value>{0} corre como administrador: FocusWShell no puede moverla. Tócala para traerla al frente.</value></data>
   <data name="ListState_OtherDesktop" xml:space="preserve"><value>en otro escritorio</value></data>
   <data name="List_TipOtherDesktop" xml:space="preserve"><value>{0} · en otro escritorio. Clic: ir allí.</value></data>
   <data name="DeckMenu_GoToDesktop" xml:space="preserve"><value>Ir a su escritorio</value></data>

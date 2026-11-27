@@ -1519,7 +1519,7 @@ public sealed class DeckWindow : Window
     /// No está aquí: cerrada, en la bandeja o en otro escritorio (ADR 0016). Se ve apagada, no se mueve ni se
     /// cierra, y tocarla la abre (la de la bandeja se muestra ella misma) o lleva a su escritorio.
     /// </summary>
-    private static bool Away(DeckApp app) => app.State is ListItemState.Closed or ListItemState.InTray or ListItemState.OtherDesktop;
+    private static bool Away(DeckApp app) => app.State is ListItemState.Closed or ListItemState.InTray or ListItemState.OtherDesktop or ListItemState.Unmovable;
 
     /// <summary>
     /// Modo cerrar: la app que se toque se cierra como con su X (si tiene algo sin guardar, ella pregunta) y
@@ -2029,6 +2029,7 @@ public sealed class DeckWindow : Window
                 ListItemState.Detached => " ↗",
                 ListItemState.OtherDesktop => " ⧉",
                 ListItemState.InTray => " ▴",
+                ListItemState.Unmovable => " 🛡",
                 _ => "",
             },
             Foreground = Away(app) ? DimBrush : TextBrush,
@@ -2067,12 +2068,21 @@ public sealed class DeckWindow : Window
             Cursor = Cursors.Hand,
             ToolTip = app.State == ListItemState.OtherDesktop ? Core.Text.F(Strings.Deck_OtherDesktopTip, app.Name)
                 : app.State == ListItemState.InTray ? Core.Text.F(Strings.Deck_InTrayTip, app.Name)
+                : app.State == ListItemState.Unmovable ? Core.Text.F(Strings.Deck_UnmovableTip, app.Name)
                 : string.IsNullOrEmpty(app.Title) ? app.Name : $"{app.Name} · {app.Title}",
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"Deck: {app.Name} ({app.State})");
         // Modo mover (borde = se puede tocar; amarillo = mover): primero todas las que se pueden mover; ya
         // elegida, sólo ella conserva el borde hasta que se mueve o se cancela.
-        if (_pinning)
+        if (app.State == ListItemState.Unmovable)
+        {
+            // Como administrador: ningún modo la toca (no se mueve, ni se ancla, ni se cierra desde aquí).
+            if (InMode)
+            {
+                tile.Opacity = 0.4;
+            }
+        }
+        else if (_pinning)
         {
             // Borde = se puede tocar; índigo = anclar. Sólido: anclada; tenue: se puede anclar.
             if (CanPin(app))
@@ -2151,8 +2161,12 @@ public sealed class DeckWindow : Window
 
             await TapApp(app);
         };
-        StartDragFrom(tile, app);
-        tile.ContextMenu = MenuFor(app);
+        if (app.State != ListItemState.Unmovable)
+        {
+            StartDragFrom(tile, app);
+            tile.ContextMenu = MenuFor(app);
+        }
+
         return tile;
     }
 
@@ -2352,6 +2366,22 @@ public sealed class DeckWindow : Window
     /// <summary>Tocar una app: en modo mover, elegirla; si no, llevarla al foco (o abrirla).</summary>
     private async Task TapApp(DeckApp app)
     {
+        // Como administrador: sólo se puede traer al frente (eso Windows sí lo deja); en un modo, nada.
+        if (app.State == ListItemState.Unmovable)
+        {
+            if (!InMode && app.Handle is { } elevated)
+            {
+                if (!Docked)
+                {
+                    _actions.Hide();
+                }
+
+                await _actions.BringToFront(elevated);
+            }
+
+            return;
+        }
+
         if (_closing)
         {
             if (app.Handle is { } h)
