@@ -32,7 +32,7 @@ A window only changes place when you decide. Clicking the chat or getting a noti
 
 ## Install
 
-1. Download `FocusWShell-0.6.0-alpha-win-x64.zip` from [Releases](https://github.com/proteo5/FocusWShell/releases).
+1. Download `FocusWShell-0.7.0-alpha-win-x64.zip` from [Releases](https://github.com/proteo5/FocusWShell/releases).
 2. Extract the whole zip and double-click **install.cmd**.
 3. FocusWShell opens and shows up in the tray, next to the clock. It is also in the Start menu.
 
@@ -53,9 +53,11 @@ The [manual](https://proteo5.github.io/FocusWShell/) explains each part, the sho
 
 The deck works on any screen, but it shines on a tablet next to your keyboard. The tested setup is **[Apollo](https://github.com/ClassicOldSong/Apollo)** on the PC and **Artemis** on an Android tablet: Apollo creates a virtual monitor at the tablet's resolution, so Windows sees it as one more screen. Moonlight (iPad) and Sunshine with a virtual display driver should work too, but have not been tested.
 
+Without any of that, the **[deck on the network](https://proteo5.github.io/FocusWShell/deck-network/)** serves the deck as a web page on your local network: open it in the tablet's browser, pair it once with a QR code, and tap.
+
 ## Privacy
 
-FocusWShell runs on your PC only. It makes no network connections and sends no telemetry. Browser tab titles are read only while the *Pages* list is on screen and are never saved.
+FocusWShell runs on your PC only. It doesn't connect to the internet and sends no telemetry. The deck on the network is off until you turn it on, only listens on private networks and only answers the devices you pair. Browser tab titles are read only while the *Pages* list is on screen and are never saved.
 
 ## Feedback
 

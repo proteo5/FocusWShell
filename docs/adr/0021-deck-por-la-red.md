@@ -1,6 +1,6 @@
 # ADR 0021 — El deck por la red, como app web servida por FocusWShell
 
-- **Estado:** Aceptada (2026-11-27): transporte por HTTP (opción A) tras el spike S13; MVP hecho.
+- **Estado:** Aceptada (2026-11-27): transporte por HTTP (opción A) tras el spike S13. Publicado en 0.7.0-alpha.
 - **Fecha:** 2026-11-27
 
 ## Contexto
