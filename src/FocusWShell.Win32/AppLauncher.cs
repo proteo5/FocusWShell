@@ -48,6 +48,8 @@ public static class AppLauncher
     /// </summary>
     public static string? FriendlyName(string? executablePath, string? aumid) =>
         (aumid is not null && (aumid.Contains('!', StringComparison.Ordinal) || IsWebApp(aumid)) ? PackagedName(aumid) : null)
+        // Una app de la Store cuya ventana no dice su AUMID (WhatsApp): el de su paquete.
+        ?? (aumid is null && PackagedApps.AumidFor(executablePath) is { } packaged ? PackagedName(packaged) : null)
         ?? FriendlyName(executablePath);
 
     /// <summary>Si el AUMID es de una app web instalada desde Chrome o Edge (<c>Chrome._crx_…</c>).</summary>
