@@ -5,7 +5,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 button { font: inherit; color: var(--text); background: var(--card); border: 0; border-radius: 6px; min-height: var(--touch); cursor: pointer; }
 button:active { filter: brightness(1.25); }
 button:disabled { opacity: .4; }
-#app { display: grid; grid-template-columns: clamp(210px, 27vw, 300px) 1fr; gap: 12px; height: 100%; padding: 10px 10px 10px max(10px, env(safe-area-inset-left)); }
+#app { display: grid; grid-template-columns: clamp(210px, 27vw, 300px) minmax(0, 1fr); gap: 12px; height: 100%; padding: 10px 10px 10px max(10px, env(safe-area-inset-left)); }
 #left { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
 .card { border: 1px solid #2c3240; border-radius: 8px; padding: 8px; }
 .head { display: flex; align-items: center; gap: 8px; }
@@ -25,7 +25,7 @@ small { color: var(--dim); font-size: 11px; }
 .mode.move.on { background: var(--blue); }
 .status { color: var(--dim); font-size: 12px; min-height: 16px; padding: 0 4px; }
 .status.bad { color: #f09595; }
-#right { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+#right { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
 #monitors, #pagesView { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
 .monitor { display: flex; gap: 6px; }
 .mname { writing-mode: vertical-rl; transform: rotate(180deg); color: var(--dim); font-size: 13px; text-align: center; white-space: nowrap; width: 22px; }
@@ -51,13 +51,18 @@ small { color: var(--dim); font-size: 11px; }
 .free { flex: 1; }
 .pages { width: 150px; }
 .pages.on { background: var(--blue); }
-.sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
-.pageRow { display: flex; gap: 4px; }
-.pageRow button.go { flex: 1; text-align: left; padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 6px; }
+/* Un nombre largo se recorta con «…» en vez de ensanchar la columna (y obligar a desplazarse a la derecha). */
+.sites button { min-width: 0; display: flex; align-items: center; gap: 6px; }
+.sites b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sites small { flex: none; }
+#pagesView > * { min-width: 0; }
+.pageRow { display: flex; gap: 4px; min-width: 0; }
+.pageRow button.go { flex: 1; min-width: 0; text-align: left; padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pageRow button.go.active { border-left: 4px solid var(--blue); }
 .pageRow button.x { width: var(--touch); color: #e57373; }
 .pagesHead { display: flex; gap: 8px; align-items: center; }
-.pagesHead b { flex: 1; }
+.pagesHead b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .section { color: var(--dim); font-size: 11px; text-transform: uppercase; margin: 6px 2px 2px; }
 
 /* Estrecho (teléfono, o tablet en vertical): una sola columna. En horizontal, aunque la tablet sea pequeña, dos columnas. */
