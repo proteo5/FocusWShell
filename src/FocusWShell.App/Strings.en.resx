@@ -390,6 +390,8 @@ Restore them now?
   <data name="DeckMenu_Pages" xml:space="preserve"><value>Pages…</value></data>
   <data name="Deck_PagesSites" xml:space="preserve"><value>SITES</value></data>
   <data name="Deck_PagesLoose" xml:space="preserve"><value>SINGLE PAGES</value></data>
+  <data name="Deck_PagesPrivate" xml:space="preserve"><value>PRIVATE WINDOWS</value></data>
+  <data name="Deck_PagesPrivateWindow" xml:space="preserve"><value>Private window · {0} tabs</value></data>
   <data name="Deck_PagesBack" xml:space="preserve"><value>‹ Sites</value></data>
   <data name="Deck_PagesSite" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="Deck_PagesCloseAll" xml:space="preserve"><value>Close all</value></data>
@@ -493,4 +495,9 @@ Restore them now?
   <data name="Activity_Delete" xml:space="preserve"><value>Delete history</value></data>
   <data name="Activity_DeleteAsk" xml:space="preserve"><value>Delete all the saved activity? This can't be undone.</value></data>
   <data name="Activity_Deleted" xml:space="preserve"><value>The saved activity was deleted.</value></data>
+  <data name="Activity_Sites" xml:space="preserve"><value>Also measure sites</value></data>
+  <data name="Activity_SitesHelp" xml:space="preserve"><value>In Chrome and Edge, saves only the site (github.com), never the page or its title. Private windows count as “Private browsing”, with no site.</value></data>
+  <data name="Activity_PrivateSite" xml:space="preserve"><value>Private browsing</value></data>
+  <data name="Activity_SitesCount" xml:space="preserve"><value>{0} sites</value></data>
+  <data name="Activity_SitesOne" xml:space="preserve"><value>1 site</value></data>
 </root>

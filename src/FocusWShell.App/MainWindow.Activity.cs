@@ -15,6 +15,9 @@ public partial class MainWindow
     private DateOnly _activityDay = DateOnly.FromDateTime(DateTime.Now);
     private bool _activityHooked;
 
+    /// <summary>Los navegadores con sus sitios desplegados.</summary>
+    private readonly HashSet<string> _activityOpenSites = new(StringComparer.OrdinalIgnoreCase);
+
     private static App Host => (App)Application.Current;
 
     /// <summary>Muestra la sección: el interruptor, el día elegido y sus cifras.</summary>
@@ -34,6 +37,8 @@ public partial class MainWindow
 
         _loadingGestures = true;
         ActivitySwitch.IsChecked = _settings.ActivityEnabled;
+        ActivitySitesSwitch.IsChecked = _settings.ActivitySites;
+        ActivitySitesCard.IsEnabled = _settings.ActivityEnabled;
         _loadingGestures = false;
         ActivityPrivacy.Text = Core.Text.F(Strings.Activity_MeasureHelp, _settings.ActivityKeepDays);
 
@@ -74,10 +79,78 @@ public partial class MainWindow
         foreach (var app in day.Apps.Where(a => a.InFocus + a.InUse >= TimeSpan.FromMinutes(1)))
         {
             var panel = app.PanelId is { } id && panels.TryGetValue(id, out var name) ? name : Strings.Activity_NoPanel;
-            rows.Children.Add(AppRow(app, panel, max));
+            var row = AppRow(app.Name, panel, app.InFocus, app.InUse, max, site: false);
+            rows.Children.Add(row);
+
+            // Los sitios del navegador, debajo, con las mismas barras (ADR 0019, sitios). Plegados al
+            // principio, para que un navegador con muchos sitios no tape las demás apps.
+            var sites = app.Sites.Where(s => s.InFocus + s.InUse >= TimeSpan.FromMinutes(1)).ToList();
+            if (sites.Count == 0)
+            {
+                continue;
+            }
+
+            var list = new WC.StackPanel { Visibility = _activityOpenSites.Contains(app.Key) ? Visibility.Visible : Visibility.Collapsed };
+            foreach (var site in sites)
+            {
+                var siteName = site.Site == Core.Browsers.SiteHost.Private ? Strings.Activity_PrivateSite : site.Site;
+                list.Children.Add(AppRow(siteName, null, site.InFocus, site.InUse, max, site: true));
+            }
+
+            // En la línea del panel, a su derecha: no agrega altura a la fila.
+            var nameStack = (WC.StackPanel)row.Children[0];
+            var panelText = (WC.TextBlock)nameStack.Children[1];
+            nameStack.Children.Remove(panelText);
+            var line = new WC.StackPanel { Orientation = WC.Orientation.Horizontal };
+            panelText.VerticalAlignment = VerticalAlignment.Center;
+            line.Children.Add(panelText);
+            line.Children.Add(SitesToggle(app.Key, sites.Count, list));
+            nameStack.Children.Add(line);
+            rows.Children.Add(list);
         }
 
         ActivityContent.Children.Add(CardRow(rows));
+    }
+
+    /// <summary>
+    /// «▸ 7 sitios»: despliega o pliega los sitios de un navegador sin redibujar la sección. Se recuerda
+    /// mientras la ventana está abierta, también al cambiar de día.
+    /// </summary>
+    private Wpf.Ui.Controls.Button SitesToggle(string key, int count, WC.StackPanel list)
+    {
+        // Un botón pequeño del tema (relleno, borde y estado al pasar el ratón), con contraste en claro y oscuro;
+        // el chevron dice si está abierto.
+        var text = count == 1 ? Strings.Activity_SitesOne : Core.Text.F(Strings.Activity_SitesCount, count);
+        Wpf.Ui.Controls.SymbolIcon Chevron() => new(list.Visibility == Visibility.Visible ? Wpf.Ui.Controls.SymbolRegular.ChevronDown16 : Wpf.Ui.Controls.SymbolRegular.ChevronRight16) { FontSize = 12 };
+        var button = new Wpf.Ui.Controls.Button
+        {
+            Content = text,
+            Icon = Chevron(),
+            Padding = new Thickness(6, 1, 8, 1),
+            MinHeight = 0,
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            FontSize = 12,
+            Cursor = System.Windows.Input.Cursors.Hand,
+        };
+        System.Windows.Automation.AutomationProperties.SetName(button, text);
+        button.Click += (_, _) =>
+        {
+            bool open = list.Visibility != Visibility.Visible;
+            list.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            if (open)
+            {
+                _activityOpenSites.Add(key);
+            }
+            else
+            {
+                _activityOpenSites.Remove(key);
+            }
+
+            button.Icon = Chevron();
+        };
+        return button;
     }
 
     /// <summary>Una cifra del día: su nombre arriba, el valor grande y, si hay, un detalle.</summary>
@@ -106,37 +179,48 @@ public partial class MainWindow
         return panel;
     }
 
-    /// <summary>Una app: su nombre y panel, una barra azul (en el foco) sobre una verde (en uso) y los dos tiempos.</summary>
-    private static WC.Grid AppRow(ActivityAppTotal app, string panel, long max)
+    /// <summary>
+    /// Una app (o un sitio de un navegador, sangrado y más pequeño, debajo de su navegador): su nombre y
+    /// panel, una barra azul (en el foco) sobre una verde (en uso) y los dos tiempos.
+    /// </summary>
+    private static WC.Grid AppRow(string title, string? panel, TimeSpan inFocus, TimeSpan inUse, long max, bool site)
     {
-        var row = new WC.Grid { Margin = new Thickness(0, 4, 0, 4) };
+        var row = new WC.Grid { Margin = new Thickness(0, site ? 1 : 4, 0, site ? 1 : 4) };
         row.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = new GridLength(170) });
         row.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = new GridLength(150) });
 
-        var name = new WC.StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        name.Children.Add(Text(app.Name));
-        name.Children.Add(Text(panel, "TextFillColorSecondaryBrush", 12));
+        var name = new WC.StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(site ? 16 : 0, 0, 0, 0) };
+        var label = site ? Text(title, "TextFillColorSecondaryBrush", 12) : Text(title);
+        label.TextTrimming = TextTrimming.CharacterEllipsis;
+        label.ToolTip = title;
+        name.Children.Add(label);
+        if (panel is not null)
+        {
+            name.Children.Add(Text(panel, "TextFillColorSecondaryBrush", 12));
+        }
+
         row.Children.Add(name);
 
-        var bars = new WC.StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
-        bars.Children.Add(Bar(app.InFocus.Ticks, max, FocusBlue));
-        bars.Children.Add(Bar(app.InUse.Ticks, max, InUseGreen));
+        var bars = new WC.StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0), Opacity = site ? 0.75 : 1 };
+        bars.Children.Add(Bar(inFocus.Ticks, max, FocusBlue, site ? 6 : 10));
+        bars.Children.Add(Bar(inUse.Ticks, max, InUseGreen, site ? 6 : 10));
         WC.Grid.SetColumn(bars, 1);
         row.Children.Add(bars);
 
-        var times = Text($"{Duration(app.InFocus)} · {Duration(app.InUse)}", "TextFillColorSecondaryBrush", 13);
+        var times = Text($"{Duration(inFocus)} · {Duration(inUse)}", "TextFillColorSecondaryBrush", site ? 12 : 13);
         times.HorizontalAlignment = HorizontalAlignment.Right;
-        times.ToolTip = $"{Strings.Activity_InFocus}: {Duration(app.InFocus)} · {Strings.Activity_InUse}: {Duration(app.InUse)}";
+        times.VerticalAlignment = VerticalAlignment.Center;
+        times.ToolTip = $"{Strings.Activity_InFocus}: {Duration(inFocus)} · {Strings.Activity_InUse}: {Duration(inUse)}";
         WC.Grid.SetColumn(times, 2);
         row.Children.Add(times);
         return row;
     }
 
     /// <summary>Una barra proporcional al máximo del día.</summary>
-    private static WC.Grid Bar(long value, long max, Brush color)
+    private static WC.Grid Bar(long value, long max, Brush color, double height)
     {
-        var bar = new WC.Grid { Height = 10, Margin = new Thickness(0, 1, 0, 1) };
+        var bar = new WC.Grid { Height = height, Margin = new Thickness(0, 1, 0, 1) };
         bar.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = new GridLength(Math.Max(value, 0), GridUnitType.Star) });
         bar.ColumnDefinitions.Add(new WC.ColumnDefinition { Width = new GridLength(Math.Max(max - value, 0), GridUnitType.Star) });
         bar.Children.Add(new WC.Border { Background = color, CornerRadius = new CornerRadius(2) });
@@ -154,6 +238,15 @@ public partial class MainWindow
         if (!_loadingGestures)
         {
             Host.SetActivity(ActivitySwitch.IsChecked == true);
+            BuildActivity();
+        }
+    }
+
+    private void ActivitySites_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loadingGestures)
+        {
+            Host.SetActivitySites(ActivitySitesSwitch.IsChecked == true);
             BuildActivity();
         }
     }

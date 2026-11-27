@@ -41,3 +41,5 @@ Cuando no lo sabe, la página sale como suelta, con su propio título. Nunca mez
 ## Privacidad
 
 Los títulos se leen sólo mientras la lista está a la vista, y nunca se guardan ni se envían a ningún lado.
+
+Las ventanas privadas (incógnito en Chrome, InPrivate en Edge) no se listan: cada una sale como **Ventana privada · N pestañas**, sin títulos. Tócala para traer esa ventana al frente.

@@ -69,6 +69,8 @@ It is off until you turn on **Measure activity**. It is kept only on this PC, wi
 
 For each day: the active time, the time side by side, how many times you brought an app to the focus, and the longest stretch with the same app in focus. Below, each app with a blue bar (in focus) and a green one (in use).
 
+**Also measure sites** adds, under Chrome and Edge, the time of each site (github.com); tap **▸ N sites** to show or hide them. Only the site is saved, never the page or its title. Private windows (incognito, InPrivate) count as **Private browsing**, with no site, and what you type in the address bar is not read.
+
 ## Excluded
 
 Apps FocusWShell should never touch, by executable, AUMID or window class. See [Keep an app out of FocusWShell]({{ '/guides/#keep-an-app-out-of-focuswshell' | relative_url }}).

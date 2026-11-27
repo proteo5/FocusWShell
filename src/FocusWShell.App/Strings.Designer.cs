@@ -69,11 +69,26 @@ public static class Strings
     /// <summary>Día anterior</summary>
     public static string Activity_PrevDay => ResourceManager.GetString("Activity_PrevDay", Culture)!;
 
+    /// <summary>Navegación privada</summary>
+    public static string Activity_PrivateSite => ResourceManager.GetString("Activity_PrivateSite", Culture)!;
+
     /// <summary>{0} % del tiempo activo</summary>
     public static string Activity_Share => ResourceManager.GetString("Activity_Share", Culture)!;
 
     /// <summary>En paralelo</summary>
     public static string Activity_SideBySide => ResourceManager.GetString("Activity_SideBySide", Culture)!;
+
+    /// <summary>Medir también los sitios</summary>
+    public static string Activity_Sites => ResourceManager.GetString("Activity_Sites", Culture)!;
+
+    /// <summary>{0} sitios</summary>
+    public static string Activity_SitesCount => ResourceManager.GetString("Activity_SitesCount", Culture)!;
+
+    /// <summary>En Chrome y Edge, guarda sólo el sitio (github.com), nunca la página ni su títul</summary>
+    public static string Activity_SitesHelp => ResourceManager.GetString("Activity_SitesHelp", Culture)!;
+
+    /// <summary>1 sitio</summary>
+    public static string Activity_SitesOne => ResourceManager.GetString("Activity_SitesOne", Culture)!;
 
     /// <summary>{0} veces</summary>
     public static string Activity_Times => ResourceManager.GetString("Activity_Times", Culture)!;
@@ -362,6 +377,12 @@ public static class Strings
 
     /// <summary>No hay pestañas que leer en Chrome ni en Edge.</summary>
     public static string Deck_PagesNone => ResourceManager.GetString("Deck_PagesNone", Culture)!;
+
+    /// <summary>VENTANAS PRIVADAS</summary>
+    public static string Deck_PagesPrivate => ResourceManager.GetString("Deck_PagesPrivate", Culture)!;
+
+    /// <summary>Ventana privada · {0} pestañas</summary>
+    public static string Deck_PagesPrivateWindow => ResourceManager.GetString("Deck_PagesPrivateWindow", Culture)!;
 
     /// <summary>{0} · {1}</summary>
     public static string Deck_PagesSite => ResourceManager.GetString("Deck_PagesSite", Culture)!;

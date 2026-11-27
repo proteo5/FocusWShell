@@ -41,3 +41,5 @@ When it cannot tell, the page is shown as a single page, with its own title. It 
 ## Privacy
 
 Titles are read only while the list is on screen, and are never saved or sent anywhere.
+
+Private windows (incognito in Chrome, InPrivate in Edge) are not listed: each one shows as **Private window · N tabs**, without titles. Tap it to bring that window to the front.

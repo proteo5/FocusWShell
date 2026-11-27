@@ -326,12 +326,12 @@ public sealed class ShellController : IDisposable
     /// Qué app está en el foco y cuál en uso ahora, para contar la actividad. La app en uso puede no ser de
     /// FocusWShell (libre, excluida, del sistema): cuenta con su nombre, sin panel.
     /// </summary>
-    public (Core.Activity.ActivityApp? Focus, Core.Activity.ActivityApp? InUse) ActivityNow()
+    public (ActivityWindow? Focus, ActivityWindow? InUse) ActivityNow()
     {
         var foreground = WindowMover.Foreground();
         lock (_gate)
         {
-            Core.Activity.ActivityApp? Of(WindowSnapshot s)
+            ActivityWindow? Of(WindowSnapshot s)
             {
                 if (s.IsOwnProcess)
                 {
@@ -341,7 +341,9 @@ public sealed class ShellController : IDisposable
                 var key = MinSizeCatalog.KeyFor(s);
                 var name = _catalog.Find(key)?.Name ?? Path.GetFileNameWithoutExtension(s.ProcessName);
                 var panel = _workspace.Find(s.Handle) is { } w ? _workspace.EffectivePanel(w).Id : null;
-                return string.IsNullOrEmpty(key) ? null : new(key, string.IsNullOrEmpty(name) ? key : name, panel);
+                return string.IsNullOrEmpty(key)
+                    ? null
+                    : new(new(key, string.IsNullOrEmpty(name) ? key : name, panel), s.Handle, BrowserTabs.IsBrowser(s.ProcessName, s.ClassName));
             }
 
             var focus = _workspace.Focused is { } f && !_elsewhere.ContainsKey(f.Handle) && _snapshots.TryGetValue(f.Handle, out var fs) ? Of(fs) : null;
@@ -391,7 +393,7 @@ public sealed class ShellController : IDisposable
         {
             if (BrowserTabs.Read(w.Handle) is { Count: > 0 } tabs)
             {
-                pages.Add(new PageWindow(w.Handle, w.Browser, w.Where, w.InFocus, w.Managed, w.Elsewhere, w.App, tabs));
+                pages.Add(new PageWindow(w.Handle, w.Browser, w.Where, w.InFocus, w.Managed, w.Elsewhere, w.App, tabs, BrowserAddressReader.IsPrivate(w.Handle)));
             }
         }
 
@@ -956,6 +958,20 @@ public sealed class ShellController : IDisposable
     /// </summary>
     public string OpenApp(string appKey, string panelId)
     {
+        // Mientras tanto, su ventana nueva no vuelve sola a su último panel: la acomoda esto, en el pedido.
+        Launching([appKey], start: true);
+        try
+        {
+            return OpenAppCore(appKey, panelId);
+        }
+        finally
+        {
+            Launching([appKey], start: false);
+        }
+    }
+
+    private string OpenAppCore(string appKey, string panelId)
+    {
         CatalogApp? app;
         HashSet<nint> before;
         string panelName;
@@ -1236,7 +1252,7 @@ public sealed class ShellController : IDisposable
     /// <summary>
     /// Al arrancar: vuelve a poner en sus paneles las ventanas de la última sesión que estén abiertas, con
     /// la vista de entonces. No toca los paneles (ya se guardan aparte) ni abre apps. Las que falten se
-    /// adoptan si aparecen en los próximos minutos (<see cref="AdoptLateSessionWindows"/>).
+    /// adoptan si aparecen en los próximos minutos (<see cref="AdoptReturningWindows"/>).
     /// </summary>
     public ControllerResult? RestoreSession()
     {
@@ -1249,6 +1265,8 @@ public sealed class ShellController : IDisposable
         var match = SceneMatcher.Match(scene, open, strict: true);
         lock (_gate)
         {
+            _seen.UnionWith(open.Select(o => o.Handle)); // las que ya estaban no son «nuevas»
+            _seenReady = true;
             _sessionPending = [.. match.Missing];
             _sessionUntil = DateTime.Now + SessionAdoption;
             foreach (var (entry, window) in match.Matched)
@@ -1268,55 +1286,138 @@ public sealed class ShellController : IDisposable
         return Execute(new ApplyScene(entries, []) { View = scene.View, Weights = scene.Weights });
     }
 
-    /// <summary>
-    /// Adopta las ventanas de la última sesión que aparecen tarde (p. ej. apps que se abren al iniciar
-    /// Windows después que FocusWShell). Sólo ventanas libres: no mueve nada de lo que el usuario ya puso.
-    /// </summary>
-    public ControllerResult? AdoptLateSessionWindows()
+    /// <summary>Las ventanas que ya se vieron (libres o en un panel): sólo una ventana nueva vuelve sola a su panel.</summary>
+    private readonly HashSet<nint> _seen = [];
+
+    /// <summary>Si ya se tomó nota de las ventanas que había al arrancar.</summary>
+    private bool _seenReady;
+
+    /// <summary>Apps que FocusWShell está abriendo (deck, escena): su ventana la acomoda quien la abrió.</summary>
+    private readonly Dictionary<string, int> _launching = new(StringComparer.OrdinalIgnoreCase);
+
+    private void Launching(IEnumerable<string> keys, bool start)
     {
-        List<SceneWindow> pending;
         lock (_gate)
         {
-            pending = [.. _sessionPending];
+            foreach (var key in keys)
+            {
+                var n = _launching.GetValueOrDefault(key) + (start ? 1 : -1);
+                if (n > 0)
+                {
+                    _launching[key] = n;
+                }
+                else
+                {
+                    _launching.Remove(key);
+                }
+            }
         }
+    }
 
-        if (pending.Count == 0)
-        {
-            return null;
-        }
-
+    /// <summary>
+    /// Vuelve a poner en su panel las apps que aparecen después de arrancar, las abras por donde las abras
+    /// (barra de tareas, Inicio, un acceso directo). Sólo ventanas libres: nunca mueve lo que el usuario ya
+    /// puso. Tres casos, en orden:
+    /// <list type="number">
+    /// <item>Durante el arranque (<see cref="SessionAdoption"/>): las de la última sesión, emparejadas como al
+    /// arrancar (estricto), aunque la ventana ya estuviera abierta.</item>
+    /// <item>Una ventana <b>nueva</b> de una app de la sesión que aún no volvió, sin límite de tiempo: la
+    /// primera vez que aparece tras reiniciar. Después, otra ventana de esa app queda libre.</item>
+    /// <item>Una ventana <b>nueva</b> de una app fijada en un panel, si ninguna ventana suya está ya en un
+    /// panel: el icono apagado del deck promete ese lugar.</item>
+    /// </list>
+    /// </summary>
+    public ControllerResult? AdoptReturningWindows()
+    {
         var windows = Refresh();
         lock (_gate)
         {
-            var free = windows.Where(w => !_workspace.IsManaged(w.Handle))
-                .Select(w => new OpenWindow(w.Handle, MinSizeCatalog.KeyFor(w), w.Title))
-                .ToList();
-            var match = SceneMatcher.Match(new SavedScene(SessionName, pending), free, strict: true);
-            if (match.Matched.Count == 0)
+            var free = windows.Where(w => !_workspace.IsManaged(w.Handle) && !w.IsOwnProcess).ToList();
+            if (!_seenReady)
             {
+                _seenReady = true;
+                _seen.UnionWith(windows.Select(w => w.Handle));
                 return null;
             }
 
-            _sessionPending = [.. match.Missing];
             var commands = new List<Command>();
-            foreach (var (entry, window) in match.Matched)
+            var taken = new HashSet<nint>();
+
+            void AdoptEntry(SceneWindow entry, nint handle)
             {
-                var panel = _workspace.FindPanel(entry.PanelId ?? Workspace.WorkPanel);
-                if (panel is null)
+                if (_workspace.FindPanel(entry.PanelId ?? Workspace.WorkPanel) is not { } panel)
                 {
-                    continue; // su panel ya no existe: queda libre
+                    return; // su panel ya no existe: queda libre
                 }
 
-                commands.Add(new Adopt(window.Handle, entry.Label, panel.Id));
-                _sessionAdopted[window.Handle] = entry;
+                taken.Add(handle);
+                commands.Add(new Adopt(handle, entry.Label, panel.Id));
+                _sessionAdopted[handle] = entry;
                 if (entry.Placement == ScenePlacement.Parked)
                 {
-                    commands.Add(new Park(window.Handle));
+                    commands.Add(new Park(handle));
                 }
                 else if (entry.Placement == ScenePlacement.Center && _workspace.Focused is null)
                 {
-                    commands.Add(new Promote(window.Handle));
+                    commands.Add(new Promote(handle));
                 }
+            }
+
+            OpenWindow Open(WindowSnapshot w) => new(w.Handle, MinSizeCatalog.KeyFor(w), w.Title);
+            var launchable = free.Where(w => !_launching.ContainsKey(MinSizeCatalog.KeyFor(w))).ToList();
+
+            // 1. Arranque: la sesión, estricta, con todas las ventanas libres.
+            if (_sessionPending.Count > 0 && DateTime.Now < _sessionUntil)
+            {
+                var match = SceneMatcher.Match(new SavedScene(SessionName, _sessionPending), [.. launchable.Select(Open)], strict: true);
+                _sessionPending = [.. match.Missing];
+                foreach (var (entry, window) in match.Matched)
+                {
+                    AdoptEntry(entry, window.Handle);
+                }
+            }
+
+            var fresh = launchable.Where(w => !_seen.Contains(w.Handle) && !taken.Contains(w.Handle)).ToList();
+
+            // 2. Una ventana nueva de una app de la sesión que aún no volvió.
+            if (_sessionPending.Count > 0 && fresh.Count > 0)
+            {
+                var match = SceneMatcher.Match(new SavedScene(SessionName, _sessionPending), [.. fresh.Select(Open)]);
+                _sessionPending = [.. match.Missing];
+                foreach (var (entry, window) in match.Matched)
+                {
+                    AdoptEntry(entry, window.Handle);
+                }
+            }
+
+            // 3. Una ventana nueva de una app fijada, si su lugar está vacío.
+            var managedKeys = _workspace.Windows
+                .Where(w => _snapshots.ContainsKey(w.Handle))
+                .Select(w => MinSizeCatalog.KeyFor(_snapshots[w.Handle]))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var trayKeys = _inTray.Values.Select(t => t.AppKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var w in fresh.Where(w => !taken.Contains(w.Handle)))
+            {
+                var key = MinSizeCatalog.KeyFor(w);
+                if (managedKeys.Contains(key) || trayKeys.Contains(key)
+                    || _catalog.Find(key) is not { Pinned: true, Hidden: false, LastPanelId: { } panelId } app
+                    || _workspace.FindPanel(panelId) is not { } panel)
+                {
+                    continue;
+                }
+
+                managedKeys.Add(key); // una sola ventana por app
+                taken.Add(w.Handle);
+                commands.Add(new Adopt(w.Handle, app.Name, panel.Id));
+            }
+
+            // Todas las ventanas de ahora ya se vieron, también las de los paneles: una que el usuario suelte
+            // después no es nueva y no vuelve sola. Las que está abriendo FocusWShell, todavía no: si quien la
+            // abrió no la encuentra, se acomoda aquí. Se olvidan las que se cerraron.
+            _seen.IntersectWith(windows.Select(w => w.Handle));
+            foreach (var w in windows.Where(w => !_launching.ContainsKey(MinSizeCatalog.KeyFor(w))))
+            {
+                _seen.Add(w.Handle);
             }
 
             return commands.Count > 0 ? RunLocked(commands) : null;
@@ -1465,6 +1566,20 @@ public sealed class ShellController : IDisposable
     /// panel y, si en la escena estaba en el foco o estacionada, ahí. Si su panel no se resuelve, queda libre.
     /// </summary>
     private void OpenSceneApps(string sceneName, List<(SceneWindow Entry, CatalogApp App, string? PanelId)> opening)
+    {
+        var keys = opening.Select(o => o.App.AppKey).ToList();
+        Launching(keys, start: true);
+        try
+        {
+            OpenSceneAppsCore(sceneName, opening);
+        }
+        finally
+        {
+            Launching(keys, start: false);
+        }
+    }
+
+    private void OpenSceneAppsCore(string sceneName, List<(SceneWindow Entry, CatalogApp App, string? PanelId)> opening)
     {
         HashSet<nint> before;
         lock (_gate)

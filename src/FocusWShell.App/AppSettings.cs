@@ -36,6 +36,9 @@ public sealed class AppSettings
     /// <summary>Cuántos días se guarda la actividad.</summary>
     public int ActivityKeepDays { get; set; } = 90;
 
+    /// <summary>Medir también los sitios de Chrome y Edge, sólo su host (ADR 0019, sitios). Apagado por defecto.</summary>
+    public bool ActivitySites { get; set; }
+
     /// <summary>Alt+Tab a una ventana de un panel la lleva al foco (ADR 0003, enmienda).</summary>
     public bool FocusOnAltTab { get; set; } = true;
 

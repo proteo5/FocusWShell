@@ -2,7 +2,8 @@ namespace FocusWShell.Core.Activity;
 
 /// <summary>Una app para la actividad (ADR 0019): su clave (la de paneles y escenas), su nombre y su panel.</summary>
 /// <param name="PanelId">Su panel, o <c>null</c> si es libre o no la organiza FocusWShell.</param>
-public sealed record ActivityApp(string Key, string Name, string? PanelId = null)
+/// <param name="Site">En un navegador, el sitio que mostraba (<see cref="Browsers.SiteHost"/>), si se miden los sitios.</param>
+public sealed record ActivityApp(string Key, string Name, string? PanelId = null, string? Site = null)
 {
     /// <summary>La misma app, aunque cambie su panel o su nombre.</summary>
     public bool SameApp(ActivityApp? other) => other is not null && string.Equals(Key, other.Key, StringComparison.OrdinalIgnoreCase);
@@ -128,5 +129,7 @@ public sealed class ActivityTracker
         }
     }
 
-    private static bool Same(ActivityApp? a, ActivityApp? b) => a is null ? b is null : a.SameApp(b);
+    /// <summary>La misma app con el mismo sitio: otro sitio en el navegador corta el tramo.</summary>
+    private static bool Same(ActivityApp? a, ActivityApp? b) =>
+        a is null ? b is null : a.SameApp(b) && string.Equals(a.Site, b!.Site, StringComparison.OrdinalIgnoreCase);
 }

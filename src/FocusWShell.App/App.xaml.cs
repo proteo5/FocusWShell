@@ -307,6 +307,10 @@ public partial class App : Application
             _lists?.OnForeground(hwnd);
             _deck?.UpdateForeground(hwnd); // el indicador de «al frente», sin esperar al siguiente repaso
             _activity?.Observe();
+            if (_lateAdoption)
+            {
+                AdoptReturning(); // una app recién abierta pasa al frente: que vuelva a su panel ya
+            }
         });
         _controller.PauseChanged += _ => Dispatcher.BeginInvoke(FollowPause);
         _controller.FocusGestureEnabled = g => g switch
@@ -374,7 +378,7 @@ public partial class App : Application
 
         ShowMain();
         // La última sesión: cada ventana a su panel, como estaba. Las apps que se abran después (al iniciar
-        // Windows suelen tardar) se adoptan durante unos minutos.
+        // Windows suelen tardar, o se abren a mano horas después) vuelven a su panel al aparecer.
         Task.Run(() =>
         {
             var restored = _controller.RestoreSession();
@@ -1022,6 +1026,7 @@ public partial class App : Application
         if (!_settings.ActivityEnabled)
         {
             _activity.Stop();
+            _activity.Sites = false;
             return;
         }
 
@@ -1034,6 +1039,7 @@ public partial class App : Application
         }
 
         _activity.Start();
+        _activity.Sites = _settings.ActivitySites;
     }
 
     /// <summary>La actividad, para la sección Actividad de la ventana principal.</summary>
@@ -1043,6 +1049,14 @@ public partial class App : Application
     internal void SetActivity(bool enabled)
     {
         _settings.ActivityEnabled = enabled;
+        _settings.Save();
+        StartActivity();
+    }
+
+    /// <summary>Prender o apagar la medición de los sitios de los navegadores (sección Actividad).</summary>
+    internal void SetActivitySites(bool enabled)
+    {
+        _settings.ActivitySites = enabled;
         _settings.Save();
         StartActivity();
     }
@@ -1068,28 +1082,61 @@ public partial class App : Application
         Task.Run(_controller.SaveSession);
     }
 
-    /// <summary>Cada 10 s durante 3 min, adopta las ventanas de la última sesión que aparezcan.</summary>
+    /// <summary>Si ya se restauró la sesión y las apps que aparecen pueden volver a su panel.</summary>
+    private bool _lateAdoption;
+
+    /// <summary>
+    /// Vuelve a poner en su panel las apps que aparecen después de arrancar
+    /// (<see cref="ShellController.AdoptReturningWindows"/>): cada 10 s durante el arranque, luego cada 30 s, y
+    /// en cuanto cambia la ventana en uso (una app recién abierta casi siempre pasa al frente).
+    /// </summary>
     private void StartLateAdoption()
     {
-        var until = DateTime.Now + ShellController.SessionAdoption;
+        _lateAdoption = true;
+        var fastUntil = DateTime.Now + ShellController.SessionAdoption;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
         timer.Tick += (_, _) =>
         {
-            if (DateTime.Now > until || IsExiting)
+            if (IsExiting)
             {
                 timer.Stop();
                 return;
             }
 
-            Task.Run(() =>
+            if (DateTime.Now > fastUntil)
             {
-                if (_controller.AdoptLateSessionWindows() is { } result)
+                timer.Interval = TimeSpan.FromSeconds(30);
+            }
+
+            AdoptReturning();
+        };
+        timer.Start();
+    }
+
+    private int _adopting;
+
+    /// <summary>Una pasada en el fondo; si ya hay una en curso, no se encima otra.</summary>
+    private void AdoptReturning()
+    {
+        if (Interlocked.Exchange(ref _adopting, 1) == 1)
+        {
+            return;
+        }
+
+        Task.Run(() =>
+        {
+            try
+            {
+                if (_controller.AdoptReturningWindows() is { } result)
                 {
                     Dispatcher.BeginInvoke(() => RefreshAfter(result));
                 }
-            });
-        };
-        timer.Start();
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _adopting, 0);
+            }
+        });
     }
 
     /// <summary>Reinicia FocusWShell (p. ej. para cambiar de idioma): sale como «Salir» y abre otra instancia.</summary>

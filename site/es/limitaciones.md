@@ -31,6 +31,7 @@ El soporte completo (un foco y unas apps por escritorio, y pestañas de escritor
 - Sólo **Chrome y Edge**. Firefox y los demás no.
 - El sitio de cada página se deduce de su título, así que algunas pueden salir como sueltas.
 - Probado con pestañas verticales. Las pestañas horizontales y los grupos plegados, todavía poco.
+- Las ventanas privadas (incógnito, InPrivate) se reconocen por el botón del propio navegador. Si tu navegador está en un idioma que lo nombra distinto, una ventana privada puede contar como normal en Actividad y en Páginas.
 
 ## Otras
 

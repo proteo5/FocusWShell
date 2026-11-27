@@ -390,6 +390,8 @@
   <data name="DeckMenu_Pages" xml:space="preserve"><value>Páginas…</value></data>
   <data name="Deck_PagesSites" xml:space="preserve"><value>SITIOS</value></data>
   <data name="Deck_PagesLoose" xml:space="preserve"><value>PÁGINAS SUELTAS</value></data>
+  <data name="Deck_PagesPrivate" xml:space="preserve"><value>VENTANAS PRIVADAS</value></data>
+  <data name="Deck_PagesPrivateWindow" xml:space="preserve"><value>Ventana privada · {0} pestañas</value></data>
   <data name="Deck_PagesBack" xml:space="preserve"><value>‹ Sitios</value></data>
   <data name="Deck_PagesSite" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="Deck_PagesCloseAll" xml:space="preserve"><value>Cerrar todas</value></data>
@@ -493,4 +495,9 @@
   <data name="Activity_Delete" xml:space="preserve"><value>Borrar historial</value></data>
   <data name="Activity_DeleteAsk" xml:space="preserve"><value>¿Borrar toda la actividad guardada? No se puede deshacer.</value></data>
   <data name="Activity_Deleted" xml:space="preserve"><value>Se borró la actividad guardada.</value></data>
+  <data name="Activity_Sites" xml:space="preserve"><value>Medir también los sitios</value></data>
+  <data name="Activity_SitesHelp" xml:space="preserve"><value>En Chrome y Edge, guarda sólo el sitio (github.com), nunca la página ni su título. Las ventanas privadas cuentan como «Navegación privada», sin sitio.</value></data>
+  <data name="Activity_PrivateSite" xml:space="preserve"><value>Navegación privada</value></data>
+  <data name="Activity_SitesCount" xml:space="preserve"><value>{0} sitios</value></data>
+  <data name="Activity_SitesOne" xml:space="preserve"><value>1 sitio</value></data>
 </root>
