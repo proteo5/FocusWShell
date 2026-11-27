@@ -537,7 +537,10 @@ public partial class App : Application
                 Dispatcher.BeginInvoke(() =>
                 {
                     _main?.Refresh();
-                    PresentDeck();
+                    if (_deck?.IsVisible == true)
+                    {
+                        PresentDeck();
+                    }
                 });
                 return result;
             }),
@@ -555,7 +558,10 @@ public partial class App : Application
                     WindowMover.Close(handle);
                 });
                 await Task.Delay(1500);
-                PresentDeck();
+                if (_deck?.IsVisible == true)
+                {
+                    PresentDeck(); // desde la red, el deck del PC no se abre
+                }
             },
             BringToFront: handle => Task.Run(() =>
             {
@@ -578,7 +584,7 @@ public partial class App : Application
             SetPinned: (appKey, pinned) =>
             {
                 _controller.SetAppPinned(appKey, pinned);
-                PresentDeck();
+                RefreshDeck(); // al día si está a la vista; desde la red, el deck del PC no se abre
             },
             ReadPages: () => Task.Run(_controller.BrowserPages),
             SelectPage: (handle, tab) => Task.Run(() => ShellController.SelectPage(handle, tab)),

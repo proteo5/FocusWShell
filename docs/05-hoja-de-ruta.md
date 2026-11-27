@@ -59,7 +59,7 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 8. **El foco con lugar propio en el deck**, el modo Minimizar y las apps que se cierran a la bandeja ([ADR 0013, enmienda](adr/0013-deck-superficie-de-control.md#enmienda-el-lugar-del-foco-y-el-modo-minimizar-2026-11-13), [ADR 0018](adr/0018-apps-en-la-bandeja.md)). **Hecho** (0.3.0-alpha).
 9. **Actividad**: cuánto pasa cada app en el foco y en uso, y el tiempo en paralelo; en el deck, la app en uso junto a la del foco ([ADR 0019](adr/0019-actividad-foco-y-uso.md)). **Hecho** (0.4.0-alpha): la medición y el día; en 0.5.0-alpha, los sitios de los navegadores. Después: pares, línea del día, semana y exportar.
 10. **El deck con todos los monitores a la vez**, uno arriba del otro, sin pestañas ([ADR 0020](adr/0020-deck-monitores-apilados.md)). **Hecho** (0.6.0-alpha).
-11. **El deck por la red**: una app web que sirve FocusWShell, para Android e iPad sin Apollo (fase 3 del [ADR 0013](adr/0013-deck-superficie-de-control.md)). **Hecho** el MVP por HTTP ([ADR 0021](adr/0021-deck-por-la-red.md), spike S13). Después: los modos, la disposición, la energía y la pantalla encendida.
+11. **El deck por la red**: una app web que sirve FocusWShell, para Android e iPad sin Apollo (fase 3 del [ADR 0013](adr/0013-deck-superficie-de-control.md)). **Hecho** (0.7.0-alpha) por HTTP ([ADR 0021](adr/0021-deck-por-la-red.md), spike S13), con todo el deck del PC salvo la energía y el menú de pulsación larga. Pendiente: el cifrado (para mantener encendida la pantalla de la tablet) y probar en un iPad.
 
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.
 

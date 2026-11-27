@@ -1,6 +1,6 @@
 # ADR 0021 — El deck por la red, como app web servida por FocusWShell
 
-- **Estado:** Aceptada (2026-11-27): transporte por HTTP (opción A) tras el spike S13; MVP hecho.
+- **Estado:** Aceptada (2026-11-27): transporte por HTTP (opción A) tras el spike S13. Publicado en 0.7.0-alpha.
 - **Fecha:** 2026-11-27
 
 ## Contexto
@@ -126,4 +126,19 @@ Hecho y probado en la tablet Android del usuario:
 - **Interfaz:** dos columnas en horizontal (incluida una tablet pequeña), una en vertical o en un teléfono; todos los monitores apilados (ADR 0020); ⛶ entra y sale de pantalla completa; las apps sin icono muestran su inicial.
 - **Privacidad:** el texto de General cambia cuando el deck en la red está prendido.
 
-Pendiente: los modos Anclar, Minimizar y Cerrar, la disposición del principal, la energía (desactivada en remoto), la pantalla encendida (opción C), comprobar la categoría de red de Windows (hoy sólo se mira que la dirección sea privada) y probar en un iPad.
+Agregado el 2026-11-28: Anclar, la app en uso junto al foco, la presentación de cada panel con ◀ ▶, la disposición del principal, Minimizar, Cerrar, Liberar todas con confirmación y Sistema (pantalla encendida, ratón al foco, reordenar). Después: el modo **Pantalla…** (una app en pantalla completa en el monitor que se elija; comando `fullscreen` con el `id` de uno de los `screens` del estado, que lista los monitores conectados aunque no tengan paneles), «de {panel}» bajo la app del foco, y Páginas sin desplazamiento horizontal.
+
+Decidido no llevar a la red: la energía, y el menú de cada app con pulsación larga (lo que hace ya está en los modos, y en un navegador táctil la pulsación larga choca con la selección de texto). Pendiente: mantener encendida la pantalla de la tablet (necesita el cifrado, opción C) y probar en un iPad.
+
+## Seguridad (2026-11-28)
+
+Antes de publicarlo en una alfa:
+
+1. **Emparejar con límite.** Cinco intentos fallidos anulan el código (`DeckWebDevices.MaxFailures`), y cada dirección que falla cinco veces espera 10 minutos; cada intento tarda 300 ms.
+2. **Origen y host.** El `Host` tiene que ser una dirección del PC en la que escucha (contra el DNS rebinding), y lo que cambia algo (emparejar, el WebSocket) exige un `Origin` igual al de la página. Cabeceras `nosniff` y `X-Frame-Options: DENY`.
+3. **Sólo redes privadas o de dominio de Windows** (`PrivateNetworks`, con el Network List Manager). Kestrel escucha sólo en las direcciones de esas redes, nunca en una pública ni en adaptadores que Windows no reconoce (Hyper-V, Docker). Se vuelve a elegir cuando cambian las direcciones y cada 20 s, porque marcar una red como privada no avisa. Si todas las redes son públicas, la sección lo explica y lleva a los ajustes de red de Windows. Hallazgo: el wifi del usuario estaba marcado como público, como hace Windows con las redes nuevas.
+4. **Límites.** Tres conexiones por dispositivo, 32 en total, peticiones de 4 KB como mucho, y leer las páginas como mucho cada 2 s por conexión.
+
+Hallazgo del Firewall: la primera vez que FocusWShell escucha, Windows pregunta y crea la regla para el perfil de la red de ese momento. Con el wifi marcado como público, la regla quedó sólo para redes públicas; al marcarlo como privado, el Firewall bloqueaba la tablet y no volvía a preguntar. Se arregla a mano (con permisos de administrador); la sección y el manual lo explican.
+
+Sigue pendiente el cifrado (opción C): sin él, quien comparta la red puede ver el tráfico, incluido el token.

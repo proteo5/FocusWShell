@@ -32,7 +32,7 @@ Una ventana sólo cambia de lugar cuando tú lo decides. Hacer clic en el chat o
 
 ## Instalar
 
-1. Descarga `FocusWShell-0.6.0-alpha-win-x64.zip` desde [Releases](https://github.com/proteo5/FocusWShell/releases).
+1. Descarga `FocusWShell-0.7.0-alpha-win-x64.zip` desde [Releases](https://github.com/proteo5/FocusWShell/releases).
 2. Descomprime todo el zip y haz doble clic en **install.cmd**.
 3. FocusWShell se abre y aparece en la bandeja, junto al reloj. También está en el menú Inicio.
 
@@ -53,9 +53,11 @@ El [manual](https://proteo5.github.io/FocusWShell/es/) explica cada parte, los a
 
 El deck funciona en cualquier pantalla, pero luce en una tablet junto al teclado. Lo probado es **[Apollo](https://github.com/ClassicOldSong/Apollo)** en el PC y **Artemis** en una tablet Android: Apollo crea un monitor virtual con la resolución de la tablet, así que Windows la ve como una pantalla más. Moonlight (iPad) y Sunshine con un controlador de pantalla virtual deberían funcionar también, pero no se han probado.
 
+Sin nada de eso, el **[deck en la red](https://proteo5.github.io/FocusWShell/es/deck-red/)** sirve el deck como página web en tu red local: ábrelo en el navegador de la tablet, empareja una vez con un código QR, y toca.
+
 ## Privacidad
 
-FocusWShell funciona sólo en tu PC. No se conecta a la red ni envía telemetría. Los títulos de las pestañas se leen sólo mientras la lista de *Páginas* está a la vista y nunca se guardan.
+FocusWShell funciona sólo en tu PC. No se conecta a internet ni envía telemetría. El deck en la red está apagado hasta que lo prendas, sólo escucha en redes privadas y sólo responde a los dispositivos que emparejes. Los títulos de las pestañas se leen sólo mientras la lista de *Páginas* está a la vista y nunca se guardan.
 
 ## Comentarios
 

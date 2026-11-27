@@ -55,9 +55,19 @@ public sealed class DeckWebDevices
         {
             var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
             _code = (code, DateTime.UtcNow + CodeLife);
+            _failures = 0;
             return code;
         }
     }
+
+    /// <summary>Intentos fallidos con el código de ahora: al llegar a <see cref="MaxFailures"/>, el código deja de valer.</summary>
+    private int _failures;
+
+    /// <summary>Con 6 cifras, 5 intentos dan 1 entre 200 000 de acertar a ciegas antes de que el código se anule.</summary>
+    public const int MaxFailures = 5;
+
+    /// <summary>Si el código se anuló por intentos fallidos (para decirlo en la ventana principal).</summary>
+    public event Action? CodeBurned;
 
     /// <summary>Si el código vale (sin gastarlo).</summary>
     public bool IsValidCode(string? code)
@@ -73,6 +83,25 @@ public sealed class DeckWebDevices
     public string? Pair(string? code, string name)
     {
         string token;
+        bool burned = false;
+        lock (_gate)
+        {
+            if (!IsValidCode(code))
+            {
+                // Un intento fallido con un código vigente cuenta; a los cinco, se anula y hay que pedir otro.
+                if (_code is { } current && current.Until > DateTime.UtcNow && ++_failures >= MaxFailures)
+                {
+                    _code = null;
+                    burned = true;
+                }
+            }
+        }
+
+        if (burned)
+        {
+            CodeBurned?.Invoke();
+        }
+
         lock (_gate)
         {
             if (!IsValidCode(code))

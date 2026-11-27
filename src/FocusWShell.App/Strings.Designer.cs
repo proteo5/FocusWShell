@@ -1464,11 +1464,17 @@ public static class Strings
     /// <summary>no se puede mover</summary>
     public static string Unmanageable_Generic => ResourceManager.GetString("Unmanageable_Generic", Culture)!;
 
+    /// <summary>El código para emparejar se anuló tras 5 intentos fallidos. Toca Emparejar para </summary>
+    public static string Web_CodeBurned => ResourceManager.GetString("Web_CodeBurned", Culture)!;
+
     /// <summary>Dispositivos</summary>
     public static string Web_Devices => ResourceManager.GetString("Web_Devices", Culture)!;
 
     /// <summary>No pudo escuchar en la red: {0}</summary>
     public static string Web_Error => ResourceManager.GetString("Web_Error", Culture)!;
+
+    /// <summary>¿La tablet no conecta? Revisa que el Firewall de Windows permita FocusWShell en </summary>
+    public static string Web_FirewallTip => ResourceManager.GetString("Web_FirewallTip", Culture)!;
 
     /// <summary>Usa el deck desde una tablet o un teléfono en tu red local, sin Apollo: FocusWSh</summary>
     public static string Web_Help => ResourceManager.GetString("Web_Help", Culture)!;
@@ -1482,8 +1488,11 @@ public static class Strings
     /// <summary>Ningún dispositivo emparejado.</summary>
     public static string Web_NoDevices => ResourceManager.GetString("Web_NoDevices", Culture)!;
 
-    /// <summary>Escuchando, pero el PC no está en una red privada.</summary>
+    /// <summary>No escucha: el PC no está conectado a ninguna red.</summary>
     public static string Web_NoNetwork => ResourceManager.GetString("Web_NoNetwork", Culture)!;
+
+    /// <summary>Abrir los ajustes de red</summary>
+    public static string Web_OpenNetwork => ResourceManager.GetString("Web_OpenNetwork", Culture)!;
 
     /// <summary>Mostrar las páginas de los navegadores</summary>
     public static string Web_Pages => ResourceManager.GetString("Web_Pages", Culture)!;
@@ -1499,6 +1508,9 @@ public static class Strings
 
     /// <summary>Escanea el código con la cámara de la tablet, o abre la dirección y escribe el c</summary>
     public static string Web_PairScan => ResourceManager.GetString("Web_PairScan", Culture)!;
+
+    /// <summary>No escucha: Windows marca tu red como pública, y en una red pública cualquiera p</summary>
+    public static string Web_PublicNetwork => ResourceManager.GetString("Web_PublicNetwork", Culture)!;
 
     /// <summary>Quitar</summary>
     public static string Web_Revoke => ResourceManager.GetString("Web_Revoke", Culture)!;

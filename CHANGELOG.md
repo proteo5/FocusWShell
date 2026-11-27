@@ -4,9 +4,14 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
-## Unreleased / Sin publicar
+## 0.7.0-alpha
 
-- New: the deck on the network. FocusWShell can serve the deck as a web page on your local network, to use it from a tablet or a phone without Apollo (Android and iPad, nothing to install). Off by default; each device is paired once with a QR code and can be removed at any time. / Nuevo: el deck en la red. FocusWShell puede servir el deck como página web en tu red local, para usarlo desde una tablet o un teléfono sin Apollo (Android y iPad, sin instalar nada). Apagado por defecto; cada dispositivo se empareja una vez con un código QR y se puede quitar cuando quieras.
+The deck on the network: use the deck from a tablet or a phone, in its browser. / El deck en la red: usa el deck desde una tablet o un teléfono, en su navegador.
+
+- New: the deck on the network. FocusWShell can serve the deck as a web page on your local network, to use it from a tablet or a phone without Apollo (nothing to install on the tablet). It does what the deck on the PC does, with every monitor at once: the focus and the app in use, Previous, To panel, Free all, the modes Move, Pin, Minimize, Fullscreen and Close, each panel's presentation, the main screen layout, System and the browser pages. / Nuevo: el deck en la red. FocusWShell puede servir el deck como página web en tu red local, para usarlo desde una tablet o un teléfono sin Apollo (sin instalar nada en la tablet). Hace lo mismo que el deck del PC, con todos los monitores a la vez: el foco y la app en uso, Anterior, Al panel, Liberar todas, los modos Mover, Anclar, Minimizar, Pantalla y Cerrar, la presentación de cada panel, la disposición del principal, Sistema y las páginas de los navegadores.
+- It's off by default and only listens on networks Windows marks as private. Each device is paired once with a QR code and can be removed at any time. The connection is not encrypted (plain HTTP): use it on a network you trust, such as your home Wi-Fi. / Viene apagado y sólo escucha en redes que Windows marca como privadas. Cada dispositivo se empareja una vez con un código QR y se puede quitar cuando quieras. La conexión no va cifrada (HTTP): úsalo en una red de confianza, como el wifi de tu casa.
+
+Notes / Notas: [v0.7.0-alpha](.github/release-notes/v0.7.0-alpha.md)
 
 ## 0.6.0-alpha
 

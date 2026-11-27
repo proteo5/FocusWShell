@@ -338,6 +338,8 @@
                                         <TextBlock Text="{x:Static local:Strings.Web_ServeHelp}" Style="{StaticResource Hint}" />
                                         <TextBox x:Name="WebAddress" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap"
                                                  Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,6,0,0" />
+                                        <ui:Button x:Name="WebNetworkButton" Content="{x:Static local:Strings.Web_OpenNetwork}" Icon="{ui:SymbolIcon Symbol=Settings24}"
+                                                   Visibility="Collapsed" Margin="0,6,0,0" Click="WebNetwork_Click" />
                                     </StackPanel>
                                 </ui:CardControl.Header>
                                 <ui:ToggleSwitch x:Name="WebSwitch" Checked="Web_Changed" Unchecked="Web_Changed"
@@ -374,6 +376,7 @@
                                 </StackPanel>
                             </ui:Card>
                             <TextBlock Text="{x:Static local:Strings.Web_ScreenTip}" Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock Text="{x:Static local:Strings.Web_FirewallTip}" Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,8,0,0" />
                         </StackPanel>
                     </ScrollViewer>
 
