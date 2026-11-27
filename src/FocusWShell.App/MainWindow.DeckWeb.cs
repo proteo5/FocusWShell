@@ -29,10 +29,12 @@ public partial class MainWindow
         WebAddress.Text = !_settings.DeckWebEnabled ? ""
             : server is null ? Strings.Web_Starting
             : server.Error is { } error ? Core.Text.F(Strings.Web_Error, error)
+            : server.PublicOnly ? Strings.Web_PublicNetwork
             : server.Urls.Count == 0 ? Strings.Web_NoNetwork
             : string.Join(Environment.NewLine, server.Urls);
+        WebNetworkButton.Visibility = server is { PublicOnly: true } && _settings.DeckWebEnabled ? Visibility.Visible : Visibility.Collapsed;
         WebPairButton.IsEnabled = server is { Error: null, Urls.Count: > 0 };
-        if (server is null)
+        if (server is null || server.Urls.Count == 0)
         {
             WebPairing.Visibility = Visibility.Collapsed;
         }
@@ -40,14 +42,28 @@ public partial class MainWindow
         if (!_webHooked && server is not null)
         {
             _webHooked = true;
-            server.Devices.Changed += () => Dispatcher.BeginInvoke(() =>
+            void Rebuild() => Dispatcher.BeginInvoke(() =>
             {
-                // Al emparejarse uno, el código ya se gastó: se esconde.
-                WebPairing.Visibility = Visibility.Collapsed;
                 if (DeckWebSection.Visibility == Visibility.Visible)
                 {
                     BuildDeckWeb();
                 }
+            });
+            server.Devices.Changed += () => Dispatcher.BeginInvoke(() =>
+            {
+                // Al emparejarse uno, el código ya se gastó: se esconde.
+                WebPairing.Visibility = Visibility.Collapsed;
+                Rebuild();
+            });
+
+            // Otra red (o la misma, que pasó a privada o a pública): otras direcciones, o ninguna.
+            server.ListeningChanged += Rebuild;
+
+            // Cinco intentos fallidos anulan el código: se esconde y se dice por qué.
+            server.Devices.CodeBurned += () => Dispatcher.BeginInvoke(() =>
+            {
+                WebPairing.Visibility = Visibility.Collapsed;
+                SetStatus(Strings.Web_CodeBurned);
             });
         }
 
@@ -94,6 +110,10 @@ public partial class MainWindow
         _webHooked = false;
         BuildDeckWeb();
     }
+
+    /// <summary>Los ajustes de red de Windows, para marcar la red de casa como privada.</summary>
+    private void WebNetwork_Click(object sender, RoutedEventArgs e) =>
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:network-status") { UseShellExecute = true })?.Dispose();
 
     private void WebPages_Changed(object sender, RoutedEventArgs e)
     {

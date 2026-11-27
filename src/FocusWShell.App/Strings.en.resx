@@ -489,9 +489,13 @@ Restore them now?
   <data name="Web_PairHelp" xml:space="preserve"><value>Each device is paired once with a code that expires in 5 minutes.</value></data>
   <data name="Web_PairScan" xml:space="preserve"><value>Scan the code with the tablet's camera, or open the address and type the code. Then add the page to the home screen.</value></data>
   <data name="Web_ScreenTip" xml:space="preserve"><value>For now the page can't keep the tablet's screen on: raise the screen timeout in the tablet's settings.</value></data>
+  <data name="Web_FirewallTip" xml:space="preserve"><value>Tablet not connecting? Check that the Windows Firewall allows FocusWShell on private networks: Control Panel → Windows Defender Firewall → Allow an app… → focuswshell.exe, with Private checked (and Public unchecked). If you first turned it on while the network was marked as public, Windows allowed it for public networks only.</value></data>
   <data name="Web_Starting" xml:space="preserve"><value>Opening…</value></data>
   <data name="Web_Error" xml:space="preserve"><value>Couldn't listen on the network: {0}</value></data>
-  <data name="Web_NoNetwork" xml:space="preserve"><value>Listening, but the PC is not on a private network.</value></data>
+  <data name="Web_NoNetwork" xml:space="preserve"><value>Not listening: the PC is not connected to any network.</value></data>
+  <data name="Web_PublicNetwork" xml:space="preserve"><value>Not listening: Windows marks your network as public, and on a public network anyone could try to connect. If it is your home or office network, mark it as private in the Windows network settings (your network → Properties → Private network); the deck starts listening by itself.</value></data>
+  <data name="Web_OpenNetwork" xml:space="preserve"><value>Open network settings</value></data>
+  <data name="Web_CodeBurned" xml:space="preserve"><value>The pairing code was cancelled after 5 failed attempts. Tap Pair to get a new one.</value></data>
   <data name="Web_NoDevices" xml:space="preserve"><value>No paired devices.</value></data>
   <data name="Web_Revoke" xml:space="preserve"><value>Remove</value></data>
   <data name="Web_LastSeen" xml:space="preserve"><value>Last connected: {0}</value></data>

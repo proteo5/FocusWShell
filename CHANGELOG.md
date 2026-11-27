@@ -6,7 +6,7 @@ Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [
 
 ## Unreleased / Sin publicar
 
-- New: the deck on the network. FocusWShell can serve the deck as a web page on your local network, to use it from a tablet or a phone without Apollo (Android and iPad, nothing to install). Off by default; each device is paired once with a QR code and can be removed at any time. / Nuevo: el deck en la red. FocusWShell puede servir el deck como página web en tu red local, para usarlo desde una tablet o un teléfono sin Apollo (Android y iPad, sin instalar nada). Apagado por defecto; cada dispositivo se empareja una vez con un código QR y se puede quitar cuando quieras.
+- New: the deck on the network. FocusWShell can serve the deck as a web page on your local network, to use it from a tablet or a phone without Apollo (Android and iPad, nothing to install). Off by default, it only listens on networks Windows marks as private, and each device is paired once with a QR code and can be removed at any time. / Nuevo: el deck en la red. FocusWShell puede servir el deck como página web en tu red local, para usarlo desde una tablet o un teléfono sin Apollo (Android y iPad, sin instalar nada). Apagado por defecto, sólo escucha en redes que Windows marca como privadas, y cada dispositivo se empareja una vez con un código QR y se puede quitar cuando quieras.
 
 ## 0.6.0-alpha
 

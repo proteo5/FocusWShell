@@ -16,9 +16,10 @@ Está **apagado** hasta que lo prendas, y sólo responde a los dispositivos que 
 
 1. En la ventana principal, abre **Deck en la red** y prende **Servir el deck en la red local**.
 2. La primera vez, Windows puede pedir permiso en el Firewall. Acepta sólo **redes privadas**.
-3. Toca **Emparejar**. Aparecen un código QR y un código de 6 cifras; sirven una vez y caducan en 5 minutos.
-4. En la tablet (en el mismo wifi), escanea el QR con la cámara, o abre la dirección que aparece y escribe el código. Ponle un nombre al dispositivo y toca **Emparejar**.
-5. Se abre el deck. Agrégalo a la pantalla de inicio desde el menú del navegador, para que la próxima vez entre directo.
+3. Sólo escucha en redes que Windows marca como **privadas** (o de dominio). Si el wifi de tu casa está marcado como público, la sección lo dice y tiene un botón a los ajustes de red de Windows: abre tu red y elige **Red privada**. El deck empieza a escuchar solo.
+4. Toca **Emparejar**. Aparecen un código QR y un código de 6 cifras; sirven una vez y caducan en 5 minutos.
+5. En la tablet (en el mismo wifi), escanea el QR con la cámara, o abre la dirección que aparece y escribe el código. Ponle un nombre al dispositivo y toca **Emparejar**.
+6. Se abre el deck. Agrégalo a la pantalla de inicio desde el menú del navegador, para que la próxima vez entre directo.
 
 La tablet queda emparejada. Para quitarla, toca **Quitar** junto a ella en **Deck en la red**: se desconecta al momento.
 
@@ -44,9 +45,21 @@ Todavía no tiene: los modos Anclar, Minimizar y Cerrar, la disposición del pri
 
 Por ahora la página no puede mantener encendida la pantalla de la tablet (los navegadores sólo lo permiten con una conexión cifrada). Sube el tiempo de pantalla en los ajustes de la tablet.
 
+## Si la tablet no conecta
+
+- **¿La red es privada?** La sección **Deck en la red** lo dice si Windows la marca como pública.
+- **El Firewall de Windows** tiene que permitir FocusWShell en redes **privadas**. Si lo prendiste por primera vez con la red marcada como pública, Windows lo permitió sólo para redes públicas, y no vuelve a preguntar. Arréglalo en **Panel de control → Firewall de Windows Defender → Permitir una aplicación o una característica…**: toca **Cambiar la configuración**, busca **focuswshell.exe** y marca **Privada** (desmarca **Pública**). O, en PowerShell como administrador:
+
+  ```powershell
+  Get-NetFirewallRule -DisplayName 'focuswshell.exe' | Set-NetFirewallRule -Profile Private
+  ```
+- **El mismo wifi:** la tablet tiene que estar en la misma red que el PC.
+
 ## Privacidad y seguridad
 
 - FocusWShell no se conecta a internet. Con el deck en la red prendido, escucha en tu red local, en el puerto 8765, y sólo para los dispositivos que emparejaste.
-- Sólo responde a direcciones de la red local (como 192.168.…), nunca de internet. En un wifi público (un café, un aeropuerto) cualquiera en esa red podría ver lo que viaja: apágalo ahí.
+- Sólo escucha en redes que Windows marca como privadas o de dominio, nunca en una pública (un café, un aeropuerto), y sólo responde a direcciones de la red local.
+- Tras 5 códigos de emparejamiento equivocados, el código se anula, y esa dirección tiene que esperar 10 minutos.
+- Sólo acepta peticiones de su propia página: otra web abierta en la tablet no puede hablarle a tu PC.
 - Cada dispositivo tiene su propia llave, que sólo guarda el dispositivo. Quitarlo lo corta al momento.
 - La conexión no va cifrada (HTTP). Úsalo en una red de confianza, como el wifi de tu casa.

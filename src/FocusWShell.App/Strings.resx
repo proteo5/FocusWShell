@@ -489,9 +489,13 @@
   <data name="Web_PairHelp" xml:space="preserve"><value>Cada dispositivo se empareja una vez con un código que caduca en 5 minutos.</value></data>
   <data name="Web_PairScan" xml:space="preserve"><value>Escanea el código con la cámara de la tablet, o abre la dirección y escribe el código. Luego agrega la página a la pantalla de inicio.</value></data>
   <data name="Web_ScreenTip" xml:space="preserve"><value>Por ahora la página no puede mantener encendida la pantalla de la tablet: sube el tiempo de pantalla en los ajustes de la tablet.</value></data>
+  <data name="Web_FirewallTip" xml:space="preserve"><value>¿La tablet no conecta? Revisa que el Firewall de Windows permita FocusWShell en redes privadas: Panel de control → Firewall de Windows Defender → Permitir una aplicación… → focuswshell.exe, con Privada marcada (y Pública desmarcada). Si lo prendiste por primera vez con la red marcada como pública, Windows lo permitió sólo para redes públicas.</value></data>
   <data name="Web_Starting" xml:space="preserve"><value>Abriendo…</value></data>
   <data name="Web_Error" xml:space="preserve"><value>No pudo escuchar en la red: {0}</value></data>
-  <data name="Web_NoNetwork" xml:space="preserve"><value>Escuchando, pero el PC no está en una red privada.</value></data>
+  <data name="Web_NoNetwork" xml:space="preserve"><value>No escucha: el PC no está conectado a ninguna red.</value></data>
+  <data name="Web_PublicNetwork" xml:space="preserve"><value>No escucha: Windows marca tu red como pública, y en una red pública cualquiera podría intentar conectarse. Si es la red de tu casa o tu oficina, márcala como privada en los ajustes de red de Windows (tu red → Propiedades → Red privada); el deck empieza a escuchar solo.</value></data>
+  <data name="Web_OpenNetwork" xml:space="preserve"><value>Abrir los ajustes de red</value></data>
+  <data name="Web_CodeBurned" xml:space="preserve"><value>El código para emparejar se anuló tras 5 intentos fallidos. Toca Emparejar para pedir otro.</value></data>
   <data name="Web_NoDevices" xml:space="preserve"><value>Ningún dispositivo emparejado.</value></data>
   <data name="Web_Revoke" xml:space="preserve"><value>Quitar</value></data>
   <data name="Web_LastSeen" xml:space="preserve"><value>Última conexión: {0}</value></data>

@@ -127,3 +127,16 @@ Hecho y probado en la tablet Android del usuario:
 - **Privacidad:** el texto de General cambia cuando el deck en la red está prendido.
 
 Pendiente: los modos Anclar, Minimizar y Cerrar, la disposición del principal, la energía (desactivada en remoto), la pantalla encendida (opción C), comprobar la categoría de red de Windows (hoy sólo se mira que la dirección sea privada) y probar en un iPad.
+
+## Seguridad (2026-11-28)
+
+Antes de publicarlo en una alfa:
+
+1. **Emparejar con límite.** Cinco intentos fallidos anulan el código (`DeckWebDevices.MaxFailures`), y cada dirección que falla cinco veces espera 10 minutos; cada intento tarda 300 ms.
+2. **Origen y host.** El `Host` tiene que ser una dirección del PC en la que escucha (contra el DNS rebinding), y lo que cambia algo (emparejar, el WebSocket) exige un `Origin` igual al de la página. Cabeceras `nosniff` y `X-Frame-Options: DENY`.
+3. **Sólo redes privadas o de dominio de Windows** (`PrivateNetworks`, con el Network List Manager). Kestrel escucha sólo en las direcciones de esas redes, nunca en una pública ni en adaptadores que Windows no reconoce (Hyper-V, Docker). Se vuelve a elegir cuando cambian las direcciones y cada 20 s, porque marcar una red como privada no avisa. Si todas las redes son públicas, la sección lo explica y lleva a los ajustes de red de Windows. Hallazgo: el wifi del usuario estaba marcado como público, como hace Windows con las redes nuevas.
+4. **Límites.** Tres conexiones por dispositivo, 32 en total, peticiones de 4 KB como mucho, y leer las páginas como mucho cada 2 s por conexión.
+
+Hallazgo del Firewall: la primera vez que FocusWShell escucha, Windows pregunta y crea la regla para el perfil de la red de ese momento. Con el wifi marcado como público, la regla quedó sólo para redes públicas; al marcarlo como privado, el Firewall bloqueaba la tablet y no volvía a preguntar. Se arregla a mano (con permisos de administrador); la sección y el manual lo explican.
+
+Sigue pendiente el cifrado (opción C): sin él, quien comparta la red puede ver el tráfico, incluido el token.

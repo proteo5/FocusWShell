@@ -16,9 +16,10 @@ It's **off** until you turn it on, and it only answers the devices you pair.
 
 1. In the main window, open **Deck on the network** and turn on **Serve the deck on the local network**.
 2. The first time, Windows may ask for Firewall permission. Allow **private networks** only.
-3. Tap **Pair**. A QR code and a 6-digit code appear; they work once and expire in 5 minutes.
-4. On the tablet (on the same Wi-Fi), scan the QR code with the camera, or open the address shown and type the code. Give the device a name and tap **Pair**.
-5. The deck opens. Add it to the home screen from the browser menu, so it opens straight into the deck next time.
+3. It only listens on networks that Windows marks as **private** (or domain). If your home Wi-Fi is marked as public, the section says so and has a button to the Windows network settings: open your network and choose **Private network**. The deck starts listening by itself.
+4. Tap **Pair**. A QR code and a 6-digit code appear; they work once and expire in 5 minutes.
+5. On the tablet (on the same Wi-Fi), scan the QR code with the camera, or open the address shown and type the code. Give the device a name and tap **Pair**.
+6. The deck opens. Add it to the home screen from the browser menu, so it opens straight into the deck next time.
 
 The tablet stays paired. To remove it, tap **Remove** next to it in **Deck on the network**: it is disconnected at once.
 
@@ -44,9 +45,21 @@ Not in this version yet: the Pin, Minimize and Close modes, the main screen layo
 
 For now the page can't keep the tablet's screen on (browsers only allow it over an encrypted connection). Raise the screen timeout in the tablet's settings.
 
+## If the tablet doesn't connect
+
+- **Is the network private?** The section **Deck on the network** says so if Windows marks it as public.
+- **The Windows Firewall** must allow FocusWShell on **private** networks. If you first turned it on while the network was marked as public, Windows allowed it for public networks only, and doesn't ask again. Fix it in **Control Panel → Windows Defender Firewall → Allow an app or feature…**: tap **Change settings**, find **focuswshell.exe** and check **Private** (uncheck **Public**). Or, in PowerShell as administrator:
+
+  ```powershell
+  Get-NetFirewallRule -DisplayName 'focuswshell.exe' | Set-NetFirewallRule -Profile Private
+  ```
+- **Same Wi-Fi:** the tablet must be on the same network as the PC.
+
 ## Privacy and security
 
 - FocusWShell doesn't connect to the internet. With the deck on the network on, it listens on your local network, on port 8765, and only for the devices you paired.
-- It only answers addresses of the local network (such as 192.168.…), never from the internet. On a public Wi-Fi (a café, an airport) anyone on that network could see what travels: turn it off there.
+- It only listens on networks that Windows marks as private or domain, never on a public one (a café, an airport), and only answers addresses of the local network.
+- After 5 wrong pairing codes, the code is cancelled, and that address has to wait 10 minutes.
+- It only accepts requests from its own page: another website open on the tablet can't talk to your PC.
 - Each device has its own key, which only the device keeps. Removing it cuts it off at once.
 - The connection is not encrypted (plain HTTP). Use it on a network you trust, such as your home Wi-Fi.
