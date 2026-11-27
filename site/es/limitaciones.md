@@ -22,7 +22,7 @@ El soporte completo (un foco y unas apps por escritorio, y pestañas de escritor
 
 ## Apps que no se pueden organizar
 
-- **Las apps que se ejecutan como administrador** no las puede mover FocusWShell, que corre sin elevación. Aparecen con el motivo y se quedan donde están.
+- **Las apps que se ejecutan como administrador** no las puede mover FocusWShell, que corre sin elevación: Windows no lo deja. Salen en Libres del deck, atenuadas y con 🛡, y tocarlas las trae al frente; en la ventana principal aparecen con el motivo. Si una app no necesita ser administrador (en sus propiedades, Compatibilidad → «Ejecutar este programa como administrador»), quítalo y FocusWShell la organiza como a las demás.
 - **Juegos y presentaciones en pantalla completa:** cuando una app se pone en pantalla completa por sí misma (F11, un juego), FocusWShell deja ese monitor en paz hasta que sale. Se ha probado con navegadores; con juegos y presentaciones, todavía poco.
 - Algunas apps tienen **tamaño fijo** o un tamaño mínimo grande. FocusWShell lo aprende y les hace sitio, o las deja fuera del layout con una nota.
 

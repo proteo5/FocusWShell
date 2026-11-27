@@ -507,6 +507,9 @@ public static class Strings
     /// <summary>Al panel</summary>
     public static string Deck_ToPanelShort => ResourceManager.GetString("Deck_ToPanelShort", Culture)!;
 
+    /// <summary>{0} corre como administrador: FocusWShell no puede moverla. Tócala para traerla </summary>
+    public static string Deck_UnmovableTip => ResourceManager.GetString("Deck_UnmovableTip", Culture)!;
+
     /// <summary>{0} es la pestaña que se ve en su panel: tócala para llevarla al foco</summary>
     public static string Deck_VisibleTabTip => ResourceManager.GetString("Deck_VisibleTabTip", Culture)!;
 
