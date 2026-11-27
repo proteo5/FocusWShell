@@ -159,9 +159,12 @@ public partial class App : Application
         int preview = Array.IndexOf(e.Args, "--deck-preview");
         if (preview >= 0)
         {
+            // "--apilado": el prototipo del ADR 0020 (todos los monitores a la vez, uno arriba del otro).
+            var rest = e.Args.Skip(preview + 1).Where(a => a != "--apilado").ToList();
             DeckPreview.Run(
-                preview + 1 < e.Args.Length ? e.Args[preview + 1] : System.IO.Path.GetTempPath(),
-                preview + 2 < e.Args.Length ? e.Args[preview + 2] : null);
+                rest.Count > 0 ? rest[0] : System.IO.Path.GetTempPath(),
+                rest.Count > 1 ? rest[1] : null,
+                stacked: e.Args.Contains("--apilado"));
             Shutdown();
             return;
         }
@@ -565,6 +568,7 @@ public partial class App : Application
             ReadPages: () => Task.Run(_controller.BrowserPages),
             SelectPage: (handle, tab) => Task.Run(() => ShellController.SelectPage(handle, tab)),
             ClosePage: (handle, tab) => Task.Run(() => _controller.ClosePage(handle, tab))));
+        _deck.Stacked = _settings.DeckStacked; // ADR 0020: todos los monitores a la vez
 
         PresentDeck();
         StartDeckPolling();
@@ -1051,6 +1055,18 @@ public partial class App : Application
         _settings.ActivityEnabled = enabled;
         _settings.Save();
         StartActivity();
+    }
+
+    /// <summary>El deck con todos los monitores a la vez (ADR 0020) o con una pestaña por monitor.</summary>
+    internal void SetDeckStacked(bool stacked)
+    {
+        _settings.DeckStacked = stacked;
+        _settings.Save();
+        if (_deck is not null)
+        {
+            _deck.Stacked = stacked;
+            RefreshDeck();
+        }
     }
 
     /// <summary>Prender o apagar la medición de los sitios de los navegadores (sección Actividad).</summary>

@@ -68,6 +68,7 @@ public partial class MainWindow : FluentWindow
         OpenMissingBox.IsChecked = settings.OpenMissingApps;
         StartupSwitch.IsChecked = App.StartsWithWindows;
         AwakeSwitch.IsChecked = ((App)Application.Current).KeepAwakeActive;
+        DeckStackedSwitch.IsChecked = settings.DeckStacked;
         LanguageCombo.SelectedItem = LanguageCombo.Items.Cast<WC.ComboBoxItem>()
             .FirstOrDefault(i => (string)i.Tag == settings.Language) ?? LanguageCombo.Items[0];
         ThemeCombo.SelectedItem = ThemeCombo.Items.Cast<WC.ComboBoxItem>()
@@ -615,6 +616,14 @@ public partial class MainWindow : FluentWindow
         if (!_loadingGestures)
         {
             ((App)Application.Current).SetKeepAwakeFromMain(AwakeSwitch.IsChecked == true);
+        }
+    }
+
+    private void DeckStacked_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loadingGestures)
+        {
+            ((App)Application.Current).SetDeckStacked(DeckStackedSwitch.IsChecked == true);
         }
     }
 

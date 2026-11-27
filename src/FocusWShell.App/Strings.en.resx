@@ -66,6 +66,7 @@
   <data name="Deck_Minimizing" xml:space="preserve"><value>Minimizing…</value></data>
   <data name="Deck_MinimizeTip" xml:space="preserve"><value>Tap an app to minimize it in its panel; tap it again to bring it back.</value></data>
   <data name="Deck_HeaderTab" xml:space="preserve"><value>{0} · {1} apps</value></data>
+  <data name="Deck_HeaderAll" xml:space="preserve"><value>{0} monitors · {1} apps</value></data>
   <data name="Deck_FocusFrom" xml:space="preserve"><value>from {0}</value></data>
   <data name="Deck_FocusEmptyTile" xml:space="preserve"><value>Focus is empty</value></data>
   <data name="Deck_FocusTip" xml:space="preserve"><value>{0} · in the focus. Tap to see what to do with it.</value></data>
@@ -451,6 +452,8 @@ Restore them now?
   <data name="Gen_StartupHelp" xml:space="preserve"><value>Opens FocusWShell when you sign in.</value></data>
   <data name="Gen_Awake" xml:space="preserve"><value>Keep the screen on</value></data>
   <data name="Gen_AwakeHelp" xml:space="preserve"><value>Keeps the screen from turning off and the PC from sleeping.</value></data>
+  <data name="Gen_DeckStacked" xml:space="preserve"><value>Deck: all monitors at once</value></data>
+  <data name="Gen_DeckStackedHelp" xml:space="preserve"><value>The panels of each monitor, one above the other, without tabs. Turn it off to go back to one tab per monitor. Being tested.</value></data>
   <data name="Gen_About" xml:space="preserve"><value>About</value></data>
   <data name="Gen_Version" xml:space="preserve"><value>Version {0}</value></data>
   <data name="Gen_Manual" xml:space="preserve"><value>Manual</value></data>

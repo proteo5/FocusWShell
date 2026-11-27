@@ -66,6 +66,7 @@
   <data name="Deck_Minimizing" xml:space="preserve"><value>Minimizando…</value></data>
   <data name="Deck_MinimizeTip" xml:space="preserve"><value>Toca una app para minimizarla en su panel; tócala otra vez para traerla de vuelta.</value></data>
   <data name="Deck_HeaderTab" xml:space="preserve"><value>{0} · {1} apps</value></data>
+  <data name="Deck_HeaderAll" xml:space="preserve"><value>{0} monitores · {1} apps</value></data>
   <data name="Deck_FocusFrom" xml:space="preserve"><value>de {0}</value></data>
   <data name="Deck_FocusEmptyTile" xml:space="preserve"><value>Foco vacío</value></data>
   <data name="Deck_FocusTip" xml:space="preserve"><value>{0} · en el foco. Toca para ver qué hacer con ella.</value></data>
@@ -451,6 +452,8 @@
   <data name="Gen_StartupHelp" xml:space="preserve"><value>Abre FocusWShell al iniciar sesión.</value></data>
   <data name="Gen_Awake" xml:space="preserve"><value>Mantener la pantalla encendida</value></data>
   <data name="Gen_AwakeHelp" xml:space="preserve"><value>Evita que la pantalla se apague y que el equipo se suspenda.</value></data>
+  <data name="Gen_DeckStacked" xml:space="preserve"><value>Deck: todos los monitores a la vez</value></data>
+  <data name="Gen_DeckStackedHelp" xml:space="preserve"><value>Los paneles de cada monitor, uno arriba del otro, sin pestañas. Apágalo para volver a una pestaña por monitor. En prueba.</value></data>
   <data name="Gen_About" xml:space="preserve"><value>Acerca de</value></data>
   <data name="Gen_Version" xml:space="preserve"><value>Versión {0}</value></data>
   <data name="Gen_Manual" xml:space="preserve"><value>Manual</value></data>
