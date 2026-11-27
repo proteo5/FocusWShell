@@ -63,6 +63,12 @@ public sealed class AppSettings
     /// <summary>El deck con todos los monitores a la vez, uno arriba del otro (ADR 0020); si no, una pestaña por monitor.</summary>
     public bool DeckStacked { get; set; } = true;
 
+    /// <summary>Servir el deck por la red local (ADR 0021). Apagado por defecto.</summary>
+    public bool DeckWebEnabled { get; set; }
+
+    /// <summary>Mostrar las páginas de los navegadores en el deck por la red: sus títulos viajan sin cifrar.</summary>
+    public bool DeckWebPageTitles { get; set; }
+
     /// <summary>Al aplicar una escena, abrir las apps que falten y ponerlas en su panel (ADR 0011).</summary>
     public bool OpenMissingApps { get; set; } = true;
 

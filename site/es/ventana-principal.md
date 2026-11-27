@@ -71,6 +71,10 @@ Para cada día: el tiempo activo, el tiempo en paralelo, cuántas veces llevaste
 
 **Medir también los sitios** agrega, debajo de Chrome y Edge, el tiempo de cada sitio (github.com); toca **▸ N sitios** para mostrarlos u ocultarlos. Sólo se guarda el sitio, nunca la página ni su título. Las ventanas privadas (incógnito, InPrivate) cuentan como **Navegación privada**, sin sitio, y lo que escribes en la barra de direcciones no se lee.
 
+## Deck en la red
+
+Sirve el deck en tu red local y empareja tablets o teléfonos con un código QR, para usar el deck sin Apollo. Ver [Deck en la red]({{ '/es/deck-red/' | relative_url }}).
+
 ## Excluidas
 
 Apps que FocusWShell nunca debe tocar, por ejecutable, AUMID o clase de ventana. Ver [Dejar una app fuera de FocusWShell]({{ '/es/guias/#excluir' | relative_url }}).

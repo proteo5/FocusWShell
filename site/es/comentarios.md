@@ -27,7 +27,7 @@ Las ideas son igual de bienvenidas, en el mismo lugar. Lo que más ayuda es sabe
 
 ## Privacidad
 
-- FocusWShell funciona **sólo en tu PC**. No se conecta a la red, no tiene cuenta y no envía telemetría.
+- FocusWShell funciona **sólo en tu PC**. No se conecta a internet, no tiene cuenta y no envía telemetría. La única excepción la eliges tú: con el [deck en la red]({{ '/es/deck-red/' | relative_url }}) prendido, escucha en tu red local para los dispositivos que emparejaste.
 - Lee los títulos de las ventanas y los nombres de las apps para mostrarlos en el deck y reconocer tus apps.
 - Los títulos de las pestañas de los navegadores se leen sólo mientras la lista de *Páginas* está a la vista, y nunca se guardan.
 - Todo lo que recuerda está en `%LOCALAPPDATA%\FocusWShell`, en archivos JSON normales que puedes leer o borrar.

@@ -15,6 +15,7 @@ en:
     - { ref: main-window, title: Main window and settings, url: /main-window/ }
     - { ref: deck, title: The deck, url: /deck/ }
     - { ref: pages, title: Browser pages, url: /browser-pages/ }
+    - { ref: deck-network, title: Deck on the network, url: /deck-network/ }
     - { ref: tablet, title: Using a tablet, url: /tablet/ }
     - { ref: shortcuts, title: Shortcuts, url: /shortcuts/ }
     - { ref: limitations, title: Known limitations, url: /limitations/ }
@@ -35,6 +36,7 @@ es:
     - { ref: main-window, title: Ventana principal y ajustes, url: /es/ventana-principal/ }
     - { ref: deck, title: El deck, url: /es/deck/ }
     - { ref: pages, title: Páginas de los navegadores, url: /es/paginas/ }
+    - { ref: deck-network, title: Deck en la red, url: /es/deck-red/ }
     - { ref: tablet, title: Usar una tablet, url: /es/tablet/ }
     - { ref: shortcuts, title: Atajos, url: /es/atajos/ }
     - { ref: limitations, title: Limitaciones conocidas, url: /es/limitaciones/ }

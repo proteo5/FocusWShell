@@ -615,6 +615,9 @@ public static class Strings
     /// <summary>Funciona sólo en tu PC: no se conecta a la red, no tiene cuenta y no envía telem</summary>
     public static string Gen_AboutPrivacy => ResourceManager.GetString("Gen_AboutPrivacy", Culture)!;
 
+    /// <summary>No se conecta a internet, no tiene cuenta y no envía telemetría. Con el deck en </summary>
+    public static string Gen_AboutPrivacyWeb => ResourceManager.GetString("Gen_AboutPrivacyWeb", Culture)!;
+
     /// <summary>Mantiene la app en la que trabajas en una zona amplia y protegida de tu monitor </summary>
     public static string Gen_AboutText => ResourceManager.GetString("Gen_AboutText", Culture)!;
 
@@ -1089,6 +1092,9 @@ public static class Strings
     /// <summary>Apps</summary>
     public static string Nav_Apps => ResourceManager.GetString("Nav_Apps", Culture)!;
 
+    /// <summary>Deck en la red</summary>
+    public static string Nav_DeckWeb => ResourceManager.GetString("Nav_DeckWeb", Culture)!;
+
     /// <summary>Excluidas</summary>
     public static string Nav_Excluded => ResourceManager.GetString("Nav_Excluded", Culture)!;
 
@@ -1457,6 +1463,57 @@ public static class Strings
 
     /// <summary>no se puede mover</summary>
     public static string Unmanageable_Generic => ResourceManager.GetString("Unmanageable_Generic", Culture)!;
+
+    /// <summary>Dispositivos</summary>
+    public static string Web_Devices => ResourceManager.GetString("Web_Devices", Culture)!;
+
+    /// <summary>No pudo escuchar en la red: {0}</summary>
+    public static string Web_Error => ResourceManager.GetString("Web_Error", Culture)!;
+
+    /// <summary>Usa el deck desde una tablet o un teléfono en tu red local, sin Apollo: FocusWSh</summary>
+    public static string Web_Help => ResourceManager.GetString("Web_Help", Culture)!;
+
+    /// <summary>Última conexión: {0}</summary>
+    public static string Web_LastSeen => ResourceManager.GetString("Web_LastSeen", Culture)!;
+
+    /// <summary>Todavía no se conecta</summary>
+    public static string Web_NeverSeen => ResourceManager.GetString("Web_NeverSeen", Culture)!;
+
+    /// <summary>Ningún dispositivo emparejado.</summary>
+    public static string Web_NoDevices => ResourceManager.GetString("Web_NoDevices", Culture)!;
+
+    /// <summary>Escuchando, pero el PC no está en una red privada.</summary>
+    public static string Web_NoNetwork => ResourceManager.GetString("Web_NoNetwork", Culture)!;
+
+    /// <summary>Mostrar las páginas de los navegadores</summary>
+    public static string Web_Pages => ResourceManager.GetString("Web_Pages", Culture)!;
+
+    /// <summary>Los títulos de las pestañas viajan por tu red sin cifrar. Apágalo si la red no e</summary>
+    public static string Web_PagesHelp => ResourceManager.GetString("Web_PagesHelp", Culture)!;
+
+    /// <summary>Emparejar</summary>
+    public static string Web_Pair => ResourceManager.GetString("Web_Pair", Culture)!;
+
+    /// <summary>Cada dispositivo se empareja una vez con un código que caduca en 5 minutos.</summary>
+    public static string Web_PairHelp => ResourceManager.GetString("Web_PairHelp", Culture)!;
+
+    /// <summary>Escanea el código con la cámara de la tablet, o abre la dirección y escribe el c</summary>
+    public static string Web_PairScan => ResourceManager.GetString("Web_PairScan", Culture)!;
+
+    /// <summary>Quitar</summary>
+    public static string Web_Revoke => ResourceManager.GetString("Web_Revoke", Culture)!;
+
+    /// <summary>Por ahora la página no puede mantener encendida la pantalla de la tablet: sube e</summary>
+    public static string Web_ScreenTip => ResourceManager.GetString("Web_ScreenTip", Culture)!;
+
+    /// <summary>Servir el deck en la red local</summary>
+    public static string Web_Serve => ResourceManager.GetString("Web_Serve", Culture)!;
+
+    /// <summary>No se conecta a internet. Windows puede pedirte permiso en el Firewall la primer</summary>
+    public static string Web_ServeHelp => ResourceManager.GetString("Web_ServeHelp", Culture)!;
+
+    /// <summary>Abriendo…</summary>
+    public static string Web_Starting => ResourceManager.GetString("Web_Starting", Culture)!;
 
     /// <summary>{0}, izquierda</summary>
     public static string Where_AuxLeft => ResourceManager.GetString("Where_AuxLeft", Culture)!;

@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14171e">
+<title>FocusWShell</title>
+<link rel="stylesheet" href="/deck.css">
+</head>
+<body>
+<div id="app">
+  <aside id="left">
+    <section class="card head">
+      <div class="title"><b>FocusWShell</b><small id="summary"></small></div>
+      <button class="sq" id="full" aria-label="Fullscreen">⛶</button>
+    </section>
+    <section class="card focus">
+      <small class="label" data-t="focus"></small>
+      <button id="focusTile" class="focusTile"></button>
+    </section>
+    <section class="card actions">
+      <div class="row3">
+        <button id="previous">⇄ <span data-t="previous"></span></button>
+        <button id="toPanel">↓ <span data-t="toPanel"></span></button>
+        <button id="freeAll"><span data-t="freeAll"></span></button>
+      </div>
+      <button id="move" class="mode move">⇆ <span data-t="move"></span></button>
+    </section>
+    <div id="status" class="status"></div>
+  </aside>
+  <main id="right">
+    <div id="monitors"></div>
+    <div id="pagesView" hidden></div>
+    <div class="bottom">
+      <section id="freeCard" class="panel free">
+        <h3 data-t="free"></h3>
+        <div class="apps" id="free"></div>
+      </section>
+      <button id="pagesBtn" class="pages" hidden>🗂 <span data-t="pages"></span></button>
+    </div>
+  </main>
+</div>
+<script src="/deck.js"></script>
+</body>
+</html>

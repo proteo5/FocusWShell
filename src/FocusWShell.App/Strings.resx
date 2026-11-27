@@ -468,6 +468,7 @@
   <data name="Gen_ThemeDark" xml:space="preserve"><value>Oscuro</value></data>
   <data name="Gen_AboutText" xml:space="preserve"><value>Mantiene la app en la que trabajas en una zona amplia y protegida de tu monitor principal, pone las demás en paneles alrededor y en tus otros monitores, y te da un deck para moverte entre ellas.</value></data>
   <data name="Gen_AboutPrivacy" xml:space="preserve"><value>Funciona sólo en tu PC: no se conecta a la red, no tiene cuenta y no envía telemetría.</value></data>
+  <data name="Gen_AboutPrivacyWeb" xml:space="preserve"><value>No se conecta a internet, no tiene cuenta y no envía telemetría. Con el deck en la red prendido, escucha en tu red local sólo para los dispositivos que emparejaste.</value></data>
   <data name="Gen_ManualHelp" xml:space="preserve"><value>Instalar, primeros pasos, guías paso a paso, el deck y los atajos.</value></data>
   <data name="Gen_Releases" xml:space="preserve"><value>Versiones</value></data>
   <data name="Gen_ReleasesHelp" xml:space="preserve"><value>Descarga la última versión y sus notas.</value></data>
@@ -477,6 +478,24 @@
   <data name="Gen_LicenseHelp" xml:space="preserve"><value>Código abierto: puedes usarlo, modificarlo y compartirlo.</value></data>
   <data name="Gen_ThirdParty" xml:space="preserve"><value>Usa estos componentes de código abierto:</value></data>
   <data name="Nav_Activity" xml:space="preserve"><value>Actividad</value></data>
+  <data name="Nav_DeckWeb" xml:space="preserve"><value>Deck en la red</value></data>
+  <data name="Web_Help" xml:space="preserve"><value>Usa el deck desde una tablet o un teléfono en tu red local, sin Apollo: FocusWShell lo sirve como página web. Sólo responde a los dispositivos que emparejes aquí.</value></data>
+  <data name="Web_Serve" xml:space="preserve"><value>Servir el deck en la red local</value></data>
+  <data name="Web_ServeHelp" xml:space="preserve"><value>No se conecta a internet. Windows puede pedirte permiso en el Firewall la primera vez: acepta sólo redes privadas.</value></data>
+  <data name="Web_Pages" xml:space="preserve"><value>Mostrar las páginas de los navegadores</value></data>
+  <data name="Web_PagesHelp" xml:space="preserve"><value>Los títulos de las pestañas viajan por tu red sin cifrar. Apágalo si la red no es de confianza.</value></data>
+  <data name="Web_Devices" xml:space="preserve"><value>Dispositivos</value></data>
+  <data name="Web_Pair" xml:space="preserve"><value>Emparejar</value></data>
+  <data name="Web_PairHelp" xml:space="preserve"><value>Cada dispositivo se empareja una vez con un código que caduca en 5 minutos.</value></data>
+  <data name="Web_PairScan" xml:space="preserve"><value>Escanea el código con la cámara de la tablet, o abre la dirección y escribe el código. Luego agrega la página a la pantalla de inicio.</value></data>
+  <data name="Web_ScreenTip" xml:space="preserve"><value>Por ahora la página no puede mantener encendida la pantalla de la tablet: sube el tiempo de pantalla en los ajustes de la tablet.</value></data>
+  <data name="Web_Starting" xml:space="preserve"><value>Abriendo…</value></data>
+  <data name="Web_Error" xml:space="preserve"><value>No pudo escuchar en la red: {0}</value></data>
+  <data name="Web_NoNetwork" xml:space="preserve"><value>Escuchando, pero el PC no está en una red privada.</value></data>
+  <data name="Web_NoDevices" xml:space="preserve"><value>Ningún dispositivo emparejado.</value></data>
+  <data name="Web_Revoke" xml:space="preserve"><value>Quitar</value></data>
+  <data name="Web_LastSeen" xml:space="preserve"><value>Última conexión: {0}</value></data>
+  <data name="Web_NeverSeen" xml:space="preserve"><value>Todavía no se conecta</value></data>
   <data name="Activity_Help" xml:space="preserve"><value>Cuánto pasa cada app en el foco y en uso. En paralelo es el tiempo con el foco en una app y el teclado en otra: por ejemplo, un documento a la vista mientras escribes en el chat.</value></data>
   <data name="Activity_Measure" xml:space="preserve"><value>Medir la actividad</value></data>
   <data name="Activity_MeasureHelp" xml:space="preserve"><value>Sólo en este equipo, sin títulos de ventanas. Se guardan los últimos {0} días.</value></data>

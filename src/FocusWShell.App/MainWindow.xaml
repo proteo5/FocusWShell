@@ -78,6 +78,7 @@
                     <ListBoxItem Tag="Shortcuts"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Keyboard24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Shortcuts}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="Scenes"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="SlideLayout24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Scenes}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="Activity"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DataHistogram24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Activity}" /></StackPanel></ListBoxItem>
+                    <ListBoxItem Tag="DeckWeb"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Wifi124" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_DeckWeb}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="Excluded"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Prohibited24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_Excluded}" /></StackPanel></ListBoxItem>
                     <ListBoxItem Tag="General"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Settings24" Margin="0,0,12,0" /><TextBlock Text="{x:Static local:Strings.Nav_General}" /></StackPanel></ListBoxItem>
                 </ListBox>
@@ -325,6 +326,57 @@
                         </StackPanel>
                     </ScrollViewer>
 
+                    <!-- Deck en la red (ADR 0021) -->
+                    <ScrollViewer x:Name="DeckWebSection" Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Text="{x:Static local:Strings.Nav_DeckWeb}" Style="{StaticResource PageTitle}" />
+                            <TextBlock Text="{x:Static local:Strings.Web_Help}" Style="{StaticResource PageHelp}" />
+                            <ui:CardControl Margin="0,0,0,8" Icon="{ui:SymbolIcon Symbol=Wifi124}">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="{x:Static local:Strings.Web_Serve}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="{x:Static local:Strings.Web_ServeHelp}" Style="{StaticResource Hint}" />
+                                        <TextBox x:Name="WebAddress" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap"
+                                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="WebSwitch" Checked="Web_Changed" Unchecked="Web_Changed"
+                                                 AutomationProperties.Name="{x:Static local:Strings.Web_Serve}" />
+                            </ui:CardControl>
+                            <ui:CardControl Margin="0,0,0,16" Icon="{ui:SymbolIcon Symbol=Globe24}">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="{x:Static local:Strings.Web_Pages}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="{x:Static local:Strings.Web_PagesHelp}" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="WebPagesSwitch" Checked="WebPages_Changed" Unchecked="WebPages_Changed"
+                                                 AutomationProperties.Name="{x:Static local:Strings.Web_Pages}" />
+                            </ui:CardControl>
+                            <TextBlock Text="{x:Static local:Strings.Web_Devices}" Style="{StaticResource CardTitle}" />
+                            <ui:Card Margin="0,0,0,8">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,8">
+                                        <ui:Button x:Name="WebPairButton" DockPanel.Dock="Right" Content="{x:Static local:Strings.Web_Pair}" Icon="{ui:SymbolIcon Symbol=QrCode24}"
+                                                   Appearance="Primary" Click="WebPair_Click" />
+                                        <TextBlock Text="{x:Static local:Strings.Web_PairHelp}" Style="{StaticResource Hint}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    </DockPanel>
+                                    <StackPanel x:Name="WebPairing" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,0,12">
+                                        <Image x:Name="WebQr" Width="200" Height="200" Margin="0,0,16,0" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Static local:Strings.Web_PairScan}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxWidth="320" />
+                                            <TextBlock x:Name="WebCode" FontSize="32" FontWeight="SemiBold" Margin="0,8,0,4" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                            <TextBox x:Name="WebPairUrl" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxWidth="320"
+                                                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel x:Name="WebDevices" />
+                                </StackPanel>
+                            </ui:Card>
+                            <TextBlock Text="{x:Static local:Strings.Web_ScreenTip}" Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
+
                     <!-- Excluidas -->
                     <ScrollViewer x:Name="ExcludedSection" Style="{StaticResource Section}">
                         <StackPanel>
@@ -422,7 +474,7 @@
                                     </StackPanel>
                                     <TextBlock Text="{x:Static local:Strings.Gen_AboutText}" TextWrapping="Wrap" Margin="0,0,0,4"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Static local:Strings.Gen_AboutPrivacy}" TextWrapping="Wrap"
+                                    <TextBlock x:Name="AboutPrivacy" Text="{x:Static local:Strings.Gen_AboutPrivacy}" TextWrapping="Wrap"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
                             </ui:Card>
@@ -470,7 +522,8 @@
                                 <StackPanel>
                                     <TextBlock Text="{x:Static local:Strings.Gen_ThirdParty}" Margin="0,0,0,6" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                                     <TextBlock Text="WPF-UI · MIT License · github.com/lepoco/wpfui" Style="{StaticResource Hint}" />
-                                    <TextBlock Text=".NET · MIT License · github.com/dotnet" Style="{StaticResource Hint}" />
+                                    <TextBlock Text="QRCoder · MIT License · github.com/codebude/QRCoder" Style="{StaticResource Hint}" />
+                                    <TextBlock Text=".NET, ASP.NET Core · MIT License · github.com/dotnet" Style="{StaticResource Hint}" />
                                     <TextBlock Text="Fluent System Icons · MIT License · github.com/microsoft/fluentui-system-icons" Style="{StaticResource Hint}" />
                                 </StackPanel>
                             </ui:Card>

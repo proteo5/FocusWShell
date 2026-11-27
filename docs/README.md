@@ -42,6 +42,7 @@ Esta carpeta es la documentación de ingeniería del proyecto. Parte de las nota
 | [0018](adr/0018-apps-en-la-bandeja.md) | Apps que se cierran a la bandeja: no mostrarlas nosotros | Aceptada |
 | [0019](adr/0019-actividad-foco-y-uso.md) | Actividad: tiempo en el foco y en uso, local y opcional | Aceptada |
 | [0020](adr/0020-deck-monitores-apilados.md) | El deck muestra todos los monitores a la vez, uno arriba del otro | Aceptada |
+| [0021](adr/0021-deck-por-la-red.md) | El deck por la red, como app web servida por FocusWShell | Aceptada |
 
 ## Fuentes
 
