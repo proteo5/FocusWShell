@@ -81,7 +81,7 @@ Apps que FocusWShell nunca debe tocar, por ejecutable, AUMID o clase de ventana.
 
 - **Idioma:** automático (el de Windows), inglés o español. Se aplica al reiniciar FocusWShell.
 - **Tema:** automático (sigue a Windows), claro u oscuro. Se aplica al momento. El deck mantiene su propio aspecto.
-- **Iniciar con Windows** y **Mantener la pantalla encendida**.
+- **Iniciar con Windows**, **Mantener la pantalla encendida** y **Deck: todos los monitores a la vez** (prendido: todos los monitores en el deck, uno arriba del otro; apagado: una pestaña por monitor).
 - **Acerca de:** la versión y la compilación, enlaces a este manual, a las versiones, a reportar un problema, al código fuente y a la carpeta de configuración, la licencia y los componentes de código abierto que usa.
 
 ## Menú de la bandeja

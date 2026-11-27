@@ -159,12 +159,13 @@ public partial class App : Application
         int preview = Array.IndexOf(e.Args, "--deck-preview");
         if (preview >= 0)
         {
-            // "--apilado": el prototipo del ADR 0020 (todos los monitores a la vez, uno arriba del otro).
-            var rest = e.Args.Skip(preview + 1).Where(a => a != "--apilado").ToList();
+            // "--apilado": sólo los casos del diseño apilado (ADR 0020); "--pestanas": el deck con una pestaña por monitor.
+            var rest = e.Args.Skip(preview + 1).Where(a => a is not "--apilado" and not "--pestanas").ToList();
             DeckPreview.Run(
                 rest.Count > 0 ? rest[0] : System.IO.Path.GetTempPath(),
                 rest.Count > 1 ? rest[1] : null,
-                stacked: e.Args.Contains("--apilado"));
+                tabs: e.Args.Contains("--pestanas"),
+                stackedCases: e.Args.Contains("--apilado"));
             Shutdown();
             return;
         }

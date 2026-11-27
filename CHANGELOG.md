@@ -4,10 +4,15 @@ All notable changes to FocusWShell. Each release has its notes in [`.github/rele
 
 Todos los cambios importantes de FocusWShell. Cada versión tiene sus notas en [`.github/release-notes/`](.github/release-notes/).
 
-## Unreleased / Sin publicar
+## 0.6.0-alpha
 
+The deck shows every monitor at once, and apps that FocusWShell could not see now show up. / El deck muestra todos los monitores a la vez, y aparecen apps que FocusWShell no veía.
+
+- The deck shows every monitor at once, one above the other, without tabs: every panel is one tap away, and when moving an app all panels are targets. Pages moved to the right of Free. To go back to one tab per monitor, turn off "Deck: all monitors at once" in General. / El deck muestra todos los monitores a la vez, uno arriba del otro, sin pestañas: todos los paneles están a un toque, y al mover una app todos los paneles son destino. Páginas pasó a la derecha de Libres. Para volver a una pestaña por monitor, apaga «Deck: todos los monitores a la vez» en General.
 - Fixed: Store apps whose window does not give its app ID (WhatsApp) showed an internal name ("WhatsApp.Root") and a generic icon. They now take the name and icon of the Start menu. / Corregido: las apps de la Store cuya ventana no da su id de app (WhatsApp) salían con un nombre interno («WhatsApp.Root») y un icono genérico. Ahora toman el nombre y el icono del menú Inicio.
 - The deck now shows the apps that run as administrator (SADP, for example), in Free, dimmed and with 🛡: FocusWShell can't move them, but tapping one brings it to the front. Borderless apps with a minimize button (Qt) are no longer ignored. / El deck ahora muestra las apps que corren como administrador (SADP, por ejemplo), en Libres, atenuadas y con 🛡: FocusWShell no puede moverlas, pero tocarlas las trae al frente. Las apps sin marco con botón de minimizar (Qt) ya no se ignoran.
+
+Notes / Notas: [v0.6.0-alpha](.github/release-notes/v0.6.0-alpha.md)
 
 ## 0.5.0-alpha
 

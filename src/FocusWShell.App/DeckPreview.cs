@@ -14,10 +14,12 @@ namespace FocusWShell.App;
 /// </summary>
 public static class DeckPreview
 {
-    /// <summary>Si se dibuja el prototipo del ADR 0020 (monitores apilados) en lugar del deck actual.</summary>
-    private static bool _stacked;
+    /// <summary>Monitores apilados (ADR 0020, el de siempre) o una pestaña por monitor (<c>--pestanas</c>).</summary>
+    private static bool _stacked = true;
 
-    public static void Run(string folder, string? language = null, bool stacked = false)
+    /// <param name="tabs">Dibujar el deck con una pestaña por monitor, como antes del ADR 0020.</param>
+    /// <param name="stackedCases">Sólo los casos que deciden el diseño apilado: dos y tres monitores, muchas apps…</param>
+    public static void Run(string folder, string? language = null, bool tabs = false, bool stackedCases = false)
     {
         if (language is not null)
         {
@@ -25,12 +27,14 @@ public static class DeckPreview
         }
 
         Directory.CreateDirectory(folder);
-        _stacked = stacked;
-        if (stacked)
+        _stacked = !tabs;
+        if (stackedCases)
         {
+            _stacked = true;
             RunStacked(folder);
             return;
         }
+
         var sizes = new[] { ("tablet-entera", 1280, 672), ("media-tablet", 640, 672), ("esquina", 640, 980) };
         foreach (var (name, width, height) in sizes)
         {

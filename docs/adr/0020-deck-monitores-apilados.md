@@ -1,6 +1,6 @@
 # ADR 0020 — El deck muestra todos los monitores a la vez, uno arriba del otro
 
-- **Estado:** Propuesta (spike de diseño, 2026-11-26)
+- **Estado:** Aceptada (0.6.0-alpha; propuesta y prototipo del 2026-11-26)
 - **Fecha:** 2026-11-26
 
 ## Contexto
@@ -55,3 +55,11 @@ Lo que se vio:
 
 - Todas las apps de todos los monitores se ven y se tocan de un toque, sin cambiar de pestaña.
 - En la esquina del principal, con tres monitores, la zona de paneles puede necesitar desplazarse. El prototipo dirá si basta con eso o si hacen falta iconos más pequeños en ese tamaño.
+
+## Aceptación (0.6.0-alpha)
+
+Tras varios días de uso diario, el diseño apilado funciona mejor que las pestañas y queda como el de siempre. Ajustes desde el prototipo:
+
+- Los botones de presentación de cada panel siguen a la vista (el menú ⋯ se descartó).
+- En el deck estrecho (media tablet, esquina del principal), la zona de paneles se desplaza con el dedo y Libres y Sistema quedan fijos debajo; cada panel mide lo que piden sus apps.
+- El interruptor de General sigue para volver a una pestaña por monitor.

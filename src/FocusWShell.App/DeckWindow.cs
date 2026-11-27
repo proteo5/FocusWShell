@@ -508,27 +508,43 @@ public sealed class DeckWindow : Window
         }
         else
         {
+            // Todos los monitores no caben en un deck estrecho: la zona de los paneles se desplaza con el dedo,
+            // y debajo quedan fijos LIBRES y Sistema. Cada panel mide lo que piden sus apps.
+            var list = new StackPanel();
             foreach (var (monitor, panels) in monitors)
             {
                 if (monitors.Count > 1)
                 {
-                    row(new TextBlock
+                    list.Children.Add(new TextBlock
                     {
                         Text = monitor.Connected ? $"🖵  {monitor.Name} · {monitor.Apps}" : Core.Text.F(Strings.Deck_TabDisconnected, monitor.Name),
                         Foreground = monitor.Connected ? DimBrush : WarnBrush,
                         FontSize = 12,
                         Margin = new Thickness(2, 2, 0, 4),
-                    }, GridLength.Auto, 0);
+                    });
                 }
 
                 foreach (var panel in panels)
                 {
-                    row(PanelCard(panel), new GridLength(1 + panel.Apps.Count, GridUnitType.Star), 132);
+                    var card = PanelCard(panel);
+                    int rows = Math.Max(1, (int)Math.Ceiling(Visible(panel.Apps).Count / 6.0));
+                    card.Height = 70 + (70 * rows);
+                    list.Children.Add(card);
                 }
             }
+
+            var scroller = new ScrollViewer
+            {
+                Content = list,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Focusable = false,
+            };
+            DragToScroll(scroller);
+            row(scroller, new GridLength(3, GridUnitType.Star), 140);
         }
 
-        row(FreeAndPages(state, wide: false), new GridLength(1 + (state.Free.Count / 2.0), GridUnitType.Star), state.Free.Count > 0 ? 90 : 60);
+        row(FreeAndPages(state, wide: false), new GridLength(state.Free.Count > 0 ? 1 : 0.5, GridUnitType.Star), state.Free.Count > 0 ? 100 : 60);
     }
 
     // --- Pestañas por monitor -------------------------------------------------------------------------

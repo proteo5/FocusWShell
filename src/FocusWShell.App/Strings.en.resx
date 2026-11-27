@@ -453,7 +453,7 @@ Restore them now?
   <data name="Gen_Awake" xml:space="preserve"><value>Keep the screen on</value></data>
   <data name="Gen_AwakeHelp" xml:space="preserve"><value>Keeps the screen from turning off and the PC from sleeping.</value></data>
   <data name="Gen_DeckStacked" xml:space="preserve"><value>Deck: all monitors at once</value></data>
-  <data name="Gen_DeckStackedHelp" xml:space="preserve"><value>The panels of each monitor, one above the other, without tabs. Turn it off to go back to one tab per monitor. Being tested.</value></data>
+  <data name="Gen_DeckStackedHelp" xml:space="preserve"><value>The panels of each monitor, one above the other, without tabs. Turn it off to go back to one tab per monitor.</value></data>
   <data name="Gen_About" xml:space="preserve"><value>About</value></data>
   <data name="Gen_Version" xml:space="preserve"><value>Version {0}</value></data>
   <data name="Gen_Manual" xml:space="preserve"><value>Manual</value></data>

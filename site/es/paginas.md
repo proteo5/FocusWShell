@@ -8,7 +8,7 @@ permalink: /es/paginas/
 
 # Páginas de los navegadores
 
-Cuando buscas una página, no deberías tener que saber en qué ventana ni en qué navegador está. **🗂 Páginas**, a la derecha de las pestañas de monitores en el deck, reúne todas las pestañas de todas las ventanas de Chrome y Edge.
+Cuando buscas una página, no deberías tener que saber en qué ventana ni en qué navegador está. **🗂 Páginas**, a la derecha de Libres en el deck, reúne todas las pestañas de todas las ventanas de Chrome y Edge.
 
 Sólo aparece mientras hay Chrome o Edge abiertos. El número es cuántas páginas había la última vez que se leyeron; se leen al abrir la lista y después de cerrar una.
 
