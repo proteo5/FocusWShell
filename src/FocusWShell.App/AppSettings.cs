@@ -60,6 +60,9 @@ public sealed class AppSettings
     /// <summary>Zona del deck fijado: LeftHalf, RightHalf o Whole.</summary>
     public string? DeckZone { get; set; }
 
+    /// <summary>El deck con todos los monitores a la vez, uno arriba del otro (ADR 0020); si no, una pestaña por monitor.</summary>
+    public bool DeckStacked { get; set; } = true;
+
     /// <summary>Al aplicar una escena, abrir las apps que falten y ponerlas en su panel (ADR 0011).</summary>
     public bool OpenMissingApps { get; set; } = true;
 

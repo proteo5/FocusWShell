@@ -282,6 +282,9 @@ public static class Strings
     /// <summary>{0} · en el foco. Toca para ver qué hacer con ella.</summary>
     public static string Deck_FocusTip => ResourceManager.GetString("Deck_FocusTip", Culture)!;
 
+    /// <summary>{0} monitores · {1} apps</summary>
+    public static string Deck_HeaderAll => ResourceManager.GetString("Deck_HeaderAll", Culture)!;
+
     /// <summary>{0} · {1} apps</summary>
     public static string Deck_HeaderTab => ResourceManager.GetString("Deck_HeaderTab", Culture)!;
 
@@ -620,6 +623,12 @@ public static class Strings
 
     /// <summary>Evita que la pantalla se apague y que el equipo se suspenda.</summary>
     public static string Gen_AwakeHelp => ResourceManager.GetString("Gen_AwakeHelp", Culture)!;
+
+    /// <summary>Deck: todos los monitores a la vez</summary>
+    public static string Gen_DeckStacked => ResourceManager.GetString("Gen_DeckStacked", Culture)!;
+
+    /// <summary>Los paneles de cada monitor, uno arriba del otro, sin pestañas. Apágalo para vol</summary>
+    public static string Gen_DeckStackedHelp => ResourceManager.GetString("Gen_DeckStackedHelp", Culture)!;
 
     /// <summary>Idioma</summary>
     public static string Gen_Language => ResourceManager.GetString("Gen_Language", Culture)!;

@@ -32,7 +32,7 @@ In its panel, the focus app has a blue border and **↑**.
 
 **Move…**, **Pin…**, **Minimize…** and **Close…** do not act right away: they wait for you to tap an app, like Shift waits for a key. The «…», the colored bar under them and their position tell them apart.
 
-- **Move…** (yellow): tap an app, then the panel where it goes. Another monitor's tab works too, and so does the focus: it brings the app to the focus.
+- **Move…** (yellow): tap an app, then the panel where it goes. Every panel of every monitor is a target at once, and so is the focus: it brings the app to the focus.
 - **Pin…** (indigo): tap an app to pin it to its panel. A pinned app stays in its panel even when closed, dimmed, and tapping it opens it there.
 - **Minimize…** (teal): tap an app to minimize it in its panel. If it was already minimized, it comes back. The mode turns off after one tap, like **Close…**.
 - **Close…** (red): tap an app to close it, as with its ✕. If it has unsaved work, the app asks.
@@ -47,7 +47,7 @@ Turn the **Context** and **Work** columns of the main screen on or off (blue: on
 
 ## Monitors and panels
 
-The row of tabs at the top chooses which monitor's panels you see. Each panel shows its apps:
+Every monitor is shown at once, one above the other: its name runs down the left side, and its panels sit side by side in their real order (left, right). If you prefer the old way, one tab per monitor, turn off **Deck: all monitors at once** in General. Each panel shows its apps:
 
 - **Tap an app:** to the focus. A free one is only brought to the front, and stays free.
 - **In a panel in tabs (or Fill):** the tab you see is underlined. Tap a hidden one to show it in its panel and type in it, without moving it to the focus: you work in the focus and in it at the same time. Tap the one you see to bring it to the focus. The icons keep their place, and the app that leaves the focus comes back as the tab you see.
@@ -66,8 +66,9 @@ Marks on an app:
 | ⧉ | Open on another virtual desktop; tapping it takes you there. |
 | ▴ | In the tray: the app hid its window when you closed it, but it is still running. Tapping it opens the app again, and the app shows its window in the focus. |
 | White border | In use: it has the keyboard and mouse, but it is not the focus app. |
+| 🛡, dimmed (in Free) | Runs as administrator: FocusWShell can't move it. Tapping it brings it to the front. |
 
-**🗂 Pages**, at the right of the monitor tabs, shows the tabs of your browsers. See [Browser pages]({{ '/browser-pages/' | relative_url }}).
+**🗂 Pages**, at the right of Free, shows the tabs of your browsers. See [Browser pages]({{ '/browser-pages/' | relative_url }}).
 
 ## Free
 

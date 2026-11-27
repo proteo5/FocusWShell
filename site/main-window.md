@@ -81,7 +81,7 @@ Apps FocusWShell should never touch, by executable, AUMID or window class. See [
 
 - **Language:** automatic (the one of Windows), English or Spanish. It applies when FocusWShell restarts.
 - **Theme:** automatic (follows Windows), light or dark. It applies right away. The deck keeps its own look.
-- **Start with Windows** and **Keep the screen on**.
+- **Start with Windows**, **Keep the screen on** and **Deck: all monitors at once** (on: every monitor in the deck, one above the other; off: one tab per monitor).
 - **About:** the version and the build, links to this manual, the releases, reporting a problem, the source code and the settings folder, the license and the open source components it uses.
 
 ## Tray menu

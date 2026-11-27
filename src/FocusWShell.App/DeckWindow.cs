@@ -250,6 +250,14 @@ public sealed class DeckWindow : Window
         Grid.SetColumn(left, 0);
         _root.Children.Add(left);
 
+        if (Stacked)
+        {
+            var stacked = StackedArea(state);
+            Grid.SetColumn(stacked, 2);
+            _root.Children.Add(stacked);
+            return;
+        }
+
         // Derecha: arriba las pestañas de los monitores; debajo, sus paneles en columnas (dos filas si son
         // más de tres) y las libres abajo.
         var right = new Grid();
@@ -322,6 +330,14 @@ public sealed class DeckWindow : Window
         modeRow.Margin = new Thickness(0, 0, 0, 8);
         Row(modeRow, GridLength.Auto);
 
+        if (Stacked)
+        {
+            StackedNarrow(state, Row);
+            var systemRow = SystemButtons();
+            Row(Buttons(_powerOpen ? 3 : systemRow.Count, systemRow), GridLength.Auto);
+            return;
+        }
+
         // Pestañas por monitor y, debajo, sus paneles uno debajo de otro, con alto según cuántas apps tienen.
         if (TabRow(state, wide: false) is { } tabRow)
         {
@@ -356,6 +372,179 @@ public sealed class DeckWindow : Window
         // Abajo, lo del sistema.
         var system = SystemButtons();
         Row(Buttons(_powerOpen ? 3 : system.Count, system), GridLength.Auto);
+    }
+
+    // --- Prototipo: todos los monitores a la vez (ADR 0020) ------------------------------------------
+
+    /// <summary>
+    /// Prototipo del ADR 0020: sin pestañas de monitor; cada monitor es una franja con sus paneles en columnas,
+    /// una arriba de otra, y abajo LIBRES con «Páginas» a su derecha. Por ahora sólo en la vista previa.
+    /// </summary>
+    internal bool Stacked { get; set; }
+
+    /// <summary>Los monitores con paneles, en el orden de siempre (el principal primero), con sus paneles.</summary>
+    private List<(MonitorTab Monitor, List<DeckPanel> Panels)> MonitorsWithPanels(DeckState state) =>
+        [.. MonitorTabs(state)
+            .Select(m => (m, state.Panels.Where(p => string.Equals(TabKey(p.Display), TabKey(m.Display), StringComparison.OrdinalIgnoreCase)).ToList()))
+            .Where(x => x.Item2.Count > 0)];
+
+    /// <summary>Ancho: una franja por monitor (alto según sus apps) y abajo LIBRES + «Páginas».</summary>
+    private Grid StackedArea(DeckState state)
+    {
+        var monitors = MonitorsWithPanels(state);
+        var right = new Grid();
+        // Los monitores se llevan casi todo el alto, más cuantos más hay; LIBRES, lo justo para una fila.
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2 + monitors.Count, GridUnitType.Star) });
+        double freeWeight = state.Free.Count == 0 ? 0.5 : Math.Clamp(0.75 + (state.Free.Count / 16.0), 1, 1.5);
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(freeWeight, GridUnitType.Star), MinHeight = 104 });
+
+        UIElement area;
+        if (_pagesOpen)
+        {
+            area = PagesView();
+        }
+        else if (monitors.Count == 0)
+        {
+            area = NoPanelsCard(state);
+        }
+        else
+        {
+            var stack = new Grid();
+            foreach (var (monitor, panels) in monitors)
+            {
+                // Alto según la fila de apps más larga del monitor (unas tres apps por fila en una columna),
+                // con una fila como mínimo.
+                int rows = Math.Max(1, panels.Max(p => (int)Math.Ceiling(Visible(p.Apps).Count / 3.0)));
+                stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1 + rows, GridUnitType.Star), MinHeight = 132 });
+                var band = MonitorBand(monitor, panels, monitors.Count > 1);
+                Grid.SetRow(band, stack.RowDefinitions.Count - 1);
+                stack.Children.Add(band);
+            }
+
+            area = stack;
+        }
+
+        right.Children.Add(area);
+        var bottom = FreeAndPages(state, wide: true);
+        if (monitors.Count > 1 && !_pagesOpen)
+        {
+            bottom.Margin = new Thickness(30, 0, 0, 0); // alineada con los paneles, no con el nombre del monitor
+        }
+
+        Grid.SetRow(bottom, 1);
+        right.Children.Add(bottom);
+        return right;
+    }
+
+    /// <summary>Un monitor: su nombre en vertical a la izquierda y sus paneles en columnas.</summary>
+    private Grid MonitorBand(MonitorTab monitor, List<DeckPanel> panels, bool label)
+    {
+        var band = new Grid();
+        if (label)
+        {
+            band.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+            var text = monitor.Connected ? $"🖵  {monitor.Name} · {monitor.Apps}" : Core.Text.F(Strings.Deck_TabDisconnected, monitor.Name);
+            var name = new TextBlock
+            {
+                Text = text,
+                Foreground = monitor.Connected ? DimBrush : WarnBrush,
+                FontSize = 13,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                LayoutTransform = new RotateTransform(-90),
+            };
+            band.Children.Add(name);
+        }
+
+        var columns = new Grid();
+        foreach (var _ in panels)
+        {
+            columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
+
+        for (int i = 0; i < panels.Count; i++)
+        {
+            var card = PanelCard(panels[i]);
+            Grid.SetColumn(card, i);
+            columns.Children.Add(card);
+        }
+
+        band.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(columns, band.ColumnDefinitions.Count - 1);
+        band.Children.Add(columns);
+        return band;
+    }
+
+    /// <summary>LIBRES y, a su derecha, «Páginas» si hay Chrome o Edge abiertos.</summary>
+    private DockPanel FreeAndPages(DeckState state, bool wide)
+    {
+        var row = new DockPanel { LastChildFill = true };
+        if (_actions.ReadPages is not null && (state.Browsers.Count > 0 || _pagesOpen))
+        {
+            var pages = PagesTabButton(wide);
+            pages.Margin = new Thickness(0, 0, 8, 8);
+            pages.VerticalAlignment = VerticalAlignment.Stretch;
+            pages.Height = double.NaN;
+            DockPanel.SetDock(pages, Dock.Right);
+            row.Children.Add(pages);
+        }
+
+        row.Children.Add(FreeCard(state));
+        return row;
+    }
+
+    /// <summary>Estrecho: los paneles de todos los monitores, uno debajo de otro, con el nombre del monitor encima.</summary>
+    private void StackedNarrow(DeckState state, Action<UIElement, GridLength, double> row)
+    {
+        var monitors = MonitorsWithPanels(state);
+        if (_pagesOpen)
+        {
+            row(PagesView(), new GridLength(Math.Max(2, state.Panels.Sum(p => 1 + p.Apps.Count)), GridUnitType.Star), 116);
+        }
+        else if (monitors.Count == 0)
+        {
+            row(NoPanelsCard(state), new GridLength(1, GridUnitType.Star), 116);
+        }
+        else
+        {
+            // Todos los monitores no caben en un deck estrecho: la zona de los paneles se desplaza con el dedo,
+            // y debajo quedan fijos LIBRES y Sistema. Cada panel mide lo que piden sus apps.
+            var list = new StackPanel();
+            foreach (var (monitor, panels) in monitors)
+            {
+                if (monitors.Count > 1)
+                {
+                    list.Children.Add(new TextBlock
+                    {
+                        Text = monitor.Connected ? $"🖵  {monitor.Name} · {monitor.Apps}" : Core.Text.F(Strings.Deck_TabDisconnected, monitor.Name),
+                        Foreground = monitor.Connected ? DimBrush : WarnBrush,
+                        FontSize = 12,
+                        Margin = new Thickness(2, 2, 0, 4),
+                    });
+                }
+
+                foreach (var panel in panels)
+                {
+                    var card = PanelCard(panel);
+                    int rows = Math.Max(1, (int)Math.Ceiling(Visible(panel.Apps).Count / 6.0));
+                    card.Height = 70 + (70 * rows);
+                    list.Children.Add(card);
+                }
+            }
+
+            var scroller = new ScrollViewer
+            {
+                Content = list,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Focusable = false,
+            };
+            DragToScroll(scroller);
+            row(scroller, new GridLength(3, GridUnitType.Star), 140);
+        }
+
+        row(FreeAndPages(state, wide: false), new GridLength(state.Free.Count > 0 ? 1 : 0.5, GridUnitType.Star), state.Free.Count > 0 ? 100 : 60);
     }
 
     // --- Pestañas por monitor -------------------------------------------------------------------------
@@ -1204,7 +1393,13 @@ public sealed class DeckWindow : Window
 
         var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         names.Children.Add(new TextBlock { Text = "FocusWShell", Foreground = TextBrush, FontSize = 18, FontWeight = FontWeights.SemiBold });
-        if (MonitorTabs(state).FirstOrDefault(t => OnTab(t.Display)) is { } tab)
+        if (Stacked)
+        {
+            // Sin pestañas no hay «monitor que se ve»: el total.
+            var monitors = MonitorsWithPanels(state);
+            names.Children.Add(new TextBlock { Text = Core.Text.F(Strings.Deck_HeaderAll, monitors.Count, monitors.Sum(m => m.Monitor.Apps)), Foreground = DimBrush, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
+        }
+        else if (MonitorTabs(state).FirstOrDefault(t => OnTab(t.Display)) is { } tab)
         {
             names.Children.Add(new TextBlock { Text = Core.Text.F(Strings.Deck_HeaderTab, tab.Name, tab.Apps), Foreground = DimBrush, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
         }
@@ -2321,7 +2516,9 @@ public sealed class DeckWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
         };
         title.Inlines.Add(new System.Windows.Documents.Run(panel.Name.ToUpperInvariant()) { Foreground = TextBrush, FontSize = 15, FontWeight = FontWeights.SemiBold });
-        title.Inlines.Add(new System.Windows.Documents.Run($"  ·  {panel.Where}") { Foreground = DimBrush, FontSize = 13 });
+        // Con los monitores apilados, el monitor ya está a la izquierda de su franja: sólo el lado.
+        var where = Stacked && panel.Where.IndexOf(',', StringComparison.Ordinal) is int comma and >= 0 ? panel.Where[(comma + 1)..].Trim() : panel.Where;
+        title.Inlines.Add(new System.Windows.Documents.Run($"  ·  {where}") { Foreground = DimBrush, FontSize = 13 });
         header.Children.Add(title);
         return header;
     }

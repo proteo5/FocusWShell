@@ -32,7 +32,7 @@ En su panel, la app del foco lleva un borde azul y **↑**.
 
 **Mover…**, **Anclar…**, **Minimizar…** y **Cerrar…** no actúan al momento: esperan a que toques una app, como Mayús espera una tecla. Los «…», la barra de color debajo y su sitio los distinguen.
 
-- **Mover…** (amarillo): toca una app y luego el panel donde va. La pestaña de otro monitor también sirve, y el foco también: lleva la app al foco.
+- **Mover…** (amarillo): toca una app y luego el panel donde va. Todos los paneles de todos los monitores son destino a la vez, y el foco también: lleva la app al foco.
 - **Anclar…** (índigo): toca una app para anclarla a su panel. Una app anclada sigue en su panel aunque esté cerrada, atenuada, y tocarla la abre ahí.
 - **Minimizar…** (verde azulado): toca una app para minimizarla en su panel. Si ya estaba minimizada, vuelve. El modo se apaga después de un toque, como **Cerrar…**.
 - **Cerrar…** (rojo): toca una app para cerrarla, como con su ✕. Si tiene algo sin guardar, la app pregunta.
@@ -47,7 +47,7 @@ Prende o apaga las columnas de **Contexto** y **Trabajo** del monitor principal 
 
 ## Monitores y paneles
 
-La fila de pestañas de arriba elige de qué monitor ves los paneles. Cada panel muestra sus apps:
+Se ven todos los monitores a la vez, uno arriba del otro: su nombre va en vertical a la izquierda, y sus paneles van lado a lado en su orden real (izquierda, derecha). Si prefieres lo de antes, una pestaña por monitor, apaga **Deck: todos los monitores a la vez** en General. Cada panel muestra sus apps:
 
 - **Toca una app:** al foco. Una libre sólo se trae al frente, y sigue libre.
 - **En un panel en pestañas (o Llenar):** la pestaña que se ve va subrayada. Toca una oculta para verla en su panel y escribir en ella, sin moverla al foco: trabajas en el foco y en ella a la vez. Toca la que se ve para llevarla al foco. Los iconos no cambian de lugar, y la app que sale del foco vuelve como la pestaña que se ve.
@@ -66,8 +66,9 @@ Marcas en una app:
 | ⧉ | Abierta en otro escritorio virtual; tocarla te lleva allí. |
 | ▴ | En la bandeja: la app ocultó su ventana al cerrarla, pero sigue abierta. Tocarla abre la app otra vez, y la app muestra su ventana en el foco. |
 | Borde blanco | En uso: tiene el teclado y el ratón, pero no es la del foco. |
+| 🛡, atenuada (en Libres) | Corre como administrador: FocusWShell no puede moverla. Tocarla la trae al frente. |
 
-**🗂 Páginas**, a la derecha de las pestañas de monitores, muestra las pestañas de tus navegadores. Ver [Páginas de los navegadores]({{ '/es/paginas/' | relative_url }}).
+**🗂 Páginas**, a la derecha de Libres, muestra las pestañas de tus navegadores. Ver [Páginas de los navegadores]({{ '/es/paginas/' | relative_url }}).
 
 ## Libres
 

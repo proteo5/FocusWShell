@@ -58,6 +58,8 @@ Objetivo: manejar el escritorio por paneles propios y vistas, con un deck opcion
 7. **La ventana principal, moderna**, con WPF-UI: navegación lateral, Inicio con el mapa de monitores, panel aplicado al momento, tema claro u oscuro y «Acerca de» ([ADR 0017](adr/0017-ventana-principal-wpf-ui.md)). **Hecho** (0.2.0-alpha).
 8. **El foco con lugar propio en el deck**, el modo Minimizar y las apps que se cierran a la bandeja ([ADR 0013, enmienda](adr/0013-deck-superficie-de-control.md#enmienda-el-lugar-del-foco-y-el-modo-minimizar-2026-11-13), [ADR 0018](adr/0018-apps-en-la-bandeja.md)). **Hecho** (0.3.0-alpha).
 9. **Actividad**: cuánto pasa cada app en el foco y en uso, y el tiempo en paralelo; en el deck, la app en uso junto a la del foco ([ADR 0019](adr/0019-actividad-foco-y-uso.md)). **Hecho** (0.4.0-alpha): la medición y el día; en 0.5.0-alpha, los sitios de los navegadores. Después: pares, línea del día, semana y exportar.
+10. **El deck con todos los monitores a la vez**, uno arriba del otro, sin pestañas ([ADR 0020](adr/0020-deck-monitores-apilados.md)). **Hecho** (0.6.0-alpha).
+11. **El deck por la red**: una app web que sirve FocusWShell, para Android e iPad sin Apollo (fase 3 del [ADR 0013](adr/0013-deck-superficie-de-control.md)). Siguiente: ADR 0021 y un spike.
 
 Criterio de salida: una semana de uso diario cambiando de vista y llevando apps al foco desde el deck, sin tocar los atajos.
 

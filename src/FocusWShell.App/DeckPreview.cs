@@ -14,7 +14,12 @@ namespace FocusWShell.App;
 /// </summary>
 public static class DeckPreview
 {
-    public static void Run(string folder, string? language = null)
+    /// <summary>Monitores apilados (ADR 0020, el de siempre) o una pestaña por monitor (<c>--pestanas</c>).</summary>
+    private static bool _stacked = true;
+
+    /// <param name="tabs">Dibujar el deck con una pestaña por monitor, como antes del ADR 0020.</param>
+    /// <param name="stackedCases">Sólo los casos que deciden el diseño apilado: dos y tres monitores, muchas apps…</param>
+    public static void Run(string folder, string? language = null, bool tabs = false, bool stackedCases = false)
     {
         if (language is not null)
         {
@@ -22,6 +27,14 @@ public static class DeckPreview
         }
 
         Directory.CreateDirectory(folder);
+        _stacked = !tabs;
+        if (stackedCases)
+        {
+            _stacked = true;
+            RunStacked(folder);
+            return;
+        }
+
         var sizes = new[] { ("tablet-entera", 1280, 672), ("media-tablet", 640, 672), ("esquina", 640, 980) };
         foreach (var (name, width, height) in sizes)
         {
@@ -74,7 +87,7 @@ public static class DeckPreview
             ReadPages: () => Task.FromResult(SamplePages()),
             SelectPage: (_, _) => Task.FromResult(true),
             ClosePage: (_, _) => Task.FromResult(true));
-        var deck = new DeckWindow(actions) { Left = -20000, Top = -20000 };
+        var deck = new DeckWindow(actions) { Left = -20000, Top = -20000, Stacked = _stacked };
         deck.ShowTab(tab);
         deck.ShowMode(mode, state);
         if (mode is "paginas" or "paginas-sitio")
@@ -97,6 +110,38 @@ public static class DeckPreview
         }
 
         deck.Close();
+    }
+
+    /// <summary>
+    /// El prototipo del ADR 0020: los casos que deciden si funciona. Dos monitores (como el del usuario), tres,
+    /// muchas apps, modo mover (todos los paneles son destino a la vez) y la lista de páginas.
+    /// </summary>
+    private static void RunStacked(string folder)
+    {
+        var sizes = new[] { ("tablet-entera", 1280, 672), ("esquina", 640, 980) };
+        var two = Sample(manyApps: false) with
+        {
+            Panels = [.. Sample(manyApps: false).Panels.Where(p => p.Display is null or "hp")],
+            Displays = [(null, T("Principal", "Main")), ("hp", "HP 24fw")],
+        };
+        var three = Sample(manyApps: false) with
+        {
+            Panels =
+            [
+                .. Sample(manyApps: false).Panels,
+                new("lectura", T("Lectura", "Reading"), T("Lenovo tablet, izquierda", "Lenovo tablet, left"), [App("Kindle", 11, ListItemState.InPanel, "lectura")]) { Display = "tablet", Template = PanelTemplate.Tiles, Side = PanelSide.Left },
+                new("musica", T("Música", "Music"), T("Lenovo tablet, derecha", "Lenovo tablet, right"), [App("Spotify", 12, ListItemState.InPanel, "musica"), App("Podcasts", null, ListItemState.Closed, "musica", pinned: true)]) { Display = "tablet", Template = PanelTemplate.Tiles, Side = PanelSide.Right },
+            ],
+        };
+        foreach (var (name, width, height) in sizes)
+        {
+            Save(two, width, height, Path.Combine(folder, $"apilado-{name}-dos.png"));
+            Save(two with { Free = [] }, width, height, Path.Combine(folder, $"apilado-{name}-dos-sin-libres.png"));
+            Save(three, width, height, Path.Combine(folder, $"apilado-{name}-tres.png"));
+            Save(Sample(manyApps: true) with { Panels = two.Panels.Select(p => p.Id == "trabajo" ? Sample(manyApps: true).Panels[1] : p).ToList(), Displays = two.Displays }, width, height, Path.Combine(folder, $"apilado-{name}-muchas.png"));
+            Save(two, width, height, Path.Combine(folder, $"apilado-{name}-mover.png"), mode: "mover");
+            Save(two, width, height, Path.Combine(folder, $"apilado-{name}-paginas.png"), mode: "paginas");
+        }
     }
 
     private static readonly string[] FreeNames = ["Docker Desktop", "Microsoft Edge", "Microsoft Edge", "OneNote", "Slack", "Spotify", "WhatsApp"];

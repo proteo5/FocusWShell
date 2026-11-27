@@ -43,7 +43,7 @@ Dibuja el deck con datos de ejemplo en sus tres tamaños y en cada modo, sin toc
 FocusWShell.exe --deck-preview <carpeta> [es|en]
 ```
 
-Las capturas del README y del manual (`site/assets/img/`) salen de aquí. Los datos de ejemplo son inventados y salen en el idioma pedido.
+Las capturas del README y del manual (`site/assets/img/`) salen de aquí. Los datos de ejemplo son inventados y salen en el idioma pedido. Dibuja el deck con todos los monitores a la vez (ADR 0020); con `--pestanas`, como antes, con una pestaña por monitor; con `--apilado`, sólo los casos que deciden ese diseño (dos y tres monitores, muchas apps, mover, páginas).
 
 ## Vista previa de la ventana principal
 

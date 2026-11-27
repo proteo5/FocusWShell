@@ -8,7 +8,7 @@ permalink: /browser-pages/
 
 # Browser pages
 
-When you are looking for a page, you should not need to know which window or browser it is in. **🗂 Pages**, at the right of the monitor tabs in the deck, lists every tab of every Chrome and Edge window in one place.
+When you are looking for a page, you should not need to know which window or browser it is in. **🗂 Pages**, at the right of Free in the deck, lists every tab of every Chrome and Edge window in one place.
 
 It appears only while Chrome or Edge is open. The number is how many pages there were the last time they were read; they are read when you open the list and after you close one.
 
