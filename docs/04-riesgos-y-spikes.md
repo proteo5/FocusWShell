@@ -18,6 +18,8 @@ Antes de construir escenas y UI hay que comprobar que la base técnica aguanta. 
 | R10 | El modelo de roles no mejora lo que ya dan FancyZones + DisplayFusion | Alto: el proyecto no se justifica | Desconocida | Validación diaria temprana ([06](06-validacion.md)) antes de invertir en UI. |
 | R11 | Monitores remotos (tablets por wifi) que se desconectan a menudo; Windows mueve sus ventanas al principal, encima del Centro | Alto: rompe el foco justo en el monitor que importa | Media | Reaccionar al cambio de monitores antes de que se note: reubicar en paneles del principal, nunca en el Centro ([ADR 0008](adr/0008-centro-solo-en-monitor-principal.md), [0009](adr/0009-tablets-como-monitores-auxiliares.md)). Probar S6 con una tablet. |
 | R12 | El toque en el deck, desde una tablet por streaming o un monitor táctil, le quita el foco a la app del Centro | Alto: el deck interrumpiría justo lo que debe proteger | Desconocida | Ventanas del deck con `WS_EX_NOACTIVATE`; medir en S8 antes de construir el deck en otro monitor ([ADR 0013](adr/0013-deck-superficie-de-control.md)). **Descartado por S8** (2026-11-10). |
+| R13 | El deck por la red abre un punto de entrada al PC: alguien en la red podría ver los títulos o mandar comandos | **Alto** | Media si no se diseña | Apagado por defecto, emparejado por QR con token por dispositivo, revocable, sólo redes privadas, energía desactivada en remoto ([ADR 0021](adr/0021-deck-por-la-red.md)). El spike S13 decide el transporte seguro. |
+| R14 | Sin un certificado de confianza, el navegador de la tablet no da contexto seguro: sin pantalla encendida ni app instalada | Medio: el deck web se apaga o se siente como una página | Alta | Medir en S13 qué se consigue por HTTP en Android e iPad; si no basta, una app mínima con WebView que fija el certificado ([ADR 0021](adr/0021-deck-por-la-red.md)). |
 
 ## Spikes
 
@@ -37,12 +39,37 @@ Todos usan la app `tools/TestWindows` (ventanas maniquí) más un conjunto de ap
 | S10 — Miniaturas | ¿Se pueden mostrar miniaturas en vivo de las ventanas de un panel en la lista ([ADR 0015](adr/0015-tiles-adaptables-y-lista.md))? | `DwmRegisterThumbnail` de una ventana minimizada y de una tapada por otra ventana propia; 10–20 miniaturas a la vez; `PrintWindow` como alternativa en Edge, Slack y VS Code. | La tapada se ve en vivo; 20 miniaturas sin coste perceptible; alternar entre lista y app sin parpadeo. | — · **Hecho** (opción B confirmada) |
 | S11 — Escritorios virtuales | Lo que falta saber de Windows para seguir los escritorios ([ADR 0016](adr/0016-escritorios-virtuales.md#comprobaciones-pendientes-spike-s11)). | Ver el ADR. | Ver el ADR. | — |
 | S12 — Pestañas de navegadores | ¿Se pueden listar, seleccionar y cerrar las pestañas de Chrome y Edge desde fuera, sin extensión? | UI Automation sobre ventanas reales (sólo lectura) y sobre ventanas de prueba propias (seleccionar y cerrar), con la ventana al frente y al fondo. | Lista en < 200 ms con 30 pestañas; seleccionar trae la pestaña y su ventana; cerrar no cambia la pestaña activa ni mueve el ratón. | — · **Hecho** |
+| S13 — Deck por la red | ¿Se puede usar el deck desde una tablet por wifi, sin Apollo, con latencia y permisos aceptables ([ADR 0021](adr/0021-deck-por-la-red.md))? | Kestrel en FocusWShell con una página mínima (paneles e iconos, un toque lleva al foco) en la tablet Android y en un iPad; primer arranque con el Firewall; tablet que se duerme y vuelve. | Toque a cambio < 150 ms por wifi; el Firewall se acepta sin administrador o hay una alternativa clara; se sabe qué da HTTP (pantalla encendida, pantalla completa) en cada navegador; el zip crece < 15 MB. | R13, R14 · **Hecho** en Android (falta iPad) |
 
 S1–S5 forman el hito M0. S6 y S7 se pueden posponer a M1, pero deben resolverse antes de dar por bueno el MVP.
 
 ## Resultados
 
 Cada spike deja una nota breve en esta sección: fecha, configuración de monitores, apps probadas, resultado y decisión.
+
+### S13 — Deck por la red (2026-11-27)
+
+Kestrel dentro de FocusWShell, por HTTP en la red local, con una página mínima: los paneles de cada monitor con sus iconos y Libres; tocar una app la lleva al foco. Tablet Android (Chrome) por wifi, la misma del deck por Apollo. Se prende en General, «Deck en la red (prueba S13)».
+
+| Prueba | Resultado |
+| --- | --- |
+| Toque → app en el foco (total) | 190 ms y 280 ms en dos medidas |
+| De eso, en el PC (llevar al foco y activar) | 160 ms y 206 ms |
+| De eso, la red (ida y vuelta) | 15 ms y 74 ms (variación del wifi) |
+| La app queda al frente con el teclado, aunque el toque venga de la red | Sí |
+| Firewall de Windows la primera vez | Sólo pidió confirmación, sin contraseña de administrador |
+| Contexto seguro por HTTP | No |
+| Wake Lock (mantener la pantalla encendida) | No disponible (necesita contexto seguro) |
+| Pantalla completa desde la página | Sí |
+| Tablet bloqueada un minuto y de vuelta | Se reconecta sola |
+| Tamaño del zip autocontenido | 79.8 → 91.2 MB (+11.4 MB por ASP.NET Core) |
+
+**Conclusiones:**
+
+- **La red no es el cuello de botella:** casi todo el tiempo se va en el PC, el mismo que con el deck de Apollo. Acelerar el cambio de foco mejora los dos decks.
+- **HTTP (opción A del [ADR 0021](adr/0021-deck-por-la-red.md)) alcanza para usar el deck,** con dos faltas: sin cifrado y sin Wake Lock. La pantalla encendida se resuelve por ahora en la tablet (tiempo de pantalla o modo de desarrollador) o con una alternativa sin contexto seguro, a medir en el MVP.
+- **Riesgos:** R14 confirmado (sin contexto seguro no hay Wake Lock). R13 sigue abierto: se cierra con el emparejamiento del MVP.
+- Falta probar en un iPad (Safari).
 
 ### S1 — Enumeración (2026-11-09, primera pasada)
 

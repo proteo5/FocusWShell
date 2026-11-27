@@ -71,6 +71,10 @@ For each day: the active time, the time side by side, how many times you brought
 
 **Also measure sites** adds, under Chrome and Edge, the time of each site (github.com); tap **▸ N sites** to show or hide them. Only the site is saved, never the page or its title. Private windows (incognito, InPrivate) count as **Private browsing**, with no site, and what you type in the address bar is not read.
 
+## Deck on the network
+
+Serve the deck on your local network and pair tablets or phones with a QR code, to use the deck without Apollo. See [Deck on the network]({{ '/deck-network/' | relative_url }}).
+
 ## Excluded
 
 Apps FocusWShell should never touch, by executable, AUMID or window class. See [Keep an app out of FocusWShell]({{ '/guides/#keep-an-app-out-of-focuswshell' | relative_url }}).

@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14171e">
+<title>FocusWShell</title>
+<link rel="stylesheet" href="/deck.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .box { max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+  input { font: inherit; min-height: 48px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--edge); background: var(--card); color: var(--text); }
+  .primary { background: var(--blue); }
+  p { color: var(--dim); line-height: 1.5; margin: 0; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h2 style="margin:0">FocusWShell</h2>
+  <p id="text"></p>
+  <div id="form" hidden style="display:flex;flex-direction:column;gap:12px">
+    <input id="code" inputmode="numeric" maxlength="6" autocomplete="off">
+    <input id="name" maxlength="40" autocomplete="off">
+    <button id="pair" class="primary"></button>
+  </div>
+  <p id="error" style="color:#f09595"></p>
+</div>
+<script>
+const es = (navigator.language || 'en').toLowerCase().startsWith('es');
+const t = es ? {
+  intro: 'Este dispositivo no está emparejado. En el PC, abre FocusWShell → Deck en la red → Emparejar, y escanea el código QR o escribe aquí el código.',
+  code: 'Código de 6 cifras', name: 'Nombre de este dispositivo', pair: 'Emparejar', bad: 'Ese código no vale o ya caducó. Pide otro en el PC.',
+} : {
+  intro: 'This device is not paired. On the PC, open FocusWShell → Deck on the network → Pair, and scan the QR code or type the code here.',
+  code: '6-digit code', name: 'Name of this device', pair: 'Pair', bad: 'That code is not valid or has expired. Get a new one on the PC.',
+};
+const q = new URLSearchParams(location.search);
+document.getElementById('text').textContent = t.intro;
+const form = document.getElementById('form'); form.hidden = false;
+const code = document.getElementById('code'); code.placeholder = t.code; code.value = q.get('code') || '';
+const name = document.getElementById('name'); name.placeholder = t.name;
+name.value = /iPad/.test(navigator.userAgent) ? 'iPad' : /Android/.test(navigator.userAgent) ? 'Android' : '';
+const pair = document.getElementById('pair'); pair.textContent = t.pair;
+pair.onclick = async () => {
+  const r = await fetch('/api/pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.value.trim(), name: name.value }) });
+  const j = r.ok ? await r.json() : { ok: false };
+  if (!j.ok) { document.getElementById('error').textContent = t.bad; return; }
+  // La dirección con el token es la que conviene dejar en la pantalla de inicio.
+  location.replace('/?d=' + encodeURIComponent(j.token));
+};
+</script>
+</body>
+</html>

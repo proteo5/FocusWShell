@@ -27,7 +27,7 @@ Ideas are just as welcome, in the same place. What helps most is what you were t
 
 ## Privacy
 
-- FocusWShell runs **only on your PC**. It makes no network connections, has no account and sends no telemetry.
+- FocusWShell runs **only on your PC**. It doesn't connect to the internet, has no account and sends no telemetry. The only exception you choose: with the [deck on the network]({{ '/deck-network/' | relative_url }}) on, it listens on your local network for the devices you paired.
 - It reads window titles and app names to show them in the deck and to recognize your apps.
 - Browser tab titles are read only while the *Pages* list is on screen, and are never saved.
 - Everything it remembers is in `%LOCALAPPDATA%\FocusWShell`, as plain JSON files you can read or delete.

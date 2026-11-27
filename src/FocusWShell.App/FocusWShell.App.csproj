@@ -38,4 +38,11 @@
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 
+  <!-- El deck por la red (ADR 0021): Kestrel, la página y el QR para emparejar. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <EmbeddedResource Include="DeckWeb/*.html;DeckWeb/*.js;DeckWeb/*.css" />
+  </ItemGroup>
+
 </Project>

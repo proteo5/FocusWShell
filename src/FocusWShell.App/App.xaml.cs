@@ -402,6 +402,10 @@ public partial class App : Application
 
                 _sessionReady = true;
                 StartLateAdoption();
+                if (_settings.DeckWebEnabled)
+                {
+                    _ = SetDeckWeb(true); // el deck por la red (ADR 0021), si se dejó prendido
+                }
             });
         });
         _controller.LayoutChanged += () => Dispatcher.BeginInvoke(ScheduleSessionSave);
@@ -483,7 +487,17 @@ public partial class App : Application
             return;
         }
 
-        _deck ??= new DeckWindow(new DeckActions(
+        _deck ??= new DeckWindow(SharedDeckActions);
+        _deck.Stacked = _settings.DeckStacked; // ADR 0020: todos los monitores a la vez
+
+        PresentDeck();
+        StartDeckPolling();
+    }
+
+    private DeckActions? _deckActions;
+
+    /// <summary>Lo que puede hacer un deck: el de la ventana y el de la red (ADR 0021) usan las mismas acciones.</summary>
+    private DeckActions SharedDeckActions => _deckActions ??= new DeckActions(
             Run: async commands =>
             {
                 var result = await Task.Run(() =>
@@ -568,12 +582,7 @@ public partial class App : Application
             },
             ReadPages: () => Task.Run(_controller.BrowserPages),
             SelectPage: (handle, tab) => Task.Run(() => ShellController.SelectPage(handle, tab)),
-            ClosePage: (handle, tab) => Task.Run(() => _controller.ClosePage(handle, tab))));
-        _deck.Stacked = _settings.DeckStacked; // ADR 0020: todos los monitores a la vez
-
-        PresentDeck();
-        StartDeckPolling();
-    }
+            ClosePage: (handle, tab) => Task.Run(() => _controller.ClosePage(handle, tab)));
 
     /// <summary>Lo muestra donde toca: fijado en su monitor si está conectado; si no, en la esquina del principal.</summary>
     private void PresentDeck()
@@ -1056,6 +1065,65 @@ public partial class App : Application
         _settings.ActivityEnabled = enabled;
         _settings.Save();
         StartActivity();
+    }
+
+    private global::FocusWShell.App.DeckWeb.DeckWebServer? _deckWeb;
+    private DateTime _deckWebRefreshed;
+
+    /// <summary>El deck por la red (ADR 0021), si está prendido.</summary>
+    internal global::FocusWShell.App.DeckWeb.DeckWebServer? DeckWeb => _deckWeb;
+
+    /// <summary>Prender o apagar el deck por la red (ADR 0021). Devuelve cuando ya escucha o paró.</summary>
+    internal async Task SetDeckWeb(bool enabled)
+    {
+        _settings.DeckWebEnabled = enabled;
+        _settings.Save();
+        if (_deckWeb is not null)
+        {
+            await _deckWeb.DisposeAsync();
+            _deckWeb = null;
+        }
+
+        if (!enabled)
+        {
+            return;
+        }
+
+        _deckWeb = new global::FocusWShell.App.DeckWeb.DeckWebServer(
+            SharedDeckActions,
+            state: () =>
+            {
+                // Sin el deck a la vista nadie repasa las ventanas: cada tanto, aquí.
+                if (DateTime.Now - _deckWebRefreshed > TimeSpan.FromSeconds(3))
+                {
+                    _deckWebRefreshed = DateTime.Now;
+                    _controller.Refresh();
+                }
+
+                return _controller.DeckState();
+            },
+            icon: app => Dispatcher.Invoke(() => Png(AppIcons.Get(app) as System.Windows.Media.Imaging.BitmapSource)),
+            // Las acciones del deck tocan la interfaz (la ventana principal, la bandeja): en su hilo.
+            onUi: action => Dispatcher.InvokeAsync(action).Task.Unwrap(),
+            freeAll: RestoreFromTray,
+            pageTitles: () => _settings.DeckWebPageTitles,
+            devices: new global::FocusWShell.App.DeckWeb.DeckWebDevices(global::FocusWShell.App.DeckWeb.DeckWebDevices.DefaultPath));
+        await _deckWeb.StartAsync();
+    }
+
+    /// <summary>Un icono en PNG, para el deck por la red.</summary>
+    private static byte[]? Png(System.Windows.Media.Imaging.BitmapSource? source)
+    {
+        if (source is null)
+        {
+            return null;
+        }
+
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(source));
+        using var stream = new System.IO.MemoryStream();
+        encoder.Save(stream);
+        return stream.ToArray();
     }
 
     /// <summary>El deck con todos los monitores a la vez (ADR 0020) o con una pestaña por monitor.</summary>

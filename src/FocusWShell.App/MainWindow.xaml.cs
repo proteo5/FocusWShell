@@ -69,6 +69,7 @@ public partial class MainWindow : FluentWindow
         StartupSwitch.IsChecked = App.StartsWithWindows;
         AwakeSwitch.IsChecked = ((App)Application.Current).KeepAwakeActive;
         DeckStackedSwitch.IsChecked = settings.DeckStacked;
+        AboutPrivacy.Text = settings.DeckWebEnabled ? Strings.Gen_AboutPrivacyWeb : Strings.Gen_AboutPrivacy;
         LanguageCombo.SelectedItem = LanguageCombo.Items.Cast<WC.ComboBoxItem>()
             .FirstOrDefault(i => (string)i.Tag == settings.Language) ?? LanguageCombo.Items[0];
         ThemeCombo.SelectedItem = ThemeCombo.Items.Cast<WC.ComboBoxItem>()
@@ -97,10 +98,15 @@ public partial class MainWindow : FluentWindow
         foreach (var (name, section) in new (string, FrameworkElement)[]
         {
             ("Home", HomeSection), ("Windows", WindowsSection), ("Panels", PanelsSection), ("Apps", AppsSection),
-            ("Shortcuts", ShortcutsSection), ("Scenes", ScenesSection), ("Activity", ActivitySection), ("Excluded", ExcludedSection), ("General", GeneralSection),
+            ("Shortcuts", ShortcutsSection), ("Scenes", ScenesSection), ("Activity", ActivitySection), ("DeckWeb", DeckWebSection), ("Excluded", ExcludedSection), ("General", GeneralSection),
         })
         {
             section.Visibility = name == page ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (page == "DeckWeb")
+        {
+            BuildDeckWeb();
         }
 
         if (page == "Activity")
